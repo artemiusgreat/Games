@@ -13,7 +13,7 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
 | Engine | Install min | Coding min | Total min | C# lines (hand-written) | Builds? | Runs (smoke)? | Fix iterations | Blockers / steps needing the user |
 |---|---|---|---|---|---|---|---|---|
 | Godot 4 (.NET) | ~1 | ~2 | ~3 | 232 | YES | YES (headless) | 2 | none — no GUI, no account |
-| Stride 4.4 | | | | | | | | |
+| Stride 4.4 | ~12 | ~7 | ~19 | 253 | YES | YES (Xvfb + llvmpipe) | 3 | none — but see headless Vulkan note |
 | Flax | | | | | | | | |
 | Unity | | | | | | | | |
 
@@ -26,4 +26,16 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
 - Smoke: headless run needed dotnet on PATH (engine shells out for hostfxr) — env fix, then PASS:
   player moved 28.43 units in 3s at run speed, onFloor=True, followed terrain height down.
 - Blockers needing user: none.
+
+### Stride 4.4 — DONE 19:47Z (phase start 19:27:53Z, ~19 min to smoke pass)
+- Install ~12 min: dotnet templates (11s) + scaffold + first template build (~4 min, mostly NuGet/asset
+  compile) + mesa-vulkan-drivers for headless Vulkan (~10 min, ~9 of it a slow apt mirror; overlaps coding).
+  Without a GPU the template build fails: the Skybox asset compiler needs a Vulkan device. llvmpipe fixes it.
+- Coding ~7 min: reflection-probed the 4.4 assemblies for exact APIs, hand-authored a 65-line scene YAML
+  (template scene was 7,506 lines of level content — deleted along with all template gameplay),
+  3 C# files (253 lines). 1 compile-fix round (4 small errors: moved namespaces, removed APIs).
+- Smoke PASS under Xvfb+llvmpipe: moved 31.6 units in 3s, terrain-following Y. Runtime-added scripts work.
+- Terrain following is height sampling: Stride's heightfield collider is asset-pipeline-oriented with no
+  documented code-first path (spec allows sampling where it is less code).
+- Blockers needing user: none. No GUI opened, no account.
 

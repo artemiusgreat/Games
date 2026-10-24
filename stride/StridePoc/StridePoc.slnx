@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="StridePoc.Game/StridePoc.Game.csproj" />
+  <Project Path="StridePoc.Linux/StridePoc.Linux.csproj" DefaultStartup="true" />
+</Solution>
