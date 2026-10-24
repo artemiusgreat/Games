@@ -14,8 +14,8 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
 |---|---|---|---|---|---|---|---|---|
 | Godot 4 (.NET) | ~1 | ~2 | ~3 | 232 | YES | YES (headless) | 2 | none — no GUI, no account |
 | Stride 4.4 | ~12 | ~7 | ~19 | 253 | YES | YES (Xvfb + llvmpipe) | 3 | none — but see headless Vulkan note |
-| Flax 1.13 | ~8 | ~5 | ~13 | 237 | code YES (Flax.Build); cook NO (needs editor) | NO — editor crashes on this VM | Editor native crash at startup (heap assertion) on this memory-starved VM; zip layout gap for CLI builds (symlink bridge) | None — no account/GUI reached. On a normal machine: open project in editor, Build & Run |
-| Unity | | | | | | | | |
+| Flax 1.13 | ~8 | ~5 | ~13 | 237 | code YES (Flax.Build); cook NO (needs editor) | NO — editor crashes on this VM | 3 | Editor native crash at startup (heap assertion) on this memory-starved VM; zip layout gap for CLI builds (symlink bridge). No account/GUI reached — on a normal machine: open project in editor, Build & Run |
+| Unity 6000.0.64f1 | ~68 | ~10 | ~78 | 212 | NO — license gate precedes compilation | NO — same gate | 0 (no code ever compiled) | **License activation**: editor runs but refuses all work — "No valid Unity Editor license found. Please activate your license." (0 entitlements). **Needs the user once**: Unity ID sign-in + free Personal license activation; everything after that is CLI |
 
 ## Per-engine log
 
