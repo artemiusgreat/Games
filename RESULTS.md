@@ -52,3 +52,21 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
   engine Content scan; VM has ~0.5 GB free RAM of 7.9 GB), and FlaxGame requires cooked
   content, which only the editor produces. Fix iterations: 3. User steps needed: none here.
   Full detail: flax/NOTES.md.
+
+## Unity 6000.0.64f1 — log
+- 20:01:04Z phase start (epoch 1792872064) → 21:19:14Z done (epoch 1792875554). Total ≈ 78 min wall.
+- Install ≈ 68 min, mostly PASSIVE waiting at this VM's speeds: editor tarball 4.47 GB
+  downloaded at ~1.4–4.4 MB/s (~26 min, shared with the Hub download) and xz extraction
+  of 8.55 GB on 2 cores (~35 min). Active toolchain work was ~15 min: version pinning via
+  Unity's official Hub release feed, Hub 3.22.4 from Unity's apt-repo .deb (the public
+  AppImage URL now returns an error stub), Hub headless CLI verified working
+  (`--no-sandbox --headless help`/`editors`; its Unity-service TLS fails through this
+  VM's proxy, net_error -202).
+- Coding ≈ 10 min (done while the editor downloaded): 185 lines of game C# + 27-line
+  editor build script, hand-authored scene YAML + .meta files, project skeleton.
+- License probes (2 runs, ~8 s each): editor + LicensingClient start fine, find
+  0 entitlements, and refuse everything with "No valid Unity Editor license found.
+  Please activate your license." — for `-createProject` and for opening UnityPoc alike;
+  compilation is never reached. Fix iterations: 0 (no code ever compiled).
+- User steps needed: ONE — Unity ID sign-in + Personal license activation. Full
+  detail: unity/NOTES.md.
