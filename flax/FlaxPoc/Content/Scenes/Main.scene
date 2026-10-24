@@ -1,0 +1,111 @@
+{
+ "ID": "a470726f441936acfe25318b162c336c",
+ "TypeName": "FlaxEngine.SceneAsset",
+ "EngineBuild": 7011,
+ "Data": [
+  {
+   "ID": "a470726f441936acfe25318b162c336c",
+   "TypeName": "FlaxEngine.Scene",
+   "Name": "Main",
+   "Lightmaps": [
+    {
+     "Lightmap0": "00000000000000000000000000000000",
+     "Lightmap1": "00000000000000000000000000000000",
+     "Lightmap2": "00000000000000000000000000000000"
+    }
+   ],
+   "LightmapSettings": {
+    "IndirectLightingIntensity": 1.0,
+    "GlobalObjectsScale": 1.0,
+    "ChartsPadding": 2,
+    "AtlasSize": 512,
+    "BounceCount": 1,
+    "CompressLightmaps": true,
+    "UseGeometryWithNoMaterials": true,
+    "Quality": 100
+   }
+  },
+  {
+   "ID": "280f19df46462adca0ad71983641cb0b",
+   "TypeName": "FlaxEngine.SkyLight",
+   "ParentID": "a470726f441936acfe25318b162c336c",
+   "Name": "SkyLight",
+   "Transform": {
+    "Translation": {
+     "X": 0.0,
+     "Y": 250.0,
+     "Z": 0.0
+    }
+   },
+   "Brightness": 1.0,
+   "BakedProbe": "30bdfe574f621e6b505ccc929a6877bc",
+   "Mode": 0
+  },
+  {
+   "ID": "0442142849ec2b814cc380897a623811",
+   "TypeName": "FlaxEngine.Sky",
+   "ParentID": "a470726f441936acfe25318b162c336c",
+   "Name": "Sky",
+   "Transform": {
+    "Translation": {
+     "X": 40.0,
+     "Y": 300.0,
+     "Z": 20.0
+    }
+   },
+   "Sun": "9b72fc4a47c39fca64f3058b692784c3",
+   "SunPower": 16.0
+  },
+  {
+   "ID": "d53a41bc451cdac2bf32199f7f0afa72",
+   "TypeName": "FlaxEngine.EnvironmentProbe",
+   "ParentID": "a470726f441936acfe25318b162c336c",
+   "Name": "EnvironmentProbe",
+   "Transform": {
+    "Translation": {
+     "X": 0.0,
+     "Y": 250.0,
+     "Z": 0.0
+    }
+   },
+   "ProbeID": "a3bfc6cc409cd437c3dffca424736896"
+  },
+  {
+   "ID": "9b72fc4a47c39fca64f3058b692784c3",
+   "TypeName": "FlaxEngine.DirectionalLight",
+   "ParentID": "a470726f441936acfe25318b162c336c",
+   "Name": "Sun",
+   "Transform": {
+    "Translation": {
+     "X": 40.0,
+     "Y": 270.0,
+     "Z": 40.0
+    },
+    "Orientation": {
+     "X": 0.3088414669036865,
+     "Y": 0.3973219096660614,
+     "Z": -0.14401069283485413,
+     "W": 0.8520640730857849
+    }
+   },
+   "Brightness": 10.0,
+   "ShadowsDistance": 3000.0,
+   "ShadowsFadeDistance": 200.0,
+   "ShadowsDepthBias": 0.0010000000474974513,
+   "ShadowsNormalOffsetScale": 100.0,
+   "PartitionMode": 2
+  },
+  {
+   "ID": "ad805d3292e042a1a015408cbd0acde4",
+   "TypeName": "FlaxEngine.EmptyActor",
+   "ParentID": "a470726f441936acfe25318b162c336c",
+   "Name": "Bootstrap"
+  },
+  {
+   "ID": "cc07d110f7734764bf2e610c04462558",
+   "TypeName": "WorldBuilder",
+   "ParentID": "ad805d3292e042a1a015408cbd0acde4",
+   "V": {}
+  }
+ ]
+}

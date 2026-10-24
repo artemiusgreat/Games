@@ -3,3 +3,5 @@ _tools/
 .godot/
 bin/
 obj/
+flax/FlaxPoc/Cache/
+flax/FlaxPoc/Binaries/

@@ -14,7 +14,7 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
 |---|---|---|---|---|---|---|---|---|
 | Godot 4 (.NET) | ~1 | ~2 | ~3 | 232 | YES | YES (headless) | 2 | none — no GUI, no account |
 | Stride 4.4 | ~12 | ~7 | ~19 | 253 | YES | YES (Xvfb + llvmpipe) | 3 | none — but see headless Vulkan note |
-| Flax | | | | | | | | |
+| Flax 1.13 | ~8 | ~5 | ~13 | 237 | code YES (Flax.Build); cook NO (needs editor) | NO — editor crashes on this VM | Editor native crash at startup (heap assertion) on this memory-starved VM; zip layout gap for CLI builds (symlink bridge) | None — no account/GUI reached. On a normal machine: open project in editor, Build & Run |
 | Unity | | | | | | | | |
 
 ## Per-engine log
@@ -39,3 +39,16 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
   documented code-first path (spec allows sampling where it is less code).
 - Blockers needing user: none. No GUI opened, no account.
 
+
+## Flax 1.13 — log
+- 19:47:39Z phase start (epoch 1792871259) → 20:00:57Z done (epoch 1792872057). Total ≈ 13 min.
+- Install ≈ 8 min: editor+tools zips (370 MB) and FlaxSamples clone (309 MB) downloaded in
+  ~4 min; ~4 min diagnosing the editor startup crash (all configs/flags) and bridging the
+  CLI build layout gap with symlinks.
+- Coding ≈ 5 min: scene JSON surgery (python), one 237-line script, 1 compile-fix round
+  (MaterialBase typing, KeyboardKeys.Shift, deleted template PerfCounter.cs).
+- Build: game C# compiles clean for Game + GameEditor targets via Flax.Build (~10 s).
+- Smoke: NOT RUN — editor crashes at startup on this VM (glibc heap assertion during
+  engine Content scan; VM has ~0.5 GB free RAM of 7.9 GB), and FlaxGame requires cooked
+  content, which only the editor produces. Fix iterations: 3. User steps needed: none here.
+  Full detail: flax/NOTES.md.
