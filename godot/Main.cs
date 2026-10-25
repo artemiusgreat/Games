@@ -66,8 +66,8 @@ public partial class Main : Node3D
                 var b = new Vector3(x1, HeightAt(x1, z0), z0);
                 var c = new Vector3(x0, HeightAt(x0, z1), z1);
                 var d = new Vector3(x1, HeightAt(x1, z1), z1);
-                st.AddVertex(a); st.AddVertex(c); st.AddVertex(b);
-                st.AddVertex(b); st.AddVertex(c); st.AddVertex(d);
+                st.AddVertex(a); st.AddVertex(b); st.AddVertex(c);
+                st.AddVertex(b); st.AddVertex(d); st.AddVertex(c);
             }
         }
         st.GenerateNormals();
