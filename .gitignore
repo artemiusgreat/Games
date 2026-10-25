@@ -11,3 +11,8 @@ unity/UnityPoc/Obj/
 unity/UnityPoc/Logs/
 unity/UnityPoc/Build/
 unity/UnityPoc/UserSettings/
+
+# .NET / engine build outputs
+[Bb]in/
+[Oo]bj/
+.godot/
