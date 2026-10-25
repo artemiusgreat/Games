@@ -21,7 +21,13 @@ public class WorldBuilder : MonoBehaviour
 
     private static Material Mat(Color c)
     {
-        return new Material(Shader.Find("Standard")) { color = c };
+        // "Standard" is stripped from the build when nothing references it
+        // (Shader.Find -> null in the player); BuildScript pins the
+        // single-variant "Unlit/Color" as always-included instead.
+        var shader = Shader.Find("Standard")
+                  ?? Shader.Find("Unlit/Color")
+                  ?? Shader.Find("Sprites/Default");
+        return new Material(shader) { color = c };
     }
 
     private void Awake()

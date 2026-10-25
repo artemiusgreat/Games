@@ -15,7 +15,7 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
 | Godot 4 (.NET) | ~1 | ~2 | ~3 | 232 | YES | YES (headless) | 2 | none — no GUI, no account |
 | Stride 4.4 | ~12 | ~7 | ~19 | 253 | YES | YES (Xvfb + llvmpipe) | 3 | none — but see headless Vulkan note |
 | Flax 1.13 | ~8 | ~5 | ~13 | 237 | code YES (Flax.Build); cook NO (needs editor) | NO — editor crashes on this VM | 3 | Editor native crash at startup (heap assertion) on this memory-starved VM; zip layout gap for CLI builds (symlink bridge). No account/GUI reached — on a normal machine: open project in editor, Build & Run |
-| Unity 6000.0.64f1 | ~68 | ~10 | ~78 | 212 | NO — license gate precedes compilation | NO — same gate | 0 (no code ever compiled) | **License activation**: editor runs but refuses all work — "No valid Unity Editor license found. Please activate your license." (0 entitlements). **Needs the user once**: Unity ID sign-in + free Personal license activation; everything after that is CLI |
+| Unity 6000.0.64f1 | ~68 | ~10 | ~78 + ~70 verification (2026-10-25) | 249 | YES | YES (windowed, Xvfb) | 2 | None left — Personal license provisioned via Hub sign-in on this VM (see log). Quirks: editor builds here need `-noUpm` (UPM chown EPERM on this fs); player needs `runInBackground` under bare Xvfb |
 
 ## Per-engine log
 
@@ -70,3 +70,43 @@ Machine: Linux VM, 2 cores, 7.9GB RAM, 90GB free disk, Xvfb available, .NET SDK 
   compilation is never reached. Fix iterations: 0 (no code ever compiled).
 - User steps needed: ONE — Unity ID sign-in + Personal license activation. Full
   detail: unity/NOTES.md.
+
+### Unity — verification phase (2026-10-25, ~70 min wall)
+- **Licensing: RESOLVED.** The user's existing Unity Personal seat is now
+  provisioned on this VM: Licensing Client reports Unity Personal (Assigned,
+  org "Indemos"), license XML written, editor log shows "Successfully resolved
+  entitlement details". Route that worked: Hub GUI under Xvfb → Sign In opens
+  an embedded OAuth window that cannot load through this VM's egress proxy,
+  so the Unity ID login was completed in a controlled Chrome behind a local
+  unauthenticated proxy shim (Chromium refuses the proxy's embedded
+  credentials: ERR_TUNNEL_CONNECTION_FAILED / ERR_NO_SUPPORTED_PROXIES; the
+  shim injects them). Chrome's load of the api.unity.com authorize leg also
+  fails/stalls here (ERR_CONNECTION_CLOSED), so that leg was finished with
+  curl + the browser's session cookies — the endpoint answers with a
+  meta-refresh page carrying the `unityhub://login` callback; delivering that
+  URL to the running Hub (the helper invocation needs `--no-sandbox` and a
+  DISPLAY or it dies before the single-instance hand-off) completed the code
+  exchange. Confirmed en route: editor CLI `-username`/`-password` alone
+  authenticates but provisions 0 entitlements — Personal comes only via a
+  Hub sign-in. The ~70 min was mostly environment: one full VM replacement
+  mid-task (processes + /tmp + apt state wiped), plus the proxy workarounds;
+  active build/fix work was ~15 min.
+- Build: YES — batchmode player build OK (79,285,557 bytes). On this
+  filesystem the editor needs `-noUpm`: UPM fails rewriting
+  Packages/manifest.json (chown EPERM).
+- Fix iterations: 2.
+  1. Shader stripping: runtime `Shader.Find("Standard")` is null in the
+     player because no build content references Standard. Pinning Standard
+     as always-included compiles 16,384 variants (~30 min — abandoned);
+     final fix: `WorldBuilder.Mat` falls back Standard → Unlit/Color →
+     Sprites/Default, and BuildScript pins the single-variant Unlit/Color.
+  2. Player parks without window focus: with `runInBackground: 0` the
+     standalone player never gains focus under bare Xvfb (no WM) and its
+     main loop stalls after Start (fewer than 11 frames in 240 s, main
+     thread asleep). `runInBackground: 1` → the walk completes in ~7 s.
+- Smoke: PASS (windowed under Xvfb) — `SMOKE start=(0.00, 2.18, 8.00)` →
+  `SMOKE end=(0.00, -0.45, 25.50)`, **moved=17.70**, exit 0. The 3.5 s test
+  runs at walk speed 5.0 (Unity's harness walks; Godot/Stride figures used
+  run speed — not like-for-like). End Y matches HeightAt(x,z)+0.9 exactly.
+  Note: the player segfaults with `-nographics`/`-batchmode` on this VM's
+  GL stack; windowed Xvfb is the working route.
