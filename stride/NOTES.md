@@ -27,3 +27,39 @@
   VK_ICD_FILENAMES=lvp_icd.json. SMOKE start=(0,2.18,8) end=(0,1.27,-23.58) moved=31.60. PASS.
   (Runtime compiles shaders on first run ~10s; ALSA errors are the missing sound card, harmless.)
 - Steps needing the user: NONE (no Game Studio GUI, no account). Root/apt was available on this VM.
+
+## Round 2 (2026-10-25/26) — Probe 1: animated asset import + playback — PASS
+- Asset: Khronos glTF sample "Fox" (Survey/Walk/Run, 24 joints, 1 skinned mesh,
+  embedded-atlas texture) — sources in StridePoc/Resources/Fox/ (Fox.gltf + Fox.bin + Texture.png).
+- DIRECT glTF IMPORT WORKS — no FBX conversion needed. Stride's importer is
+  Assimp-based (ThreeDAssetImporter, Silk.NET.Assimp / Ultz.Native.Assimp 6.0.2)
+  and reads .gltf natively, producing Model/Skeleton/Animation/Material/Texture
+  assets with correct clip stacks (Survey 3.417s, Walk 0.708s, Run 1.158s).
+  The .glb variant FAILS: ImportTextures throws ArgumentNullException because a
+  GLB-embedded texture has no file location — use the split .gltf form.
+- Descriptor authoring WITHOUT Game Studio: possible, via Stride's own APIs in a
+  small console tool (probe2-tools/ImportTool): force-load all Stride assemblies
+  (AssemblyScan registration), ThreeDAssetImporter.Import(...), then
+  AssetFileSerializer.Save(...) per item. Emitted YAML is exactly the Game Studio
+  dialect (!Model/!Skeleton/!Animation/...). Package.Load(...) standalone FAILED
+  ("Error while pre-loading package") — the importer route does not need it.
+  Extension note: model assets are .sdm3d in 4.4, not .sdmodel.
+- TWO build gotchas (assets silently NOT compiled otherwise, Content.Load throws
+  "asset could not be found" at runtime): (1) code-loaded assets must be listed
+  in StridePoc.Game.sdpkg RootAssets (format `- <guid>:<Location>` per asset,
+  learned by serializing a synthetic Package) — nothing in the scene references
+  them, so there is no dependency closure; (2) the game csproj must reference
+  Stride.Assets.Models or the asset-type registrations are absent. The Stride
+  asset cache (obj/stride) also had to be deleted once for new files to appear.
+- Playback: AnimationComponent Animations dict + Play("Survey") /
+  Crossfade("Walk", 0.25s) from a SyncScript driver (FoxProbe.cs, 125 lines);
+  Survey is Fox's stationary clip (it has no true idle). Fox scaled 0.012
+  (glTF units are ~cm: 79 units tall -> ~0.95 m).
+- PROOF (rendered frames, OS-level Xvfb root capture — probe2-tools/capture):
+  probe-frames/probe1-idle.png (Survey stance, stationary) vs probe1-walk.png
+  (Walk, mid-gait): fox region meanAbsDiff 21.95, 19.0% of pixels changed;
+  walk vs walk2 (0.35 s later, ~half a Walk cycle) 3.0% changed — pose changes
+  within the clip, background near-static. Pose captures at yaw 90 confirmed the
+  body is fully textured; rear views look black only because this scene's
+  single directional light leaves unlit sides near-black (same as round-1
+  terrain back-slopes). Peak RSS 428 MB (llvmpipe).

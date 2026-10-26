@@ -31,6 +31,9 @@ namespace StridePoc
         {
             var scene = Entity.Scene;
 
+            // Round 2 dispatch (additive; no-arg behavior is the round-1 slice).
+            bool foxTest = Environment.GetCommandLineArgs().Contains("--fox-test");
+
             scene.Entities.Add(BuildTerrain());
 
             AddTree(scene, -12f, -8f);
@@ -55,10 +58,20 @@ namespace StridePoc
                 TestMode = Environment.GetCommandLineArgs().Contains("--walk-test")
             };
             player.Add(controller);
-            scene.Entities.Add(player);
             controller.CameraEntity = scene.Entities.FirstOrDefault(e => e.Name == "Camera");
 
-            controller.CameraEntity?.Add(new CameraRig { Target = player });
+            if (foxTest)
+            {
+                // Probe 1: the Fox replaces the player capsule as camera target;
+                // the capsule stays in the scene as a static marker. FoxDriver
+                // drives its own closer 3/4 follow camera.
+                FoxProbe.Build(this, scene, controller.CameraEntity);
+            }
+            else
+            {
+                scene.Entities.Add(player);
+                controller.CameraEntity?.Add(new CameraRig { Target = player });
+            }
         }
 
         private Material Colored(Color4 color)

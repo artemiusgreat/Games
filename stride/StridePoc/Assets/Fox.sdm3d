@@ -1,0 +1,13 @@
+!Model
+Id: 30371d22-e2d1-4f90-9aad-26b64c606425
+SerializedVersion: {Stride: 2.0.0.0}
+Tags: []
+Source: !file ../Resources/Fox/Fox.gltf
+Skeleton: 0d74c0be-be29-49c0-9067-9c87008c7ecc:Fox Skeleton
+PivotPosition: {X: 0.0, Y: 0.0, Z: 0.0}
+Materials:
+    dc02bcac9289e554064c81aade09d187:
+        Name: fox_material
+        MaterialInstance:
+            Material: d570f938-d646-4cf3-a0ab-844d1244e0d0:fox_material
+Modifiers: {}

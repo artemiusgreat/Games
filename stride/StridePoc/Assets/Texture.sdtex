@@ -1,0 +1,8 @@
+!Texture
+Id: 19cbf194-4ebb-4e8e-938f-65271cdeea93
+SerializedVersion: {Stride: 2.0.0.0}
+Tags: []
+Source: !file ../Resources/Fox/Texture.png
+Type: !ColorTextureType
+    ColorKeyColor: {R: 255, G: 0, B: 255, A: 255}
+    PremultiplyAlpha: false

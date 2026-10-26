@@ -1,0 +1,34 @@
+!Skeleton
+Id: 0d74c0be-be29-49c0-9067-9c87008c7ecc
+SerializedVersion: {Stride: 2.0.0.0}
+Tags: []
+Source: !file ../Resources/Fox/Fox.gltf
+PivotPosition: {X: 0.0, Y: 0.0, Z: 0.0}
+Nodes:
+    bb1d924b264db0f5a2bd1690b72e998c: {Name: ROOT, Depth: 0}
+    1616dda1a11fa696b9a15be4cf7f5f77: {Name: root, Depth: 1}
+    749469aecdea403b8b4903b9629c3228: {Name: _rootJoint, Depth: 2}
+    fc69bc7be5a52ced0ee57d629a35a76c: {Name: b_Root_00, Depth: 3}
+    08032c03f82794aafb52d4e426168033: {Name: b_Hip_01, Depth: 4}
+    9e54427ecf6c2275e29e6f0a53a379ea: {Name: b_Spine01_02, Depth: 5}
+    e06e415b59bb15a19102bc378f33707f: {Name: b_Spine02_03, Depth: 6}
+    38bed1903aef4f04ee2ae534c8d86686: {Name: b_Neck_04, Depth: 7}
+    d850e738fa53d065bf40d1930e63b4a5: {Name: b_Head_05, Depth: 8}
+    820ccd02ad27333b4f39a2eb07dfdabc: {Name: b_RightUpperArm_06, Depth: 7}
+    f662940bae1e1b74cc99d4385eb85b83: {Name: b_RightForeArm_07, Depth: 8}
+    48f3acca6e59260aa5f9089d2f11f181: {Name: b_RightHand_08, Depth: 9}
+    a1065dbbbe980f66dfabbbd18f3f3f33: {Name: b_LeftUpperArm_09, Depth: 7}
+    6d7353cc4ef6968d40757e14b3f42dfd: {Name: b_LeftForeArm_010, Depth: 8}
+    3612986eae499855006edd734cadfe8f: {Name: b_LeftHand_011, Depth: 9}
+    43bca80ce21f9e5783b7c4e82ba5b83c: {Name: b_Tail01_012, Depth: 5}
+    8b83816bf6fa1a7a1a80f83008461d54: {Name: b_Tail02_013, Depth: 6}
+    149c8994f25b820fadcf96129bd6f3c7: {Name: b_Tail03_014, Depth: 7}
+    752c992a15cae1dfd5b66e6bb4b6c0db: {Name: b_LeftLeg01_015, Depth: 5}
+    284a62ac00507d4bdb6495b1a8e232d5: {Name: b_LeftLeg02_016, Depth: 6}
+    47e3afdf279254847247bfa15b79e37a: {Name: b_LeftFoot01_017, Depth: 7}
+    4f416e5c06d3781bb22d590903baabf0: {Name: b_LeftFoot02_018, Depth: 8}
+    dd3ce2194c66599bc34de654a702525a: {Name: b_RightLeg01_019, Depth: 5}
+    6b95d45746032f98acdfe001e6617ca0: {Name: b_RightLeg02_020, Depth: 6}
+    b6c2b2f0888eef90d8f14fcfbcf3323b: {Name: b_RightFoot01_021, Depth: 7}
+    2f9c69a21c897716395ee85de6c2149a: {Name: b_RightFoot02_022, Depth: 8}
+    21afe46886efe26db74a11e94cc19362: {Name: fox, Depth: 1}

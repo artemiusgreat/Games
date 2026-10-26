@@ -12,3 +12,8 @@ AssetFolders:
     -   Path: !dir Effects
 ResourceFolders:
     - !dir ../Resources
+RootAssets:
+    - 0773bde0-da31-4a76-8df1-4fa82d7cdeea:Fox_Survey
+    - 30371d22-e2d1-4f90-9aad-26b64c606425:Fox
+    - 6ea20700-3209-4858-93c7-522657cbaf06:Fox_Run
+    - 788066a2-2fe4-4c9d-aabf-b789a0c50856:Fox_Walk
