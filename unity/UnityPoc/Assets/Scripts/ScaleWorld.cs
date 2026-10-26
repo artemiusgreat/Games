@@ -111,7 +111,7 @@ public class ScaleWorld : MonoBehaviour
         go.AddComponent<MeshFilter>().mesh = mesh;
         var mr = go.AddComponent<MeshRenderer>();
         mr.material = mat;
-        mr.receiveShadow = true;
+        mr.receiveShadows = true;
         mr.shadowCastingMode = ShadowCastingMode.Off;
     }
 
