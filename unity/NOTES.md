@@ -203,6 +203,121 @@ Everything preparable without the editor is DONE and committed:
   yet. Once re-licensed: `ProbeBuild.BuildAll`, then
   `./Build/UnityPoc --probe1 --shotdir <dir>` and `--probe3` under Xvfb.
 
+## Round 2, Phase B (Probe 2) — code-prep only, UNVERIFIED
+
+**Status: UNVERIFIED — code written, committed, never compiled by Unity,
+never run.** The Phase A license blocker above is unchanged and was NOT
+retried: no Hub interaction, no sign-in, no editor launch was attempted
+for this phase. The only check performed was a static one (below).
+
+Probe 2 = gameplay loop on real physics, on the round-1 world, all new
+files alongside the prior code (nothing existing was rewritten; the one
+edit to prior code is an additive step in `ProbeBuild`):
+
+- `Scripts/Probe2Game.cs` (297 lines) — orchestrator + verification,
+  gated by `--probe2` (same RuntimeInitializeOnLoadMethod + arg pattern
+  as probes 1/3). Waits for the round-1 world, retrofits physics,
+  spawns the game, and in `--probe2-verify` mode runs the scripted
+  sequence (below).
+- **Terrain collider (stated choice): MeshCollider on the terrain's own
+  procedural Mesh** (`mc.sharedMesh`, non-convex) — the exact vertices
+  generated from `WorldBuilder.HeightAt`. TerrainCollider was rejected:
+  it needs a TerrainData heightmap, a second resampled representation
+  that can drift from the visible mesh (and from HeightAt, which the
+  enemies follow). 65×65 verts / 8,192 tris, static — exact and cheap.
+  **Buildings:** round 1's `CreatePrimitive(Cube)` already carries a
+  BoxCollider, so nothing is added; the probe collects the scene's only
+  two BoxColliders, names them Building0/1, and logs them.
+- `Scripts/Probe2Player.cs` (129 lines) — the round-1 player capsule
+  gets a dynamic Rigidbody (useGravity, freezeRotation,
+  ContinuousDynamic, zero-friction PhysicsMaterial). Horizontal
+  velocity is set on the body; the vertical component belongs to
+  gravity/the solver — that is what makes ground contact, falling, and
+  building collision real. `IsGrounded` is rebuilt each FixedUpdate from
+  OnCollisionStay contact normals (normal.y > 0.65). Round 1's
+  PlayerController is disabled, not destroyed — dropping `--probe2`
+  restores round 1 untouched. At setup the capsule is dropped 1.5 m so
+  the settle itself is observable.
+- `Scripts/Probe2Enemy.cs` (103 lines) — ONE enemy definition as a
+  code-only prefab-equivalent: static factory `Probe2Enemy.Create()`
+  builds capsule + CapsuleCollider + kinematic Rigidbody + behaviour
+  with one shared material; instantiated ×3 at (14,-12), (-18,-6),
+  (8,26) around the player start. Movement is **height-following
+  steering on the kinematic body** (MovePosition toward the player on
+  XZ, Y pinned to HeightAt+0.9, stop at 3.0 m standoff) — cannot sink,
+  float, tip, or snag on collider seams. `Die()` = immediate removal.
+- `Scripts/Probe2Shooter.cs` (181 lines) — owns the Main Camera
+  (CameraRig disabled; same follow offset, but LookAt switches to the
+  aim point). Shooting is a raycast **from the camera centre**
+  (`ViewportPointToRay(0.5,0.5)`), RaycastAll sorted by distance,
+  player's own collider skipped, nearest other hit decides. Automated
+  mode `AimAtNearestAndFire()` yaws the player and points the camera at
+  the nearest living enemy's chest, then fires the same centre ray.
+  Enemy hit → `Hits++`, HUD update, tracer (LineRenderer, 0.09 s) +
+  hit-flash sphere (0.12 s, collider stripped).
+- `Scripts/Probe2Hud.cs` (101 lines) — uGUI built entirely in code:
+  Canvas (ScreenSpaceOverlay) + CanvasScaler + GraphicRaycaster,
+  crosshair (two bars + centre dot, Image), "Hits: n/3" Text top-left
+  (builtin font LegacyRuntime.ttf, Arial.ttf fallback).
+  **Dependency added:** `Packages/manifest.json` (previously untracked,
+  empty deps) now carries `com.unity.ugui: 2.0.0` — a BuiltInPackage in
+  the local editor install (verified on disk), so it resolves offline
+  on a future editor open. `ProbeBuild.BuildAll` gained an additive
+  `PrepProbe2()` step that logs whether UnityEngine.UI resolved (if it
+  hadn't, compilation of Probe2Hud.cs would already have failed — the
+  manifest entry is the actual fix).
+- `Scripts/Probe2Util.cs` (29 lines) — shared material fallback (same
+  Standard → Unlit/Color → Sprites/Default chain as round 1) + a polled
+  world-ready check.
+
+**Verification hooks (in code, UNVERIFIED):** `--probe2-verify` runs
+phase 0 (gravity settle → grounded + rest height HeightAt+0.9 ±0.25),
+phase 1 (walk into the nearest building 2.5 s → capsule centre must end
+outside its BoxCollider bounds), phase 2 (walk forward 2 s, enemies
+close to standoff, then acquire + shoot one by one; logs ground state,
+enemy distances, every FIRE/hit, final counter) and quits 0 on
+`PROBE2 VERIFY PASS` / 2 on FAIL. Frames via the Phase A ShotUtil
+harness: `verify_settled.png`, `verify_combat.png`, `verify_final.png`.
+Future licensed run, unchanged: `ProbeBuild.BuildAll`, then
+`./Build/UnityPoc --probe2 --probe2-verify --shotdir <dir>` under Xvfb
+(interactive: same binary with just `--probe2`).
+
+**Static check performed (the only verification that exists):** Roslyn
+csc (from the local .NET SDK, no installs) against Unity 6000.0.64f1's
+own reference assemblies (editor Data/Managed + NetStandard 2.1 refs;
+UnityEngine.UI.dll from the editor's 3D template cache standing in for
+the ugui package assembly), C# 9: **all six Probe 2 files + their
+round-1 dependencies compile with 0 errors / 0 warnings**, and
+BuildScript+ProbeBuild (editor) likewise. This caught one real bug
+pre-commit: Unity 6 renamed `Renderer.receiveShadow` →
+`receiveShadows`. It is a type/syntax check only — NOT a Unity build,
+and it says nothing about runtime physics behaviour.
+**Pre-existing finding (left untouched, not Probe 2's file):** the same
+check flags Phase A's `ScaleWorld.cs:114` — `mr.receiveShadow = true`
+will fail Unity compilation the same way; it needs `receiveShadows`.
+Probes 1+3 will not compile on the first licensed run until that
+one-word fix lands.
+
+**Known risks / uncertainties in the unverified Probe 2 code:**
+1. uGUI resolution on first editor open (manifest chown EPERM quirk on
+   this fs — the round-1 `-noUpm` saga) could still bite; fallback is
+   one Package Manager click (built-in package uGUI) on a normal fs.
+2. Aim geometry: enemies are shot from the standoff ring (~3 m) where
+   the camera-centre ray to the chest is unobstructed by construction;
+   at longer ranges the descending third-person ray can clip terrain
+   first — the verification only fires in range, by design, but
+   interactive long-range fire may feel terrain-blocked.
+3. Kinematic enemies use MovePosition into a dynamic player: at the
+   standoff ring they act as infinite-mass obstacles; a player who
+   backs into a corner could get squeezed — untested, POC-acceptable.
+4. Ground-contact via OnCollisionStay normals has a one-physics-step
+   lag by design; phase 0's thresholds (5 s settle wait, 0.25 m rest
+   tolerance) are estimates, never measured.
+5. `PhysicsMaterial` / `Rigidbody.linearVelocity` / `receiveShadows`
+   are the Unity-6 names, confirmed against this editor's own
+   6000.0.64f1 assembly docs — but obsolete-alias warnings in a real
+   Unity compile cannot be ruled out by a reference-assembly check.
+
 ## Reproduce (this VM, licensed 2026-10-25)
 1. License: already provisioned (Unity Personal, see above). The license
    persists in ~/.config/unity3d — no Hub interaction needed for builds.

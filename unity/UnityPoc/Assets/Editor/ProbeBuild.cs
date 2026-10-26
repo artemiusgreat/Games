@@ -9,14 +9,33 @@ using UnityEngine;
 //    from an asset in Resources is what keeps the shader (and its shadow
 //    variants) in the player build -- pinning it as always-included would
 //    compile ~16k variants (round-1 finding).
-// 3. Delegates to the round-1 BuildScript for the actual player build.
+// 3. Probe 2: verifies the uGUI package Probe2Hud needs is resolved
+//    (com.unity.ugui 2.0.0, a built-in package -- it is committed in
+//    Packages/manifest.json; this only reports, it cannot fix a failed
+//    resolution, and script compilation would already have failed).
+// 4. Delegates to the round-1 BuildScript for the actual player build.
 public static class ProbeBuild
 {
     public static void BuildAll()
     {
         PrepFox();
         PrepScaleGround();
+        PrepProbe2();
         BuildScript.BuildLinux();
+    }
+
+    private static void PrepProbe2()
+    {
+        // UNVERIFIED (Probe 2 code-prep, license gate -- see NOTES.md):
+        // Probe2Hud.cs uses UnityEngine.UI (uGUI). If the assembly is
+        // absent, compilation fails before this method can run, so this
+        // is a belt-and-braces confirmation for the build log.
+        var ui = System.Type.GetType("UnityEngine.UI.CanvasScaler, UnityEngine.UI");
+        if (ui == null)
+            Debug.LogError("ProbeBuild: UnityEngine.UI (com.unity.ugui) NOT resolved -- " +
+                           "check Packages/manifest.json carries com.unity.ugui 2.0.0 (built-in, resolves offline).");
+        else
+            Debug.Log("ProbeBuild: Probe2 OK -- UnityEngine.UI resolved (uGUI present).");
     }
 
     private static void PrepFox()
