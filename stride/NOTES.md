@@ -96,3 +96,78 @@
 - PROOF: probe-frames/probe3-scale.png — textured terrain filling the view
   (right side up), dirt biome band on the far ridge, ~12 instanced trees with
   contact shadows distributed to the horizon, player capsule + shadow.
+
+## Round 2 — Probe 2: gameplay loop on real physics + UI HUD — PASS
+- New file Probe2Gameplay.cs (798 lines) + 5-line `--probe2` dispatch in
+  WorldBuilder; round-1 `--walk-test` (moved=30.13) and `--probe3`
+  (458,390 tris, moved=133.4) re-verified after the change.
+- TERRAIN COLLIDER — the probe's core question ANSWERED: unlike the
+  heightfield (still editor-baked only), Stride HAS a code-first mesh
+  collider: `new StaticMeshColliderShape(ICollection<Vector3>, ICollection<int>)`
+  assigned directly to `StaticColliderComponent.ColliderShape` (physics
+  component is in Stride.Physics.dll despite the Stride.Engine namespace;
+  descs via `ColliderShapes.Add(...)` work for primitives). Collider =
+  HeightAt grid at REDUCED res 50x50 segs = 5,000 tris / 2,601 verts vs
+  visual 100x100 = 20,000 tris; build cost 12–30 ms across runs. Full
+  Probe-3 res is NOT impractical either: timing a 250-seg HeightBig shape
+  (125,000 tris, 63,001 verts, built + disposed, not attached) cost ~130 ms.
+  Mismatch consequence at 2 m collider grid: none observable — scripted
+  player groundErr (pos.Y − (HeightAt+0.9)) sat at 0.00–0.12 m, typically 0.00.
+- Actors: player + enemies are CharacterComponents (Bullet kinematic
+  controllers, capsule Radius 0.4 / Length 1.0) with component Gravity=Zero
+  and gravity fed manually through sub-stepped Move() calls (sub-step cap
+  0.025 s) — grounded=True in every periodic log, no tunnelling. Buildings
+  got StaticColliderComponent + BoxColliderShapeDesc. Scripted building
+  test (walk at building 1's centre): blocked every run, centre stops at
+  minDistToAabb 0.38–0.49 (≈ capsule radius 0.4); one run at the looser
+  0.05 s sub-step showed a transient 0.17 m corner overlap for a frame,
+  recovered by the controller, never a pass-through.
+- Enemies: ONE runtime template (factory method: red capsule + character +
+  brain) instantiated x3 (Stride's code-first answer to prefabs). Brains
+  are physics-driven — they Move() via their character controllers, steer
+  to the player, stop at 3.5 standoff (closer contacts in logs are the
+  player walking into them; kinematic characters don't push each other).
+- Shooting: Simulation.Raycast from the camera position along the camera's
+  forward (camera is aimed at the target's chest each frame by the driver;
+  the ray skips past the player's own capsule if it intervenes). Real
+  occlusion observed: opening shots at E1 were BLOCKED by building 1 (log
+  names the hit entity/tag) until the scripted strafe changed the line —
+  all 3 kills then landed (hit point + distance logged per kill). Enemy
+  removal is immediate (entity removed from scene) + counter increment.
+  No tracer/hit-flash (optional per spec, skipped).
+- HUD / UI — FIRST contact, route + friction in detail:
+  * WIN: real text with NO font asset and NO Game Studio. Game.Services
+    holds a FontSystem; `RuntimeFonts.RegisterFont("PocSans",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")` +
+    `LoadRuntimeFont("PocSans", 40)` returns a working dynamic SpriteFont
+    (MeasureString("Hits: 0/3") = 167x46.6 at size 40) and TextBlock
+    renders it crisply (see proof frames). A texture-baked label fallback
+    (ImageElement + SpriteFromTexture, 3x5 bitmap font) is implemented but
+    was never needed.
+  * FRICTION 1: a content-less Border with explicit Width/Height +
+    BackgroundColor in a Canvas renders NOTHING (0 bright pixels in frame
+    scans) — first crosshair attempt died silently.
+  * FRICTION 2: Canvas.RelativePositionPropertyKey set via
+    DependencyProperties.Set was silently ignored — elements sat at the
+    canvas origin regardless of value (label at (0.02,0.03) rendered at
+    ~(2,2); a centred element showed only its bottom-right quarter at the
+    corner, proving PinOrigin applied while position did not). Fix:
+    UseAbsolutePositionPropertyKey=true + AbsolutePositionPropertyKey in
+    UI-resolution units (label at (24,14), crosshair at (640,360) +
+    PinOrigin 0.5) — worked immediately. Crosshair is a TextBlock "+"
+    glyph on the proven text path.
+  * Note: under bare Xvfb the 1280x720 SDL window sits at root (320,160),
+    partially off the 1280x800 root — same as Phase A captures.
+  * Present-pipeline lag under llvmpipe: an OS-level root capture taken at
+    the kill frame shows the PREVIOUS counter value (2/3) and the
+    just-killed enemy; the settled "done" frame is the reliable proof.
+- Automated run (scripted: settle -> building test -> hunt, 100 s timeout):
+  all 3 runs completed hits=3/3, exit 0, in 7.4–12.9 s of game time.
+  Periodic logs carry ground contact, enemy distances, hit events, final
+  counter (probe2-frames/game.log). Peak RSS 326–348 MB (llvmpipe).
+- PROOF (stride/probe2-frames/): probe2-early.png — player + red enemy on
+  the terrain, crosshair centred, "Hits: 0/3"; probe2-mid.png — player +
+  enemy flush at building 1's lit corner, counter mid-run;
+  probe2-late.png — "Hits: 3/3", crosshair, zero enemies (red-pixel count
+  490 early / 718 mid / 0 late; HUD region meanAbsDiff early-vs-late 18.9,
+  252 changed px — the 0->3 digit delta).

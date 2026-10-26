@@ -1,0 +1,37 @@
+ALSA lib confmisc.c:855:(parse_card) cannot find card '0'
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) error evaluating name
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5731:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2721:(snd_pcm_open_noupdate) Unknown PCM default
+PROBE2 terrain visualTris=20000 colliderTris=5000 colliderVerts=2601 colliderBuildMs=30 (visual 100x100 segs vs collider 50x50 segs, 100x100 world)
+PROBE2 collider-scale-test probe3Terrain(250segs,125000tris) buildMs=133 verts=63001
+PROBE2 HUD font: LoadRuntimeFont -> ok measured=X:167 Y:46.5625
+PROBE2 world built: player + 3 enemies (template x3), HUD route=dynamic-font TextBlock
+PROBE2 player start pos=X:0 Y:2.7844996 Z:8 groundY=2.18
+PROBE2 collider-check terrainShape=StaticMeshColliderShape verts=2601 tris=5000 playerShape=CapsuleColliderShape grounded=True pos=X:0 Y:2.7844996 Z:8
+PROBE2 t=1.2 phase=Settle pos=X:0 Y:2.3394463 Z:8 grounded=True vy=-1.0 groundErr=0.15 hits=0 dists=[E1:26.3 E2:27.6 E3:27.1]
+PROBE2 phase -> Building at t=1.7
+PROBE2 enemy1 pos=X:-22.334312 Y:-1.5523037 Z:-0.64249337 distToPlayer=24.0 grounded=True
+PROBE2 enemy2 pos=X:6.838834 Y:1.6356227 Z:-16.305527 distToPlayer=25.3 grounded=True
+PROBE2 enemy3 pos=X:24.179655 Y:3.7916317 Z:2.7846115 distToPlayer=24.7 grounded=True
+PROBE2 t=2.5 phase=Building pos=X:-1.9963617 Y:2.05344 Z:8.663878 grounded=True vy=-1.0 groundErr=-0.07 hits=0 dists=[E1:21.3 E2:25.4 E3:25.7]
+PROBE2 t=3.6 phase=Building pos=X:-11.412549 Y:0.55104953 Z:11.455554 grounded=True vy=-1.0 groundErr=1.72 hits=0 dists=[E1:10.6 E2:27.0 E3:30.4]
+PROBE2 enemy1 pos=X:-15.900198 Y:-2.5611374 Z:5.110645 distToPlayer=8.0 grounded=True
+PROBE2 enemy2 pos=X:2.3157082 Y:0.07214533 Z:-8.235044 distToPlayer=28.1 grounded=True
+PROBE2 enemy3 pos=X:15.130797 Y:1.7116724 Z:4.9443803 distToPlayer=32.2 grounded=True
+PROBE2 BUILDING-TEST result minDistToAabb=0.49 violated=False phaseT=2.5 pos=X:-16.014751 Y:-0.33202153 Z:13.086219
+PROBE2 phase -> Hunt at t=4.2
+PROBE2 HIT #1 enemy=E1 dist=15.3 point=X:-15.947196 Y:-2.2282505 Z:6.139097 hitsNow=1/3
+PROBE2 t=4.9 phase=Hunt pos=X:-16.014751 Y:-0.52872753 Z:13.121792 grounded=True vy=-1.0 groundErr=0.96 hits=1 dists=[E1:dead E2:27.5 E3:31.5]
+PROBE2 t=5.9 phase=Hunt pos=X:-12.35239 Y:-1.9246614 Z:8.7686825 grounded=True vy=-1.0 groundErr=0.18 hits=1 dists=[E1:dead E2:17.2 E3:22.5]
+PROBE2 enemy2 pos=X:-2.6592038 Y:0.33950958 Z:-3.1900759 distToPlayer=12.0 grounded=True
+PROBE2 enemy3 pos=X:8.210449 Y:2.0057995 Z:6.4174848 distToPlayer=18.6 grounded=True
+PROBE2 HIT #2 enemy=E2 dist=15.6 point=X:-3.9085493 Y:0.33661377 Z:-1.8044329 hitsNow=2/3
+PROBE2 t=7.1 phase=Hunt pos=X:-9.300344 Y:-1.0220001 Z:4.30239 grounded=True vy=-1.0 groundErr=0.01 hits=2 dists=[E1:dead E2:dead E3:14.9]
+PROBE2 HIT #3 enemy=E3 dist=13.6 point=X:0.8663864 Y:2.34384 Z:5.840372 hitsNow=3/3
+PROBE2 phase -> Done at t=8.2
+PROBE2 t=8.2 phase=Done pos=X:-5.416463 Y:0.77600086 Z:4.904936 grounded=True vy=-1.0 groundErr=-0.06 hits=3 dists=[E1:dead E2:dead E3:dead]
+PROBE2 t=9.4 phase=Done pos=X:-5.9890194 Y:0.5351821 Z:4.7540464 grounded=True vy=-1.0 groundErr=-0.00 hits=3 dists=[E1:dead E2:dead E3:dead]
