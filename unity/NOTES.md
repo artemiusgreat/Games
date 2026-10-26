@@ -161,6 +161,48 @@ resolved"), and the remaining verification took 2 fix iterations
   RuntimeInitializeOnLoadMethod bootstrap makes even that optional.)
 - Terrain winding: Unity is left-handed Y-up; (a,c,b),(b,c,d) faces up.
 
+## Round 2, Phase A (2026-10-25 eve / 2026-10-26) — BLOCKED at license re-activation
+
+**BLOCKER (needs the user's hands): the Unity Personal entitlement no longer
+validates on this VM.** The VM was replaced overnight: `/etc/machine-id` was
+regenerated 2026-10-26 00:48 UTC (`f725c37d…`), while the entitlement XML
+(issued 2026-10-25 07:22, valid to 2026-11-24) is bound to the previous
+machine id (`4ad78f7d…`). Licensing Client log, verbatim: "Legacy
+MachineBinding validation failed" → `--showEntitlements` = "No licenses were
+found." → editor batch build exits 198 with "No valid Unity Editor license
+found." Relaunching Unity Hub 3.22.4 under Xvfb (persisted Oct-25 profile)
+did NOT re-provision: Hub log shows the licensing client answering 404 "Found
+0 entitlement groups" — the Hub session did not restore/reactivate for the
+new binding. Fix = the round-1 route again: one Hub sign-in with the user's
+Unity ID on this VM so Personal re-provisions against the current machine
+id. Nothing else in the probes needs the user.
+
+Everything preparable without the editor is DONE and committed:
+
+- **Probe 1 prep:** Fox.glb (Khronos glTF-Sample-Models 2.0/Fox/glTF-Binary;
+  clips Survey/Walk/Run, 1 skin, embedded PNG; md5 bb9a8a06…, byte-identical
+  copy of the file the Godot agent fetched) — Unity has no native glTF
+  import, so: **Blender 4.2.3 headless conversion glTF→FBX** (2.4 s;
+  `unity/probe-assets/blender_convert.py`; actions Survey_root 82f,
+  Walk_root 17f, Run_root 28f; textures embedded, FBX 740 KB) into
+  `Assets/Resources/Fox.fbx`. Animation is code-only by design:
+  `FoxDriver.cs` (Playables API, 1-clip graph per state, Survey idle →
+  Walk + auto-move on round-1 terrain, fixed side camera), `ShotUtil.cs`
+  (RenderTexture→PNG capture harness). `ProbeBuild.BuildAll` (batch editor
+  script) sets the FBX importer to Generic + loopTime via API, then builds.
+- **Probe 3 prep:** `ScaleWorld.cs` — 1000×1000 terrain (round-1 height
+  family, freq ×0.1, amp ×6), Standard material ASSET
+  (`ProbeBuild` creates `Assets/Resources/ScaleGround.mat`; referencing
+  Standard from an asset is the anti-stripping route — its albedo is a
+  procedural texture generated in code at runtime), round-1 sun reused with
+  shadows ON, 200 trees + 100 rocks via `Graphics.DrawMeshInstanced`
+  (3 instanced draw calls), capsule walker by height sampling, frame-time
+  logging, `scale.png` capture. Runs at +2000 x/z so round 1 is untouched.
+- **Unverified (honest status):** none of the round-2 code has compiled or
+  run — the license gate precedes compilation, so no captured frames exist
+  yet. Once re-licensed: `ProbeBuild.BuildAll`, then
+  `./Build/UnityPoc --probe1 --shotdir <dir>` and `--probe3` under Xvfb.
+
 ## Reproduce (this VM, licensed 2026-10-25)
 1. License: already provisioned (Unity Personal, see above). The license
    persists in ~/.config/unity3d — no Hub interaction needed for builds.
