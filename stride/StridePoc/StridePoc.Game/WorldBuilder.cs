@@ -32,6 +32,11 @@ namespace StridePoc
             var scene = Entity.Scene;
 
             // Round 2 dispatch (additive; no-arg behavior is the round-1 slice).
+            if (Environment.GetCommandLineArgs().Contains("--probe3"))
+            {
+                ScaleWorldBuilder.Build(this, scene);
+                return;
+            }
             bool foxTest = Environment.GetCommandLineArgs().Contains("--fox-test");
 
             scene.Entities.Add(BuildTerrain());

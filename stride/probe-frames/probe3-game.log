@@ -1,0 +1,24 @@
+ALSA lib confmisc.c:855:(parse_card) cannot find card '0'
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) error evaluating name
+ALSA lib conf.c:5208:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5731:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2721:(snd_pcm_open_noupdate) Unknown PCM default
+SCALE stats terrainTris=125000 trunkTrisEach=126 canopyTrisEach=1024 rockTrisEach=1024 totalSceneTris=458390 instancedDraws=3 instances=500 modelDrawsMainPass=5 (terrain+3 instanced+player)
+SCALE t=1.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:5.9051833 Z:20.5
+SCALE t=2.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:5.181931 Z:11
+SCALE t=3.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:4.208619 Z:1.5
+SCALE t=4.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:3.042089 Z:-8
+SCALE t=5.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:1.7504636 Z:-17.5
+SCALE t=6.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:0.4091721 Z:-27
+SCALE t=7.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:-0.9034555 Z:-36.5
+SCALE t=8.0 avgMs=497.4 maxMs=500.0 fps=2.0 pos=X:0 Y:-2.110763 Z:-46
+SCALE t=9.0 avgMs=492.5 maxMs=500.0 fps=2.0 pos=X:0 Y:-3.1422477 Z:-55.5
+SCALE t=10.0 avgMs=490.8 maxMs=500.0 fps=2.0 pos=X:0 Y:-3.9376693 Z:-65
+SCALE t=11.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:-4.4505777 Z:-74.5
+SCALE t=12.0 avgMs=494.4 maxMs=500.0 fps=2.0 pos=X:0 Y:-4.65102 Z:-84
+SCALE t=13.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:-4.527291 Z:-93.5
+SCALE t=14.0 avgMs=500.0 maxMs=500.0 fps=2.0 pos=X:0 Y:-4.086614 Z:-103
+SCALE done moved=133.4 frames=56 worstMs=500.0

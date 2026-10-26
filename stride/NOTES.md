@@ -63,3 +63,36 @@
   body is fully textured; rear views look black only because this scene's
   single directional light leaves unlit sides near-black (same as round-1
   terrain back-slopes). Peak RSS 428 MB (llvmpipe).
+
+## Round 2 — Probe 3: scale (1000x1000, instancing, shadows) — PASS
+- ScaleWorldBuilder.cs (~300 lines incl. player controller): --probe3 dispatch
+  in WorldBuilder (round-1 path untouched; --walk-test still passes, moved=30.26).
+- Terrain 1000x1000, 250x250 segments = 125,000 tris, height = round-1 function
+  family stretched (x0.15 coords) and amplified x4 (peaks ~ +/-18).
+- Ground material = real Stride PBR material built in code: MaterialDescriptor
+  with MaterialDiffuseMapFeature(ComputeTextureColor) + Lambert + GGX
+  microfacet specular (F0 0.04). Texture is procedural: 512x512 baked in code
+  from the height function (grass/dirt/rock by height+slope) x value noise.
+  GOTCHA: Stride Color.R/G/B are BYTES — multiplying them as floats clamped
+  the whole texture to white (diagnosed with a --tex-diag checkerboard build,
+  which also proved UV/sampling/instancing in one frame).
+- Props: 200 trees + 100 rocks = 300 props as THREE instanced draws via
+  InstancingComponent + InstancingUserArray (500 matrices: trunk+canopy per
+  tree, 1 per rock). InstanceCount/BoundingBox on InstancingUserArray are
+  computed by UpdateWorldMatrices/Update(), not settable. Rocks are squashed
+  spheres sunk into slopes (low domes) — verified rendered via a --rocks-red
+  diagnostic (40 red px dome at ~130 m); in gray they are inconspicuous.
+- Triangles (measured from engine MeshDraw counts at runtime): terrain 125,000;
+  trunk 126 ea; canopy 1,024 ea; rock 1,024 ea (default Sphere tessellation is
+  heavy); total scene 458,390. Draw calls: no public engine counter exists
+  (FrameDrawCalls is an internal stat key only) — computed: 5 model draws in
+  the main pass (terrain + 3 instanced + player) + shadow-pass caster draws.
+- Frame time (llvmpipe, RELATIVE-ONLY): every frame saturated Stride's 500 ms
+  UpdateTime clamp — 56 frames for 14 s of game time, ~0.7 s/frame wall incl.
+  startup shader compile. Peak RSS 426 MB (final run; 513 MB worst observed).
+- Heightfield collider: CONFIRMED unchanged from round 1 — no code-first path
+  found; HeightfieldColliderShapeDesc still requires editor-baked heightmap
+  assets (IHeightStickArraySource). Player movement uses height sampling.
+- PROOF: probe-frames/probe3-scale.png — textured terrain filling the view
+  (right side up), dirt biome band on the far ridge, ~12 instanced trees with
+  contact shadows distributed to the horizon, player capsule + shadow.
