@@ -81,6 +81,18 @@ public partial class MechDuel : Node3D
     private int _atlasDmgEvents, _twDmgEvents;
     private float _atlasDmgTotal, _twDmgTotal;
 
+    // ---------- breakable test ----------
+    private bool _breakTest;
+    private int _bPhase, _bStep;
+    private double _bPhaseT;
+    private Vector3 _bVec1;
+    private double _bT0;
+    private float _bV1, _bDragMax;
+    private Vector3 _bHomeLocal;
+    private int _bCount1;
+    private bool _bFlag1;
+    private Vector3 _camFocus;
+
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
@@ -99,6 +111,7 @@ public partial class MechDuel : Node3D
         {
             if (arg == "--duel-test") _test = true;
             if (arg == "--weapons-test") _weaponsTest = true;
+            if (arg == "--breakable-test") _breakTest = true;
         }
         _hit = new HitModel();
 
@@ -169,6 +182,9 @@ public partial class MechDuel : Node3D
         _hit.PartResolver = (id, pt) => id == "TW"
             ? _partsPlayer.AttributePoint(pt)
             : _partsEnemy.AttributePoint(pt);
+        _hit.PartRayCast = (id, from, dir, maxDist) => id == "TW"
+            ? _partsPlayer.RaycastParts(from, dir, maxDist)
+            : _partsEnemy.RaycastParts(from, dir, maxDist);
         _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
         _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
 
@@ -185,11 +201,16 @@ public partial class MechDuel : Node3D
         BuildHud(layer);
 
         _lastPlayerPos = _player.RootPos;
-        GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} props={_props.Count} circles");
+        GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} props={_props.Count} circles");
         if (_weaponsTest)
         {
             WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
             SetWPhase(0);
+        }
+        if (_breakTest)
+        {
+            BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+            SetBPhase(0);
         }
     }
 
@@ -605,11 +626,17 @@ public partial class MechDuel : Node3D
         bool isPlayer = target == _player;
         if (isPlayer ? _playerDead : _enemyDead) return;
         var parts = isPlayer ? _partsPlayer : _partsEnemy;
-        // Local damage routing: the hit point attributes to the nearest
-        // part volume. Torso hits burn the main pool; head hits burn the
-        // head part AND the pool; every other part absorbs its own hits.
-        // Counters still record the nominal damage once per hit event.
-        string partId = parts.AttributePoint(hit.Point);
+        // Local damage routing: torso hits burn the main pool; head hits
+        // burn the head part AND the pool; every other part absorbs its
+        // own hits. Counters still record the nominal damage once per
+        // hit event. Attribution: a box-ray hit already carries its part
+        // (a box surface point is unambiguous, while an interior SDF
+        // resolve can name a neighbor whose AABB overlaps the spot);
+        // capsule points, splash and crafted hits resolve by nearest
+        // part volume at the point.
+        string partId = !string.IsNullOrEmpty(hit.Part)
+            ? hit.Part
+            : parts.AttributePoint(hit.Point);
         if (isPlayer) { _twDmgEvents++; _twDmgTotal += dmg; }
         else { _atlasDmgEvents++; _atlasDmgTotal += dmg; }
         float poolDmg = 0f;
@@ -1076,7 +1103,7 @@ public partial class MechDuel : Node3D
             if (life <= 0f && frames >= 3) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
             else _fx[i] = (_fx[i].Node, life, frames);
         }
-        if (!_test && (!_weaponsTest || _atlasMayFire)) UpdateAtlasGunnery(dt);
+        if (!_test && ((!_weaponsTest && !_breakTest) || _atlasMayFire)) UpdateAtlasGunnery(dt);
     }
 
     // ---------- test choreography ----------
@@ -1415,6 +1442,478 @@ public partial class MechDuel : Node3D
         }
     }
 
+    // ---------- breakable-test choreography ----------
+
+    private void SetBPhase(int p)
+    {
+        _bPhase = p;
+        _bPhaseT = 0;
+        _bStep = 0;
+        _bT0 = 0;
+        _bFlag1 = false;
+        GD.Print($"BRKTEST phase={p} t={_simT:F2}");
+    }
+
+    private void BStep(int s)
+    {
+        _bStep = s;
+        _bT0 = _bPhaseT;
+        _bFlag1 = false;
+        _bCount1 = 0;
+    }
+
+    private float BStepT => (float)(_bPhaseT - _bT0);
+
+    private void BFail(string msg)
+    {
+        GD.PrintErr($"BRKTEST FAIL: {msg}");
+        GetTree().Quit(1);
+    }
+
+    private void BSetup(Vector3 pPos, Vector3 ePos)
+    {
+        _player.Teleport(pPos, 0f);
+        _enemy.Teleport(ePos, Mathf.Pi);
+        _player.TorsoTwist = 0f;
+        _player.TorsoPitch = 0f;
+        _enemy.TorsoTwist = 0f;
+        _enemy.TorsoPitch = 0f;
+        _playerYaw = 0f;
+        _enemyYaw = Mathf.Pi;
+        _prevPlayerRoot = _player.RootPos;
+        _playerVel = Vector3.Zero;
+        _atlasMayFire = false;
+    }
+
+    // Harness damage through the real ApplyDamage path (attribution runs
+    // on the part's own largest-volume center — a point guaranteed to
+    // sit inside the part). Same precedent as the weapons test's crafted
+    // player-death hit.
+    private void CraftHit(MechWalker target, string partId, float dmg)
+    {
+        var parts = target == _player ? _partsPlayer : _partsEnemy;
+        var hit = new HitModel.Result
+        {
+            Hit = true,
+            Target = target == _player ? "TW" : "ATLAS",
+            Zone = "torso",
+            Point = parts.PartAimPoint(partId)
+        };
+        ApplyDamage(target, dmg, hit, target == _player ? "ATLAS" : "TW");
+    }
+
+    // Craft via a real HitModel ray: needed for the TW head, whose
+    // volume interior is shadowed by the torso core's AABB (an interior
+    // point attributes torso; a surface hit attributes head, exactly as
+    // real aimed fire does). The ray drops vertically onto the canopy.
+    private void CraftRayHit(MechWalker target, string partId, float dmg)
+    {
+        var parts = target == _player ? _partsPlayer : _partsEnemy;
+        var aim = parts.PartAimPoint(partId);
+        var from = aim + Vector3.Up * 15f;
+        var res = _hit.Ray(from, Vector3.Down, 40f, target == _player ? "ATLAS" : "TW");
+        GD.Print($"BRK CRAFTRAY {partId} hit={res.Hit} target={res.Target} part={res.Part} point={res.Point}");
+        if (!res.Hit || res.Part != partId)
+        {
+            BFail($"craft ray for {partId} attributed '{res.Part}'");
+            return;
+        }
+        ApplyDamage(target, dmg, res, target == _player ? "ATLAS" : "TW");
+    }
+
+    private void UpdateBreakTest(float dt)
+    {
+        _bPhaseT += dt;
+        if (_bPhaseT > 90) { BFail($"phase {_bPhase} timeout"); return; }
+
+        switch (_bPhase)
+        {
+            case 0: // settle on the lane: TW (0,18) vs Atlas (0,-12)
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bPhaseT > 1.0) SetBPhase(1);
+                break;
+
+            case 1: // POD: part HP depletes per hit, breaks at <= 0, debris
+                    // settles, then stays behind while the mech walks away
+                _player.SetDrive(0f, _bStep >= 3 ? 2.4f : 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bStep == 0 && _bPhaseT > 0.2)
+                {
+                    CraftHit(_player, "pod_L", 26f);
+                    if (Mathf.Abs(_partsPlayer.HpOf("pod_L") - 19f) > 0.01f)
+                        BFail($"pod hp after 26 dmg = {_partsPlayer.HpOf("pod_L"):F1} (want 19)");
+                    GD.Print("BRKTEST PODHP PASS part HP 45 -> 19 after one 26 hit");
+                    BStep(1);
+                }
+                else if (_bStep == 1 && BStepT > 0.3)
+                {
+                    CraftHit(_player, "pod_L", 26f);
+                    if (_partsPlayer.Alive("pod_L")) BFail("pod_L alive after 52 total damage");
+                    if (_partsPlayer.DebrisOf("pod_L") == null) BFail("pod_L debris missing");
+                    GD.Print("BRKTEST PODBREAK PASS pod_L broke at <= 0 HP, debris spawned");
+                    BStep(2);
+                }
+                else if (_bStep == 2)
+                {
+                    // Mid-fall frame at ~0.3s of debris age (the piece
+                    // leaves at +2.8 u/s up, then falls ~11u: at 0.3s it
+                    // is visibly airborne and clear of the torso).
+                    if (!_bFlag1 && BStepT > 0.30)
+                    {
+                        _bFlag1 = true;
+                        QueueCapture("res://proof/break_pod_fall.png", "bpodfall", "brkPlayer");
+                    }
+                    var d = _partsPlayer.DebrisOf("pod_L");
+                    if (d != null && d.Settled)
+                    {
+                        if (!_partsPlayer.DebrisRestOk("pod_L", 0.15f, out float minY, out float gY))
+                            BFail($"pod debris rest off: lowestCornerY={minY:F3} terrainThere={gY:F3}");
+                        GD.Print($"BRKTEST DEBRISREST PASS pod_L lowest corner on terrain (y={minY:F3} vs {gY:F3})");
+                        _bVec1 = d.Node.GlobalPosition;
+                        _bV1 = _player.RootPos.DistanceTo(_bVec1);
+                        _camFocus = _bVec1;
+                        BStep(3);
+                    }
+                    else if (BStepT > 7) BFail("pod debris never settled");
+                }
+                else if (_bStep == 3 && BStepT > 3.0)
+                {
+                    _player.SetDrive(0f, 0f);
+                    var d = _partsPlayer.DebrisOf("pod_L");
+                    float drift = d.Node.GlobalPosition.DistanceTo(_bVec1);
+                    float away = _player.RootPos.DistanceTo(d.Node.GlobalPosition) - _bV1;
+                    if (drift > 0.05f) BFail($"debris moved with the mech: drift={drift:F3}");
+                    if (away < 3f) BFail($"mech did not walk away from debris: delta={away:F2}");
+                    GD.Print($"BRKTEST DETACH PASS debris static (drift={drift:F3}) while mech walked {away:F1}u away");
+                    QueueCapture("res://proof/break_debris_rest.png", "bdebris", "brkDebris");
+                    SetBPhase(2);
+                }
+                break;
+
+            case 2: // SALVO: one pod gone -> 4 rockets; both gone -> denied
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bStep == 0)
+                {
+                    BStep(1);
+                    _bCount1 = _rocketsLaunched;
+                    FireLrmSalvo(AtlasAim());
+                }
+                else if (_bStep == 1 && BStepT > 1.6)
+                {
+                    int n = _rocketsLaunched - _bCount1;
+                    if (n != 4) BFail($"salvo with pod_L gone = {n} rockets (want 4)");
+                    GD.Print("BRKTEST SALVO4 PASS one pod lost -> 4 rockets");
+                    CraftHit(_player, "pod_R", 26f);
+                    CraftHit(_player, "pod_R", 26f);
+                    if (_partsPlayer.Alive("pod_R")) BFail("pod_R alive after 52 damage");
+                    BStep(2);
+                    _bCount1 = _rocketsLaunched;
+                    _lastDenied = "";
+                    FireLrmSalvo(AtlasAim());
+                    if (_lastDenied != "lrm") BFail("LRM not denied with both pods gone");
+                }
+                else if (_bStep == 2 && BStepT > 0.8)
+                {
+                    if (_rocketsLaunched != _bCount1) BFail("denied LRM still launched rockets");
+                    GD.Print("BRKTEST SALVODENIED PASS both pods gone -> LRM denied, 0 rockets");
+                    ResetDuel();
+                    BSetup(new Vector3(0f, Main.HeightAt(0f, 20f), 20f), new Vector3(0f, Main.HeightAt(0f, -10f), -10f));
+                    SetBPhase(3);
+                }
+                break;
+
+            case 3: // ARM (Atlas): real AC fire breaks arm_R; its AC/20 stops
+                _player.SetDrive(0f, 0f);
+                if (_bStep == 0)
+                {
+                    _atlasMayFire = true;
+                    _enemy.SetDrive(Mathf.Pi, 0f);
+                    if (_atlasShots >= 2) BStep(1);
+                    else if (_bPhaseT > 20) BFail($"atlas fired only {_atlasShots} shots pre-break");
+                }
+                else if (_bStep == 1)
+                {
+                    _enemy.SetDrive(Mathf.Pi, 0f);
+                    if (_cdAc <= 0f) FireAutocannon(_partsEnemy.PartAimPoint("arm_R"));
+                    if (!_partsEnemy.Alive("arm_R"))
+                    {
+                        GD.Print($"BRKTEST ARMBREAK PASS atlas arm_R destroyed by real AC fire (partHp logs above), atlasShots so far={_atlasShots}");
+                        BStep(2);
+                        _bCount1 = _atlasShots;
+                    }
+                    else if (BStepT > 15) BFail("atlas arm_R never broke under AC fire");
+                }
+                else if (_bStep == 2)
+                {
+                    _enemy.SetDrive(Mathf.Pi, 1.6f);
+                    if (BStepT > 1.2 && !_bFlag1)
+                    {
+                        _bFlag1 = true;
+                        QueueCapture("res://proof/break_atlas_noarm.png", "bnoarm", "brkAtlas");
+                    }
+                    if (BStepT > 5.5)
+                    {
+                        if (_atlasShots != _bCount1)
+                            BFail($"atlas AC/20 fired after arm_R loss: {_bCount1} -> {_atlasShots}");
+                        GD.Print($"BRKTEST ARMGUN PASS atlas AC/20 silent for 5.5s after arm_R loss (shots flat at {_atlasShots})");
+                        _atlasMayFire = false;
+                        ResetDuel();
+                        BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                        SetBPhase(4);
+                    }
+                }
+                break;
+
+            case 4: // PLAYER ARM: laser denied with zero beams; HUD frame
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bStep == 0)
+                {
+                    int guard = 0;
+                    while (_partsPlayer.Alive("arm_L") && guard++ < 5)
+                        CraftHit(_player, "arm_L", 26f);
+                    if (_partsPlayer.Alive("arm_L")) BFail("player arm_L would not break");
+                    _bCount1 = _beamsSpawned;
+                    _lastDenied = "";
+                    FireLaser(AtlasAim());
+                    if (_lastDenied != "laser") BFail("laser not denied after arm_L loss");
+                    if (_beamsSpawned != _bCount1) BFail("denied laser still spawned a beam");
+                    GD.Print("BRKTEST LASERDENIED PASS arm_L lost -> laser denied, 0 beams");
+                    QueueCapture("res://proof/break_hud_destroyed.png", "bhud", "wpnHud");
+                    BStep(1);
+                }
+                else if (_bStep == 1 && BStepT > 0.8)
+                {
+                    ResetDuel();
+                    BSetup(new Vector3(-38f, Main.HeightAt(-38f, 38f), 38f), new Vector3(0f, Main.HeightAt(0f, 24f), 24f));
+                    _bDragMax = 0f;
+                    SetBPhase(5);
+                }
+                break;
+
+            case 5: // LEG (Atlas): baseline speed, break leg_L, limp speed
+                    // + dragging foot stays under the hip, gait continues
+                _player.SetDrive(0f, 0f);
+                if (_bStep == 0)
+                {
+                    _enemy.SetDrive(Mathf.Pi, 0f);
+                    if (BStepT > 0.9)
+                    {
+                        // The left foot's rest slot in root space: the
+                        // reference the drag lock must hold later.
+                        _bHomeLocal = _enemy.GlobalTransform.AffineInverse() * _enemy.SoleWorld(true);
+                    }
+                    if (BStepT > 1.0) BStep(1);
+                }
+                else if (_bStep == 1)
+                {
+                    _enemy.SetDrive(Mathf.Pi, 2.2f);
+                    if (!_bFlag1 && BStepT > 1.0)
+                    {
+                        _bFlag1 = true;
+                        _bVec1 = _enemy.RootPos;
+                        _bT0 = _bPhaseT;
+                    }
+                    else if (_bFlag1 && BStepT > 3.0)
+                    {
+                        var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
+                        _bV1 = d / BStepT;
+                        GD.Print($"BRKTEST BASESPEED atlas baseline={_bV1:F2} u/s (cmd 2.2; the gait caps effective speed below the command)");
+                        if (_bV1 < 1.2f) BFail($"baseline speed implausible: {_bV1:F2}");
+                        BStep(2);
+                    }
+                }
+                else if (_bStep == 2)
+                {
+                    _enemy.SetDrive(Mathf.Pi, 0f);
+                    if (BStepT > 1.2)
+                    {
+                        CraftHit(_enemy, "leg_L", 30f);
+                        CraftHit(_enemy, "leg_L", 30f);
+                        CraftHit(_enemy, "leg_L", 30f);
+                        if (_partsEnemy.Alive("leg_L")) BFail("atlas leg_L alive after 90 damage");
+                        if (!_enemy.LegDisabled(true)) BFail("walker leg_L not disabled");
+                        if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f) BFail("speed factor not 0.55");
+                        GD.Print("BRKTEST LEGBREAK PASS leg_L destroyed, walker dragging at 0.55x");
+                        _bDragMax = 0f;
+                        BStep(3);
+                    }
+                }
+                else if (_bStep == 3)
+                {
+                    _enemy.SetDrive(Mathf.Pi, 2.2f);
+                    if (BStepT > 0.3f)
+                    {
+                        // Drag lock measured in root space (world sole-vs-
+                        // hip distance conflates the limp body lean: the
+                        // hip rides ~7u up on a rolled root). A locked
+                        // foot holds its rest slot; a stepping foot would
+                        // swing ~a stride length through it.
+                        var local = _enemy.GlobalTransform.AffineInverse() * _enemy.SoleWorld(true);
+                        float dev = new Vector2(local.X - _bHomeLocal.X, local.Z - _bHomeLocal.Z).Length();
+                        if (dev > _bDragMax) _bDragMax = dev;
+                    }
+                    if (_bCount1 == 0 && BStepT > 1.0)
+                    {
+                        _bVec1 = _enemy.RootPos;
+                        _bT0 = _bPhaseT; // BStepT now measures the sample window
+                        _bCount1 = 1;
+                    }
+                    else if (_bCount1 == 1 && BStepT > 2.0)
+                    {
+                        QueueCapture("res://proof/break_limp.png", "blimp", "brkAtlas");
+                        _bCount1 = 2;
+                    }
+                    else if (_bCount1 == 2 && BStepT > 3.0)
+                    {
+                        var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
+                        float v2 = d / BStepT;
+                        float ratio = v2 / _bV1;
+                        GD.Print($"BRKTEST LIMP atlas limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F3} dragDevFromHomeMax={_bDragMax:F3} maxPlantedDiff={_enemy.MaxPlantedDiff():F3}");
+                        if (ratio > 0.605f) { BFail($"limp ratio {ratio:F3} > 0.55 + 10%"); return; }
+                        if (v2 < 0.7f) { BFail($"limp speed {v2:F2}: mech barely moves"); return; }
+                        if (_bDragMax > 0.45f) { BFail($"dragging sole leaves its home slot by {_bDragMax:F2}u"); return; }
+                        if (_enemy.MaxPlantedDiff() > 0.08f) { BFail($"good-leg planted diff {_enemy.MaxPlantedDiff():F3} > 0.08"); return; }
+                        GD.Print("BRKTEST LIMP PASS speed <= 0.55x baseline, drag foot locked at its home slot, gait contact holds");
+                        SetBPhase(6);
+                    }
+                }
+                break;
+
+            case 6: // BOTH LEGS: disabled counts as destroyed
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bStep == 0)
+                {
+                    CraftHit(_enemy, "leg_R", 30f);
+                    CraftHit(_enemy, "leg_R", 30f);
+                    CraftHit(_enemy, "leg_R", 30f);
+                    if (!_enemyDead) BFail("atlas not destroyed after both legs lost");
+                    if (!_enemy.Halted) BFail("atlas walker not halted after both legs lost");
+                    if (!_banner.Visible || _banner.Text != "ATLAS DESTROYED")
+                        BFail($"both-legs banner wrong: '{_banner.Text}'");
+                    GD.Print("BRKTEST BOTHLEGS PASS both legs lost -> disabled, halted, banner 'ATLAS DESTROYED'");
+                    BStep(1);
+                }
+                else if (_bStep == 1 && BStepT > 2.0)
+                {
+                    QueueCapture("res://proof/break_atlas_disabled.png", "bdisabled", "brkAtlas");
+                    BStep(2);
+                }
+                else if (_bStep == 2 && _pendingPath == null && !_capturing)
+                {
+                    // Reset only after the capture has actually rendered:
+                    // resetting in the same frame as QueueCapture would
+                    // photograph the restored mech instead of the wreck.
+                    ResetDuel();
+                    BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    SetBPhase(7);
+                }
+                break;
+
+            case 7: // HEAD (Atlas): pool rule + tracking lag; player sway
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bStep == 0)
+                {
+                    CraftHit(_enemy, "head", 25f);
+                    CraftHit(_enemy, "head", 25f);
+                    if (_partsEnemy.Alive("head")) BFail("atlas head alive after 50 damage");
+                    if (Mathf.Abs(_hpEnemy - 290f) > 0.01f)
+                        BFail($"head->pool rule: atlasHp={_hpEnemy:F1} (want 290 = 340 - 50)");
+                    GD.Print("BRKTEST HEADPOOL PASS head hits burned head HP and pool (340 -> 290)");
+                    // Move the player to the Atlas's flank: desired twist ~1 rad.
+                    _player.Teleport(new Vector3(20f, Main.HeightAt(20f, 2f), 2f), 0f);
+                    BStep(1);
+                }
+                else if (_bStep == 1)
+                {
+                    var toP = _player.RootPos - _enemy.RootPos;
+                    float yawTo = MechWalker.YawOf(toP.Normalized());
+                    TrackAtlasTorso(dt, yawTo);
+                    float desired = Mathf.Abs(MechWalker.WrapAngle(yawTo - _enemyYaw));
+                    if (BStepT > 0.5)
+                    {
+                        float twist = Mathf.Abs(_enemy.TorsoTwist);
+                        GD.Print($"BRKTEST HEADLAG desired={desired:F2} rad, twist after 0.5s={twist:F2} (lag cap 0.30 + eps)");
+                        if (desired < 0.7f) BFail($"flank geometry wrong: desired twist {desired:F2}");
+                        if (twist > 0.37f) BFail($"headless tracking did not lag: twist {twist:F2} in 0.5s");
+                        BStep(2);
+                    }
+                }
+                else if (_bStep == 2)
+                {
+                    var toP = _player.RootPos - _enemy.RootPos;
+                    float yawTo = MechWalker.YawOf(toP.Normalized());
+                    TrackAtlasTorso(dt, yawTo);
+                    if (BStepT > 2.2)
+                    {
+                        float err = Mathf.Abs(MechWalker.WrapAngle(
+                            MechWalker.WrapAngle(yawTo - _enemyYaw) - _enemy.TorsoTwist));
+                        if (err > 0.08f) BFail($"headless tracking never caught up: err {err:F2}");
+                        GD.Print($"BRKTEST HEADLAG PASS lag proven at 0.5s, caught up by 2.2s (err {err:F3})");
+                        CraftRayHit(_player, "head", 25f);
+                        CraftRayHit(_player, "head", 25f);
+                        if (_partsPlayer.Alive("head")) { BFail("player head alive after 50 damage"); return; }
+                        _bDragMax = 0f;
+                        BStep(3);
+                    }
+                }
+                else if (_bStep == 3)
+                {
+                    float s = _cross.Sway.Length();
+                    if (s > _bDragMax) _bDragMax = s;
+                    if (BStepT > 1.2)
+                    {
+                        if (_bDragMax < 3f) BFail($"crosshair sway too small: max {_bDragMax:F1}px");
+                        GD.Print($"BRKTEST HEADSWAY PASS player head lost -> crosshair sway max {_bDragMax:F1}px");
+                        ResetDuel();
+                        BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                        SetBPhase(8);
+                    }
+                }
+                break;
+
+            case 8: // RESET: everything restored, salvo back to 8, rebind real
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_bStep == 0)
+                {
+                    foreach (var p in _partsPlayer.AllParts)
+                        if (p.Destroyed) BFail($"player part {p.Id} still destroyed after reset");
+                    foreach (var p in _partsEnemy.AllParts)
+                        if (p.Destroyed) BFail($"atlas part {p.Id} still destroyed after reset");
+                    if (_partsPlayer.DebrisList.Count != 0 || _partsEnemy.DebrisList.Count != 0)
+                        BFail("debris remains after reset");
+                    if (Mathf.Abs(_partsPlayer.HpOf("pod_L") - 45f) > 0.01f ||
+                        Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f ||
+                        Mathf.Abs(_partsEnemy.HpOf("head") - 50f) > 0.01f)
+                        BFail("part HP not refilled after reset");
+                    if (_enemy.LegDisabled(true) || _player.LegDisabled(false) ||
+                        Mathf.Abs(_enemy.SpeedFactor - 1f) > 0.01f)
+                        BFail("walker leg state not cleared after reset");
+                    var rec = _partsPlayer.GetPart("pod_L").Meshes[0];
+                    if (rec.Detached || rec.Mi.Skin == null || !(rec.Mi.GetParent() is Skeleton3D))
+                        BFail("pod_L mesh not rebound to the skeleton after reset");
+                    GD.Print("BRKTEST RESTORE PASS parts alive, HP full, debris freed, meshes rebound, walker state cleared");
+                    BStep(1);
+                    _bCount1 = _rocketsLaunched;
+                    FireLrmSalvo(AtlasAim());
+                }
+                else if (_bStep == 1 && BStepT > 1.6)
+                {
+                    int n = _rocketsLaunched - _bCount1;
+                    if (n != 8) BFail($"post-reset salvo = {n} rockets (want 8)");
+                    GD.Print("BRKTEST SALVO8 PASS salvo restored to 8 after reset");
+                    GD.Print("BRKTEST DONE");
+                    GetTree().Quit(0);
+                }
+                break;
+        }
+    }
+
     // ---------- captures / camera ----------
 
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
@@ -1507,6 +2006,23 @@ public partial class MechDuel : Node3D
             _cam.GlobalPosition = mid + new Vector3(-18f, 6.5f, 0f);
             _cam.LookAt(mid + new Vector3(0f, 6f, 0f), Vector3.Up);
         }
+        else if (_camMode == "brkPlayer")
+        {
+            var p = _player.RootPos;
+            _cam.GlobalPosition = p + new Vector3(-15f, 5.5f, 5f);
+            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "brkAtlas")
+        {
+            var p = _enemy.RootPos;
+            _cam.GlobalPosition = p + new Vector3(14.5f, 6.5f, -5f);
+            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "brkDebris")
+        {
+            _cam.GlobalPosition = _camFocus + new Vector3(-8.5f, 3.4f, 6.5f);
+            _cam.LookAt(_camFocus + Vector3.Up * 0.4f, Vector3.Up);
+        }
         else // chase (interactive)
         {
             var torsoYaw = _player.TorsoYawWorld;
@@ -1537,7 +2053,8 @@ public partial class MechDuel : Node3D
         if (!_frozen)
         {
             _simT += delta;
-            if (_weaponsTest) UpdateWeaponsTest(dt);
+            if (_breakTest) UpdateBreakTest(dt);
+            else if (_weaponsTest) UpdateWeaponsTest(dt);
             else if (_test) UpdateTest(dt);
             else
             {

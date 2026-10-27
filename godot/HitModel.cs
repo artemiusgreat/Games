@@ -32,6 +32,13 @@ public sealed class HitModel
     // Set by the duel once the part registries exist; null in other scenes.
     public System.Func<string, Vector3, string> PartResolver;
 
+    // Optional breakable-parts ray hook: (mech id, origin, unit dir,
+    // maxDist) -> (t, partId) of the nearest part-volume box hit along
+    // the ray, t < 0 when none. Parts protrude outside the mech capsule
+    // (arms, LRM pods), so aimed fire at them can only register through
+    // the boxes; the capsule alone would sail past. Null in other scenes.
+    public System.Func<string, Vector3, Vector3, float, (float T, string Part)> PartRayCast;
+
     public sealed class PropCyl
     {
         public Vector2 P;
@@ -68,14 +75,20 @@ public sealed class HitModel
             var root = m.Root();
             float baseY = Main.HeightAt(root.X, root.Z);
             float t = RayCylinder(from, dir, new Vector2(root.X, root.Z), m.Radius, baseY, m.Height, best.T);
+            string boxPart = null;
+            if (PartRayCast != null)
+            {
+                var (tb, pb) = PartRayCast(m.Id, from, dir, best.T);
+                if (tb >= 0f && (t < 0f || tb < t)) { t = tb; boxPart = pb; }
+            }
             if (t >= 0f)
             {
                 best.Hit = true; best.T = t; best.Target = m.Id;
                 float y = from.Y + dir.Y * t;
                 best.ZoneFrac = Mathf.Clamp((y - baseY) / m.Height, 0f, 1f);
                 best.Zone = best.ZoneFrac < 0.42f ? "legs" : best.ZoneFrac < 0.86f ? "torso" : "head";
-                best.Part = PartResolver != null
-                    ? PartResolver(m.Id, from + dir * t) : "";
+                best.Part = boxPart ?? (PartResolver != null
+                    ? PartResolver(m.Id, from + dir * t) : "");
             }
         }
         if (best.Hit) best.Point = from + dir * best.T;

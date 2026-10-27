@@ -134,6 +134,10 @@ public sealed class MechParts
             }
             GD.Print(line + "]");
         }
+        string centers = $"{_mechId} PARTCENTERS root={_walker.RootPos}";
+        foreach (var part in _parts.Values)
+            centers += $" {part.Id}={PartCenterWorld(part.Id)}";
+        GD.Print(centers);
     }
 
     // ---------- registry construction ----------
@@ -458,6 +462,83 @@ public sealed class MechParts
         return best;
     }
 
+    // Ray vs the per-part bone-space boxes (slab test in each bone's
+    // frame; the affine map preserves the ray parameter). Returns the
+    // nearest (t, partId) or t < 0. Destroyed parts are gone and skipped.
+    // The TORSO is excluded on purpose: the mech capsule is its hit
+    // volume, and its core AABB is a wide slab that would otherwise
+    // shadow the shoulder/arm boxes behind its corners.
+    public (float T, string Part) RaycastParts(Vector3 origin, Vector3 dir, float maxDist)
+    {
+        float bestT = -1f;
+        string bestPart = "";
+        var skelInv = _skel.GlobalTransform.AffineInverse();
+        var oSk = skelInv * origin;
+        var dSk = skelInv.Basis * dir;
+        var poseInv = new Dictionary<int, Transform3D>();
+        foreach (var part in _parts.Values)
+        {
+            if (part.Destroyed || part.Id == "torso") continue;
+            foreach (var vol in part.Volumes)
+            {
+                if (!poseInv.TryGetValue(vol.Bone, out var inv))
+                {
+                    inv = _skel.GetBoneGlobalPose(vol.Bone).AffineInverse();
+                    poseInv[vol.Bone] = inv;
+                }
+                float t = RayBox(inv * oSk, inv.Basis * dSk, vol);
+                if (t > 0.001f && t <= maxDist && (bestT < 0f || t < bestT))
+                {
+                    bestT = t;
+                    bestPart = part.Id;
+                }
+            }
+        }
+        return (bestT, bestPart);
+    }
+
+    private static float RayBox(Vector3 o, Vector3 d, Volume v)
+    {
+        float tmin = 0f, tmax = float.MaxValue;
+        for (int i = 0; i < 3; i++)
+        {
+            float lo = v.CenterB[i] - v.HalfB[i];
+            float hi = v.CenterB[i] + v.HalfB[i];
+            if (Mathf.Abs(d[i]) < 1e-8f)
+            {
+                if (o[i] < lo || o[i] > hi) return -1f;
+            }
+            else
+            {
+                float t1 = (lo - o[i]) / d[i];
+                float t2 = (hi - o[i]) / d[i];
+                if (t1 > t2) (t1, t2) = (t2, t1);
+                if (t1 > tmin) tmin = t1;
+                if (t2 < tmax) tmax = t2;
+                if (tmax < tmin) return -1f;
+            }
+        }
+        return tmin;
+    }
+
+    // Aim point for tests and targeting: the world center of the part's
+    // LARGEST volume. The mean of all volume centers can land in empty
+    // space for multi-piece parts (head + a thin antenna spike), where
+    // attribution would rightly name a different part.
+    public Vector3 PartAimPoint(string partId)
+    {
+        var part = _parts[partId];
+        Volume best = null;
+        float bestSize = -1f;
+        foreach (var vol in part.Volumes)
+        {
+            float s = vol.HalfB.X * vol.HalfB.Y * vol.HalfB.Z;
+            if (s > bestSize) { bestSize = s; best = vol; }
+        }
+        if (best == null) return _walker.RootPos;
+        return _skel.GlobalTransform * (_skel.GetBoneGlobalPose(best.Bone) * best.CenterB);
+    }
+
     // World-space center of a part (mean of its volume centers).
     public Vector3 PartCenterWorld(string partId)
     {
@@ -578,6 +659,21 @@ public sealed class MechParts
     {
         foreach (var d in _debris) if (d.Part.Id == partId) return d;
         return null;
+    }
+
+    // Resting check for the harness: the part's debris is settled and its
+    // world AABB's lowest corner sits on the terrain sampled at that
+    // corner (the physically meaningful contact on a slope).
+    public bool DebrisRestOk(string partId, float tol, out float minY, out float groundY)
+    {
+        minY = 0f; groundY = 0f;
+        var d = DebrisOf(partId);
+        if (d == null || !d.Settled) return false;
+        var box = WorldAabb(d.Node);
+        var low = LowestCorner(box);
+        minY = low.Y;
+        groundY = Main.HeightAt(low.X, low.Z);
+        return Mathf.Abs(low.Y - groundY) <= tol;
     }
 
     // Rebind every detached mesh to the skeleton and refill all part HP.
