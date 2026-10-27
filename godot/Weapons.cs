@@ -70,7 +70,6 @@ public static class WeaponFx
     private static StandardMaterial3D _tracerMat;
     private static StandardMaterial3D _rocketBodyMat;
     private static StandardMaterial3D _rocketTipMat;
-    private static StandardMaterial3D _puffMat;
 
     // Laser beam: thin box stretched from a to b. Own material instance so
     // the owner can fade it over its short life.
@@ -128,13 +127,13 @@ public static class WeaponFx
         return root;
     }
 
-    // Rocket trail puff: tiny translucent box the owner fades + shrinks.
+    // Rocket trail puff: tiny translucent box with its OWN material so
+    // the owner can fade each puff independently.
     public static MeshInstance3D MakeTrailPuff(Vector3 pos)
     {
-        _puffMat ??= Unshaded(new Color(0.9f, 0.9f, 0.92f, 0.5f), alpha: true);
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = new Vector3(0.14f, 0.14f, 0.14f) };
-        mi.MaterialOverride = _puffMat;
+        mi.MaterialOverride = Unshaded(new Color(0.9f, 0.9f, 0.92f, 0.45f), alpha: true);
         mi.GlobalTransform = new Transform3D(Basis.Identity, pos);
         return mi;
     }

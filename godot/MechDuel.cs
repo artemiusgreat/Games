@@ -61,6 +61,9 @@ public partial class MechDuel : Node3D
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
+    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim)> _lrmQueue = new();
+    private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
+    private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
 
     public override void _Ready()
     {
@@ -404,6 +407,67 @@ public partial class MechDuel : Node3D
         GD.Print($"WPN AC fired dir={dir}");
     }
 
+    // LRM salvo: 8 rockets staggered 0.07s apart, alternating ear pods.
+    // Each rocket is dumb ballistics: velocity solved to land on the aim
+    // point (up-compensated for gravity), seeded spread, 7 damage with
+    // 3.0u splash falloff on impact.
+    private void FireLrmSalvo(Vector3 aimPoint)
+    {
+        if (_cdLrm > 0f || _playerDead) return;
+        _cdLrm = 3.5f;
+        for (int i = 0; i < 8; i++)
+            _lrmQueue.Add((i * 0.07f, i % 2 == 0, aimPoint));
+        GD.Print("WPN LRM salvo queued (8 rockets)");
+    }
+
+    private Vector3 PodMuzzle(bool left)
+    {
+        var torso = _player.BoneWorldPos("torso");
+        var fwd = MechWalker.HeadingVec(_player.TorsoYawWorld);
+        var right = new Vector3(-fwd.Z, 0f, fwd.X);
+        return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
+    }
+
+    private void LaunchRocket(Vector3 aimPoint, bool left)
+    {
+        var muzzle = PodMuzzle(left);
+        var toAim = aimPoint - muzzle;
+        float dist = Mathf.Max(toAim.Length(), 1f);
+        var dir = ApplyInaccuracy(toAim.Normalized(), 1.1f);
+        const float speed = 36f, grav = 11f;
+        float tof = dist / speed;
+        var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
+        SpawnProjectile(muzzle, vel, grav, 7f, 3.0f, "TW", rocket: true);
+        SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
+    }
+
+    private void OnRocketStep(Projectile p)
+    {
+        if (_lastPuff.TryGetValue(p, out var last) && last.DistanceSquaredTo(p.GlobalPosition) < 0.3f) return;
+        _lastPuff[p] = p.GlobalPosition;
+        var puff = WeaponFx.MakeTrailPuff(p.GlobalPosition);
+        AddChild(puff);
+        _puffs.Add((puff, 0.4f));
+    }
+
+    private void ExplodeSplash(HitModel.Result hit, Projectile p)
+    {
+        MechWalker direct = hit.Target == "TW" ? _player : hit.Target == "ATLAS" ? _enemy : null;
+        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId);
+        foreach (var (w, id) in new[] { (_player, "TW"), (_enemy, "ATLAS") })
+        {
+            if (w == direct) continue;
+            float d = _hit.DistanceToMechSurface(hit.Point, id);
+            if (d < p.SplashRadius)
+            {
+                var splashHit = hit;
+                splashHit.Target = id;
+                splashHit.Zone = "splash";
+                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId);
+            }
+        }
+    }
+
     private Projectile SpawnProjectile(Vector3 pos, Vector3 vel, float gravity, float dmg,
         float splash, string owner, bool rocket)
     {
@@ -420,6 +484,7 @@ public partial class MechDuel : Node3D
         p.GlobalPosition = pos;
         if (vel.LengthSquared() > 0.01f) p.LookAt(pos + vel, Vector3.Up);
         p.OnHit = OnProjectileHit;
+        if (rocket) p.OnStep = OnRocketStep;
         _shots.Add(p);
         return p;
     }
@@ -428,6 +493,11 @@ public partial class MechDuel : Node3D
     {
         SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), p.SplashRadius > 0f ? 0.8f : 0.45f, 0.14f);
         GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} t={hit.T:F1} point={hit.Point}");
+        if (p.SplashRadius > 0f)
+        {
+            ExplodeSplash(hit, p);
+            return;
+        }
         if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId);
         else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId);
     }
@@ -495,11 +565,33 @@ public partial class MechDuel : Node3D
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdAtlas = Mathf.Max(_cdAtlas - dt, 0f);
+        for (int i = _lrmQueue.Count - 1; i >= 0; i--)
+        {
+            var q = _lrmQueue[i];
+            q.Delay -= dt;
+            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left); }
+            else _lrmQueue[i] = q;
+        }
         for (int i = _shots.Count - 1; i >= 0; i--)
         {
             var p = _shots[i];
             p.Step(dt, _hit);
-            if (p.Dead) { _shots.RemoveAt(i); p.QueueFree(); }
+            if (p.Dead) { _shots.RemoveAt(i); _lastPuff.Remove(p); p.QueueFree(); }
+        }
+        for (int i = _puffs.Count - 1; i >= 0; i--)
+        {
+            float life = _puffs[i].Life - dt;
+            if (life <= 0f) { _puffs[i].Mi.QueueFree(); _puffs.RemoveAt(i); }
+            else
+            {
+                var mi = _puffs[i].Mi;
+                if (mi.MaterialOverride is StandardMaterial3D sm)
+                {
+                    var c = sm.AlbedoColor;
+                    sm.AlbedoColor = new Color(c.R, c.G, c.B, 0.45f * (life / 0.4f));
+                }
+                _puffs[i] = (mi, life);
+            }
         }
         for (int i = _fx.Count - 1; i >= 0; i--)
         {
@@ -722,6 +814,7 @@ public partial class MechDuel : Node3D
                     var aim = AimPointFromCamera();
                     if (Input.IsMouseButtonPressed(MouseButton.Left)) FireLaser(aim);
                     if (Input.IsMouseButtonPressed(MouseButton.Right)) FireAutocannon(aim);
+                    if (Input.IsPhysicalKeyPressed(Key.Space)) FireLrmSalvo(aim);
                 }
             }
             _player.StepFrame(delta);
