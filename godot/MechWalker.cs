@@ -644,7 +644,7 @@ public partial class MechWalker : Node3D
     public void SetDarkened(bool dark)
     {
         foreach (var (m, b) in _mats)
-            m.AlbedoColor = dark ? b * 0.38f : b;
+            m.AlbedoColor = dark ? b * 0.5f : b;
     }
 
     private void DecayFlash(float dt)

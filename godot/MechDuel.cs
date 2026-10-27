@@ -54,7 +54,7 @@ public partial class MechDuel : Node3D
     // ---------- combat ----------
     private HitModel _hit;
     private readonly System.Collections.Generic.List<Projectile> _shots = new();
-    private readonly System.Collections.Generic.List<(Node3D Node, float Life)> _fx = new();
+    private readonly System.Collections.Generic.List<(Node3D Node, float Life, int Frames)> _fx = new();
     private float _hpPlayer = 260f, _hpEnemy = 340f;
     private bool _playerDead, _enemyDead;
     private float _cdLaser, _cdAc, _cdLrm, _cdAtlas;
@@ -65,6 +65,21 @@ public partial class MechDuel : Node3D
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
     private readonly System.Collections.Generic.List<(Label3D L, float Life)> _dmgNums = new();
+    // ---------- weapons test ----------
+    private bool _weaponsTest;
+    private bool _atlasMayFire;
+    private int _wPhase;
+    private double _wPhaseT;
+    private int _wShotsFired;
+    private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
+    private double _wDeathT, _wStrafeT, _wLastShotT;
+    private float _wStrafeDir = 1f;
+    private int _wPrevShots;
+    private float _wHpSnapshot;
+    private int _atlasShots;
+    private int _atlasDmgEvents, _twDmgEvents;
+    private float _atlasDmgTotal, _twDmgTotal;
+
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
@@ -74,7 +89,10 @@ public partial class MechDuel : Node3D
     public override void _Ready()
     {
         foreach (var arg in OS.GetCmdlineUserArgs())
+        {
             if (arg == "--duel-test") _test = true;
+            if (arg == "--weapons-test") _weaponsTest = true;
+        }
         _hit = new HitModel();
 
         var sun = new DirectionalLight3D { RotationDegrees = new Vector3(-50f, -30f, 0f) };
@@ -147,7 +165,12 @@ public partial class MechDuel : Node3D
         BuildHud(layer);
 
         _lastPlayerPos = _player.RootPos;
-        GD.Print($"DUEL ready test={_test} props={_props.Count} circles");
+        GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} props={_props.Count} circles");
+        if (_weaponsTest)
+        {
+            WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+            SetWPhase(0);
+        }
     }
 
     // ---------- world ----------
@@ -375,17 +398,17 @@ public partial class MechDuel : Node3D
     {
         var beam = WeaponFx.MakeBeam(a, b, col, width);
         AddChild(beam);
-        _fx.Add((beam, life));
+        _fx.Add((beam, life, 0));
         var glow = WeaponFx.MakeBeam(a, b, new Color(col.R, col.G, col.B, 0.32f), width * 3.2f);
         AddChild(glow);
-        _fx.Add((glow, life));
+        _fx.Add((glow, life, 0));
     }
 
     private void SpawnFlash(Vector3 point, Color col, float radius, float life)
     {
         var f = WeaponFx.MakeFlash(point, col, radius);
         AddChild(f);
-        _fx.Add((f, life));
+        _fx.Add((f, life, 0));
     }
 
     private void FireLaser(Vector3 aimPoint)
@@ -520,6 +543,8 @@ public partial class MechDuel : Node3D
         if (isPlayer ? _playerDead : _enemyDead) return;
         if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - dmg, 0f);
         else _hpEnemy = Mathf.Max(_hpEnemy - dmg, 0f);
+        if (isPlayer) { _twDmgEvents++; _twDmgTotal += dmg; }
+        else { _atlasDmgEvents++; _atlasDmgTotal += dmg; }
         float hp = isPlayer ? _hpPlayer : _hpEnemy;
         GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source);
@@ -610,6 +635,8 @@ public partial class MechDuel : Node3D
         _player.TorsoTwist = 0f;
         _player.TorsoPitch = 0f;
         _enemy.TorsoTwist = 0f;
+        _prevPlayerRoot = _player.RootPos;
+        _playerVel = Vector3.Zero;
         _banner.Visible = false;
         _bannerSub.Visible = false;
         GD.Print("WPN RESET both mechs restored to spawn, HP full");
@@ -753,6 +780,7 @@ public partial class MechDuel : Node3D
         SpawnProjectile(muzzle, dir * 50f, 5f, 18f, 0f, "ATLAS", rocket: false);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
         _cdAtlas = 2.4f;
+        _atlasShots++;
         GD.Print($"WPN ATLASFIRE dist={dist:F1} tof={tof:F2} playerVel={_playerVel.Length():F1}");
     }
 
@@ -814,11 +842,16 @@ public partial class MechDuel : Node3D
         }
         for (int i = _fx.Count - 1; i >= 0; i--)
         {
+            // Lifetime is in seconds, but an FX node must also survive at
+            // least 3 rendered frames: under a slow renderer a single
+            // frame's dt can exceed a beam's whole 0.12s life and it
+            // would be freed before ever being drawn.
             float life = _fx[i].Life - dt;
-            if (life <= 0f) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
-            else _fx[i] = (_fx[i].Node, life);
+            int frames = _fx[i].Frames + 1;
+            if (life <= 0f && frames >= 3) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
+            else _fx[i] = (_fx[i].Node, life, frames);
         }
-        if (!_test) UpdateAtlasGunnery(dt);
+        if (!_test && (!_weaponsTest || _atlasMayFire)) UpdateAtlasGunnery(dt);
     }
 
     // ---------- test choreography ----------
@@ -936,6 +969,220 @@ public partial class MechDuel : Node3D
         }
     }
 
+    // ---------- weapons-test choreography ----------
+
+    private void SetWPhase(int p)
+    {
+        _wPhase = p;
+        _wPhaseT = 0;
+        _wShotsFired = 0;
+        _wCaptured = false;
+        _wDeadShotQueued = false;
+        _wDeathLogged = false;
+        GD.Print($"WPNTEST phase={p} t={_simT:F2}");
+    }
+
+    private void WFail(string msg)
+    {
+        GD.PrintErr($"WPNTEST FAIL: {msg}");
+        GetTree().Quit(1);
+    }
+
+    private Vector3 AtlasAim() => _enemy.RootPos + Vector3.Up * 8.2f;
+
+    private void WSetup(Vector3 pPos, Vector3 ePos)
+    {
+        _player.Teleport(pPos, 0f);
+        _enemy.Teleport(ePos, Mathf.Pi);
+        _player.TorsoTwist = 0f;
+        _player.TorsoPitch = 0f;
+        _enemy.TorsoTwist = 0f;
+        _enemy.TorsoPitch = 0f;
+        _playerYaw = 0f;
+        _enemyYaw = Mathf.Pi;
+        _prevPlayerRoot = _player.RootPos;
+        _playerVel = Vector3.Zero;
+    }
+
+    private void UpdateWeaponsTest(float dt)
+    {
+        _wPhaseT += dt;
+        // Atlas torso tracks the player in every phase (gunnery muzzle and
+        // visuals stay honest); both walkers otherwise hold position.
+        var toP = _player.RootPos - _enemy.RootPos;
+        if (toP.LengthSquared() > 0.01f)
+            _enemy.TorsoTwist = MechWalker.WrapAngle(MechWalker.YawOf(toP.Normalized()) - _enemyYaw);
+        if (_wPhaseT > 40) { WFail($"phase {_wPhase} timeout"); return; }
+
+        switch (_wPhase)
+        {
+            case 0: // settle at the open lane: TW (0,18) vs Atlas (0,-12), 30u
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_wPhaseT > 1.2) SetWPhase(1);
+                break;
+
+            case 1: // laser x3 at a stationary Atlas: 3 x 12 = 36 exactly
+                if (_wShotsFired == 0 && _wPhaseT > 0.1)
+                {
+                    FireLaser(AtlasAim());
+                    _wShotsFired++;
+                    QueueCapture("res://proof/weapons_laser.png", "wlaser", "wpnSide");
+                }
+                else if (_wShotsFired == 1 && _wPhaseT > 0.65) { FireLaser(AtlasAim()); _wShotsFired++; }
+                else if (_wShotsFired == 2 && _wPhaseT > 1.2) { FireLaser(AtlasAim()); _wShotsFired++; }
+                else if (_wShotsFired == 3 && _wPhaseT > 1.7)
+                {
+                    if (_atlasDmgEvents != 3 || Mathf.Abs(_atlasDmgTotal - 36f) > 0.01f)
+                        WFail($"laser events={_atlasDmgEvents} dmg={_atlasDmgTotal:F1} (want 3 / 36)");
+                    if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"laser atlasHp={_hpEnemy:F1} (want 304)");
+                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 atlasHp={_hpEnemy:F0}");
+                    _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
+                    SetWPhase(2);
+                }
+                break;
+
+            case 2: // autocannon x2: 2 x 26 = 52 exactly
+                if (_wShotsFired == 0 && _wPhaseT > 0.1) { FireAutocannon(AtlasAim()); _wShotsFired++; }
+                else if (_wShotsFired == 1 && _wPhaseT > 1.05) { FireAutocannon(AtlasAim()); _wShotsFired++; }
+                else if (_wShotsFired == 2 && _wPhaseT > 2.8)
+                {
+                    if (_atlasDmgEvents != 2 || Mathf.Abs(_atlasDmgTotal - 52f) > 0.01f)
+                        WFail($"ac events={_atlasDmgEvents} dmg={_atlasDmgTotal:F1} (want 2 / 52)");
+                    if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 252)");
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0}");
+                    _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
+                    SetWPhase(3);
+                }
+                break;
+
+            case 3: // LRM salvo: count rockets that damage the Atlas (of 8)
+                if (_wShotsFired == 0 && _wPhaseT > 0.1) { FireLrmSalvo(AtlasAim()); _wShotsFired++; }
+                if (!_wCaptured && _wPhaseT > 0.55)
+                {
+                    _wCaptured = true;
+                    QueueCapture("res://proof/weapons_rockets.png", "wrockets", "wpnRockets");
+                }
+                if (_wPhaseT > 3.4)
+                {
+                    if (_atlasDmgEvents < 5) WFail($"lrm damaging rockets={_atlasDmgEvents}/8 dmg={_atlasDmgTotal:F1}");
+                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_atlasDmgEvents}/8 dmg={_atlasDmgTotal:F1} atlasHp={_hpEnemy:F1}");
+                    _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
+                    WSetup(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f));
+                    _wHpSnapshot = _hpEnemy;
+                    SetWPhase(4);
+                }
+                break;
+
+            case 4: // laser with the (22,8) building on the line: zero damage
+                if (_wShotsFired == 0 && _wPhaseT > 0.3)
+                {
+                    FireLaser(_enemy.RootPos + Vector3.Up * 6.0f);
+                    _wShotsFired++;
+                    QueueCapture("res://proof/weapons_blocked.png", "wblocked", "wpnBlocked");
+                }
+                if (_wShotsFired == 1 && _wPhaseT > 1.2)
+                {
+                    if (_atlasDmgTotal > 0.01f || Mathf.Abs(_hpEnemy - _wHpSnapshot) > 0.01f)
+                        WFail($"blocked laser leaked dmg={_atlasDmgTotal:F1} hp {_wHpSnapshot:F1}->{_hpEnemy:F1}");
+                    GD.Print("WPNTEST BLOCKED PASS building stopped the beam, atlasHp unchanged");
+                    WSetup(new Vector3(0f, Main.HeightAt(0f, 20f), 20f), new Vector3(0f, Main.HeightAt(0f, -10f), -10f));
+                    _twDmgEvents = 0; _twDmgTotal = 0f; _atlasShots = 0; _wPrevShots = 0;
+                    _atlasMayFire = true;
+                    _wStrafeT = 0; _wStrafeDir = 1f;
+                    SetWPhase(5);
+                }
+                break;
+
+            case 5: // Atlas return fire vs a strafing player: hits AND misses.
+                    // The player reverses every 0.9s at full speed — with a
+                    // 0.6s shell flight, most shots have a reversal inside
+                    // their lead window, which is what makes dodging real.
+                _wStrafeT += dt;
+                if (_wStrafeT > 0.9) { _wStrafeT = 0; _wStrafeDir = -_wStrafeDir; }
+                float strafeYaw = _wStrafeDir > 0 ? -Mathf.Pi / 2f : Mathf.Pi / 2f;
+                _player.SetDrive(strafeYaw, 4.2f);
+                _player.TorsoTwist = -strafeYaw;
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_atlasShots != _wPrevShots) { _wPrevShots = _atlasShots; _wLastShotT = _wPhaseT; }
+                if (_atlasShots >= 6 && _wPhaseT > _wLastShotT + 1.4)
+                {
+                    int hits = _twDmgEvents;
+                    int misses = _atlasShots - hits;
+                    if (hits < 1) WFail($"atlas return fire: 0 hits in {_atlasShots} shots");
+                    if (misses < 1) WFail($"atlas return fire: 0 misses in {_atlasShots} shots (dodge impossible)");
+                    if (Mathf.Abs(_twDmgTotal - hits * 18f) > 0.01f)
+                        WFail($"atlas dmg total={_twDmgTotal:F1} != hits*18 ({hits * 18})");
+                    GD.Print($"WPNTEST ATLASFIRE PASS shots={_atlasShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
+                    _atlasMayFire = false;
+                    _player.TorsoTwist = 0f;
+                    ResetDuel();
+                    WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    SetWPhase(6);
+                }
+                if (_wPhaseT > 35) WFail($"atlas return fire timeout shots={_atlasShots}");
+                break;
+
+            case 6: // sustained fire -> Atlas destroyed, banner, slump frame
+                if (!_enemyDead)
+                {
+                    FireLaser(AtlasAim());
+                    FireAutocannon(AtlasAim());
+                }
+                if (!_wCaptured && _wPhaseT > 0.9)
+                {
+                    _wCaptured = true;
+                    QueueCapture("res://proof/weapons_hud.png", "whud", "wpnHud");
+                }
+                if (_enemyDead && !_wDeathLogged)
+                {
+                    _wDeathLogged = true;
+                    _wDeathT = _wPhaseT;
+                    GD.Print($"WPNTEST KILL atlas destroyed at phaseT={_wPhaseT:F2}");
+                }
+                if (_enemyDead && _wPhaseT > _wDeathT + 1.8 && !_wDeadShotQueued)
+                {
+                    if (_hpEnemy != 0f) WFail($"dead atlas hp={_hpEnemy:F1} (want clamped 0)");
+                    if (!_enemy.Halted) WFail("dead atlas walker not halted");
+                    if (!_banner.Visible || _banner.Text != "ATLAS DESTROYED")
+                        WFail($"kill banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
+                    GD.Print("WPNTEST KILL PASS hp clamped 0, walker halted, banner 'ATLAS DESTROYED'");
+                    _wDeadShotQueued = true;
+                    QueueCapture("res://proof/weapons_atlas_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
+                }
+                if (_wPhaseT > 30) WFail("kill sequence timeout");
+                break;
+
+            case 7: // player death banner + R reset restores everything
+                if (_wShotsFired == 0 && _wPhaseT > 0.3)
+                {
+                    _wShotsFired++;
+                    var dummy = new HitModel.Result
+                    {
+                        Hit = true,
+                        Target = "TW",
+                        Zone = "torso",
+                        Point = _player.RootPos + Vector3.Up * 8f
+                    };
+                    ApplyDamage(_player, 9999f, dummy, "ATLAS");
+                    if (!_playerDead) WFail("player death flag not set");
+                    if (!_banner.Visible || _banner.Text != "MECH DESTROYED — press R to reset")
+                        WFail($"player banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
+                    GD.Print("WPNTEST PLAYERDEATH PASS banner 'MECH DESTROYED — press R to reset'");
+                }
+                if (_wShotsFired == 1 && _wPhaseT > 0.9)
+                {
+                    ResetDuel();
+                    if (_hpPlayer != 260f || _hpEnemy != 340f || _playerDead || _enemyDead || _banner.Visible)
+                        WFail($"reset state wrong hp={_hpPlayer}/{_hpEnemy} dead={_playerDead}/{_enemyDead} banner={_banner.Visible}");
+                    GD.Print("WPNTEST RESET PASS hp 260/340 restored, deaths and banner cleared");
+                    GD.Print("WPNTEST DONE");
+                    GetTree().Quit(0);
+                }
+                break;
+        }
+    }
+
     // ---------- captures / camera ----------
 
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
@@ -994,6 +1241,34 @@ public partial class MechDuel : Node3D
             _cam.GlobalPosition = mid + new Vector3(11f, 5f, 11f);
             _cam.LookAt(mid + new Vector3(0f, 3.5f, 0f), Vector3.Up);
         }
+        else if (_camMode == "wpnSide" || _camMode == "wpnRockets")
+        {
+            var mid = (_player.RootPos + _enemy.RootPos) / 2f;
+            float h = _camMode == "wpnRockets" ? 10.5f : 6.0f;
+            _cam.GlobalPosition = mid + new Vector3(-26f, h, 3f);
+            _cam.LookAt(mid + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "wpnBlocked")
+        {
+            _cam.GlobalPosition = new Vector3(43f, 9.5f, 17f);
+            _cam.LookAt(new Vector3(22f, 5.5f, 3f), Vector3.Up);
+        }
+        else if (_camMode == "wpnDead")
+        {
+            // From the player's side (sunlit front), pulled well back.
+            var p = _enemy.RootPos;
+            _cam.GlobalPosition = p + new Vector3(16f, 7f, 13f);
+            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "wpnHud")
+        {
+            // Rear three-quarter: player mech in frame, Atlas visible past it.
+            var torsoYaw = _player.TorsoYawWorld;
+            var fwd = MechWalker.HeadingVec(torsoYaw);
+            var right = new Vector3(-fwd.Z, 0f, fwd.X);
+            _cam.GlobalPosition = _player.RootPos - fwd * 27f + right * 8.5f + Vector3.Up * 11f;
+            _cam.LookAt(_player.RootPos + Vector3.Up * 6f + fwd * 9f, Vector3.Up);
+        }
         else if (_camMode == "mechSide")
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
@@ -1030,7 +1305,8 @@ public partial class MechDuel : Node3D
         if (!_frozen)
         {
             _simT += delta;
-            if (_test) UpdateTest(dt);
+            if (_weaponsTest) UpdateWeaponsTest(dt);
+            else if (_test) UpdateTest(dt);
             else
             {
                 UpdatePlayerInput(dt);
@@ -1049,6 +1325,7 @@ public partial class MechDuel : Node3D
             if (dt > 0f)
             {
                 var v = (_player.RootPos - _prevPlayerRoot) / dt;
+                if (v.Length() > 8f) v = v.Normalized() * 8f; // teleports are not velocity
                 _playerVel = _playerVel.Lerp(v, 0.5f);
                 _prevPlayerRoot = _player.RootPos;
             }
