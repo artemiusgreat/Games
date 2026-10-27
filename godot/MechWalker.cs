@@ -119,6 +119,21 @@ public partial class MechWalker : Node3D
     }
     public float TorsoYawWorld => _legsYaw + _torsoTwist;
 
+    // Combat state set by the owner: a halted walker keeps its last solved
+    // pose (feet stay planted) and only the torso droop still animates.
+    public bool Halted { get; set; }
+    public float Droop { get; set; }
+    public Vector3 VelocityVec => HeadingVec(_legsYaw) * _speed;
+
+    // World position of a skeleton bone (muzzle hardpoints, aim points).
+    public Vector3 BoneWorldPos(string name)
+    {
+        if (_skel == null) return GlobalPosition;
+        int idx = _skel.FindBone(name);
+        if (idx < 0) return GlobalPosition;
+        return _skel.GlobalTransform * _skel.GetBoneGlobalPose(idx).Origin;
+    }
+
     public static Vector3 HeadingVec(float yaw) => new Vector3(-Mathf.Sin(yaw), 0f, -Mathf.Cos(yaw));
     public static float YawOf(Vector3 dir) => Mathf.Atan2(-dir.X, -dir.Z);
     public static float WrapAngle(float a)
@@ -153,6 +168,7 @@ public partial class MechWalker : Node3D
 
         _skel = FindSkeleton(_inner);
         if (_skel == null) { GD.PrintErr($"{cfg.Label} FAIL: no Skeleton3D"); return; }
+        CollectMaterials();
         var names = new string[_skel.GetBoneCount()];
         for (int i = 0; i < names.Length; i++) names[i] = _skel.GetBoneName(i);
         GD.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
@@ -294,6 +310,8 @@ public partial class MechWalker : Node3D
     public void StepFrame(double delta)
     {
         if (!_ready) return;
+        DecayFlash((float)delta);
+        if (Halted) { SolveAll(); return; }
         _acc += Mathf.Min(delta, 0.1);
         const float h = 1f / 120f;
         int guard = 0;
@@ -485,7 +503,7 @@ public partial class MechWalker : Node3D
         // torso renders 180 degrees off the legs.
         var f = _rootBasis.Orthonormalized()
             * Basis.Identity.Rotated(Vector3.Up, _torsoTwist)
-            * Basis.Identity.Rotated(Vector3.Right, _torsoPitch)
+            * Basis.Identity.Rotated(Vector3.Right, Mathf.Clamp(_torsoPitch + Droop, -0.32f, 0.85f))
             * Basis.Identity.Rotated(Vector3.Up, Mathf.Pi);
         var basisSk = _skelGlobal.Basis.Orthonormalized().Transposed() * (f * _torsoM0);
         _skel.SetBoneGlobalPoseOverride(_torsoBone,
@@ -581,6 +599,60 @@ public partial class MechWalker : Node3D
         foreach (var leg in new[] { _legL, _legR })
             if (leg.Planted) m = Mathf.Max(m, Mathf.Abs(leg.LastPlantedDiff));
         return m;
+    }
+
+    // ---------- weapon feedback (hit flash / death darkening) ----------
+
+    private readonly System.Collections.Generic.List<(StandardMaterial3D Mat, Color Base)> _mats = new();
+    private float _flashT;
+
+    // Materials are duplicated per walker instance at Init so a flash or
+    // darkening on one mech never leaks into the other (the FBX mesh
+    // resources themselves are shared).
+    private void CollectMaterials() => CollectMats(_inner);
+
+    private void CollectMats(Node n)
+    {
+        if (n is MeshInstance3D mi && mi.Mesh != null)
+        {
+            int count = mi.Mesh.GetSurfaceCount();
+            for (int i = 0; i < count; i++)
+            {
+                var m = mi.GetSurfaceOverrideMaterial(i) ?? mi.Mesh.SurfaceGetMaterial(i);
+                if (m is StandardMaterial3D sm)
+                {
+                    var dup = (StandardMaterial3D)sm.Duplicate();
+                    mi.SetSurfaceOverrideMaterial(i, dup);
+                    _mats.Add((dup, dup.AlbedoColor));
+                }
+            }
+        }
+        foreach (var c in n.GetChildren()) CollectMats(c);
+    }
+
+    public void FlashPulse()
+    {
+        _flashT = 1f;
+        foreach (var (m, _) in _mats)
+        {
+            m.EmissionEnabled = true;
+            m.Emission = new Color(1f, 0.55f, 0.2f);
+            m.EmissionEnergyMultiplier = 2.4f;
+        }
+    }
+
+    public void SetDarkened(bool dark)
+    {
+        foreach (var (m, b) in _mats)
+            m.AlbedoColor = dark ? b * 0.38f : b;
+    }
+
+    private void DecayFlash(float dt)
+    {
+        if (_flashT <= 0f) return;
+        _flashT = Mathf.Max(_flashT - dt / 0.18f, 0f);
+        foreach (var (m, _) in _mats)
+            m.EmissionEnergyMultiplier = 2.4f * _flashT;
     }
 
     // ---------- helpers ----------

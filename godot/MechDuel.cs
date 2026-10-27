@@ -51,10 +51,22 @@ public partial class MechDuel : Node3D
     private float _stallTimer;
     private bool _twistLogged;
 
+    // ---------- combat ----------
+    private HitModel _hit;
+    private readonly System.Collections.Generic.List<Projectile> _shots = new();
+    private readonly System.Collections.Generic.List<(Node3D Node, float Life)> _fx = new();
+    private float _hpPlayer = 260f, _hpEnemy = 340f;
+    private bool _playerDead, _enemyDead;
+    private float _cdLaser, _cdAc, _cdLrm, _cdAtlas;
+    private readonly System.Random _rng = new System.Random(20261027);
+    private Vector3 _prevPlayerRoot;
+    private Vector3 _playerVel;
+
     public override void _Ready()
     {
         foreach (var arg in OS.GetCmdlineUserArgs())
             if (arg == "--duel-test") _test = true;
+        _hit = new HitModel();
 
         var sun = new DirectionalLight3D { RotationDegrees = new Vector3(-50f, -30f, 0f) };
         AddChild(sun);
@@ -108,6 +120,10 @@ public partial class MechDuel : Node3D
             Accel = 2.4f,
             CollisionRadius = 2.4f
         }, new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+
+        _hit.Mechs.Add(new HitModel.MechCap { Id = "TW", Root = () => _player.RootPos, Radius = _player.CollisionRadius, Height = 13f });
+        _hit.Mechs.Add(new HitModel.MechCap { Id = "ATLAS", Root = () => _enemy.RootPos, Radius = _enemy.CollisionRadius, Height = 14f });
+        _prevPlayerRoot = _player.RootPos;
 
         _cam = new Camera3D { Fov = 70f };
         AddChild(_cam);
@@ -165,11 +181,13 @@ public partial class MechDuel : Node3D
         tree.AddChild(canopy);
         AddChild(tree);
         _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = 0.7f });
+        _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = 0.7f, BaseY = pos.Y, Height = 5.6f });
     }
 
     private void AddBuilding(Vector3 pos, Vector3 size)
     {
-        pos.Y = Main.HeightAt(pos.X, pos.Z) + size.Y / 2f - 0.3f;
+        float groundY = Main.HeightAt(pos.X, pos.Z);
+        pos.Y = groundY + size.Y / 2f - 0.3f;
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = size };
         mi.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.55f, 0.58f) };
@@ -178,6 +196,8 @@ public partial class MechDuel : Node3D
         // Circle colliders: one for near-square footprints, two along the
         // long axis for elongated ones. Radius covers the short side plus a
         // margin; extreme corners can poke slightly past a circle (POC).
+        // The same circles register as hit-model cylinders (base sunk 0.3
+        // with the mesh, full height) so buildings block shots too.
         float sx = size.X, sz = size.Z;
         if (Mathf.Max(sx, sz) / Mathf.Min(sx, sz) > 1.45f)
         {
@@ -188,10 +208,14 @@ public partial class MechDuel : Node3D
             if (sx > sz) { a.X -= off; b.X += off; } else { a.Y -= off; b.Y += off; }
             _props.Add(new Circle { P = a, R = r });
             _props.Add(new Circle { P = b, R = r });
+            _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - 0.3f, Height = size.Y });
+            _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - 0.3f, Height = size.Y });
         }
         else
         {
-            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = Mathf.Max(sx, sz) / 2f + 0.3f });
+            float r = Mathf.Max(sx, sz) / 2f + 0.3f;
+            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
+            _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - 0.3f, Height = size.Y });
         }
     }
 
@@ -299,6 +323,191 @@ public partial class MechDuel : Node3D
         // Torso tracks the player.
         _enemy.TorsoTwist = MechWalker.WrapAngle(yawTo - _enemyYaw);
         _enemy.TorsoPitch = 0f;
+    }
+
+    // ---------- weapons ----------
+
+    // Crosshair aim: raycast the shared hit model from the camera; player
+    // weapons converge on whatever it lands on (max 200u), not on the
+    // camera axis at infinity.
+    private Vector3 AimPointFromCamera()
+    {
+        var from = _cam.GlobalPosition;
+        var dir = -_cam.GlobalTransform.Basis.Z.Normalized();
+        return _hit.Ray(from, dir, 200f, "TW").Point;
+    }
+
+    // Muzzle hardpoints: the Timber Wolf's forearm cannons sit on the
+    // elbow bones (the Hand_* parts are bound there), pushed forward along
+    // the torso facing so the shot clears the arm. Laser = left, AC = right.
+    private Vector3 PlayerMuzzle(bool left)
+    {
+        var bone = _player.BoneWorldPos(left ? "elbow_L" : "elbow_R");
+        return bone + MechWalker.HeadingVec(_player.TorsoYawWorld) * 2.8f;
+    }
+
+    // Atlas AC/20: right-torso gun — torso bone origin plus a right/up/
+    // forward offset in the torso frame.
+    private Vector3 AtlasMuzzle()
+    {
+        var torso = _enemy.BoneWorldPos("torso");
+        var fwd = MechWalker.HeadingVec(_enemy.TorsoYawWorld);
+        var right = new Vector3(-fwd.Z, 0f, fwd.X);
+        return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
+    }
+
+    private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
+    {
+        var beam = WeaponFx.MakeBeam(a, b, col, width);
+        AddChild(beam);
+        _fx.Add((beam, life));
+        var glow = WeaponFx.MakeBeam(a, b, new Color(col.R, col.G, col.B, 0.32f), width * 3.2f);
+        AddChild(glow);
+        _fx.Add((glow, life));
+    }
+
+    private void SpawnFlash(Vector3 point, Color col, float radius, float life)
+    {
+        var f = WeaponFx.MakeFlash(point, col, radius);
+        AddChild(f);
+        _fx.Add((f, life));
+    }
+
+    private void FireLaser(Vector3 aimPoint)
+    {
+        if (_cdLaser > 0f || _playerDead) return;
+        _cdLaser = 0.45f;
+        var muzzle = PlayerMuzzle(true);
+        var toAim = aimPoint - muzzle;
+        var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+        var hit = _hit.Ray(muzzle, dir, 140f, "TW");
+        SpawnBeam(muzzle, hit.Point, new Color(1f, 0.22f, 0.12f), 0.085f, 0.12f);
+        SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
+        if (hit.Hit)
+        {
+            SpawnFlash(hit.Point, new Color(1f, 0.45f, 0.2f), 0.38f, 0.12f);
+            GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} point={hit.Point}");
+            if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW");
+        }
+        else GD.Print("WPN LASER hit=none");
+    }
+
+    private void FireAutocannon(Vector3 aimPoint)
+    {
+        if (_cdAc > 0f || _playerDead) return;
+        _cdAc = 0.85f;
+        var muzzle = PlayerMuzzle(false);
+        var toAim = aimPoint - muzzle;
+        var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+        SpawnProjectile(muzzle, dir * 60f, 5f, 26f, 0f, "TW", rocket: false);
+        SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
+        GD.Print($"WPN AC fired dir={dir}");
+    }
+
+    private Projectile SpawnProjectile(Vector3 pos, Vector3 vel, float gravity, float dmg,
+        float splash, string owner, bool rocket)
+    {
+        var p = new Projectile
+        {
+            Vel = vel,
+            Gravity = gravity,
+            Damage = dmg,
+            SplashRadius = splash,
+            OwnerId = owner
+        };
+        p.AddChild(rocket ? WeaponFx.MakeRocket() : (Node3D)WeaponFx.MakeTracer());
+        AddChild(p);
+        p.GlobalPosition = pos;
+        if (vel.LengthSquared() > 0.01f) p.LookAt(pos + vel, Vector3.Up);
+        p.OnHit = OnProjectileHit;
+        _shots.Add(p);
+        return p;
+    }
+
+    private void OnProjectileHit(HitModel.Result hit, Projectile p)
+    {
+        SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), p.SplashRadius > 0f ? 0.8f : 0.45f, 0.14f);
+        GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} t={hit.T:F1} point={hit.Point}");
+        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId);
+        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId);
+    }
+
+    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source)
+    {
+        bool isPlayer = target == _player;
+        if (isPlayer ? _playerDead : _enemyDead) return;
+        if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - dmg, 0f);
+        else _hpEnemy = Mathf.Max(_hpEnemy - dmg, 0f);
+        float hp = isPlayer ? _hpPlayer : _hpEnemy;
+        GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} hp={hp:F1} src={source}");
+        OnDamaged(target, dmg, hit.Point, source);
+        if (hp <= 0f) Die(target);
+    }
+
+    private void Die(MechWalker w)
+    {
+        w.Halted = true;
+        w.SetDrive(w.LegsYaw, 0f);
+        if (w == _player) { _playerDead = true; GD.Print("WPN DEATH TW"); }
+        else { _enemyDead = true; GD.Print("WPN DEATH ATLAS"); }
+        OnDeath(w);
+    }
+
+    // Presentation hooks — bodies land with the damage-feedback step
+    // (flash pulse, damage numbers, hitmarker, shake, droop, HUD).
+    private void OnDamaged(MechWalker target, float dmg, Vector3 point, string source) { }
+    private void OnDeath(MechWalker w) { }
+
+    // Atlas AC/20 gunnery: range + line-of-sight gated, leads the player's
+    // velocity at time-of-flight, seeded ±1.2° inaccuracy cone.
+    private void UpdateAtlasGunnery(float dt)
+    {
+        if (_enemyDead || _playerDead) return;
+        if (_cdAtlas > 0f) return;
+        var muzzle = AtlasMuzzle();
+        var target = _player.RootPos + Vector3.Up * 7.6f;
+        float dist = muzzle.DistanceTo(target);
+        if (dist > 75f) return;
+        var los = _hit.Ray(muzzle, (target - muzzle).Normalized(), dist, "ATLAS");
+        if (los.Hit && los.Target != "TW") return; // blocked: building/terrain
+        float tof = dist / 50f;
+        var aim = target + _playerVel * tof;
+        var dir = ApplyInaccuracy((aim - muzzle).Normalized(), 1.2f);
+        SpawnProjectile(muzzle, dir * 50f, 5f, 18f, 0f, "ATLAS", rocket: false);
+        SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
+        _cdAtlas = 2.4f;
+        GD.Print($"WPN ATLASFIRE dist={dist:F1} tof={tof:F2} playerVel={_playerVel.Length():F1}");
+    }
+
+    private Vector3 ApplyInaccuracy(Vector3 dir, float maxDeg)
+    {
+        float theta = Mathf.DegToRad(maxDeg) * Mathf.Sqrt((float)_rng.NextDouble());
+        float phi = (float)(_rng.NextDouble() * Mathf.Tau);
+        var side = dir.Cross(Mathf.Abs(dir.Y) < 0.9f ? Vector3.Up : Vector3.Right).Normalized();
+        var up2 = side.Cross(dir).Normalized();
+        var axis = (side * Mathf.Cos(phi) + up2 * Mathf.Sin(phi)).Normalized();
+        return dir.Rotated(axis, theta).Normalized();
+    }
+
+    private void UpdateCombat(float dt)
+    {
+        _cdLaser = Mathf.Max(_cdLaser - dt, 0f);
+        _cdAc = Mathf.Max(_cdAc - dt, 0f);
+        _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
+        _cdAtlas = Mathf.Max(_cdAtlas - dt, 0f);
+        for (int i = _shots.Count - 1; i >= 0; i--)
+        {
+            var p = _shots[i];
+            p.Step(dt, _hit);
+            if (p.Dead) { _shots.RemoveAt(i); p.QueueFree(); }
+        }
+        for (int i = _fx.Count - 1; i >= 0; i--)
+        {
+            float life = _fx[i].Life - dt;
+            if (life <= 0f) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
+            else _fx[i] = (_fx[i].Node, life);
+        }
+        if (!_test) UpdateAtlasGunnery(dt);
     }
 
     // ---------- test choreography ----------
@@ -508,10 +717,23 @@ public partial class MechDuel : Node3D
             {
                 UpdatePlayerInput(dt);
                 UpdateEnemyAI(dt);
+                if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
+                {
+                    var aim = AimPointFromCamera();
+                    if (Input.IsMouseButtonPressed(MouseButton.Left)) FireLaser(aim);
+                    if (Input.IsMouseButtonPressed(MouseButton.Right)) FireAutocannon(aim);
+                }
             }
             _player.StepFrame(delta);
             _enemy.StepFrame(delta);
             ResolveCollisions();
+            if (dt > 0f)
+            {
+                var v = (_player.RootPos - _prevPlayerRoot) / dt;
+                _playerVel = _playerVel.Lerp(v, 0.5f);
+                _prevPlayerRoot = _player.RootPos;
+            }
+            UpdateCombat(dt);
         }
         UpdateCamera(_frozen ? 0f : dt);
         if (_pendingPath != null && !_capturing) DoCapture();

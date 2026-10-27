@@ -79,7 +79,7 @@ public static class WeaponFx
         var mi = new MeshInstance3D();
         float len = a.DistanceTo(b);
         mi.Mesh = new BoxMesh { Size = new Vector3(width, width, Mathf.Max(len, 0.1f)) };
-        mi.MaterialOverride = Unshaded(core);
+        mi.MaterialOverride = Unshaded(core, alpha: core.A < 0.99f);
         var dir = (b - a).Normalized();
         var basis = Basis.LookingAt(dir, Vector3.Up);
         mi.GlobalTransform = new Transform3D(basis, (a + b) * 0.5f);
