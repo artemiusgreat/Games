@@ -64,6 +64,12 @@ public partial class MechDuel : Node3D
     private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim)> _lrmQueue = new();
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
+    private readonly System.Collections.Generic.List<(Label3D L, float Life)> _dmgNums = new();
+    private Crosshair _cross;
+    private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
+    private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
+    private float _shake;
+    private float _playerDroopT, _enemyDroopT;
 
     public override void _Ready()
     {
@@ -135,9 +141,10 @@ public partial class MechDuel : Node3D
 
         var layer = new CanvasLayer();
         AddChild(layer);
-        var cross = new Crosshair();
-        layer.AddChild(cross);
-        cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _cross = new Crosshair();
+        layer.AddChild(_cross);
+        _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        BuildHud(layer);
 
         _lastPlayerPos = _player.RootPos;
         GD.Print($"DUEL ready test={_test} props={_props.Count} circles");
@@ -278,6 +285,11 @@ public partial class MechDuel : Node3D
 
     public override void _Input(InputEvent e)
     {
+        if (e is InputEventKey rk && rk.Pressed && !rk.Echo && rk.Keycode == Key.R)
+        {
+            ResetDuel();
+            return;
+        }
         if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
             if (Input.MouseMode != Input.MouseModeEnum.Captured)
@@ -523,10 +535,205 @@ public partial class MechDuel : Node3D
         OnDeath(w);
     }
 
-    // Presentation hooks — bodies land with the damage-feedback step
-    // (flash pulse, damage numbers, hitmarker, shake, droop, HUD).
-    private void OnDamaged(MechWalker target, float dmg, Vector3 point, string source) { }
-    private void OnDeath(MechWalker w) { }
+    // ---------- damage feedback / death / HUD ----------
+
+    private void OnDamaged(MechWalker target, float dmg, Vector3 point, string source)
+    {
+        target.FlashPulse();
+        bool onEnemy = target == _enemy;
+        SpawnDmgNumber(point, dmg, onEnemy ? new Color(1f, 0.78f, 0.3f) : new Color(1f, 0.38f, 0.3f));
+        if (onEnemy && source == "TW") _cross.Hitmark = 1f;
+        if (!onEnemy) _shake = Mathf.Min(_shake + 0.22f, 0.5f);
+    }
+
+    private void OnDeath(MechWalker w)
+    {
+        w.SetDarkened(true);
+        if (w == _enemy)
+        {
+            _banner.Text = "ATLAS DESTROYED";
+            _banner.Modulate = new Color(1f, 0.85f, 0.35f);
+            _bannerSub.Visible = true;
+        }
+        else
+        {
+            _banner.Text = "MECH DESTROYED — press R to reset";
+            _banner.Modulate = new Color(1f, 0.35f, 0.28f);
+            _bannerSub.Visible = false;
+        }
+        _banner.Visible = true;
+    }
+
+    private void SpawnDmgNumber(Vector3 point, float dmg, Color col)
+    {
+        var l = new Label3D
+        {
+            Text = $"{dmg:F0}",
+            FontSize = 128,
+            PixelSize = 0.016f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            Modulate = col,
+            OutlineSize = 16,
+            OutlineModulate = new Color(0f, 0f, 0f, 0.9f),
+            NoDepthTest = true
+        };
+        AddChild(l);
+        l.GlobalPosition = point + Vector3.Up * 0.7f
+            + new Vector3((float)_rng.NextDouble() - 0.5f, 0f, (float)_rng.NextDouble() - 0.5f) * 0.9f;
+        _dmgNums.Add((l, 0.9f));
+    }
+
+    private void ResetDuel()
+    {
+        _hpPlayer = 260f;
+        _hpEnemy = 340f;
+        _playerDead = _enemyDead = false;
+        _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
+        _lrmQueue.Clear();
+        foreach (var p in _shots) p.QueueFree();
+        _shots.Clear();
+        _lastPuff.Clear();
+        foreach (var (l, _) in _dmgNums) l.QueueFree();
+        _dmgNums.Clear();
+        _player.Halted = false;
+        _enemy.Halted = false;
+        _player.Droop = 0f;
+        _enemy.Droop = 0f;
+        _playerDroopT = 0f;
+        _enemyDroopT = 0f;
+        _player.SetDarkened(false);
+        _enemy.SetDarkened(false);
+        _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 30f), 30f), 0f);
+        _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+        _playerYaw = 0f;
+        _enemyYaw = Mathf.Pi;
+        _player.TorsoTwist = 0f;
+        _player.TorsoPitch = 0f;
+        _enemy.TorsoTwist = 0f;
+        _banner.Visible = false;
+        _bannerSub.Visible = false;
+        GD.Print("WPN RESET both mechs restored to spawn, HP full");
+    }
+
+    private static ProgressBar MakeBar(Color fill, Vector2 minSize)
+    {
+        var bar = new ProgressBar
+        {
+            MinValue = 0,
+            MaxValue = 1,
+            Value = 1,
+            ShowPercentage = false,
+            CustomMinimumSize = minSize
+        };
+        var bg = new StyleBoxFlat { BgColor = new Color(0.05f, 0.05f, 0.07f, 0.8f) };
+        bg.SetCornerRadiusAll(3);
+        var fg = new StyleBoxFlat { BgColor = fill };
+        fg.SetCornerRadiusAll(3);
+        bar.AddThemeStyleboxOverride("background", bg);
+        bar.AddThemeStyleboxOverride("fill", fg);
+        return bar;
+    }
+
+    private static Label MakeLabel(int fontSize, Color col)
+    {
+        var l = new Label { Text = "" };
+        l.AddThemeFontSizeOverride("font_size", fontSize);
+        l.AddThemeColorOverride("font_color", col);
+        return l;
+    }
+
+    private void BuildHud(CanvasLayer layer)
+    {
+        // Player HP, bottom-left.
+        _lblPlayerHp = MakeLabel(15, new Color(0.85f, 0.95f, 0.85f));
+        _lblPlayerHp.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
+        _lblPlayerHp.OffsetLeft = 18; _lblPlayerHp.OffsetTop = -90; _lblPlayerHp.OffsetRight = 320; _lblPlayerHp.OffsetBottom = -68;
+        layer.AddChild(_lblPlayerHp);
+        _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(280, 22));
+        _barPlayer.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
+        _barPlayer.OffsetLeft = 18; _barPlayer.OffsetTop = -64; _barPlayer.OffsetRight = 298; _barPlayer.OffsetBottom = -40;
+        layer.AddChild(_barPlayer);
+
+        // Atlas HP, top-center (hidden once it dies; the banner takes over).
+        _lblEnemyHp = MakeLabel(15, new Color(0.98f, 0.85f, 0.8f));
+        _lblEnemyHp.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+        _lblEnemyHp.OffsetLeft = -150; _lblEnemyHp.OffsetTop = 14; _lblEnemyHp.OffsetRight = 150; _lblEnemyHp.OffsetBottom = 36;
+        _lblEnemyHp.HorizontalAlignment = HorizontalAlignment.Center;
+        layer.AddChild(_lblEnemyHp);
+        _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
+        _barEnemy.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+        _barEnemy.OffsetLeft = -150; _barEnemy.OffsetTop = 38; _barEnemy.OffsetRight = 150; _barEnemy.OffsetBottom = 58;
+        layer.AddChild(_barEnemy);
+
+        // Weapon cooldowns, just right/below the crosshair.
+        var vbox = new VBoxContainer();
+        vbox.SetAnchorsPreset(Control.LayoutPreset.Center);
+        vbox.OffsetLeft = 34; vbox.OffsetTop = 30; vbox.OffsetRight = 220; vbox.OffsetBottom = 118;
+        vbox.AddThemeConstantOverride("separation", 5);
+        layer.AddChild(vbox);
+        (Label, ProgressBar) CdRow(string name)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            var lab = MakeLabel(13, new Color(0.9f, 0.9f, 0.9f, 0.9f));
+            lab.Text = name;
+            lab.CustomMinimumSize = new Vector2(42, 0);
+            row.AddChild(lab);
+            var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(120, 11));
+            bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            row.AddChild(bar);
+            vbox.AddChild(row);
+            return (lab, bar);
+        }
+        _cdBarLaser = CdRow("LAS").Item2;
+        _cdBarAc = CdRow("AC").Item2;
+        _cdBarLrm = CdRow("LRM").Item2;
+
+        // Death banner.
+        _banner = MakeLabel(46, Colors.White);
+        _banner.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _banner.OffsetLeft = -450; _banner.OffsetTop = -150; _banner.OffsetRight = 450; _banner.OffsetBottom = -90;
+        _banner.HorizontalAlignment = HorizontalAlignment.Center;
+        _banner.Visible = false;
+        layer.AddChild(_banner);
+        _bannerSub = MakeLabel(19, new Color(0.9f, 0.9f, 0.9f));
+        _bannerSub.Text = "press R to reset";
+        _bannerSub.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _bannerSub.OffsetLeft = -450; _bannerSub.OffsetTop = -84; _bannerSub.OffsetRight = 450; _bannerSub.OffsetBottom = -56;
+        _bannerSub.HorizontalAlignment = HorizontalAlignment.Center;
+        _bannerSub.Visible = false;
+        layer.AddChild(_bannerSub);
+    }
+
+    private void UpdateHud()
+    {
+        if (_barPlayer == null) return;
+        _barPlayer.Value = _hpPlayer / 260f;
+        _lblPlayerHp.Text = $"TIMBER WOLF — {_hpPlayer:F0} HP";
+        _barEnemy.Visible = !_enemyDead;
+        _lblEnemyHp.Visible = !_enemyDead;
+        _barEnemy.Value = _hpEnemy / 340f;
+        _lblEnemyHp.Text = $"ATLAS — {_hpEnemy:F0} HP";
+        _cdBarLaser.Value = 1f - _cdLaser / 0.45f;
+        _cdBarAc.Value = 1f - _cdAc / 0.85f;
+        _cdBarLrm.Value = 1f - _cdLrm / 3.5f;
+    }
+
+    private void UpdateDroop(float dt)
+    {
+        if (_enemyDead && _enemyDroopT < 1f)
+        {
+            _enemyDroopT = Mathf.Min(_enemyDroopT + dt / 1.5f, 1f);
+            float t = _enemyDroopT;
+            _enemy.Droop = t * t * (3f - 2f * t) * 0.5f;
+        }
+        if (_playerDead && _playerDroopT < 1f)
+        {
+            _playerDroopT = Mathf.Min(_playerDroopT + dt / 1.5f, 1f);
+            float t = _playerDroopT;
+            _player.Droop = t * t * (3f - 2f * t) * 0.5f;
+        }
+    }
 
     // Atlas AC/20 gunnery: range + line-of-sight gated, leads the player's
     // velocity at time-of-flight, seeded ±1.2° inaccuracy cone.
@@ -577,6 +784,18 @@ public partial class MechDuel : Node3D
             var p = _shots[i];
             p.Step(dt, _hit);
             if (p.Dead) { _shots.RemoveAt(i); _lastPuff.Remove(p); p.QueueFree(); }
+        }
+        _shake = Mathf.Max(_shake - dt * 1.6f, 0f);
+        for (int i = _dmgNums.Count - 1; i >= 0; i--)
+        {
+            var (l, life0) = _dmgNums[i];
+            float life = life0 - dt;
+            if (life <= 0f) { l.QueueFree(); _dmgNums.RemoveAt(i); continue; }
+            l.GlobalPosition += Vector3.Up * 1.7f * dt;
+            var m = l.Modulate;
+            m.A = Mathf.Clamp(life / 0.9f, 0f, 1f);
+            l.Modulate = m;
+            _dmgNums[i] = (l, life);
         }
         for (int i = _puffs.Count - 1; i >= 0; i--)
         {
@@ -793,6 +1012,13 @@ public partial class MechDuel : Node3D
             var look = _player.RootPos + Vector3.Up * 8.2f + MechWalker.HeadingVec(torsoYaw) * 5f;
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
+            if (delta > 0f && _shake > 0.002f)
+            {
+                _cam.GlobalPosition += new Vector3(
+                    (float)_rng.NextDouble() * 2f - 1f,
+                    (float)_rng.NextDouble() * 1.2f - 0.6f,
+                    (float)_rng.NextDouble() * 2f - 1f) * (_shake * 0.3f);
+            }
         }
     }
 
@@ -827,7 +1053,9 @@ public partial class MechDuel : Node3D
                 _prevPlayerRoot = _player.RootPos;
             }
             UpdateCombat(dt);
+            UpdateDroop(dt);
         }
+        UpdateHud();
         UpdateCamera(_frozen ? 0f : dt);
         if (_pendingPath != null && !_capturing) DoCapture();
     }
