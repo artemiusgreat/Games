@@ -97,6 +97,17 @@ public partial class MechWalker : Node3D
 
     public bool StepMidCrossed { get; private set; }
     public string Label => _cfg.Label;
+    public Skeleton3D Skeleton => _skel;
+    public Node3D ModelRoot => _inner;
+
+    // Re-run material collection (e.g. after the part system replaced a
+    // mesh instance inside the model): clears the registry and duplicates
+    // fresh per-instance materials for every mesh currently in the model.
+    public void RefreshMaterials()
+    {
+        _mats.Clear();
+        CollectMats(_inner);
+    }
     public bool IsReady => _ready;
     public float Speed => _speed;
     public float LegsYaw => _legsYaw;

@@ -25,7 +25,12 @@ public sealed class HitModel
         public string Target;   // mech id ("TW"/"ATLAS"), "PROP", "TERRAIN", "" = nothing
         public string Zone;     // mech hits only: "legs" / "torso" / "head"
         public float ZoneFrac;  // mech hits only: 0 at the sole, 1 at the top
+        public string Part;     // mech hits only: breakable part id (via PartResolver), "" if unset
     }
+
+    // Optional breakable-parts hook: (mech id, world hit point) -> part id.
+    // Set by the duel once the part registries exist; null in other scenes.
+    public System.Func<string, Vector3, string> PartResolver;
 
     public sealed class PropCyl
     {
@@ -49,7 +54,7 @@ public sealed class HitModel
     public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId)
     {
         dir = dir.Normalized();
-        var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f };
+        var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
         float tt = RayTerrain(from, dir, maxDist);
         if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = "TERRAIN"; }
         foreach (var p in Props)
@@ -69,6 +74,8 @@ public sealed class HitModel
                 float y = from.Y + dir.Y * t;
                 best.ZoneFrac = Mathf.Clamp((y - baseY) / m.Height, 0f, 1f);
                 best.Zone = best.ZoneFrac < 0.42f ? "legs" : best.ZoneFrac < 0.86f ? "torso" : "head";
+                best.Part = PartResolver != null
+                    ? PartResolver(m.Id, from + dir * t) : "";
             }
         }
         if (best.Hit) best.Point = from + dir * best.T;

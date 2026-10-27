@@ -53,6 +53,7 @@ public partial class MechDuel : Node3D
 
     // ---------- combat ----------
     private HitModel _hit;
+    private MechParts _partsPlayer, _partsEnemy;
     private readonly System.Collections.Generic.List<Projectile> _shots = new();
     private readonly System.Collections.Generic.List<(Node3D Node, float Life, int Frames)> _fx = new();
     private float _hpPlayer = 260f, _hpEnemy = 340f;
@@ -151,6 +152,17 @@ public partial class MechDuel : Node3D
         _hit.Mechs.Add(new HitModel.MechCap { Id = "TW", Root = () => _player.RootPos, Radius = _player.CollisionRadius, Height = 13f });
         _hit.Mechs.Add(new HitModel.MechCap { Id = "ATLAS", Root = () => _enemy.RootPos, Radius = _enemy.CollisionRadius, Height = 14f });
         _prevPlayerRoot = _player.RootPos;
+
+        // Breakable-parts registries (may split the merged Torso meshes);
+        // refresh walker materials afterwards so hit flashes cover the
+        // replacement pieces too.
+        _partsPlayer = new MechParts(_player, "TW");
+        _partsEnemy = new MechParts(_enemy, "ATLAS");
+        _player.RefreshMaterials();
+        _enemy.RefreshMaterials();
+        _hit.PartResolver = (id, pt) => id == "TW"
+            ? _partsPlayer.AttributePoint(pt)
+            : _partsEnemy.AttributePoint(pt);
 
         _cam = new Camera3D { Fov = 70f };
         AddChild(_cam);
@@ -424,7 +436,7 @@ public partial class MechDuel : Node3D
         if (hit.Hit)
         {
             SpawnFlash(hit.Point, new Color(1f, 0.45f, 0.2f), 0.38f, 0.12f);
-            GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} point={hit.Point}");
+            GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW");
         }
         else GD.Print("WPN LASER hit=none");
@@ -527,7 +539,7 @@ public partial class MechDuel : Node3D
     private void OnProjectileHit(HitModel.Result hit, Projectile p)
     {
         SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), p.SplashRadius > 0f ? 0.8f : 0.45f, 0.14f);
-        GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} t={hit.T:F1} point={hit.Point}");
+        GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} part={hit.Part} t={hit.T:F1} point={hit.Point}");
         if (p.SplashRadius > 0f)
         {
             ExplodeSplash(hit, p);
@@ -546,7 +558,8 @@ public partial class MechDuel : Node3D
         if (isPlayer) { _twDmgEvents++; _twDmgTotal += dmg; }
         else { _atlasDmgEvents++; _atlasDmgTotal += dmg; }
         float hp = isPlayer ? _hpPlayer : _hpEnemy;
-        GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} hp={hp:F1} src={source}");
+        string partId = (isPlayer ? _partsPlayer : _partsEnemy).AttributePoint(hit.Point);
+        GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source);
         if (hp <= 0f) Die(target);
     }
