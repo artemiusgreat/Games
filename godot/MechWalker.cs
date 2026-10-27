@@ -55,6 +55,7 @@ public partial class MechWalker : Node3D
         public Vector3 PrevSoleWorld;
         public bool HasPrev;
         public float LastPlantedDiff;
+        public bool Disabled;
     }
 
     private const float StandReachFactor = 0.90f;
@@ -134,6 +135,28 @@ public partial class MechWalker : Node3D
     // pose (feet stay planted) and only the torso droop still animates.
     public bool Halted { get; set; }
     public float Droop { get; set; }
+
+    // Breakable-parts state (owner-driven): a disabled leg stops stepping
+    // and drags its foot under the hip; SpeedFactor caps the drive;
+    // LimpRoll leans the body (positive = toward the model's left).
+    public float SpeedFactor = 1f;
+    public float LimpRoll;
+
+    public void SetLegDisabled(bool left, bool disabled)
+    {
+        var leg = left ? _legL : _legR;
+        leg.Disabled = disabled;
+        if (disabled)
+        {
+            leg.StepT = -1f;
+            leg.Planted = true;
+            leg.HasPrev = false;
+        }
+    }
+
+    public bool LegDisabled(bool left) => (left ? _legL : _legR).Disabled;
+    public Vector3 SoleWorld(bool left) => (left ? _legL : _legR).SolvedSoleWorld;
+    public bool LegPlanted(bool left) => (left ? _legL : _legR).Planted;
     public Vector3 VelocityVec => HeadingVec(_legsYaw) * _speed;
 
     // World position of a skeleton bone (muzzle hardpoints, aim points).
@@ -413,7 +436,7 @@ public partial class MechWalker : Node3D
         _prevYaw = _legsYaw;
 
         float dv = _cfg.Accel * h;
-        _speed = Mathf.MoveToward(_speed, _targetSpeed, dv);
+        _speed = Mathf.MoveToward(_speed, _targetSpeed * SpeedFactor, dv);
         var vel = HeadingVec(_legsYaw) * _speed;
         _rootPos += vel * h;
 
@@ -425,7 +448,7 @@ public partial class MechWalker : Node3D
             Leg best = null; float bestLag = threshold;
             foreach (var leg in new[] { _legL, _legR })
             {
-                if (!leg.Planted || !Other(leg).Planted) continue;
+                if (leg.Disabled || !leg.Planted || !Other(leg).Planted) continue;
                 var home = HomeSlot(leg, _rootPos + vel * 0.30f);
                 float lag = new Vector2(leg.SoleTarget.X - home.X, leg.SoleTarget.Z - home.Z).Length();
                 if (lag > bestLag) { bestLag = lag; best = leg; }
@@ -434,6 +457,18 @@ public partial class MechWalker : Node3D
         }
         AdvanceLeg(_legL, h);
         AdvanceLeg(_legR, h);
+        // A disabled leg never steps: its foot target rides under the hip,
+        // scraping along the terrain (visible drag; the IK still solves).
+        foreach (var leg in new[] { _legL, _legR })
+        {
+            if (!leg.Disabled) continue;
+            leg.StepT = -1f;
+            leg.Planted = true;
+            var home = HomeSlot(leg, _rootPos);
+            leg.SoleTarget = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
+            leg.PlantBasisW = FootBasisAt(leg.SoleTarget, _legsYaw);
+            leg.CurBasisW = leg.PlantBasisW;
+        }
 
         UpdateRoot(h);
         SolveAll();
@@ -478,6 +513,10 @@ public partial class MechWalker : Node3D
         var upT = (Vector3.Up - right * dhLat - fwd * dhFwd).Normalized();
         float tilt = Mathf.Acos(Mathf.Clamp(upT.Dot(Vector3.Up), -1f, 1f));
         if (tilt > 0.23f) upT = Vector3.Up.Lerp(upT, 0.23f / tilt).Normalized();
+        // Limp: permanent lean toward a dead leg, on top of terrain tilt.
+        // upT - right*sin leans the body's top toward its anatomical left.
+        if (LimpRoll != 0f)
+            upT = (upT - right * Mathf.Sin(LimpRoll)).Normalized();
         _upEased = _upEased.Lerp(upT, 1f - Mathf.Exp(-3.5f * h)).Normalized();
 
         var q = new Quaternion(Vector3.Up, _upEased);
@@ -572,7 +611,8 @@ public partial class MechWalker : Node3D
                 var soleW = _skelGlobal * (leg.SolvedAnklePose * leg.SoleOffLocal);
                 leg.LastPlantedDiff = soleW.Y - Main.HeightAt(soleW.X, soleW.Z);
             }
-            if (leg.Planted && leg.HasPrev)
+            // A disabled leg drags by design: its slide is not a gait error.
+            if (!leg.Disabled && leg.Planted && leg.HasPrev)
             {
                 float drift = new Vector2(leg.SolvedSoleWorld.X - leg.PrevSoleWorld.X,
                                            leg.SolvedSoleWorld.Z - leg.PrevSoleWorld.Z).Length();
@@ -580,7 +620,7 @@ public partial class MechWalker : Node3D
                 _plantedFrames++;
             }
             leg.PrevSoleWorld = leg.SolvedSoleWorld;
-            leg.HasPrev = leg.Planted;
+            leg.HasPrev = leg.Planted && !leg.Disabled;
         }
     }
 

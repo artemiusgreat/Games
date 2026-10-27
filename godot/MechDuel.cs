@@ -86,6 +86,10 @@ public partial class MechDuel : Node3D
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private float _shake;
     private float _playerDroopT, _enemyDroopT;
+    // breakable consequences, transient timers
+    private float _denyLaserT, _denyAcT, _denyLrmT, _hudFlickerT;
+    private string _lastDenied = "";
+    private int _rocketsLaunched, _beamsSpawned;
 
     public override void _Ready()
     {
@@ -372,9 +376,27 @@ public partial class MechDuel : Node3D
         float maxTurn = 0.7f * delta;
         _enemyYaw += Mathf.Clamp(dy, -maxTurn, maxTurn);
         _enemy.SetDrive(_enemyYaw, spd);
-        // Torso tracks the player.
-        _enemy.TorsoTwist = MechWalker.WrapAngle(yawTo - _enemyYaw);
+        TrackAtlasTorso(delta, yawTo);
         _enemy.TorsoPitch = 0f;
+    }
+
+    // Atlas torso tracking: snaps to the target bearing while the head
+    // (sensor suite) lives; with the head destroyed the twist closes at
+    // 0.6 rad/s -- a visible, measurable lag.
+    private void TrackAtlasTorso(float dt, float yawTo)
+    {
+        float desiredTwist = MechWalker.WrapAngle(yawTo - _enemyYaw);
+        if (_partsEnemy.Alive("head"))
+        {
+            _enemy.TorsoTwist = desiredTwist;
+        }
+        else
+        {
+            float cur = _enemy.TorsoTwist;
+            float step = Mathf.Clamp(MechWalker.WrapAngle(desiredTwist - cur),
+                -0.6f * dt, 0.6f * dt);
+            _enemy.TorsoTwist = cur + step;
+        }
     }
 
     // ---------- weapons ----------
@@ -410,6 +432,7 @@ public partial class MechDuel : Node3D
 
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
+        _beamsSpawned++;
         var beam = WeaponFx.MakeBeam(a, b, col, width);
         AddChild(beam);
         _fx.Add((beam, life, 0));
@@ -425,9 +448,22 @@ public partial class MechDuel : Node3D
         _fx.Add((f, life, 0));
     }
 
+    // A fire attempt on a weapon whose mounting part is destroyed:
+    // logged and flashed on its cooldown bar (HUD step), no cooldown spent.
+    private void DenyWeapon(string weapon)
+    {
+        _lastDenied = weapon;
+        GD.Print($"WPN DENIED {weapon} (mounting part destroyed)");
+        if (weapon == "laser") _denyLaserT = 0.5f;
+        else if (weapon == "ac") _denyAcT = 0.5f;
+        else if (weapon == "lrm") _denyLrmT = 0.5f;
+    }
+
     private void FireLaser(Vector3 aimPoint)
     {
-        if (_cdLaser > 0f || _playerDead) return;
+        if (_playerDead) return;
+        if (!_partsPlayer.Alive("arm_L")) { DenyWeapon("laser"); return; }
+        if (_cdLaser > 0f) return;
         _cdLaser = 0.45f;
         var muzzle = PlayerMuzzle(true);
         var toAim = aimPoint - muzzle;
@@ -446,7 +482,9 @@ public partial class MechDuel : Node3D
 
     private void FireAutocannon(Vector3 aimPoint)
     {
-        if (_cdAc > 0f || _playerDead) return;
+        if (_playerDead) return;
+        if (!_partsPlayer.Alive("arm_R")) { DenyWeapon("ac"); return; }
+        if (_cdAc > 0f) return;
         _cdAc = 0.85f;
         var muzzle = PlayerMuzzle(false);
         var toAim = aimPoint - muzzle;
@@ -459,14 +497,22 @@ public partial class MechDuel : Node3D
     // LRM salvo: 8 rockets staggered 0.07s apart, alternating ear pods.
     // Each rocket is dumb ballistics: velocity solved to land on the aim
     // point (up-compensated for gravity), seeded spread, 7 damage with
-    // 3.0u splash falloff on impact.
+    // 3.0u splash falloff on impact. A lost pod removes its 4 rockets;
+    // both pods gone = the LRM is offline.
     private void FireLrmSalvo(Vector3 aimPoint)
     {
-        if (_cdLrm > 0f || _playerDead) return;
+        if (_playerDead) return;
+        bool podL = _partsPlayer.Alive("pod_L"), podR = _partsPlayer.Alive("pod_R");
+        if (!podL && !podR) { DenyWeapon("lrm"); return; }
+        if (_cdLrm > 0f) return;
         _cdLrm = 3.5f;
-        for (int i = 0; i < 8; i++)
-            _lrmQueue.Add((i * 0.07f, i % 2 == 0, aimPoint));
-        GD.Print("WPN LRM salvo queued (8 rockets)");
+        var sides = new System.Collections.Generic.List<bool>();
+        if (podL && podR) { for (int i = 0; i < 8; i++) sides.Add(i % 2 == 0); }
+        else if (podL) { for (int i = 0; i < 4; i++) sides.Add(true); }
+        else { for (int i = 0; i < 4; i++) sides.Add(false); }
+        for (int i = 0; i < sides.Count; i++)
+            _lrmQueue.Add((i * 0.07f, sides[i], aimPoint));
+        GD.Print($"WPN LRM salvo queued ({sides.Count} rockets, pods L={podL} R={podR})");
     }
 
     private Vector3 PodMuzzle(bool left)
@@ -479,6 +525,7 @@ public partial class MechDuel : Node3D
 
     private void LaunchRocket(Vector3 aimPoint, bool left)
     {
+        _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
         var toAim = aimPoint - muzzle;
         float dist = Mathf.Max(toAim.Length(), 1f);
@@ -588,10 +635,41 @@ public partial class MechDuel : Node3D
         ApplyPartConsequences(parts, partId);
     }
 
-    // Functional fallout of losing a part (weapons, gait, sensors).
-    // Filled in by the consequences step.
+    // Functional fallout of losing a part. Weapon mounts are gated live at
+    // the fire/gunnery checks (arm_L -> laser, arm_R -> AC and the Atlas's
+    // AC/20, pods -> salvo size, Atlas head -> spread + tracking lag), so
+    // the stateful consequences latched here are the legs and the player's
+    // head (HUD disturbance timer; the sway itself is applied in the HUD
+    // step from part state).
     private void ApplyPartConsequences(MechParts parts, string partId)
     {
+        if (partId == "leg_L" || partId == "leg_R")
+            SyncLegConsequences(parts == _partsPlayer ? _player : _enemy, parts);
+        else if (partId == "head" && parts == _partsPlayer)
+            _hudFlickerT = 1.2f;
+    }
+
+    // Recompute a walker's leg state from its parts: one dead leg drags
+    // (walker.SetLegDisabled) at 0.55x speed with a limp toward the dead
+    // side; both dead = disabled, which counts as destroyed.
+    private void SyncLegConsequences(MechWalker w, MechParts parts)
+    {
+        bool lDead = !parts.Alive("leg_L");
+        bool rDead = !parts.Alive("leg_R");
+        w.SetLegDisabled(true, lDead);
+        w.SetLegDisabled(false, rDead);
+        if (lDead && rDead)
+        {
+            w.SpeedFactor = 1f;
+            w.LimpRoll = 0f;
+            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} both legs destroyed -> DISABLED (counts as destroyed)");
+            if (w == _player ? !_playerDead : !_enemyDead) Die(w);
+            return;
+        }
+        w.SpeedFactor = (lDead || rDead) ? 0.55f : 1f;
+        w.LimpRoll = lDead ? 0.13f : rDead ? -0.13f : 0f;
+        if (lDead || rDead)
+            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg lost: speedFactor={w.SpeedFactor:F2} limpRoll={w.LimpRoll:F2}");
     }
 
     private void Die(MechWalker w)
@@ -658,6 +736,10 @@ public partial class MechDuel : Node3D
         _playerDead = _enemyDead = false;
         _partsPlayer.RestoreAll();
         _partsEnemy.RestoreAll();
+        SyncLegConsequences(_player, _partsPlayer);
+        SyncLegConsequences(_enemy, _partsEnemy);
+        _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
+        _lastDenied = "";
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
         _lrmQueue.Clear();
         foreach (var p in _shots) p.QueueFree();
@@ -813,6 +895,7 @@ public partial class MechDuel : Node3D
     {
         if (_enemyDead || _playerDead) return;
         if (_cdAtlas > 0f) return;
+        if (!_partsEnemy.Alive("arm_R")) return; // AC/20 mount lost with the right arm
         var muzzle = AtlasMuzzle();
         var target = _player.RootPos + Vector3.Up * 7.6f;
         float dist = muzzle.DistanceTo(target);
@@ -821,7 +904,9 @@ public partial class MechDuel : Node3D
         if (los.Hit && los.Target != "TW") return; // blocked: building/terrain
         float tof = dist / 50f;
         var aim = target + _playerVel * tof;
-        var dir = ApplyInaccuracy((aim - muzzle).Normalized(), 1.2f);
+        // Head destroyed: sensors gone, aim spread triples (1.2 -> 3.6 deg).
+        var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
+            _partsEnemy.Alive("head") ? 1.2f : 3.6f);
         SpawnProjectile(muzzle, dir * 50f, 5f, 18f, 0f, "ATLAS", rocket: false);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
         _cdAtlas = 2.4f;
@@ -845,6 +930,10 @@ public partial class MechDuel : Node3D
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdAtlas = Mathf.Max(_cdAtlas - dt, 0f);
+        _denyLaserT = Mathf.Max(_denyLaserT - dt, 0f);
+        _denyAcT = Mathf.Max(_denyAcT - dt, 0f);
+        _denyLrmT = Mathf.Max(_denyLrmT - dt, 0f);
+        _hudFlickerT = Mathf.Max(_hudFlickerT - dt, 0f);
         for (int i = _lrmQueue.Count - 1; i >= 0; i--)
         {
             var q = _lrmQueue[i];
