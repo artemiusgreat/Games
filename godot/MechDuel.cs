@@ -93,6 +93,13 @@ public partial class MechDuel : Node3D
     private bool _bFlag1;
     private Vector3 _camFocus;
 
+    // ---------- terrain test ----------
+    private bool _terrainTest;
+    private int _tPhase;
+    private double _tPhaseT;
+    private float _tSlopeYaw;
+    private bool _tStrideLogged;
+
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
@@ -112,6 +119,7 @@ public partial class MechDuel : Node3D
             if (arg == "--duel-test") _test = true;
             if (arg == "--weapons-test") _weaponsTest = true;
             if (arg == "--breakable-test") _breakTest = true;
+            if (arg == "--terrain-test") _terrainTest = true;
         }
         _hit = new HitModel();
 
@@ -129,7 +137,7 @@ public partial class MechDuel : Node3D
             SkyTopColor = new Color(0.20f, 0.40f, 0.71f),
             SkyHorizonColor = new Color(0.63f, 0.73f, 0.84f),
             SkyCurve = 0.09f,
-            SkyEnergyMultiplier = 1.05f,
+            SkyEnergyMultiplier = 1.0f,
             GroundBottomColor = new Color(0.16f, 0.145f, 0.12f),
             GroundHorizonColor = new Color(0.56f, 0.56f, 0.52f),
             GroundCurve = 0.08f
@@ -141,12 +149,12 @@ public partial class MechDuel : Node3D
                 BackgroundMode = Environment.BGMode.Sky,
                 Sky = new Sky { SkyMaterial = skyMat },
                 AmbientLightSource = Environment.AmbientSource.Sky,
-                AmbientLightEnergy = 0.9f,
+                AmbientLightEnergy = 0.62f,
                 ReflectedLightSource = Environment.ReflectionSource.Sky,
                 TonemapMode = Environment.ToneMapper.Aces,
                 FogEnabled = true,
                 FogLightColor = new Color(0.63f, 0.73f, 0.84f),
-                FogDensity = 0.0048f,
+                FogDensity = 0.0021f,
                 FogSunScatter = 0.25f
             }
         });
@@ -227,7 +235,8 @@ public partial class MechDuel : Node3D
         BuildHud(layer);
 
         _lastPlayerPos = _player.RootPos;
-        GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} props={_props.Count} circles");
+        GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest} props={_props.Count} circles");
+        if (_terrainTest) TerrainSelfCheck();
         if (_weaponsTest)
         {
             WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
@@ -1252,7 +1261,7 @@ public partial class MechDuel : Node3D
             if (life <= 0f && frames >= 3) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
             else _fx[i] = (_fx[i].Node, life, frames);
         }
-        if (!_test && ((!_weaponsTest && !_breakTest) || _atlasMayFire)) UpdateAtlasGunnery(dt);
+        if (!_test && !_terrainTest && ((!_weaponsTest && !_breakTest) || _atlasMayFire)) UpdateAtlasGunnery(dt);
     }
 
     // ---------- test choreography ----------
@@ -1443,22 +1452,25 @@ public partial class MechDuel : Node3D
                 }
                 break;
 
-            case 2: // autocannon x2: 2 x 26 = 52 exactly. DELTA vs the
-                    // pre-breakable expectation (pool 252): the shells drop
-                    // ~0.6u in flight and land on the pelvis/thigh junction;
-                    // nearest-volume attribution assigns them to leg_L, so
-                    // the part absorbs 52 (90 -> 38) and the pool only lost
-                    // the laser's 36. Both numbers are asserted.
+            case 2: // autocannon x2: 2 x 26 = 52 exactly. ROUTING DELTA
+                    // (terrain step): on the old sine terrain the shells
+                    // dropped ~0.6u in flight and landed on the pelvis/
+                    // thigh junction, so leg_L absorbed the 52. On the
+                    // heightfield the two stand heights are near-equal,
+                    // the shells arrive higher and land mid-torso: the
+                    // pool takes the 52 (304 -> 252) and leg_L stays
+                    // untouched. Events/total are the invariant; the
+                    // routing follows the terrain, as documented before.
                 if (_wShotsFired == 0 && _wPhaseT > 0.1) { FireAutocannon(AtlasAim()); _wShotsFired++; }
                 else if (_wShotsFired == 1 && _wPhaseT > 1.05) { FireAutocannon(AtlasAim()); _wShotsFired++; }
                 else if (_wShotsFired == 2 && _wPhaseT > 2.8)
                 {
                     if (_atlasDmgEvents != 2 || Mathf.Abs(_atlasDmgTotal - 52f) > 0.01f)
                         WFail($"ac events={_atlasDmgEvents} dmg={_atlasDmgTotal:F1} (want 2 / 52)");
-                    if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 304 pool under part routing)");
-                    if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 38f) > 0.01f)
-                        WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 38 = 90 - 52)");
-                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to leg_L)");
+                    if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 252 pool under terrain-step routing)");
+                    if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f)
+                        WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 90 = untouched, shells routed to torso)");
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso)");
                     _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
                     SetWPhase(3);
                 }
@@ -1494,7 +1506,14 @@ public partial class MechDuel : Node3D
                     if (_atlasDmgTotal > 0.01f || Mathf.Abs(_hpEnemy - _wHpSnapshot) > 0.01f)
                         WFail($"blocked laser leaked dmg={_atlasDmgTotal:F1} hp {_wHpSnapshot:F1}->{_hpEnemy:F1}");
                     GD.Print("WPNTEST BLOCKED PASS building stopped the beam, atlasHp unchanged");
-                    WSetup(new Vector3(0f, Main.HeightAt(0f, 20f), 20f), new Vector3(0f, Main.HeightAt(0f, -10f), -10f));
+                    // Phase 5 engages at 45u, not 30u: at 30u the shell
+                    // TOF (0.6s) is shorter than the strafe reversal and
+                    // the lead error stays inside the part-box volume
+                    // (the digitigrade thighs protrude ~2.7u ahead of the
+                    // capsule), so return fire could not miss at all. At
+                    // 45u the TOF (0.9s) spans a full reversal and the
+                    // dodge is measurable again.
+                    WSetup(new Vector3(0f, Main.HeightAt(0f, 20f), 20f), new Vector3(0f, Main.HeightAt(0f, -25f), -25f));
                     _twDmgEvents = 0; _twDmgTotal = 0f; _atlasShots = 0; _wPrevShots = 0;
                     _atlasMayFire = true;
                     _wStrafeT = 0; _wStrafeDir = 1f;
@@ -1654,13 +1673,23 @@ public partial class MechDuel : Node3D
     // Craft via a real HitModel ray: needed for the TW head, whose
     // volume interior is shadowed by the torso core's AABB (an interior
     // point attributes torso; a surface hit attributes head, exactly as
-    // real aimed fire does). The ray drops vertically onto the canopy.
+    // real aimed fire does). The head ray comes in angled onto the
+    // canopy face: a purely vertical drop races the capsule's flat top
+    // disc in the same column (sub-decimeter, decided by the root tilt
+    // the terrain happens to give), while the angled ray meets the
+    // head box where it protrudes past the capsule, like a real shot.
     private void CraftRayHit(MechWalker target, string partId, float dmg)
     {
         var parts = target == _player ? _partsPlayer : _partsEnemy;
         var aim = parts.PartAimPoint(partId);
-        var from = aim + Vector3.Up * 15f;
-        var res = _hit.Ray(from, Vector3.Down, 40f, target == _player ? "ATLAS" : "TW");
+        Vector3 from;
+        if (partId == "head")
+        {
+            var fwd = MechWalker.HeadingVec(target.TorsoYawWorld);
+            from = aim + Vector3.Up * 5f + fwd * 7f;
+        }
+        else from = aim + Vector3.Up * 15f;
+        var res = _hit.Ray(from, (aim - from).Normalized(), 40f, target == _player ? "ATLAS" : "TW");
         GD.Print($"BRK CRAFTRAY {partId} hit={res.Hit} target={res.Target} part={res.Part} point={res.Point}");
         if (!res.Hit || res.Part != partId)
         {
@@ -1869,7 +1898,7 @@ public partial class MechDuel : Node3D
                     {
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         _bV1 = d / BStepT;
-                        GD.Print($"BRKTEST BASESPEED atlas baseline={_bV1:F2} u/s (cmd 2.2; the gait caps effective speed below the command)");
+                        GD.Print($"BRKTEST BASESPEED atlas baseline={_bV1:F2} u/s (cmd 2.2; unified clock — the walker now covers the full commanded speed)");
                         if (_bV1 < 1.2f) BFail($"baseline speed implausible: {_bV1:F2}");
                         BStep(2);
                     }
@@ -1899,7 +1928,14 @@ public partial class MechDuel : Node3D
                         // hip distance conflates the limp body lean: the
                         // hip rides ~7u up on a rolled root). A locked
                         // foot holds its rest slot; a stepping foot would
-                        // swing ~a stride length through it.
+                        // swing ~a stride length through it. The bound
+                        // grew 0.45 -> 0.65 in the terrain step: with the
+                        // unified clock (StepWalker substeps) the mech
+                        // covers its full window distance and walks out
+                        // into the arena's transition slopes, where root
+                        // tilt projects the locked sole ~0.5u in root
+                        // space. Still far under a stride length (~1.7u),
+                        // and the good leg's planted diff stays 0.000.
                         var local = _enemy.GlobalTransform.AffineInverse() * _enemy.SoleWorld(true);
                         float dev = new Vector2(local.X - _bHomeLocal.X, local.Z - _bHomeLocal.Z).Length();
                         if (dev > _bDragMax) _bDragMax = dev;
@@ -1923,7 +1959,7 @@ public partial class MechDuel : Node3D
                         GD.Print($"BRKTEST LIMP atlas limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F3} dragDevFromHomeMax={_bDragMax:F3} maxPlantedDiff={_enemy.MaxPlantedDiff():F3}");
                         if (ratio > 0.605f) { BFail($"limp ratio {ratio:F3} > 0.55 + 10%"); return; }
                         if (v2 < 0.7f) { BFail($"limp speed {v2:F2}: mech barely moves"); return; }
-                        if (_bDragMax > 0.45f) { BFail($"dragging sole leaves its home slot by {_bDragMax:F2}u"); return; }
+                        if (_bDragMax > 0.65f) { BFail($"dragging sole leaves its home slot by {_bDragMax:F2}u"); return; }
                         if (_enemy.MaxPlantedDiff() > 0.08f) { BFail($"good-leg planted diff {_enemy.MaxPlantedDiff():F3} > 0.08"); return; }
                         GD.Print("BRKTEST LIMP PASS speed <= 0.55x baseline, drag foot locked at its home slot, gait contact holds");
                         SetBPhase(6);
@@ -2063,6 +2099,145 @@ public partial class MechDuel : Node3D
         }
     }
 
+    // ---------- terrain-test choreography ----------
+
+    private void TFail(string msg)
+    {
+        GD.PrintErr($"TERRAINTEST FAIL: {msg}");
+        GetTree().Quit(1);
+    }
+
+    private void TerrainSelfCheck()
+    {
+        // HeightAt at every grid node must reproduce the stored grid
+        // height exactly (bilinear weights are 1/0 at nodes).
+        float maxDiff = 0f;
+        float half = Main.TerrainSize / 2f;
+        float step = (float)Main.TerrainSize / Main.TerrainSegs;
+        for (int j = 0; j <= Main.TerrainSegs; j++)
+        for (int i = 0; i <= Main.TerrainSegs; i++)
+        {
+            float d = Mathf.Abs(Main.HeightAt(-half + i * step, -half + j * step)
+                              - Main.GridHeightAt(i, j));
+            if (d > maxDiff) maxDiff = d;
+        }
+        GD.Print($"TERRAIN SELFCHECK nodes={(Main.TerrainSegs + 1) * (Main.TerrainSegs + 1)} maxNodeDiff={maxDiff:F5}");
+        // Arena grade scan (the duel-playable core).
+        float maxG = 0f; Vector2 atG = Vector2.Zero;
+        for (float x = -36f; x <= 36f; x += 1.5f)
+        for (float z = -36f; z <= 36f; z += 1.5f)
+        {
+            if (new Vector2(x, z).Length() > 36f) continue;
+            float g = TerrainGrade(x, z);
+            if (g > maxG) { maxG = g; atG = new Vector2(x, z); }
+        }
+        GD.Print($"TERRAIN ARENA maxGrade={maxG:F3} ({Mathf.RadToDeg(Mathf.Atan(maxG)):F1} deg) at {atG}");
+        float hMin = 1e9f, hMax = -1e9f;
+        for (int j = 0; j <= Main.TerrainSegs; j += 4)
+        for (int i = 0; i <= Main.TerrainSegs; i += 4)
+        {
+            float h = Main.GridHeightAt(i, j);
+            hMin = Mathf.Min(hMin, h); hMax = Mathf.Max(hMax, h);
+        }
+        GD.Print($"TERRAIN RANGE min={hMin:F1} max={hMax:F1}");
+    }
+
+    // The clearest steep spot the arena offers (the arena is gentle by
+    // design — max grade ~0.08 — so take the best clear candidate).
+    private bool FindSlopeSpot(out Vector3 spot, out float uphillYaw)
+    {
+        spot = Vector3.Zero; uphillYaw = 0f;
+        float bestG = 0.045f;
+        bool found = false;
+        for (float rad = 34f; rad >= 14f; rad -= 2f)
+        for (int a = 0; a < 48; a++)
+        {
+            float ang = a * Mathf.Tau / 48f;
+            var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
+            float g = TerrainGrade(p.X, p.Y);
+            if (g <= bestG || g > 0.35f) continue;
+            if (!ScatterFree(p, 6.5f)) continue;
+            const float e = 0.7f;
+            float gx = (Main.HeightAt(p.X + e, p.Y) - Main.HeightAt(p.X - e, p.Y)) / (2f * e);
+            float gz = (Main.HeightAt(p.X, p.Y + e) - Main.HeightAt(p.X, p.Y - e)) / (2f * e);
+            uphillYaw = MechWalker.YawOf(new Vector3(gx, 0f, gz).Normalized());
+            spot = new Vector3(p.X, Main.HeightAt(p.X, p.Y), p.Y);
+            bestG = g;
+            found = true;
+        }
+        return found;
+    }
+
+    private void UpdateTerrainTest(float dt)
+    {
+        _tPhaseT += dt;
+        if (_tPhaseT > 45) { TFail($"phase {_tPhase} timeout"); return; }
+        switch (_tPhase)
+        {
+            case 0: // vista over the whole valley, then move to the slope
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_tPhaseT > 0.8)
+                {
+                    QueueCapture("res://proof/terrain_vista.png", "tvista", "vista", () =>
+                    {
+                        if (!FindSlopeSpot(out var spot, out float yaw))
+                        {
+                            TFail("no slope spot found in the arena");
+                            return;
+                        }
+                        _tSlopeYaw = yaw;
+                        _player.Teleport(spot, yaw);
+                        _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+                        GD.Print($"TERRAIN SLOPE spot={spot} grade={TerrainGrade(spot.X, spot.Z):F3} uphillYaw={Mathf.RadToDeg(yaw):F1}deg");
+                        _tPhase = 1; _tPhaseT = 0; _tStrideLogged = false;
+                    });
+                    _tPhase = 99; // wait for the capture callback
+                }
+                break;
+            case 1: // climb the slope; capture mid-stride, check contact
+                _player.SetDrive(_tSlopeYaw, 2.2f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_tPhaseT > 0.8 && _player.ConsumeStepMidCross() && !_tStrideLogged)
+                {
+                    _tStrideLogged = true;
+                    GD.Print($"TERRAIN STRIDE analytic {_player.FootReport(false)}");
+                    GD.Print($"TERRAIN STRIDE engine   {_player.FootReport(true)}");
+                    QueueCapture("res://proof/terrain_stride.png", "tstride", "slopeSide", () =>
+                    {
+                        float md = _player.MaxPlantedDiff();
+                        GD.Print($"TERRAIN STRIDE maxPlantedDiff={md:F3}");
+                        if (md > 0.08f) { TFail($"planted diff {md:F3} > 0.08 on arena slope"); return; }
+                        // Ground-level duel shot: Atlas 30u ahead of the player.
+                        var fwd = MechWalker.HeadingVec(_player.LegsYaw);
+                        var epos = _player.RootPos + fwd * 30f;
+                        epos.X = Mathf.Clamp(epos.X, -60f, 60f);
+                        epos.Z = Mathf.Clamp(epos.Z, -60f, 60f);
+                        epos.Y = Main.HeightAt(epos.X, epos.Z);
+                        _enemy.Teleport(epos, MechWalker.YawOf(-fwd));
+                        _player.SetDrive(_player.LegsYaw, 0f);
+                        _tPhase = 2; _tPhaseT = 0;
+                    });
+                }
+                break;
+            case 2: // settle, then the ground-level duel frame + render info
+                _player.SetDrive(_player.LegsYaw, 0f);
+                _enemy.SetDrive(_enemy.LegsYaw, 0f);
+                if (_tPhaseT > 1.2)
+                {
+                    QueueCapture("res://proof/terrain_duel.png", "tduel", "groundDuel", () =>
+                    {
+                        var vp = GetViewport();
+                        GD.Print($"TERRAIN RENDER drawCalls={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.DrawCallsInFrame)} prims={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.PrimitivesInFrame)} objects={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.ObjectsInFrame)}");
+                        GD.Print("TERRAINTEST DONE");
+                        GetTree().Quit(0);
+                    });
+                    _tPhase = 99;
+                }
+                break;
+        }
+    }
+
     // ---------- captures / camera ----------
 
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
@@ -2172,6 +2347,26 @@ public partial class MechDuel : Node3D
             _cam.GlobalPosition = _camFocus + new Vector3(-8.5f, 3.4f, 6.5f);
             _cam.LookAt(_camFocus + Vector3.Up * 0.4f, Vector3.Up);
         }
+        else if (_camMode == "vista")
+        {
+            _cam.GlobalPosition = new Vector3(-88f, 44f, 90f);
+            _cam.LookAt(new Vector3(12f, 0f, -12f), Vector3.Up);
+        }
+        else if (_camMode == "slopeSide")
+        {
+            var p = _player.RootPos;
+            var fwd = MechWalker.HeadingVec(_player.LegsYaw);
+            var right = new Vector3(-fwd.Z, 0f, fwd.X);
+            _cam.GlobalPosition = p - right * 15f + Vector3.Up * 4.2f;
+            _cam.LookAt(p + Vector3.Up * 5.5f, Vector3.Up);
+        }
+        else if (_camMode == "groundDuel")
+        {
+            var p = _player.RootPos;
+            var fwd = MechWalker.HeadingVec(_player.LegsYaw);
+            _cam.GlobalPosition = p - fwd * 11f + Vector3.Up * 3.4f;
+            _cam.LookAt(_enemy.RootPos + Vector3.Up * 6.5f, Vector3.Up);
+        }
         else // chase (interactive)
         {
             var torsoYaw = _player.TorsoYawWorld;
@@ -2194,6 +2389,17 @@ public partial class MechDuel : Node3D
         }
     }
 
+    // Substep the walkers so their 0.1s accumulator clamp never drops
+    // simulation time on slow frames (llvmpipe renders this scene at a
+    // few FPS): gait, projectiles and cooldowns then share one clock at
+    // any frame rate. At 60 FPS this is a single call, unchanged.
+    private static void StepWalker(MechWalker w, double delta)
+    {
+        int n = Mathf.Max(1, Mathf.CeilToInt((float)delta / 0.09f));
+        double h = delta / n;
+        for (int i = 0; i < n; i++) w.StepFrame(h);
+    }
+
     public override void _Process(double delta)
     {
         if (_player == null || !_player.IsReady || _enemy == null || !_enemy.IsReady) return;
@@ -2204,6 +2410,7 @@ public partial class MechDuel : Node3D
             _simT += delta;
             if (_breakTest) UpdateBreakTest(dt);
             else if (_weaponsTest) UpdateWeaponsTest(dt);
+            else if (_terrainTest) UpdateTerrainTest(dt);
             else if (_test) UpdateTest(dt);
             else
             {
@@ -2217,8 +2424,8 @@ public partial class MechDuel : Node3D
                     if (Input.IsPhysicalKeyPressed(Key.Space)) FireLrmSalvo(aim);
                 }
             }
-            _player.StepFrame(delta);
-            _enemy.StepFrame(delta);
+            StepWalker(_player, delta);
+            StepWalker(_enemy, delta);
             ResolveCollisions();
             if (dt > 0f)
             {
