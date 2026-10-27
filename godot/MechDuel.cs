@@ -218,25 +218,8 @@ public partial class MechDuel : Node3D
 
     private void BuildTerrain()
     {
-        var st = new SurfaceTool();
-        st.Begin(Mesh.PrimitiveType.Triangles);
-        st.SetMaterial(new StandardMaterial3D { AlbedoColor = new Color(0.25f, 0.5f, 0.22f) });
-        float half = Main.TerrainSize / 2f;
-        float step = (float)Main.TerrainSize / Main.TerrainSegs;
-        for (int j = 0; j < Main.TerrainSegs; j++)
-        for (int i = 0; i < Main.TerrainSegs; i++)
-        {
-            float x0 = -half + i * step, x1 = x0 + step;
-            float z0 = -half + j * step, z1 = z0 + step;
-            var a = new Vector3(x0, Main.HeightAt(x0, z0), z0);
-            var b = new Vector3(x1, Main.HeightAt(x1, z0), z0);
-            var c = new Vector3(x0, Main.HeightAt(x0, z1), z1);
-            var d = new Vector3(x1, Main.HeightAt(x1, z1), z1);
-            st.AddVertex(a); st.AddVertex(b); st.AddVertex(c);
-            st.AddVertex(b); st.AddVertex(d); st.AddVertex(c);
-        }
-        st.GenerateNormals();
-        AddChild(new MeshInstance3D { Mesh = st.Commit() });
+        // Shared heightfield mesh (vertices on grid nodes = HeightAt).
+        AddChild(new MeshInstance3D { Mesh = Main.CreateTerrainMesh() });
     }
 
     private void AddTree(Vector3 pos)
