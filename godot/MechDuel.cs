@@ -20,7 +20,7 @@ public partial class MechDuel : Node3D
     private const float PlayerMaxSpeed = 4.2f;
     private const float AtlasMaxSpeed = 2.2f;
     private const float TurnRate = 0.85f;
-    private const float WorldBound = 47f;
+    private const float WorldBound = 80f; // heightfield world is 170 wide
 
     private struct Circle { public Vector2 P; public float R; }
     private readonly List<Circle> _props = new();
@@ -139,6 +139,7 @@ public partial class MechDuel : Node3D
         AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(6f, 7f, 6f));
         AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(8f, 6f, 5f));
         AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(5f, 9f, 5f));
+        ScatterNature();
 
         _player = new MechWalker { Name = "PlayerTimberwolf" };
         AddChild(_player);
@@ -222,23 +223,163 @@ public partial class MechDuel : Node3D
         AddChild(new MeshInstance3D { Mesh = Main.CreateTerrainMesh() });
     }
 
-    private void AddTree(Vector3 pos)
+    private void AddTree(Vector3 pos) => AddTreeV(pos, 0, 1f, 0f);
+
+    // Tree varieties: 0 classic (sphere canopy), 1 pine (stacked cones),
+    // 2 broadleaf (wide squashed canopy). tint shifts the canopy hue
+    // slightly. Collision circle + hit-model cylinder scale with the tree.
+    private void AddTreeV(Vector3 pos, int variety, float scale, float tint)
     {
         pos.Y = Main.HeightAt(pos.X, pos.Z);
-        var tree = new Node3D { Position = pos };
-        var trunk = new MeshInstance3D();
-        trunk.Mesh = new CylinderMesh { TopRadius = 0.22f, BottomRadius = 0.3f, Height = 2.2f };
-        trunk.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.4f, 0.26f, 0.13f) };
-        trunk.Position = new Vector3(0f, 1.1f, 0f);
-        var canopy = new MeshInstance3D();
-        canopy.Mesh = new SphereMesh { Radius = 1.7f, Height = 3.4f };
-        canopy.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.13f, 0.45f, 0.16f) };
-        canopy.Position = new Vector3(0f, 3.6f, 0f);
-        tree.AddChild(trunk);
-        tree.AddChild(canopy);
+        var tree = new Node3D { Position = pos, Scale = Vector3.One * scale };
+        var trunkMat = new StandardMaterial3D { AlbedoColor = new Color(0.4f, 0.26f, 0.13f) };
+        float totalH;
+        if (variety == 1)
+        {
+            var trunk = new MeshInstance3D();
+            trunk.Mesh = new CylinderMesh { TopRadius = 0.2f, BottomRadius = 0.3f, Height = 3.0f, RadialSegments = 7 };
+            trunk.MaterialOverride = trunkMat;
+            trunk.Position = new Vector3(0f, 1.5f, 0f);
+            tree.AddChild(trunk);
+            var coneMat = new StandardMaterial3D { AlbedoColor = new Color(0.10f + tint * 0.05f, 0.34f + tint * 0.06f, 0.13f) };
+            var cone1 = new MeshInstance3D();
+            cone1.Mesh = new CylinderMesh { TopRadius = 0.05f, BottomRadius = 1.7f, Height = 3.4f, RadialSegments = 8 };
+            cone1.MaterialOverride = coneMat;
+            cone1.Position = new Vector3(0f, 4.0f, 0f);
+            var cone2 = new MeshInstance3D();
+            cone2.Mesh = new CylinderMesh { TopRadius = 0.03f, BottomRadius = 1.15f, Height = 2.6f, RadialSegments = 8 };
+            cone2.MaterialOverride = coneMat;
+            cone2.Position = new Vector3(0f, 5.9f, 0f);
+            tree.AddChild(cone1);
+            tree.AddChild(cone2);
+            totalH = 7.2f;
+        }
+        else if (variety == 2)
+        {
+            var trunk = new MeshInstance3D();
+            trunk.Mesh = new CylinderMesh { TopRadius = 0.24f, BottomRadius = 0.34f, Height = 2.6f, RadialSegments = 7 };
+            trunk.MaterialOverride = trunkMat;
+            trunk.Position = new Vector3(0f, 1.3f, 0f);
+            tree.AddChild(trunk);
+            var canopy = new MeshInstance3D();
+            canopy.Mesh = new SphereMesh { Radius = 2.3f, Height = 2.7f, RadialSegments = 11, Rings = 6 };
+            canopy.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.17f + tint * 0.07f, 0.47f + tint * 0.05f, 0.15f) };
+            canopy.Position = new Vector3(0f, 3.9f, 0f);
+            tree.AddChild(canopy);
+            totalH = 5.3f;
+        }
+        else
+        {
+            var trunk = new MeshInstance3D();
+            trunk.Mesh = new CylinderMesh { TopRadius = 0.22f, BottomRadius = 0.3f, Height = 2.2f, RadialSegments = 7 };
+            trunk.MaterialOverride = trunkMat;
+            trunk.Position = new Vector3(0f, 1.1f, 0f);
+            var canopy = new MeshInstance3D();
+            canopy.Mesh = new SphereMesh { Radius = 1.7f, Height = 3.4f, RadialSegments = 10, Rings = 5 };
+            canopy.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.13f + tint * 0.06f, 0.45f + tint * 0.05f, 0.16f) };
+            canopy.Position = new Vector3(0f, 3.6f, 0f);
+            tree.AddChild(trunk);
+            tree.AddChild(canopy);
+            totalH = 5.6f;
+        }
         AddChild(tree);
-        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = 0.7f });
-        _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = 0.7f, BaseY = pos.Y, Height = 5.6f });
+        float r = 0.7f * scale;
+        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
+        _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = pos.Y, Height = totalH * scale });
+    }
+
+    // Low-poly rock: squashed, randomly tilted icosphere-ish blob. Gets a
+    // collision circle + hit cylinder like every other prop.
+    private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
+    {
+        float groundY = Main.HeightAt(pos.X, pos.Z);
+        var mi = new MeshInstance3D();
+        mi.Mesh = new SphereMesh { Radius = 1f, Height = 2f, RadialSegments = 7, Rings = 3 };
+        float g = 0.36f + tint * 0.14f;
+        mi.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(g, g * (0.99f + tint * 0.03f), g * (1.02f - tint * 0.02f)),
+            Roughness = 0.97f
+        };
+        mi.Position = new Vector3(pos.X, groundY - 0.30f * scl.Y, pos.Z);
+        mi.Scale = scl;
+        mi.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
+        AddChild(mi);
+        float r = Mathf.Max(scl.X, scl.Z) * 0.92f;
+        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
+        _hit.Props.Add(new HitModel.PropCyl
+        {
+            P = new Vector2(pos.X, pos.Z), R = r,
+            BaseY = groundY - 0.35f * scl.Y, Height = 1.05f * scl.Y
+        });
+    }
+
+    // Seeded nature scatter: ~33 more trees (40 total) and 25 rocks.
+    // Placement respects the test choreography: duel/weapons/breakable
+    // lanes and every spawn/teleport pad stay clear, props keep spacing,
+    // trees stay off steep/high ground.
+    private bool ScatterFree(Vector2 p, float clearR)
+    {
+        // lanes (x0, x1, z0, z1)
+        if (p.X > -5.5f && p.X < 5.5f && p.Y > -23f && p.Y < 37f) return false;
+        if (p.X > 16f && p.X < 28f && p.Y > -23f && p.Y < 31f) return false;
+        if (p.X > 2f && p.X < 10.5f && p.Y > 9f && p.Y < 33f) return false;
+        var pads = new (float X, float Z, float R)[]
+        {
+            (0f, 30f, 7f), (0f, -16f, 7f), (0f, 18f, 7f), (0f, -12f, 7f),
+            (0f, 20f, 7f), (0f, -10f, 7f), (22f, 24f, 7f), (22f, -16f, 7f),
+            (-38f, 38f, 7.5f), (0f, 24f, 7f), (20f, 2f, 6f), (6f, 27f, 5.5f),
+            (0f, 10f, 6f), (0f, -2f, 6f)
+        };
+        foreach (var pad in pads)
+            if (p.DistanceTo(new Vector2(pad.X, pad.Z)) < pad.R + clearR) return false;
+        foreach (var c in _props)
+            if (p.DistanceTo(c.P) < c.R + clearR + 2.0f) return false;
+        return true;
+    }
+
+    private static float TerrainGrade(float x, float z)
+    {
+        const float e = 0.7f;
+        float gx = (Main.HeightAt(x + e, z) - Main.HeightAt(x - e, z)) / (2f * e);
+        float gz = (Main.HeightAt(x, z + e) - Main.HeightAt(x, z - e)) / (2f * e);
+        return Mathf.Sqrt(gx * gx + gz * gz);
+    }
+
+    private void ScatterNature()
+    {
+        var rng = new System.Random(0x5EED);
+        int trees = 0, tries = 0;
+        while (trees < 33 && tries++ < 900)
+        {
+            float ang = (float)rng.NextDouble() * Mathf.Tau;
+            float rad = 12f + 68f * Mathf.Sqrt((float)rng.NextDouble());
+            var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
+            float sc = 0.85f + (float)rng.NextDouble() * 0.75f;
+            if (!ScatterFree(p, 0.7f * sc + 0.6f)) continue;
+            if (TerrainGrade(p.X, p.Y) > 0.5f) continue;
+            if (Main.HeightAt(p.X, p.Y) > 12.5f) continue;
+            AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
+            trees++;
+        }
+        int rocks = 0;
+        tries = 0;
+        while (rocks < 25 && tries++ < 900)
+        {
+            float ang = (float)rng.NextDouble() * Mathf.Tau;
+            float rad = 10f + 70f * Mathf.Sqrt((float)rng.NextDouble());
+            var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
+            var scl = new Vector3(
+                1.2f + (float)rng.NextDouble() * 2.0f,
+                0.8f + (float)rng.NextDouble() * 1.3f,
+                1.2f + (float)rng.NextDouble() * 2.0f);
+            scl.Y *= 0.62f; // squash
+            if (!ScatterFree(p, Mathf.Max(scl.X, scl.Z))) continue;
+            if (Main.HeightAt(p.X, p.Y) > 21f) continue;
+            AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
+            rocks++;
+        }
+        GD.Print($"DUEL scatter trees+={trees} rocks={rocks} propsNow={_props.Count}");
     }
 
     private void AddBuilding(Vector3 pos, Vector3 size)
