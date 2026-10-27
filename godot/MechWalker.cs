@@ -1,0 +1,626 @@
+using Godot;
+
+// MechWalker: reusable procedural gait + two-bone IK for a rigged mech FBX,
+// extracted from TimberwolfTest (which keeps its own verified copy) and
+// generalized: any heading (not just -Z), signed speed (reverse stepping),
+// turn-in-place stepping, torso twist/pitch aim on the torso bone, and bone
+// data derived per-model from the rest pose -- the knee pole comes from the
+// rest pose, so digitigrade (Timber Wolf) and plantigrade (Atlas) legs both
+// work with no hardcoded bend direction.
+//
+// Drive model: every frame the owner calls SetDrive(legsYaw, targetSpeed)
+// and StepFrame(delta). The walker advances its root along the legs heading,
+// plants feet in WORLD space (targets sampled from Main.HeightAt at each
+// foot's own XZ), solves hip/knee/ankle by analytic two-bone IK written as
+// skeleton global pose overrides, and sets the root height/tilt from the
+// feet. Collisions are the owner's job: after stepping, the owner may call
+// ApplyRootXZ to push the root out of an obstacle; planted feet stay put.
+public partial class MechWalker : Node3D
+{
+    public struct Config
+    {
+        public string Label;
+        public string ModelPath;
+        public float TargetHeight;
+        public float StepTime;
+        public float StepThreshold;
+        public float StepLift;
+        public float Accel;
+        public float CollisionRadius;
+    }
+
+    private sealed class Leg
+    {
+        public string Name;
+        public int Hip, Knee, Ankle;
+        public Vector3 Hrest, Krest, Arest;
+        public Basis HrestBasis, KrestBasis;
+        public float L1, L2;
+        public Vector3 ThighRestDir, ShinRestDir;
+        public Vector3 PoleSk;
+        public Vector3 SoleOffLocal;
+        public Basis M0;
+        public Vector3 SoleOffFrame;
+        public Vector2 HomeLocal;
+        public float AnkleAboveSoleW;
+        public bool Planted = true;
+        public Vector3 SoleTarget;
+        public Basis PlantBasisW;
+        public Basis CurBasisW;
+        public Vector3 StepFrom, StepTo;
+        public Basis StepBasisFrom, StepBasisTo;
+        public float StepT = -1f;
+        public Transform3D SolvedAnklePose;
+        public Vector3 SolvedSoleWorld;
+        public Vector3 PrevSoleWorld;
+        public bool HasPrev;
+        public float LastPlantedDiff;
+    }
+
+    private const float StandReachFactor = 0.90f;
+    private const float MaxTorsoTwist = 1.396f; // 80 degrees
+
+    private Config _cfg;
+    private Node3D _inner;
+    private Skeleton3D _skel;
+    private bool _ready;
+    private float _scaleF = 1f;
+    private Transform3D _chain;
+    private Transform3D _holderXf;
+    private Transform3D _skelGlobal;
+
+    private readonly Leg _legL = new Leg { Name = "L" };
+    private readonly Leg _legR = new Leg { Name = "R" };
+
+    private int _torsoBone = -1;
+    private Basis _torsoM0;
+    private Vector3 _torsoRestOrigin;
+    private Vector3 _torsoFwdBoneLocal = Vector3.Forward;
+
+    // drive state
+    private Vector3 _rootPos;
+    private Basis _rootBasis = Basis.Identity;
+    private Vector3 _upEased = Vector3.Up;
+    private float _legsYaw;
+    private float _prevYaw;
+    private float _yawRate;
+    private float _speed;
+    private float _targetSpeed;
+    private float _bob;
+    private Vector3 _sway = Vector3.Zero;
+    private double _acc;
+    private int _steps;
+    private float _maxSlide;
+    private int _plantedFrames;
+    private float _hipRiseW;
+    private float _hipAboveHolderW;
+
+    public bool StepMidCrossed { get; private set; }
+    public string Label => _cfg.Label;
+    public bool IsReady => _ready;
+    public float Speed => _speed;
+    public float LegsYaw => _legsYaw;
+    public float CollisionRadius => _cfg.CollisionRadius;
+    public Vector3 RootPos => _rootPos;
+    public int Steps => _steps;
+    public float MaxSlide => _maxSlide;
+
+    private float _torsoTwist;
+    private float _torsoPitch;
+    public float TorsoTwist
+    {
+        get => _torsoTwist;
+        set => _torsoTwist = Mathf.Clamp(value, -MaxTorsoTwist, MaxTorsoTwist);
+    }
+    public float TorsoPitch
+    {
+        get => _torsoPitch;
+        set => _torsoPitch = Mathf.Clamp(value, -0.32f, 0.48f);
+    }
+    public float TorsoYawWorld => _legsYaw + _torsoTwist;
+
+    public static Vector3 HeadingVec(float yaw) => new Vector3(-Mathf.Sin(yaw), 0f, -Mathf.Cos(yaw));
+    public static float YawOf(Vector3 dir) => Mathf.Atan2(-dir.X, -dir.Z);
+    public static float WrapAngle(float a)
+    {
+        while (a > Mathf.Pi) a -= Mathf.Tau;
+        while (a < -Mathf.Pi) a += Mathf.Tau;
+        return a;
+    }
+
+    // Call once after the walker is inside the tree.
+    public void Init(Config cfg, Vector3 spawnPos, float legsYaw)
+    {
+        _cfg = cfg;
+        var packed = GD.Load<PackedScene>(cfg.ModelPath);
+        if (packed == null) { GD.PrintErr($"{cfg.Label} FAIL: {cfg.ModelPath} did not load"); return; }
+        _inner = packed.Instantiate<Node3D>();
+        AddChild(_inner);
+
+        var raw = MeasureWorldAabb(_inner);
+        float s = cfg.TargetHeight / raw.Size.Y;
+        _scaleF = s;
+        Scale = Vector3.One * s;
+        var a = MeasureWorldAabb(_inner);
+        var desiredMin = new Vector3(-a.Size.X / 2f, 0f, -a.Size.Z / 2f);
+        _inner.Position += (desiredMin - a.Position) / s;
+        var chk = MeasureWorldAabb(_inner);
+        GD.Print($"{cfg.Label} normalized AABB pos={chk.Position} size={chk.Size} scale={s:F4}");
+
+        // Blender FBX faces +Z after import; rotate so it faces -Z at yaw 0.
+        Rotation = new Vector3(0f, Mathf.Pi, 0f);
+        Position = spawnPos;
+
+        _skel = FindSkeleton(_inner);
+        if (_skel == null) { GD.PrintErr($"{cfg.Label} FAIL: no Skeleton3D"); return; }
+        var names = new string[_skel.GetBoneCount()];
+        for (int i = 0; i < names.Length; i++) names[i] = _skel.GetBoneName(i);
+        GD.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
+
+        _torsoBone = _skel.FindBone("torso");
+        InitLegs(spawnPos);
+        if (_legL.Hip < 0 || _legR.Hip < 0) { GD.PrintErr($"{cfg.Label} FAIL: leg bones not found"); return; }
+
+        _legsYaw = legsYaw;
+        _prevYaw = legsYaw;
+        _rootPos = spawnPos;
+        _rootBasis = Basis.Identity.Rotated(Vector3.Up, legsYaw + Mathf.Pi);
+        _holderXf = GlobalTransform;
+        _skelGlobal = _holderXf * _chain;
+        _ready = true;
+        GD.Print($"{cfg.Label} walker ready at {spawnPos} yaw={legsYaw:F2}");
+    }
+
+    private void InitLegs(Vector3 spawnPos)
+    {
+        var holderG = GlobalTransform;
+        var skelG = _skel.GlobalTransform;
+        _chain = holderG.AffineInverse() * skelG;
+        var worldAabb = MeasureWorldAabb(_inner);
+        float groundY = worldAabb.Position.Y;
+
+        if (_torsoBone >= 0)
+        {
+            var rt = _skel.GetBoneGlobalRest(_torsoBone);
+            _torsoRestOrigin = rt.Origin;
+            _torsoM0 = skelG.Basis.Orthonormalized() * rt.Basis;
+            // Facing reference: at rest (legsYaw = 0) the model faces world
+            // -Z. Store that direction in torso-bone space so the rendered
+            // torso yaw can be measured later regardless of bone frames.
+            var w0 = skelG.Basis.Orthonormalized()
+                * _skel.GetBoneGlobalPose(_torsoBone).Basis.Orthonormalized();
+            _torsoFwdBoneLocal = w0.Transposed() * new Vector3(0f, 0f, -1f);
+        }
+
+        SetupLeg(_legL, "hip_L", "knee_L", "ankle_L", skelG, holderG, groundY);
+        SetupLeg(_legR, "hip_R", "knee_R", "ankle_R", skelG, holderG, groundY);
+
+        float reachW = 0.5f * ((_legL.L1 + _legL.L2) + (_legR.L1 + _legR.L2)) * skelG.Basis.X.Length();
+        float horizHipAnkle = 0f;
+        foreach (var leg in new[] { _legL, _legR })
+        {
+            var hipW = skelG * leg.Hrest;
+            var ankW = skelG * leg.Arest;
+            horizHipAnkle += new Vector2(ankW.X - hipW.X, ankW.Z - hipW.Z).Length();
+        }
+        horizHipAnkle /= 2f;
+        float dStand = StandReachFactor * reachW;
+        _hipRiseW = Mathf.Sqrt(Mathf.Max(dStand * dStand - horizHipAnkle * horizHipAnkle, 0.25f));
+        var hipWL = skelG * _legL.Hrest;
+        var hipWR = skelG * _legR.Hrest;
+        _hipAboveHolderW = 0.5f * ((hipWL.Y - Position.Y) + (hipWR.Y - Position.Y));
+        GD.Print($"{_cfg.Label} reachW={reachW:F3} dStand={dStand:F3} hipRiseW={_hipRiseW:F3} hipAboveHolderW={_hipAboveHolderW:F3}");
+    }
+
+    private void SetupLeg(Leg leg, string hipName, string kneeName, string ankleName,
+        Transform3D skelG, Transform3D holderG, float groundY)
+    {
+        leg.Hip = _skel.FindBone(hipName);
+        leg.Knee = _skel.FindBone(kneeName);
+        leg.Ankle = _skel.FindBone(ankleName);
+        var rh = _skel.GetBoneGlobalRest(leg.Hip);
+        var rk = _skel.GetBoneGlobalRest(leg.Knee);
+        var ra = _skel.GetBoneGlobalRest(leg.Ankle);
+        leg.Hrest = rh.Origin; leg.Krest = rk.Origin; leg.Arest = ra.Origin;
+        leg.HrestBasis = rh.Basis; leg.KrestBasis = rk.Basis;
+        leg.L1 = (leg.Krest - leg.Hrest).Length();
+        leg.L2 = (leg.Arest - leg.Krest).Length();
+        leg.ThighRestDir = (leg.Krest - leg.Hrest).Normalized();
+        leg.ShinRestDir = (leg.Arest - leg.Krest).Normalized();
+        // Pole: rest knee offset from the hip->ankle line. Works for both
+        // digitigrade (knee back) and plantigrade (knee forward) rigs.
+        var ha = leg.Arest - leg.Hrest;
+        var pole = (leg.Krest - leg.Hrest) - ha.Normalized() * (leg.Krest - leg.Hrest).Dot(ha.Normalized());
+        leg.PoleSk = pole.Normalized();
+        var ankW = skelG * leg.Arest;
+        var soleW = new Vector3(ankW.X, groundY, ankW.Z);
+        var soleSk = skelG.AffineInverse() * soleW;
+        leg.SoleOffLocal = ra.AffineInverse() * soleSk;
+        leg.M0 = skelG.Basis.Orthonormalized() * ra.Basis;
+        leg.SoleOffFrame = leg.M0 * leg.SoleOffLocal;
+        leg.AnkleAboveSoleW = ankW.Y - groundY;
+        var hipLocal = holderG.AffineInverse() * (skelG * leg.Hrest);
+        leg.HomeLocal = new Vector2(hipLocal.X, hipLocal.Z);
+        leg.SoleTarget = new Vector3(soleW.X, Main.HeightAt(soleW.X, soleW.Z), soleW.Z);
+        leg.PlantBasisW = FootBasisAt(leg.SoleTarget, 0f);
+        leg.CurBasisW = leg.PlantBasisW;
+        leg.SolvedSoleWorld = leg.SoleTarget;
+        GD.Print($"{_cfg.Label} leg {leg.Name}: L1={leg.L1:F2} L2={leg.L2:F2} pole={leg.PoleSk} homeLocal={leg.HomeLocal} plant={leg.SoleTarget}");
+    }
+
+    public void SetDrive(float legsYaw, float targetSpeed)
+    {
+        _legsYaw = legsYaw;
+        _targetSpeed = targetSpeed;
+    }
+
+    // Hard placement for test choreography: feet re-plant at home slots.
+    public void Teleport(Vector3 pos, float legsYaw)
+    {
+        _rootPos = pos;
+        _legsYaw = legsYaw;
+        _prevYaw = legsYaw;
+        _speed = 0f;
+        _targetSpeed = 0f;
+        _sway = Vector3.Zero;
+        _bob = 0f;
+        _upEased = Vector3.Up;
+        foreach (var leg in new[] { _legL, _legR })
+        {
+            leg.StepT = -1f;
+            leg.Planted = true;
+            var home = HomeSlot(leg, pos);
+            leg.SoleTarget = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
+            leg.PlantBasisW = FootBasisAt(leg.SoleTarget, legsYaw);
+            leg.CurBasisW = leg.PlantBasisW;
+            leg.HasPrev = false;
+        }
+        _rootPos.Y = DesiredRootY();
+        RefreshPose();
+    }
+
+    // Collision push-out: move the root horizontally; planted feet stay.
+    public void ApplyRootXZ(Vector2 xz)
+    {
+        var delta = new Vector3(xz.X - _rootPos.X, 0f, xz.Y - _rootPos.Z);
+        if (delta.LengthSquared() < 1e-10f) return;
+        _rootPos += delta;
+        _holderXf = new Transform3D(_holderXf.Basis, _holderXf.Origin + delta);
+        Transform = _holderXf;
+        _skelGlobal = _holderXf * _chain;
+        SolveAll();
+    }
+
+    public void StepFrame(double delta)
+    {
+        if (!_ready) return;
+        _acc += Mathf.Min(delta, 0.1);
+        const float h = 1f / 120f;
+        int guard = 0;
+        while (_acc >= h && guard++ < 40)
+        {
+            GaitStep(h);
+            _acc -= h;
+        }
+    }
+
+    public bool ConsumeStepMidCross()
+    {
+        bool r = StepMidCrossed;
+        StepMidCrossed = false;
+        return r;
+    }
+
+    public bool AnySwinging => _legL.StepT >= 0f || _legR.StepT >= 0f;
+
+    // ---------- gait ----------
+
+    private static Vector3 TerrainNormal(float x, float z)
+    {
+        const float e = 0.7f;
+        float dhdx = (Main.HeightAt(x + e, z) - Main.HeightAt(x - e, z)) / (2f * e);
+        float dhdz = (Main.HeightAt(x, z + e) - Main.HeightAt(x, z - e)) / (2f * e);
+        return new Vector3(-dhdx, 1f, -dhdz).Normalized();
+    }
+
+    private static Basis FootBasisAt(Vector3 sole, float yaw)
+    {
+        var n = TerrainNormal(sole.X, sole.Z);
+        var back = HeadingVec(yaw) * -1f;
+        var zA = (back - n * back.Dot(n)).Normalized();
+        var xA = n.Cross(zA);
+        return new Basis(xA, n, zA);
+    }
+
+    private Vector3 HomeSlot(Leg leg, Vector3 rootXZ)
+    {
+        var off = _rootBasis * new Vector3(leg.HomeLocal.X * _scaleF, 0f, leg.HomeLocal.Y * _scaleF);
+        return new Vector3(rootXZ.X + off.X, 0f, rootXZ.Z + off.Z);
+    }
+
+    private Leg Other(Leg leg) => leg == _legL ? _legR : _legL;
+
+    private void BeginStep(Leg leg)
+    {
+        var vel = HeadingVec(_legsYaw) * _speed;
+        var predRoot = _rootPos + vel * (_cfg.StepTime + 0.10f);
+        var home = HomeSlot(leg, predRoot) + vel * 0.30f;
+        leg.StepFrom = leg.SoleTarget;
+        leg.StepTo = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
+        leg.StepBasisFrom = leg.CurBasisW;
+        leg.StepBasisTo = FootBasisAt(leg.StepTo, _legsYaw);
+        leg.StepT = 0f;
+        leg.Planted = false;
+    }
+
+    private void AdvanceLeg(Leg leg, float h)
+    {
+        if (leg.StepT < 0f) return;
+        float prev = leg.StepT;
+        leg.StepT += h / _cfg.StepTime;
+        float t = Mathf.Clamp(leg.StepT, 0f, 1f);
+        float e = t * t * (3f - 2f * t);
+        var pos = leg.StepFrom.Lerp(leg.StepTo, e);
+        pos.Y += Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;
+        leg.SoleTarget = pos;
+        var qa = leg.StepBasisFrom.GetRotationQuaternion();
+        var qb = leg.StepBasisTo.GetRotationQuaternion();
+        leg.CurBasisW = new Basis(qa.Slerp(qb, e));
+        if (prev < 0.5f && leg.StepT >= 0.5f) StepMidCrossed = true;
+        if (leg.StepT >= 1f)
+        {
+            leg.StepT = -1f;
+            leg.Planted = true;
+            leg.SoleTarget = leg.StepTo;
+            leg.PlantBasisW = leg.StepBasisTo;
+            leg.CurBasisW = leg.StepBasisTo;
+            _steps++;
+        }
+    }
+
+    private void GaitStep(float h)
+    {
+        _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
+        _prevYaw = _legsYaw;
+
+        float dv = _cfg.Accel * h;
+        _speed = Mathf.MoveToward(_speed, _targetSpeed, dv);
+        var vel = HeadingVec(_legsYaw) * _speed;
+        _rootPos += vel * h;
+
+        var stepping = _legL.StepT >= 0f ? _legL : _legR.StepT >= 0f ? _legR : null;
+        if (stepping == null)
+        {
+            bool settling = Mathf.Abs(_targetSpeed) < 0.01f && Mathf.Abs(_speed) < 0.15f && _yawRate < 0.05f;
+            float threshold = settling ? 0.10f : _cfg.StepThreshold;
+            Leg best = null; float bestLag = threshold;
+            foreach (var leg in new[] { _legL, _legR })
+            {
+                if (!leg.Planted || !Other(leg).Planted) continue;
+                var home = HomeSlot(leg, _rootPos + vel * 0.30f);
+                float lag = new Vector2(leg.SoleTarget.X - home.X, leg.SoleTarget.Z - home.Z).Length();
+                if (lag > bestLag) { bestLag = lag; best = leg; }
+            }
+            if (best != null) BeginStep(best);
+        }
+        AdvanceLeg(_legL, h);
+        AdvanceLeg(_legR, h);
+
+        UpdateRoot(h);
+        SolveAll();
+        TrackSlide();
+    }
+
+    private float DesiredRootY()
+    {
+        float refL = (_legL.Planted ? _legL.SoleTarget.Y : _legL.StepTo.Y) + _legL.AnkleAboveSoleW;
+        float refR = (_legR.Planted ? _legR.SoleTarget.Y : _legR.StepTo.Y) + _legR.AnkleAboveSoleW;
+        return 0.5f * (refL + refR) + _hipRiseW - _hipAboveHolderW + _bob;
+    }
+
+    private void UpdateRoot(float h)
+    {
+        bool doubleSupport = _legL.Planted && _legR.Planted;
+        float bobT = doubleSupport ? -0.09f : -0.02f;
+        _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-6f * h));
+        float yT = DesiredRootY();
+        _rootPos.Y = Mathf.Lerp(_rootPos.Y, yT, 1f - Mathf.Exp(-8f * h));
+
+        var swayT = Vector3.Zero;
+        if (_legL.StepT >= 0f) swayT = _rootBasis * new Vector3(_legR.HomeLocal.X * _scaleF, 0f, 0f) * 0.22f;
+        else if (_legR.StepT >= 0f) swayT = _rootBasis * new Vector3(_legL.HomeLocal.X * _scaleF, 0f, 0f) * 0.22f;
+        _sway = _sway.Lerp(swayT, 1f - Mathf.Exp(-5f * h));
+
+        // Up vector: roll from the two feet heights across the lateral axis,
+        // pitch from the terrain gradient along the heading.
+        var sL = _legL.Planted ? _legL.SoleTarget : _legL.StepTo;
+        var sR = _legR.Planted ? _legR.SoleTarget : _legR.StepTo;
+        var right = new Vector3(Mathf.Cos(_legsYaw), 0f, -Mathf.Sin(_legsYaw));
+        float latL = (sL - _rootPos).Dot(right);
+        float latR = (sR - _rootPos).Dot(right);
+        var sHi = latR > latL ? sR : sL;
+        var sLo = latR > latL ? sL : sR;
+        float span = Mathf.Max(Mathf.Abs(latR - latL), 0.5f);
+        float dhLat = (sHi.Y - sLo.Y) / span;
+        var fwd = HeadingVec(_legsYaw);
+        const float ge = 1.5f;
+        float dhFwd = (Main.HeightAt(_rootPos.X + fwd.X * ge, _rootPos.Z + fwd.Z * ge)
+                     - Main.HeightAt(_rootPos.X - fwd.X * ge, _rootPos.Z - fwd.Z * ge)) / (2f * ge);
+        var upT = (Vector3.Up - right * dhLat - fwd * dhFwd).Normalized();
+        float tilt = Mathf.Acos(Mathf.Clamp(upT.Dot(Vector3.Up), -1f, 1f));
+        if (tilt > 0.23f) upT = Vector3.Up.Lerp(upT, 0.23f / tilt).Normalized();
+        _upEased = _upEased.Lerp(upT, 1f - Mathf.Exp(-3.5f * h)).Normalized();
+
+        var q = new Quaternion(Vector3.Up, _upEased);
+        _rootBasis = new Basis(q) * Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
+
+        RefreshPose();
+    }
+
+    private void RefreshPose()
+    {
+        var pos = _rootPos + _sway;
+        _holderXf = new Transform3D(_rootBasis.Scaled(Vector3.One * _scaleF), pos);
+        Transform = _holderXf;
+        _skelGlobal = _holderXf * _chain;
+        SolveAll();
+    }
+
+    // ---------- IK ----------
+
+    private void SolveAll()
+    {
+        SolveLeg(_legL);
+        SolveLeg(_legR);
+        SolveTorso();
+    }
+
+    private void SolveTorso()
+    {
+        if (_torsoBone < 0 || _skel == null) return;
+        // Desired torso world frame: the root frame, twisted by torso
+        // yaw/pitch. The trailing Yaw(Pi) undoes the model's rest flip:
+        // at twist = 0 this must reproduce the rest pose exactly
+        // (root * Yaw(Pi)^-1 * M0 == M0 when legsYaw = 0), otherwise the
+        // torso renders 180 degrees off the legs.
+        var f = _rootBasis.Orthonormalized()
+            * Basis.Identity.Rotated(Vector3.Up, _torsoTwist)
+            * Basis.Identity.Rotated(Vector3.Right, _torsoPitch)
+            * Basis.Identity.Rotated(Vector3.Up, Mathf.Pi);
+        var basisSk = _skelGlobal.Basis.Orthonormalized().Transposed() * (f * _torsoM0);
+        _skel.SetBoneGlobalPoseOverride(_torsoBone,
+            new Transform3D(basisSk, _torsoRestOrigin), 1f, true);
+    }
+
+    // World yaw of the torso as the engine renders it (verification):
+    // track the rest facing direction through the bone's actual world basis.
+    public float EngineTorsoYaw()
+    {
+        if (_torsoBone < 0 || _skel == null) return TorsoYawWorld;
+        var pose = _skel.GetBoneGlobalPose(_torsoBone);
+        var w = _skel.GlobalTransform.Basis.Orthonormalized() * pose.Basis.Orthonormalized();
+        var f = w * _torsoFwdBoneLocal;
+        return YawOf(new Vector3(f.X, 0f, f.Z).Normalized());
+    }
+
+    private void SolveLeg(Leg leg)
+    {
+        var sole = leg.SoleTarget;
+        var basisW = leg.Planted ? leg.PlantBasisW : leg.CurBasisW;
+        float st = _skelGlobal.Basis.X.Length();
+        var ankleWorld = sole - st * (basisW * leg.SoleOffFrame);
+        var inv = _skelGlobal.AffineInverse();
+        var A = inv * ankleWorld;
+        var H = leg.Hrest;
+        var toA = A - H;
+        float reach = leg.L1 + leg.L2;
+        float d = Mathf.Clamp(toA.Length(), reach * 0.05f, reach * 0.999f);
+        var dir = toA.Normalized();
+        A = H + dir * d;
+        float a = (leg.L1 * leg.L1 - leg.L2 * leg.L2 + d * d) / (2f * d);
+        float hh = Mathf.Sqrt(Mathf.Max(leg.L1 * leg.L1 - a * a, 0f));
+        var pole = leg.PoleSk - dir * leg.PoleSk.Dot(dir);
+        if (pole.LengthSquared() < 1e-6f) pole = dir.Cross(Vector3.Right).Normalized();
+        else pole = pole.Normalized();
+        var K = H + dir * a + pole * hh;
+
+        var qHip = new Quaternion(leg.ThighRestDir, (K - H).Normalized());
+        _skel.SetBoneGlobalPoseOverride(leg.Hip, new Transform3D(new Basis(qHip) * leg.HrestBasis, H), 1f, true);
+        var qKnee = new Quaternion(leg.ShinRestDir, (A - K).Normalized());
+        _skel.SetBoneGlobalPoseOverride(leg.Knee, new Transform3D(new Basis(qKnee) * leg.KrestBasis, K), 1f, true);
+        var ankleBasisSk = _skelGlobal.Basis.Orthonormalized().Transposed() * (basisW * leg.M0);
+        leg.SolvedAnklePose = new Transform3D(ankleBasisSk, A);
+        _skel.SetBoneGlobalPoseOverride(leg.Ankle, leg.SolvedAnklePose, 1f, true);
+        leg.SolvedSoleWorld = _skelGlobal * (leg.SolvedAnklePose * leg.SoleOffLocal);
+    }
+
+    private void TrackSlide()
+    {
+        foreach (var leg in new[] { _legL, _legR })
+        {
+            if (leg.Planted)
+            {
+                var soleW = _skelGlobal * (leg.SolvedAnklePose * leg.SoleOffLocal);
+                leg.LastPlantedDiff = soleW.Y - Main.HeightAt(soleW.X, soleW.Z);
+            }
+            if (leg.Planted && leg.HasPrev)
+            {
+                float drift = new Vector2(leg.SolvedSoleWorld.X - leg.PrevSoleWorld.X,
+                                           leg.SolvedSoleWorld.Z - leg.PrevSoleWorld.Z).Length();
+                if (drift > _maxSlide) _maxSlide = drift;
+                _plantedFrames++;
+            }
+            leg.PrevSoleWorld = leg.SolvedSoleWorld;
+            leg.HasPrev = leg.Planted;
+        }
+    }
+
+    public string FootReport(bool engine)
+    {
+        string One(Leg leg)
+        {
+            Vector3 sole;
+            if (engine)
+            {
+                var pose = _skel.GetBoneGlobalPose(leg.Ankle);
+                sole = _skel.GlobalTransform * (pose * leg.SoleOffLocal);
+            }
+            else sole = leg.SolvedSoleWorld;
+            float terr = Main.HeightAt(sole.X, sole.Z);
+            float diff = sole.Y - terr;
+            return leg.Planted
+                ? $"{leg.Name}: PLANTED soleY={sole.Y:F3} terrY={terr:F3} diff={diff:+0.000;-0.000}"
+                : $"{leg.Name}: SWING soleY={sole.Y:F3} terrY={terr:F3} clearance={diff:F3}";
+        }
+        return $"{One(_legL)} | {One(_legR)}";
+    }
+
+    public float MaxPlantedDiff()
+    {
+        float m = 0f;
+        foreach (var leg in new[] { _legL, _legR })
+            if (leg.Planted) m = Mathf.Max(m, Mathf.Abs(leg.LastPlantedDiff));
+        return m;
+    }
+
+    // ---------- helpers ----------
+
+    private static Skeleton3D FindSkeleton(Node n)
+    {
+        if (n is Skeleton3D s) return s;
+        foreach (var c in n.GetChildren())
+        {
+            var r = FindSkeleton(c);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
+    private static Aabb MeasureWorldAabb(Node node)
+    {
+        var box = new Aabb();
+        bool first = true;
+        Collect(node, ref box, ref first);
+        return box;
+    }
+
+    private static void Collect(Node node, ref Aabb box, ref bool first)
+    {
+        if (node is MeshInstance3D mi)
+        {
+            var local = mi.GetAabb();
+            var gt = mi.GlobalTransform;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(
+                    (i & 1) == 0 ? local.Position.X : local.End.X,
+                    (i & 2) == 0 ? local.Position.Y : local.End.Y,
+                    (i & 4) == 0 ? local.Position.Z : local.End.Z);
+                var w = gt * corner;
+                if (first) { box = new Aabb(w, Vector3.Zero); first = false; }
+                else box = box.Expand(w);
+            }
+        }
+        foreach (var child in node.GetChildren()) Collect(child, ref box, ref first);
+    }
+}
