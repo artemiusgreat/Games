@@ -115,14 +115,39 @@ public partial class MechDuel : Node3D
         }
         _hit = new HitModel();
 
-        var sun = new DirectionalLight3D { RotationDegrees = new Vector3(-50f, -30f, 0f) };
+        var sun = new DirectionalLight3D
+        {
+            RotationDegrees = new Vector3(-48f, -35f, 0f),
+            ShadowEnabled = true,
+            LightEnergy = 1.15f,
+            LightColor = new Color(1f, 0.955f, 0.885f)
+        };
+        sun.DirectionalShadowMaxDistance = 320f;
         AddChild(sun);
+        var skyMat = new ProceduralSkyMaterial
+        {
+            SkyTopColor = new Color(0.20f, 0.40f, 0.71f),
+            SkyHorizonColor = new Color(0.63f, 0.73f, 0.84f),
+            SkyCurve = 0.09f,
+            SkyEnergyMultiplier = 1.05f,
+            GroundBottomColor = new Color(0.16f, 0.145f, 0.12f),
+            GroundHorizonColor = new Color(0.56f, 0.56f, 0.52f),
+            GroundCurve = 0.08f
+        };
         AddChild(new WorldEnvironment
         {
             Environment = new Environment
             {
-                BackgroundMode = Environment.BGMode.Color,
-                BackgroundColor = new Color(0.35f, 0.5f, 0.7f)
+                BackgroundMode = Environment.BGMode.Sky,
+                Sky = new Sky { SkyMaterial = skyMat },
+                AmbientLightSource = Environment.AmbientSource.Sky,
+                AmbientLightEnergy = 0.9f,
+                ReflectedLightSource = Environment.ReflectionSource.Sky,
+                TonemapMode = Environment.ToneMapper.Aces,
+                FogEnabled = true,
+                FogLightColor = new Color(0.63f, 0.73f, 0.84f),
+                FogDensity = 0.0048f,
+                FogSunScatter = 0.25f
             }
         });
 
