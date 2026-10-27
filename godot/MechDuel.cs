@@ -84,6 +84,8 @@ public partial class MechDuel : Node3D
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
+    private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm;
+    private readonly System.Collections.Generic.List<(string Text, float Life)> _feed = new();
     private float _shake;
     private float _playerDroopT, _enemyDroopT;
     // breakable consequences, transient timers
@@ -626,13 +628,23 @@ public partial class MechDuel : Node3D
     }
 
     // A part just broke off (fired from MechParts.DamagePart): spark burst
-    // at the separation point; functional consequences live in
-    // ApplyPartConsequences.
+    // at the separation point, HUD feed message, then the functional
+    // consequences.
     private void OnPartBroken(MechParts parts, string partId, Vector3 center)
     {
         SpawnFlash(center, new Color(1f, 0.62f, 0.22f), 0.95f, 0.16f);
         SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
+        var part = parts.GetPart(partId);
+        if (parts == _partsPlayer) AddFeed($"WARNING: {part.Display} DESTROYED");
+        else AddFeed($"ATLAS: {part.Display} DESTROYED");
         ApplyPartConsequences(parts, partId);
+    }
+
+    private void AddFeed(string text)
+    {
+        _feed.Add((text, 6f));
+        while (_feed.Count > 5) _feed.RemoveAt(0);
+        GD.Print($"BRK FEED {text}");
     }
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
@@ -740,6 +752,7 @@ public partial class MechDuel : Node3D
         SyncLegConsequences(_enemy, _partsEnemy);
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
         _lastDenied = "";
+        _feed.Clear();
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
         _lrmQueue.Clear();
         foreach (var p in _shots) p.QueueFree();
@@ -839,9 +852,26 @@ public partial class MechDuel : Node3D
             vbox.AddChild(row);
             return (lab, bar);
         }
-        _cdBarLaser = CdRow("LAS").Item2;
-        _cdBarAc = CdRow("AC").Item2;
-        _cdBarLrm = CdRow("LRM").Item2;
+        var rowLaser = CdRow("LAS");
+        _lblCdLaser = rowLaser.Item1; _cdBarLaser = rowLaser.Item2;
+        var rowAc = CdRow("AC");
+        _lblCdAc = rowAc.Item1; _cdBarAc = rowAc.Item2;
+        var rowLrm = CdRow("LRM");
+        _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
+
+        // Destroyed-weapon status line under the cooldown rows.
+        _lblWeaponStatus = MakeLabel(14, new Color(1f, 0.42f, 0.32f));
+        _lblWeaponStatus.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _lblWeaponStatus.OffsetLeft = 34; _lblWeaponStatus.OffsetTop = 122;
+        _lblWeaponStatus.OffsetRight = 420; _lblWeaponStatus.OffsetBottom = 190;
+        layer.AddChild(_lblWeaponStatus);
+
+        // Event feed, top-left: part breaks and other combat events.
+        _feedLabel = MakeLabel(15, new Color(0.98f, 0.88f, 0.62f));
+        _feedLabel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        _feedLabel.OffsetLeft = 18; _feedLabel.OffsetTop = 14;
+        _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
+        layer.AddChild(_feedLabel);
 
         // Death banner.
         _banner = MakeLabel(46, Colors.White);
@@ -859,6 +889,28 @@ public partial class MechDuel : Node3D
         layer.AddChild(_bannerSub);
     }
 
+    private static readonly Color CdNormal = new Color(0.95f, 0.8f, 0.3f);
+    private static readonly Color CdDead = new Color(0.45f, 0.12f, 0.1f);
+    private static readonly Color CdDeny = new Color(1f, 0.16f, 0.1f);
+    private static readonly Color CdLabelNormal = new Color(0.9f, 0.9f, 0.9f, 0.9f);
+    private static readonly Color CdLabelDead = new Color(1f, 0.4f, 0.32f);
+
+    // One cooldown row's state: value, destroyed color, denied flash.
+    private void UpdateCdRow(ProgressBar bar, Label lab, float value,
+        bool destroyed, float denyT)
+    {
+        bar.Value = destroyed ? 0f : value;
+        var fg = bar.GetThemeStylebox("fill") as StyleBoxFlat;
+        if (fg != null)
+        {
+            if (denyT > 0f)
+                fg.BgColor = Mathf.Sin((float)_simT * 42f) > 0f ? CdDeny : CdDead;
+            else if (destroyed) fg.BgColor = CdDead;
+            else fg.BgColor = CdNormal;
+        }
+        lab.AddThemeColorOverride("font_color", destroyed ? CdLabelDead : CdLabelNormal);
+    }
+
     private void UpdateHud()
     {
         if (_barPlayer == null) return;
@@ -868,9 +920,42 @@ public partial class MechDuel : Node3D
         _lblEnemyHp.Visible = !_enemyDead;
         _barEnemy.Value = _hpEnemy / 340f;
         _lblEnemyHp.Text = $"ATLAS — {_hpEnemy:F0} HP";
-        _cdBarLaser.Value = 1f - _cdLaser / 0.45f;
-        _cdBarAc.Value = 1f - _cdAc / 0.85f;
-        _cdBarLrm.Value = 1f - _cdLrm / 3.5f;
+
+        bool lasDead = !_partsPlayer.Alive("arm_L");
+        bool acDead = !_partsPlayer.Alive("arm_R");
+        bool lrmDead = !_partsPlayer.Alive("pod_L") && !_partsPlayer.Alive("pod_R");
+        UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / 0.45f, lasDead, _denyLaserT);
+        UpdateCdRow(_cdBarAc, _lblCdAc, 1f - _cdAc / 0.85f, acDead, _denyAcT);
+        UpdateCdRow(_cdBarLrm, _lblCdLrm, 1f - _cdLrm / 3.5f, lrmDead, _denyLrmT);
+
+        var status = new System.Collections.Generic.List<string>();
+        if (lasDead) status.Add("LASER DESTROYED — LEFT ARM LOST");
+        if (acDead) status.Add("AUTOCANNON DESTROYED — RIGHT ARM LOST");
+        if (lrmDead) status.Add("LRM DESTROYED — BOTH PODS LOST");
+        else if (!_partsPlayer.Alive("pod_L")) status.Add("LRM DEGRADED — LEFT POD LOST (4 ROCKETS)");
+        else if (!_partsPlayer.Alive("pod_R")) status.Add("LRM DEGRADED — RIGHT POD LOST (4 ROCKETS)");
+        if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED — CROSSHAIR SWAY");
+        _lblWeaponStatus.Text = string.Join("\n", status);
+
+        _feedLabel.Text = string.Join("\n",
+            System.Linq.Enumerable.Select(_feed, e => e.Text));
+
+        // Head-loss HUD disturbance: while the flicker timer runs, the
+        // whole HUD stutters (seeded, visual only).
+        float alpha = 1f;
+        if (_hudFlickerT > 0f)
+            alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
+        foreach (var c in new Control[]
+        {
+            _barPlayer, _lblPlayerHp, _barEnemy, _lblEnemyHp, _feedLabel,
+            _lblWeaponStatus, _cdBarLaser, _cdBarAc, _cdBarLrm,
+            _lblCdLaser, _lblCdAc, _lblCdLrm, _cross
+        })
+        {
+            var m = c.Modulate;
+            m.A = alpha;
+            c.Modulate = m;
+        }
     }
 
     private void UpdateDroop(float dt)
@@ -934,6 +1019,12 @@ public partial class MechDuel : Node3D
         _denyAcT = Mathf.Max(_denyAcT - dt, 0f);
         _denyLrmT = Mathf.Max(_denyLrmT - dt, 0f);
         _hudFlickerT = Mathf.Max(_hudFlickerT - dt, 0f);
+        for (int i = _feed.Count - 1; i >= 0; i--)
+        {
+            float life = _feed[i].Life - dt;
+            if (life <= 0f) _feed.RemoveAt(i);
+            else _feed[i] = (_feed[i].Text, life);
+        }
         for (int i = _lrmQueue.Count - 1; i >= 0; i--)
         {
             var q = _lrmQueue[i];
@@ -1476,6 +1567,14 @@ public partial class MechDuel : Node3D
             _partsEnemy.StepDebris(dt);
         }
         UpdateHud();
+        // Player head destroyed: the reticle wanders (sensor loss).
+        if (!_partsPlayer.Alive("head") && !_playerDead)
+        {
+            _cross.Sway = new Vector2(
+                Mathf.Sin((float)_simT * 1.9f) * 13f,
+                Mathf.Sin((float)_simT * 2.7f + 0.8f) * 9f);
+        }
+        else _cross.Sway = Vector2.Zero;
         UpdateCamera(_frozen ? 0f : dt);
         if (_pendingPath != null && !_capturing) DoCapture();
     }
