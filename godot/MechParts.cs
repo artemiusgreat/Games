@@ -44,8 +44,21 @@ public sealed class MechParts
         public Skin OrigSkin;
         public NodePath OrigSkeleton;
         public int Bone;
+        public int BindIndex;
         public string BoneName;
         public bool Detached;
+    }
+
+    public sealed class Debris
+    {
+        public Part Part;
+        public Node3D Node;
+        public Vector3 Vel;
+        public Vector3 AngAxisW = Vector3.Up;
+        public float AngSpeed;
+        public bool Settled;
+        public float RestMinY;
+        public float RestGroundY;
     }
 
     public sealed class Part
@@ -142,7 +155,7 @@ public sealed class MechParts
                 GD.PrintErr($"{_mechId} PARTS: mesh '{name}' not found for part {id}");
                 continue;
             }
-            int bone = DominantBone(mi, out string boneName);
+            int bone = DominantBone(mi, out string boneName, out int bindIndex);
             part.Meshes.Add(new MeshRec
             {
                 Mi = mi,
@@ -151,6 +164,7 @@ public sealed class MechParts
                 OrigSkin = mi.Skin,
                 OrigSkeleton = mi.Skeleton,
                 Bone = bone,
+                BindIndex = bindIndex,
                 BoneName = boneName
             });
         }
@@ -159,9 +173,10 @@ public sealed class MechParts
 
     // Dominant skin bone of a mesh from its vertex weights (bind index ->
     // bind name -> skeleton bone index).
-    private int DominantBone(MeshInstance3D mi, out string boneName)
+    private int DominantBone(MeshInstance3D mi, out string boneName, out int bindIndex)
     {
         boneName = "";
+        bindIndex = -1;
         if (mi.Skin == null || mi.Mesh == null) return -1;
         var tally = new Dictionary<int, double>();
         for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
@@ -184,6 +199,7 @@ public sealed class MechParts
         int best = -1; double bv = 0;
         foreach (var kv in tally) if (kv.Value > bv) { bv = kv.Value; best = kv.Key; }
         if (best < 0 || best >= mi.Skin.GetBindCount()) return -1;
+        bindIndex = best;
         boneName = mi.Skin.GetBindName(best);
         return _skel.FindBone(boneName);
     }
@@ -452,5 +468,184 @@ public sealed class MechParts
         foreach (var vol in part.Volumes)
             sum += skelG * (_skel.GetBoneGlobalPose(vol.Bone) * vol.CenterB);
         return sum / part.Volumes.Count;
+    }
+
+    // ---------- damage / break-off / debris ----------
+
+    private readonly List<Debris> _debris = new();
+    public IReadOnlyList<Debris> DebrisList => _debris;
+
+    // Apply damage to a part's own HP. Returns true when this hit broke
+    // the part off. Torso is pool-owned (MaxHp 0) and never breaks here.
+    public bool DamagePart(string partId, float dmg)
+    {
+        var part = _parts[partId];
+        if (part.Destroyed || part.MaxHp <= 0f) return false;
+        part.Hp = Mathf.Max(part.Hp - dmg, 0f);
+        GD.Print($"BRK DMG {_mechId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
+        if (part.Hp > 0f) return false;
+        var center = PartCenterWorld(partId);
+        BreakPart(part, center);
+        GD.Print($"BRK BREAK {_mechId} part={partId} '{part.Display}' at {center}");
+        OnBreak?.Invoke(partId, center);
+        return true;
+    }
+
+    // Detach the part's meshes from the skeleton and turn them into
+    // falling debris. The skinless-equivalent transform
+    // (meshGlobal * bonePose * bindPose) reproduces the skinned vertex
+    // positions at the detach instant, so nothing visually jumps; after
+    // that the piece is plain scenery under simple gravity.
+    private void BreakPart(Part part, Vector3 center)
+    {
+        part.Destroyed = true;
+        var container = new Node3D { Name = $"{_mechId}_Debris_{part.Id}" };
+        _walker.GetParent().AddChild(container);
+        container.GlobalTransform = new Transform3D(Basis.Identity, center);
+        foreach (var rec in part.Meshes)
+        {
+            var mi = rec.Mi;
+            var bind = rec.OrigSkin != null && rec.BindIndex >= 0
+                ? rec.OrigSkin.GetBindPose(rec.BindIndex)
+                : _skel.GetBoneGlobalRest(rec.Bone).AffineInverse();
+            var eff = mi.GlobalTransform * (_skel.GetBoneGlobalPose(rec.Bone) * bind);
+            mi.GetParent().RemoveChild(mi);
+            container.AddChild(mi);
+            mi.GlobalTransform = eff;
+            mi.Skin = null;
+            mi.Skeleton = new NodePath("");
+            rec.Detached = true;
+        }
+        var away = center - _walker.RootPos;
+        away.Y = 0f;
+        if (away.LengthSquared() < 0.25f) away = MechWalker.HeadingVec(_walker.TorsoYawWorld);
+        away = away.Normalized();
+        var d = new Debris
+        {
+            Part = part,
+            Node = container,
+            Vel = away * 2.0f + Vector3.Up * 2.8f,
+            AngAxisW = Vector3.Up.Cross(away).Normalized(),
+            AngSpeed = 1.6f
+        };
+        _debris.Add(d);
+    }
+
+    public void StepDebris(float dt)
+    {
+        if (dt <= 0f) return;
+        foreach (var d in _debris)
+        {
+            if (d.Settled) continue;
+            d.Vel.Y -= 20f * dt;
+            d.Node.GlobalPosition += d.Vel * dt;
+            if (d.AngSpeed > 0.02f)
+            {
+                var gt = d.Node.GlobalTransform;
+                var nb = new Basis(new Quaternion(d.AngAxisW, d.AngSpeed * dt)) * gt.Basis;
+                d.Node.GlobalTransform = new Transform3D(nb, gt.Origin);
+            }
+            var box = WorldAabb(d.Node);
+            // Contact is judged at the AABB's lowest corner: on a slope the
+            // downhill corner touches first and is where the piece rests.
+            Vector3 low = LowestCorner(box);
+            float groundY = Main.HeightAt(low.X, low.Z);
+            d.RestMinY = box.Position.Y;
+            d.RestGroundY = Main.HeightAt(box.GetCenter().X, box.GetCenter().Z);
+            if (low.Y <= groundY + 0.002f)
+            {
+                d.Node.GlobalPosition += Vector3.Up * (groundY - low.Y);
+                d.RestMinY = box.Position.Y + (groundY - low.Y);
+                if (d.Vel.Y < -1.6f)
+                {
+                    d.Vel.Y = -d.Vel.Y * 0.22f; // one bounce
+                    d.Vel.X *= 0.55f;
+                    d.Vel.Z *= 0.55f;
+                    d.AngSpeed *= 0.45f;
+                }
+                else
+                {
+                    d.Settled = true;
+                    d.Vel = Vector3.Zero;
+                    d.AngSpeed = 0f;
+                    GD.Print($"BRK DEBRIS {_mechId} {d.Part.Id} settled pos={d.Node.GlobalPosition} minY={d.RestMinY:F3} groundAtCenter={d.RestGroundY:F3}");
+                }
+            }
+        }
+    }
+
+    public Debris DebrisOf(string partId)
+    {
+        foreach (var d in _debris) if (d.Part.Id == partId) return d;
+        return null;
+    }
+
+    // Rebind every detached mesh to the skeleton and refill all part HP.
+    // Safe to call repeatedly and mid-flight.
+    public void RestoreAll()
+    {
+        foreach (var d in _debris)
+        {
+            foreach (var rec in d.Part.Meshes)
+            {
+                var mi = rec.Mi;
+                mi.GetParent()?.RemoveChild(mi);
+                rec.OrigParent.AddChild(mi);
+                mi.Transform = rec.OrigLocal;
+                mi.Skin = rec.OrigSkin;
+                mi.Skeleton = rec.OrigSkeleton;
+                rec.Detached = false;
+            }
+            d.Node.QueueFree();
+        }
+        _debris.Clear();
+        foreach (var part in _parts.Values)
+        {
+            part.Hp = part.MaxHp;
+            part.Destroyed = false;
+        }
+    }
+
+    private static Vector3 LowestCorner(Aabb box)
+    {
+        Vector3 best = box.Position;
+        float bestY = float.MaxValue;
+        for (int i = 0; i < 8; i++)
+        {
+            var c = new Vector3(
+                (i & 1) == 0 ? box.Position.X : box.End.X,
+                (i & 2) == 0 ? box.Position.Y : box.End.Y,
+                (i & 4) == 0 ? box.Position.Z : box.End.Z);
+            if (c.Y < bestY) { bestY = c.Y; best = c; }
+        }
+        return best;
+    }
+
+    private static Aabb WorldAabb(Node node)
+    {
+        var box = new Aabb();
+        bool first = true;
+        CollectAabb(node, ref box, ref first);
+        return box;
+    }
+
+    private static void CollectAabb(Node node, ref Aabb box, ref bool first)
+    {
+        if (node is MeshInstance3D mi)
+        {
+            var local = mi.GetAabb();
+            var gt = mi.GlobalTransform;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(
+                    (i & 1) == 0 ? local.Position.X : local.End.X,
+                    (i & 2) == 0 ? local.Position.Y : local.End.Y,
+                    (i & 4) == 0 ? local.Position.Z : local.End.Z);
+                var w = gt * corner;
+                if (first) { box = new Aabb(w, Vector3.Zero); first = false; }
+                else box = box.Expand(w);
+            }
+        }
+        foreach (var child in node.GetChildren()) CollectAabb(child, ref box, ref first);
     }
 }

@@ -163,6 +163,8 @@ public partial class MechDuel : Node3D
         _hit.PartResolver = (id, pt) => id == "TW"
             ? _partsPlayer.AttributePoint(pt)
             : _partsEnemy.AttributePoint(pt);
+        _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
+        _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
 
         _cam = new Camera3D { Fov = 70f };
         AddChild(_cam);
@@ -553,15 +555,43 @@ public partial class MechDuel : Node3D
     {
         bool isPlayer = target == _player;
         if (isPlayer ? _playerDead : _enemyDead) return;
-        if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - dmg, 0f);
-        else _hpEnemy = Mathf.Max(_hpEnemy - dmg, 0f);
+        var parts = isPlayer ? _partsPlayer : _partsEnemy;
+        // Local damage routing: the hit point attributes to the nearest
+        // part volume. Torso hits burn the main pool; head hits burn the
+        // head part AND the pool; every other part absorbs its own hits.
+        // Counters still record the nominal damage once per hit event.
+        string partId = parts.AttributePoint(hit.Point);
         if (isPlayer) { _twDmgEvents++; _twDmgTotal += dmg; }
         else { _atlasDmgEvents++; _atlasDmgTotal += dmg; }
+        float poolDmg = 0f;
+        if (partId == "torso") poolDmg = dmg;
+        else if (partId == "head") { poolDmg = dmg; parts.DamagePart("head", dmg); }
+        else parts.DamagePart(partId, dmg);
+        if (poolDmg > 0f)
+        {
+            if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - poolDmg, 0f);
+            else _hpEnemy = Mathf.Max(_hpEnemy - poolDmg, 0f);
+        }
         float hp = isPlayer ? _hpPlayer : _hpEnemy;
-        string partId = (isPlayer ? _partsPlayer : _partsEnemy).AttributePoint(hit.Point);
-        GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} hp={hp:F1} src={source}");
+        GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source);
         if (hp <= 0f) Die(target);
+    }
+
+    // A part just broke off (fired from MechParts.DamagePart): spark burst
+    // at the separation point; functional consequences live in
+    // ApplyPartConsequences.
+    private void OnPartBroken(MechParts parts, string partId, Vector3 center)
+    {
+        SpawnFlash(center, new Color(1f, 0.62f, 0.22f), 0.95f, 0.16f);
+        SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
+        ApplyPartConsequences(parts, partId);
+    }
+
+    // Functional fallout of losing a part (weapons, gait, sensors).
+    // Filled in by the consequences step.
+    private void ApplyPartConsequences(MechParts parts, string partId)
+    {
     }
 
     private void Die(MechWalker w)
@@ -626,6 +656,8 @@ public partial class MechDuel : Node3D
         _hpPlayer = 260f;
         _hpEnemy = 340f;
         _playerDead = _enemyDead = false;
+        _partsPlayer.RestoreAll();
+        _partsEnemy.RestoreAll();
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
         _lrmQueue.Clear();
         foreach (var p in _shots) p.QueueFree();
@@ -1055,15 +1087,22 @@ public partial class MechDuel : Node3D
                 }
                 break;
 
-            case 2: // autocannon x2: 2 x 26 = 52 exactly
+            case 2: // autocannon x2: 2 x 26 = 52 exactly. DELTA vs the
+                    // pre-breakable expectation (pool 252): the shells drop
+                    // ~0.6u in flight and land on the pelvis/thigh junction;
+                    // nearest-volume attribution assigns them to leg_L, so
+                    // the part absorbs 52 (90 -> 38) and the pool only lost
+                    // the laser's 36. Both numbers are asserted.
                 if (_wShotsFired == 0 && _wPhaseT > 0.1) { FireAutocannon(AtlasAim()); _wShotsFired++; }
                 else if (_wShotsFired == 1 && _wPhaseT > 1.05) { FireAutocannon(AtlasAim()); _wShotsFired++; }
                 else if (_wShotsFired == 2 && _wPhaseT > 2.8)
                 {
                     if (_atlasDmgEvents != 2 || Mathf.Abs(_atlasDmgTotal - 52f) > 0.01f)
                         WFail($"ac events={_atlasDmgEvents} dmg={_atlasDmgTotal:F1} (want 2 / 52)");
-                    if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 252)");
-                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0}");
+                    if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 304 pool under part routing)");
+                    if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 38f) > 0.01f)
+                        WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 38 = 90 - 52)");
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to leg_L)");
                     _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
                     SetWPhase(3);
                 }
@@ -1344,6 +1383,8 @@ public partial class MechDuel : Node3D
             }
             UpdateCombat(dt);
             UpdateDroop(dt);
+            _partsPlayer.StepDebris(dt);
+            _partsEnemy.StepDebris(dt);
         }
         UpdateHud();
         UpdateCamera(_frozen ? 0f : dt);
