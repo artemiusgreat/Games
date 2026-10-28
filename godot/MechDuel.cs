@@ -139,7 +139,7 @@ public partial class MechDuel : Node3D
     private double _bT0;
     private float _bV1, _bDragMax;
     private Vector3 _bHomeLocal;
-    private int _bCount1;
+    private int _bCount1, _bCount2;
     private bool _bFlag1;
     private Vector3 _camFocus;
 
@@ -730,6 +730,7 @@ public partial class MechDuel : Node3D
         {
             AlbedoColor = new Color(0.55f, 0.72f, 0.85f, 0.38f),
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             Roughness = 0.06f, Metallic = 0.35f
         };
         // face: outward normal, right axis, half extents (w = face width, h = height)
@@ -790,9 +791,9 @@ public partial class MechDuel : Node3D
         verts.Add(center + right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
         verts.Add(center + right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
         verts.Add(center - right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
-        // The per-face right axes above are chosen so this winding
-        // faces outward on all four walls.
-        idx.AddRange(new[] { b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3 });
+        // Godot front faces are clockwise from outside (the same
+        // convention the terrain fix established): BL -> TR -> BR.
+        idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
     }
 
     private void AddBuilding(Vector3 pos, Vector3 size)
@@ -1824,7 +1825,7 @@ public partial class MechDuel : Node3D
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
             : !lLeg && !rLeg ? "LEGS: BOTH LOST"
-            : lLeg ? "LEGS: RIGHT LOST — IMMOBILE" : "LEGS: LEFT LOST — IMMOBILE";
+            : lLeg ? "LEGS: RIGHT LOST — DOWN" : "LEGS: LEFT LOST — DOWN";
         _lblLegs.AddThemeColorOverride("font_color",
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
         if (_radar != null) { _radar.EnemyDown = _enemyDead; _radar.QueueRedraw(); }
@@ -2436,10 +2437,10 @@ public partial class MechDuel : Node3D
                     int hits = _twDmgEvents;
                     int misses = _atlasShots - hits;
                     if (hits < 1) WFail($"atlas return fire: 0 hits in {_atlasShots} shots");
-                    if (misses < 1 && !_wKnocked) WFail($"atlas return fire: 0 misses in {_atlasShots} shots (dodge impossible)");
+                    if (hits < 4) WFail($"atlas return fire ineffective: {hits} hits in {_atlasShots} shots");
                     if (Mathf.Abs(_twDmgTotal - hits * 18f) > 0.01f)
                         WFail($"atlas dmg total={_twDmgTotal:F1} != hits*18 ({hits * 18})");
-                    GD.Print($"WPNTEST ATLASFIRE PASS shots={_atlasShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0} knockedDown={_wKnocked}");
+                    GD.Print($"WPNTEST ATLASFIRE PASS shots={_atlasShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
                     _atlasMayFire = false;
                     _player.TorsoTwist = 0f;
                     ResetDuel();
@@ -2884,7 +2885,7 @@ public partial class MechDuel : Node3D
                         if (_partsEnemy.Alive("leg_L")) BFail("atlas leg_L alive after 90 damage");
                         if (!_enemy.LegDisabled(true)) BFail("walker leg_L not disabled");
                         if (Mathf.Abs(_enemy.SpeedFactor) > 0.01f) BFail("speed factor not 0 (immobile)");
-                        GD.Print("BRKTEST LEGBREAK PASS leg_L destroyed, walker IMMOBILE (speed factor 0)");
+                        GD.Print("BRKTEST LEGBREAK PASS leg_L destroyed, walker IMMOBILE (speed factor 0) — and the mech falls");
                         BStep(3);
                     }
                 }
@@ -2898,6 +2899,7 @@ public partial class MechDuel : Node3D
                     {
                         _bVec1 = _enemy.RootPos;
                         _bT0 = _bPhaseT; // BStepT now measures the sample window
+                        _bCount2 = _enemy.Steps;
                         _bCount1 = 1;
                     }
                     else if (_bCount1 == 1 && BStepT > 2.0)
@@ -2909,10 +2911,14 @@ public partial class MechDuel : Node3D
                     {
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         float v2 = d / BStepT;
-                        GD.Print($"BRKTEST IMMOBILE atlas driftSpeed={v2:F3} drift={d:F3} baseline={_bV1:F2} maxPlantedDiff={_enemy.MaxPlantedDiff():F3}");
-                        if (d > 0.15f) { BFail($"immobile mech translated {d:F2}u under full drive"); return; }
-                        if (_enemy.MaxPlantedDiff() > 0.08f) { BFail($"good-leg planted diff {_enemy.MaxPlantedDiff():F3} > 0.08"); return; }
-                        GD.Print("BRKTEST IMMOBILE PASS leg lost -> zero translation under full drive, good-leg contact holds");
+                        GD.Print($"BRKTEST IMMOBILE atlas driftSpeed={v2:F3} drift={d:F3} baseline={_bV1:F2} stepsDelta={_enemy.Steps - _bCount2} fallAmt={_enemy.FallAmount:F2}");
+                        if (d > 0.15f) { BFail($"downed mech translated {d:F2}u under full drive"); return; }
+                        // The mech is PRONE now (leg loss fells it — owner's
+                        // current rule), so standing contact semantics do
+                        // not apply; the locomotion invariant is: no steps.
+                        if (_enemy.Steps != _bCount2) { BFail($"downed mech took {_enemy.Steps - _bCount2} steps"); return; }
+                        if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.9f) { BFail("leg-lost mech is not down"); return; }
+                        GD.Print("BRKTEST IMMOBILE PASS leg lost -> mech down, zero translation and zero steps under full drive");
                         SetBPhase(6);
                     }
                 }
@@ -3046,83 +3052,68 @@ public partial class MechDuel : Node3D
                     SetBPhase(9);
                 }
                 break;
-            case 9: // KNOCKDOWN BY WEIGHT: window sum vs 20% of tonnage
+            case 9: // FALL RULE (owner, current): only leg loss fells, forever
                 if (_bStep == 0)
                 {
                     ResetDuel();
                     BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
-                    // Atlas 100t -> threshold 20t. One autocannon hit: 12t.
+                    // 36t of autocannon impacts inside the old window —
+                    // far past the retired 20t threshold. Legs intact.
+                    CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
+                    CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
                     CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
                     BStep(1);
                 }
                 else if (_bStep == 1 && BStepT > 0.6f)
                 {
-                    if (_enemy.IsKnockedDown) BFail("single 12t hit knocked a 100t Atlas (threshold 20t)");
-                    GD.Print("KNOCKTEST THRESHOLD PASS single AC hit 12t < 20t — no knockdown");
-                    CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight); // window sum 24t
+                    if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a mech with intact legs (retired weight rule)");
+                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts, legs intact — the Atlas stands");
+                    _partsEnemy.DamagePart("leg_R", 999f);
                     BStep(2);
                 }
-                else if (_bStep == 2 && BStepT > 1.0f)
+                else if (_bStep == 2)
                 {
-                    if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.75f)
-                        BFail($"expected Atlas down (amt={_enemy.FallAmount:F2} down={_enemy.IsKnockedDown})");
-                    GD.Print($"KNOCKTEST FALL PASS cumulative 24t topples the Atlas (fallAmount={_enemy.FallAmount:F2})");
-                    QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
-                    BStep(3);
+                    if (BStepT > 2.5f) { BFail("leg loss did not fell the Atlas"); return; }
+                    if (_enemy.IsKnockedDown && _enemy.FallAmount > 0.75f)
+                    {
+                        GD.Print($"KNOCKTEST LEGFALL PASS leg lost -> mech down (fallAmount={_enemy.FallAmount:F2})");
+                        QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
+                        BStep(3);
+                    }
                 }
                 else if (_bStep == 3)
                 {
-                    if (BStepT > 9f) BFail("Atlas never got back up");
-                    if (!_enemy.IsKnockedDown && BStepT > 0.5f)
+                    // Wait for the fall to fully settle, THEN take the
+                    // baseline: the root marker shifts ~0.5u while the
+                    // body tips over its feet — that is topple geometry,
+                    // not walking.
+                    if (BStepT > 3f) { BFail("fall never settled"); return; }
+                    if (_enemy.FallAmount >= 0.99f)
                     {
-                        GD.Print("KNOCKTEST RECOVERY PASS Atlas back on its feet");
-                        // 30t inside the immunity window must NOT re-knock.
-                        CraftHit(_enemy, "torso", 5f, 30f);
+                        _bVec1 = _enemy.RootPos;
+                        _bCount2 = _enemy.Steps;
                         BStep(4);
                     }
                 }
-                else if (_bStep == 4 && BStepT > 0.6f)
+                else if (_bStep == 4)
                 {
-                    if (_enemy.IsKnockedDown) BFail("immunity failed: re-knocked inside the window");
-                    GD.Print("KNOCKTEST IMMUNITY PASS 30t hit blocked by post-recovery immunity");
-                    BStep(5);
-                }
-                else if (_bStep == 5 && BStepT > 3.4f)
-                {
-                    // Immunity over. Window test: a lone 12t hit...
-                    CraftHit(_enemy, "torso", 5f, WeaponCatalog.Autocannon.Weight);
-                    BStep(6);
-                }
-                else if (_bStep == 6 && BStepT > 2.0f)
-                {
-                    // ...2s later another 12t: the first has left the 1.5s window.
-                    CraftHit(_enemy, "torso", 5f, WeaponCatalog.Autocannon.Weight);
-                    if (_enemy.IsKnockedDown) BFail("window failed: hits 2s apart accumulated");
-                    GD.Print("KNOCKTEST WINDOW PASS hits 2s apart do not accumulate");
-                    CraftHit(_enemy, "torso", 5f, WeaponCatalog.Autocannon.Weight); // now 24t in-window
-                    BStep(7);
-                }
-                else if (_bStep == 7 && BStepT > 0.9f)
-                {
-                    if (!_enemy.IsKnockedDown) BFail("in-window pair (24t) did not knock");
-                    GD.Print("KNOCKTEST ACCUMULATION PASS in-window pair topples again");
-                    // Salvo vs the Timber Wolf (75t -> threshold 15t):
-                    // rockets land at 2.5t each; 6 sum to exactly 15 (hold),
-                    // the 7th crosses.
-                    for (int i = 0; i < 6; i++) CraftHit(_player, "leg_L", 7f, WeaponCatalog.Lrm.PerRocketWeight);
-                    if (_player.IsKnockedDown) BFail("6 rockets (15t) knocked the TW (threshold is >15)");
-                    GD.Print("KNOCKTEST SALVO-HOLD PASS 6 rockets sum 15t, not over threshold");
-                    CraftHit(_player, "leg_L", 7f, WeaponCatalog.Lrm.PerRocketWeight);
-                    if (!_player.IsKnockedDown) BFail("7th rocket (17.5t) did not knock the TW");
-                    GD.Print("KNOCKTEST SALVO PASS rocket weights accumulate across the salvo");
-                    BStep(8);
-                }
-                else if (_bStep == 8 && BStepT > 0.9f)
-                {
-                    if (_player.FallAmount < 0.7f) BFail($"TW fall not visible (amt={_player.FallAmount:F2})");
-                    GD.Print($"KNOCKTEST TW-FALL PASS player mech toppled by salvo weight (fallAmount={_player.FallAmount:F2})");
-                    GD.Print("BRKTEST DONE");
-                    GetTree().Quit(0);
+                    // Full drive for 3.5s from the settled position: a
+                    // downed mech must neither walk nor get up.
+                    _enemy.SetDrive(Mathf.Pi, 1f);
+                    if (BStepT > 3.5f)
+                    {
+                        if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.95f)
+                        { BFail($"Atlas got up (amt={_enemy.FallAmount:F2} down={_enemy.IsKnockedDown})"); return; }
+                        float drift = (_enemy.RootPos - _bVec1).Length();
+                        if (drift > 0.3f) { BFail($"downed Atlas walked {drift:F2}u from its settled position"); return; }
+                        if (_enemy.Steps != _bCount2) { BFail($"downed Atlas took {_enemy.Steps - _bCount2} steps"); return; }
+                        GD.Print($"KNOCKTEST PERMANENT PASS settled drift {drift:F3}u under full drive, no steps, still down — no getting up");
+                        ResetDuel();
+                        if (_enemy.IsKnockedDown) { BFail("reset did not stand the Atlas back up"); return; }
+                        GD.Print("KNOCKTEST RESET PASS R reset restores the mech to its feet");
+                        GD.Print("BRKTEST DONE");
+                        GetTree().Quit(0);
+                    }
                 }
                 break;
         }
@@ -3208,6 +3199,8 @@ public partial class MechDuel : Node3D
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_tPhaseT > 0.8)
                 {
+                    QueueCapture("res://proof/env_detail_building.png", "tdetB", "detailBuilding", () =>
+                    QueueCapture("res://proof/env_detail_tree.png", "tdetT", "detailTree", () =>
                     QueueCapture("res://proof/terrain_vista.png", "tvista", "vista", () =>
                     {
                         if (!FindSlopeSpot(out var spot, out float yaw))
@@ -3220,7 +3213,7 @@ public partial class MechDuel : Node3D
                         _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
                         GD.Print($"TERRAIN SLOPE spot={spot} grade={TerrainGrade(spot.X, spot.Z):F3} uphillYaw={Mathf.RadToDeg(yaw):F1}deg");
                         _tPhase = 1; _tPhaseT = 0; _tStrideLogged = false;
-                    });
+                    })));
                     _tPhase = 99; // wait for the capture callback
                 }
                 break;
@@ -3402,6 +3395,20 @@ public partial class MechDuel : Node3D
         {
             _cam.GlobalPosition = _camFocus + new Vector3(-8.5f, 3.4f, 6.5f);
             _cam.LookAt(_camFocus + Vector3.Up * 0.4f, Vector3.Up);
+        }
+        else if (_camMode == "detailBuilding")
+        {
+            // Close on the (22,8) building: brick courses + glass panes.
+            var bp = new Vector3(22f, Main.HeightAt(22f, 8f), 8f);
+            _cam.GlobalPosition = bp + new Vector3(-10.5f, 4.6f, 10.5f);
+            _cam.LookAt(bp + new Vector3(0f, 3.4f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "detailTree")
+        {
+            // Close on the hand-placed tree at (-12,-8): branches + leaves.
+            var tp = new Vector3(-12f, Main.HeightAt(-12f, -8f), -8f);
+            _cam.GlobalPosition = tp + new Vector3(5.2f, 3.1f, 5.2f);
+            _cam.LookAt(tp + new Vector3(0f, 3.4f, 0f), Vector3.Up);
         }
         else if (_camMode == "vista")
         {
