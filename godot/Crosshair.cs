@@ -27,19 +27,27 @@ public partial class Crosshair : Control
     public override void _Draw()
     {
         var c = Size * 0.5f + Sway;
-        var col = new Color(1f, 0.85f, 0.3f, 0.95f);
-        DrawLine(c + new Vector2(-15f, 0f), c + new Vector2(-5f, 0f), col, 2f);
-        DrawLine(c + new Vector2(5f, 0f), c + new Vector2(15f, 0f), col, 2f);
-        DrawLine(c + new Vector2(0f, -15f), c + new Vector2(0f, -5f), col, 2f);
-        DrawLine(c + new Vector2(0f, 5f), c + new Vector2(0f, 14f), col, 2f);
-        DrawCircle(c, 1.6f, col);
+        // Owner's ask: the reticle must be unmissable — longer, thicker
+        // arms in bright amber over a dark outline pass, so it reads
+        // against sky, terrain and the mech's own hull alike.
+        var col = new Color(1f, 0.88f, 0.25f, 1f);
+        var outline = new Color(0.02f, 0.02f, 0.02f, 0.85f);
+        foreach (var (colr, wdt) in new[] { (outline, 6.5f), (col, 3.2f) })
+        {
+            DrawLine(c + new Vector2(-26f, 0f), c + new Vector2(-8f, 0f), colr, wdt);
+            DrawLine(c + new Vector2(8f, 0f), c + new Vector2(26f, 0f), colr, wdt);
+            DrawLine(c + new Vector2(0f, -26f), c + new Vector2(0f, -8f), colr, wdt);
+            DrawLine(c + new Vector2(0f, 8f), c + new Vector2(0f, 25f), colr, wdt);
+        }
+        DrawCircle(c, 4.6f, outline);
+        DrawCircle(c, 2.8f, col);
         if (Hitmark > 0f)
         {
             var hm = new Color(1f, 1f, 1f, Hitmark);
-            DrawLine(c + new Vector2(-14f, -14f), c + new Vector2(-7f, -7f), hm, 2.5f);
-            DrawLine(c + new Vector2(14f, -14f), c + new Vector2(7f, -7f), hm, 2.5f);
-            DrawLine(c + new Vector2(-14f, 14f), c + new Vector2(-7f, 7f), hm, 2.5f);
-            DrawLine(c + new Vector2(14f, 14f), c + new Vector2(7f, 7f), hm, 2.5f);
+            DrawLine(c + new Vector2(-22f, -22f), c + new Vector2(-12f, -12f), hm, 3.5f);
+            DrawLine(c + new Vector2(22f, -22f), c + new Vector2(12f, -12f), hm, 3.5f);
+            DrawLine(c + new Vector2(-22f, 22f), c + new Vector2(-12f, 12f), hm, 3.5f);
+            DrawLine(c + new Vector2(22f, 22f), c + new Vector2(12f, 12f), hm, 3.5f);
         }
     }
 }
