@@ -148,6 +148,7 @@ public partial class MechDuel : Node3D
     private int _pLimpStep;
     private int _aimStep;
     private double _aimT0;
+    private int _aimProj0;
     private float _aimUpY;
     private double _pLimpT0;
     private Vector3 _pLimpStart;
@@ -1330,6 +1331,16 @@ public partial class MechDuel : Node3D
         else GD.Print("WPN LASER hit=none");
     }
 
+    // Player projectiles converge at most this far (round 7). Aiming
+    // over a target puts the aim ray's hit on a hillside up to 200u
+    // out; solving ballistics for THAT point made rockets mortar
+    // almost vertically (their up-compensation grows with the solved
+    // range) while flat cannon shells still crossed the enemy on the
+    // line — the owner's screenshot. Capping the solution range
+    // keeps every weapon's launch angle proportional to where the
+    // pointer actually is. Real duel ranges are 15-60u: unaffected.
+    private const float ConvergeMax = 75f;
+
     private void FireAutocannon(Vector3 aimPoint)
     {
         if (_playerDead) return;
@@ -1338,6 +1349,10 @@ public partial class MechDuel : Node3D
         _cdAc = _defBallistic.Cooldown;
         var muzzle = PlayerMuzzle(false);
         var toAim = aimPoint - muzzle;
+        // No clamp needed here: the cannon fires the pointer line
+        // directly with no range compensation, so a far aim point
+        // changes nothing but parallax. (Rockets were the mortar
+        // case — see LaunchRocket.)
         var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
         (float spd, float grav) = _defBallistic.Id switch
         {
@@ -1393,7 +1408,11 @@ public partial class MechDuel : Node3D
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
         var toAim = aimPoint - muzzle;
-        float dist = Mathf.Max(toAim.Length(), 1f);
+        // The lob is solved for the CAPPED range (see ConvergeMax):
+        // direction AND time-of-flight use the same clamped point,
+        // so the launch elevation tracks the pointer instead of the
+        // hillside behind the target.
+        float dist = Mathf.Min(Mathf.Max(toAim.Length(), 1f), ConvergeMax);
         var dir = ApplyInaccuracy(toAim.Normalized(), 1.1f);
         (float speed, float grav) = def.Id == "srm" ? (46f, 9f) : (36f, 11f);
         float tof = dist / speed;
@@ -2572,19 +2591,44 @@ public partial class MechDuel : Node3D
                     if (fDn.Y > -0.08f)
                     { GD.PrintErr($"DUEL FAIL: rendered torso does not pitch DOWN with -pitch (facingY={fDn.Y:F3})"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL AIM RENDER PASS rendered torso follows the pitch: up facingY={_aimUpY:F3}, down facingY={fDn.Y:F3}");
-                    // Proof frame: torso pitched up — the reticle
-                    // rides visibly above screen center, over the
-                    // Atlas, at its fixed-depth projection.
+                    // Rocket-lob check (round 7): pitch up at the sky
+                    // over the Atlas and loose a salvo — the first
+                    // rocket's launch elevation must track the
+                    // pointer (bounded lob), not mortar vertically.
                     _player.TorsoTwist = 0f;
-                    _player.TorsoPitch = 0.18f;
-                    _aimPoint = TorsoAimPoint();
-                    UpdateReticle();
+                    _player.TorsoPitch = 0.30f;
+                    _cdLrm = 0f;
+                    _aimProj0 = _shots.Count;
+                    FireLrmSalvo(TorsoAimPoint());
+                    _aimT0 = _phaseT;
                     _aimStep = 3;
-                    QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
+                }
+                else if (_aimStep == 3)
+                {
+                    if (_shots.Count > _aimProj0)
                     {
-                        QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
-                        SetPhase(7);
-                    });
+                        var pr = _shots[_shots.Count - 1];
+                        float elev = Mathf.Asin(Mathf.Clamp(pr.Vel.Y / Mathf.Max(pr.Vel.Length(), 0.01f), -1f, 1f));
+                        if (elev > 0.66f)
+                        { GD.PrintErr($"DUEL FAIL: sky-aim rocket mortared at elevation {elev:F2} rad (pointer was 0.30)"); GetTree().Quit(1); break; }
+                        if (elev < 0.15f)
+                        { GD.PrintErr($"DUEL FAIL: sky-aim rocket barely rose (elevation {elev:F2})"); GetTree().Quit(1); break; }
+                        GD.Print($"DUEL AIM ROCKET PASS sky-aim launch elevation={elev:F2} rad vs pointer 0.30 — the lob is bounded");
+                        // Proof frame: torso pitched up — the reticle
+                        // rides visibly above screen center, over the
+                        // Atlas, at its fixed-depth projection.
+                        _player.TorsoTwist = 0f;
+                        _player.TorsoPitch = 0.18f;
+                        _aimPoint = TorsoAimPoint();
+                        UpdateReticle();
+                        _aimStep = 4;
+                        QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
+                        {
+                            QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
+                            SetPhase(7);
+                        });
+                    }
+                    else if (_phaseT - _aimT0 > 3) { GD.PrintErr("DUEL FAIL: sky-aim salvo never launched"); GetTree().Quit(1); }
                 }
                 break;
         }
