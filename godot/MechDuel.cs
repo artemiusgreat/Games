@@ -2396,7 +2396,7 @@ public partial class MechDuel : Node3D
                 }
                 else if (_wEnvStep == 3)
                 {
-                    if (!_wCaptured) { _wCaptured = true; QueueCapture("res://proof/env_burning.png", "envBurn", "orbit"); }
+                    if (!_wCaptured) { _wCaptured = true; QueueCapture("res://proof/env_burning.png", "envBurn", "duelChase"); }
                     if (_wPhaseT > 40) { WFail("tree never finished evaporating"); return; }
                     if (_wEnvT.State == 4)
                     {
