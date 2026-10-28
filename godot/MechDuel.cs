@@ -496,15 +496,16 @@ public partial class MechDuel : Node3D
     // Placement respects the test choreography: duel/weapons/breakable
     // lanes and every spawn/teleport pad stay clear, props keep spacing,
     // trees stay off steep/high ground.
-    // Grass tufts (terrain-detail ask): ~900 instanced crossed quads on
-    // low, gentle, off-road ground. One MultiMesh draw call, no
+    // Grass (terrain-detail ask): ~2400 instanced crossed-quad tufts in
+    // two color populations (deep green and yellow-green) on low,
+    // gentle, off-road ground. Two MultiMesh draw calls total, no
     // colliders — purely cosmetic ground cover.
     private void ScatterGrass()
     {
         var rng = new RandomNumberGenerator { Seed = 777 };
         var spots = new System.Collections.Generic.List<(Vector3 Pos, float Yaw, float S)>();
         int attempts = 0;
-        while (spots.Count < 900 && attempts++ < 6000)
+        while (spots.Count < 2400 && attempts++ < 16000)
         {
             float x = rng.RandfRange(-78f, 78f), z = rng.RandfRange(-78f, 78f);
             float h = Main.HeightAt(x, z);
@@ -516,7 +517,7 @@ public partial class MechDuel : Node3D
             if (bad) continue;
             foreach (var c in _props) if (new Vector2(x, z).DistanceTo(c.P) < c.R + 0.6f) { bad = true; break; }
             if (bad) continue;
-            spots.Add((new Vector3(x, h - 0.03f, z), rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(0.6f, 1.25f)));
+            spots.Add((new Vector3(x, h - 0.03f, z), rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(0.5f, 1.6f)));
         }
         // Crossed-quad tuft with a base-to-tip color gradient.
         var verts = new System.Collections.Generic.List<Vector3>();
@@ -548,19 +549,39 @@ public partial class MechDuel : Node3D
             Roughness = 1f,
             CullMode = BaseMaterial3D.CullModeEnum.Disabled
         });
-        var mm = new MultiMesh
+        // Two populations share the tuft mesh: deep green, and a
+        // yellow-green variant mesh (same geometry, different gradient).
+        var tuft2 = new ArrayMesh();
+        var cols2 = new System.Collections.Generic.List<Color>();
+        var dark2 = new Color(0.16f, 0.26f, 0.06f);
+        var tip2 = new Color(0.55f, 0.60f, 0.22f);
+        foreach (var c in cols) cols2.Add(c == dark ? dark2 : tip2);
+        var arrays2 = new Godot.Collections.Array();
+        arrays2.Resize((int)Mesh.ArrayType.Max);
+        arrays2[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        arrays2[(int)Mesh.ArrayType.Color] = cols2.ToArray();
+        arrays2[(int)Mesh.ArrayType.Index] = idx.ToArray();
+        tuft2.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays2);
+        tuft2.SurfaceSetMaterial(0, tuft.SurfaceGetMaterial(0));
+        var halves = new[] { new System.Collections.Generic.List<int>(), new System.Collections.Generic.List<int>() };
+        for (int i = 0; i < spots.Count; i++) halves[rng.RandiRange(0, 1)].Add(i);
+        var meshes = new[] { tuft, tuft2 };
+        for (int h2 = 0; h2 < 2; h2++)
         {
-            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-            Mesh = tuft,
-            InstanceCount = spots.Count
-        };
-        for (int i = 0; i < spots.Count; i++)
-        {
-            var (pos, yaw, sc) = spots[i];
-            mm.SetInstanceTransform(i, new Transform3D(
-                Basis.Identity.Rotated(Vector3.Up, yaw).Scaled(Vector3.One * sc), pos));
+            var mm = new MultiMesh
+            {
+                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+                Mesh = meshes[h2],
+                InstanceCount = halves[h2].Count
+            };
+            for (int j = 0; j < halves[h2].Count; j++)
+            {
+                var (pos, yaw, sc) = spots[halves[h2][j]];
+                mm.SetInstanceTransform(j, new Transform3D(
+                    Basis.Identity.Rotated(Vector3.Up, yaw).Scaled(Vector3.One * sc), pos));
+            }
+            AddChild(new MultiMeshInstance3D { Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         }
-        AddChild(new MultiMeshInstance3D { Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         GD.Print($"DUEL grass tufts={spots.Count}");
     }
 
