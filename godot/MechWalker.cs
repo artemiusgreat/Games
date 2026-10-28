@@ -59,7 +59,7 @@ public partial class MechWalker : Node3D
     }
 
     private const float StandReachFactor = 0.90f;
-    private const float MaxTorsoTwist = Mathf.Pi; // 180 degrees (owner)
+    private const float MaxTorsoTwist = 4.712389f; // 270 degrees (owner)
 
     private Config _cfg;
     private Node3D _inner;
