@@ -344,62 +344,111 @@ public partial class MechDuel : Node3D
 
     private void AddTree(Vector3 pos) => AddTreeV(pos, 0, 1f, 0f);
 
-    // Tree varieties: 0 classic (sphere canopy), 1 pine (stacked cones),
-    // 2 broadleaf (wide squashed canopy). tint shifts the canopy hue
-    // slightly. Collision circle + hit-model cylinder scale with the tree.
+    // Tree varieties: 0 classic, 1 pine, 2 broadleaf. Detail pass
+    // (owner): a tapered trunk, real branches reaching out of it, and a
+    // canopy of separate leaf clusters in varied greens instead of one
+    // smooth blob. Branch/blob placement is seeded from the tree's
+    // position, so the forest is stable between runs. Collision circle
+    // + hit-model cylinder are unchanged, and the whole tree still
+    // burns and evaporates as one destructible node.
+    private static readonly CylinderMesh BranchMesh = new()
+    { TopRadius = 0.045f, BottomRadius = 0.085f, Height = 1f, RadialSegments = 6 };
+    private static readonly SphereMesh LeafMesh = new()
+    { Radius = 1f, Height = 2f, RadialSegments = 8, Rings = 5 };
+
+    private static MeshInstance3D Branch(Vector3 from, Vector3 to, Material mat)
+    {
+        var dir = to - from;
+        float len = dir.Length();
+        var mi = new MeshInstance3D { Mesh = BranchMesh, MaterialOverride = mat };
+        var q = new Quaternion(Vector3.Up, dir / len);
+        mi.Transform = new Transform3D(new Basis(q).Scaled(new Vector3(1f, len, 1f)),
+            (from + to) / 2f);
+        return mi;
+    }
+
+    private static MeshInstance3D LeafBlob(Vector3 c, float r, Vector3 squash, Material mat)
+    {
+        return new MeshInstance3D
+        {
+            Mesh = LeafMesh, MaterialOverride = mat,
+            Position = c, Scale = new Vector3(r, r * squash.Y, r)
+        };
+    }
+
     private void AddTreeV(Vector3 pos, int variety, float scale, float tint)
     {
         pos.Y = Main.HeightAt(pos.X, pos.Z);
         var tree = new Node3D { Position = pos, Scale = Vector3.One * scale };
-        var trunkMat = new StandardMaterial3D { AlbedoColor = new Color(0.4f, 0.26f, 0.13f) };
+        var rng = new RandomNumberGenerator
+        { Seed = (ulong)(pos.X * 131.7f + pos.Z * 57.3f + 9001f) };
+        var trunkMat = new StandardMaterial3D { AlbedoColor = new Color(0.36f, 0.23f, 0.12f), Roughness = 0.95f };
+        var leafMats = new[]
+        {
+            new StandardMaterial3D { AlbedoColor = new Color(0.13f + tint * 0.05f, 0.42f, 0.14f), Roughness = 0.9f },
+            new StandardMaterial3D { AlbedoColor = new Color(0.20f + tint * 0.05f, 0.50f, 0.16f), Roughness = 0.9f },
+            new StandardMaterial3D { AlbedoColor = new Color(0.09f + tint * 0.04f, 0.34f, 0.11f), Roughness = 0.9f }
+        };
         float totalH;
+        // Tapered trunk, common to all varieties.
+        float trunkH = variety == 1 ? 3.2f : 2.8f;
+        var trunk = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 0.16f, BottomRadius = 0.32f, Height = trunkH, RadialSegments = 8 },
+            MaterialOverride = trunkMat,
+            Position = new Vector3(0f, trunkH / 2f, 0f)
+        };
+        tree.AddChild(trunk);
         if (variety == 1)
         {
-            var trunk = new MeshInstance3D();
-            trunk.Mesh = new CylinderMesh { TopRadius = 0.2f, BottomRadius = 0.3f, Height = 3.0f, RadialSegments = 7 };
-            trunk.MaterialOverride = trunkMat;
-            trunk.Position = new Vector3(0f, 1.5f, 0f);
-            tree.AddChild(trunk);
-            var coneMat = new StandardMaterial3D { AlbedoColor = new Color(0.10f + tint * 0.05f, 0.34f + tint * 0.06f, 0.13f) };
-            var cone1 = new MeshInstance3D();
-            cone1.Mesh = new CylinderMesh { TopRadius = 0.05f, BottomRadius = 1.7f, Height = 3.4f, RadialSegments = 8 };
-            cone1.MaterialOverride = coneMat;
-            cone1.Position = new Vector3(0f, 4.0f, 0f);
-            var cone2 = new MeshInstance3D();
-            cone2.Mesh = new CylinderMesh { TopRadius = 0.03f, BottomRadius = 1.15f, Height = 2.6f, RadialSegments = 8 };
-            cone2.MaterialOverride = coneMat;
-            cone2.Position = new Vector3(0f, 5.9f, 0f);
-            tree.AddChild(cone1);
-            tree.AddChild(cone2);
-            totalH = 7.2f;
-        }
-        else if (variety == 2)
-        {
-            var trunk = new MeshInstance3D();
-            trunk.Mesh = new CylinderMesh { TopRadius = 0.24f, BottomRadius = 0.34f, Height = 2.6f, RadialSegments = 7 };
-            trunk.MaterialOverride = trunkMat;
-            trunk.Position = new Vector3(0f, 1.3f, 0f);
-            tree.AddChild(trunk);
-            var canopy = new MeshInstance3D();
-            canopy.Mesh = new SphereMesh { Radius = 2.3f, Height = 2.7f, RadialSegments = 11, Rings = 6 };
-            canopy.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.17f + tint * 0.07f, 0.47f + tint * 0.05f, 0.15f) };
-            canopy.Position = new Vector3(0f, 3.9f, 0f);
-            tree.AddChild(canopy);
-            totalH = 5.3f;
+            // Pine: three shrinking cone tiers over short branch stubs.
+            var coneMat = leafMats[2];
+            for (int i = 0; i < 4; i++)
+            {
+                float a = rng.RandfRange(0f, Mathf.Tau);
+                var from = new Vector3(0f, 1.6f + i * 0.45f, 0f);
+                tree.AddChild(Branch(from,
+                    from + new Vector3(Mathf.Cos(a) * 0.95f, 0.34f, Mathf.Sin(a) * 0.95f), trunkMat));
+            }
+            var tiers = new (float Y, float R, float H)[] { (3.1f, 1.8f, 3.0f), (4.6f, 1.35f, 2.6f), (5.9f, 0.9f, 2.2f) };
+            foreach (var (ty, tr, th) in tiers)
+            {
+                var cone = new MeshInstance3D
+                {
+                    Mesh = new CylinderMesh { TopRadius = 0.04f, BottomRadius = tr, Height = th, RadialSegments = 9 },
+                    MaterialOverride = coneMat,
+                    Position = new Vector3(0f, ty + th / 2f - 0.4f, 0f)
+                };
+                tree.AddChild(cone);
+            }
+            totalH = 7.6f;
         }
         else
         {
-            var trunk = new MeshInstance3D();
-            trunk.Mesh = new CylinderMesh { TopRadius = 0.22f, BottomRadius = 0.3f, Height = 2.2f, RadialSegments = 7 };
-            trunk.MaterialOverride = trunkMat;
-            trunk.Position = new Vector3(0f, 1.1f, 0f);
-            var canopy = new MeshInstance3D();
-            canopy.Mesh = new SphereMesh { Radius = 1.7f, Height = 3.4f, RadialSegments = 10, Rings = 5 };
-            canopy.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.13f + tint * 0.06f, 0.45f + tint * 0.05f, 0.16f) };
-            canopy.Position = new Vector3(0f, 3.6f, 0f);
-            tree.AddChild(trunk);
-            tree.AddChild(canopy);
-            totalH = 5.6f;
+            // Classic / broadleaf: 5-6 branches fanning up and out of the
+            // trunk top, a leaf cluster at each branch tip, plus two
+            // clusters crowning the center.
+            int branches = variety == 2 ? 6 : 5;
+            float reach = variety == 2 ? 1.9f : 1.55f;
+            var tips = new System.Collections.Generic.List<Vector3>();
+            for (int i = 0; i < branches; i++)
+            {
+                float a = i * Mathf.Tau / branches + rng.RandfRange(-0.3f, 0.3f);
+                float rr = reach * rng.RandfRange(0.8f, 1.1f);
+                var from = new Vector3(0f, trunkH * rng.RandfRange(0.62f, 0.85f), 0f);
+                var to = new Vector3(Mathf.Cos(a) * rr, trunkH + rng.RandfRange(0.8f, 1.5f), Mathf.Sin(a) * rr);
+                tree.AddChild(Branch(from, to, trunkMat));
+                tips.Add(to);
+            }
+            foreach (var tip in tips)
+                tree.AddChild(LeafBlob(tip + new Vector3(0f, 0.35f, 0f),
+                    rng.RandfRange(0.85f, 1.25f), new Vector3(1f, rng.RandfRange(0.72f, 0.9f), 1f),
+                    leafMats[rng.RandiRange(0, 2)]));
+            tree.AddChild(LeafBlob(new Vector3(0f, trunkH + 1.35f, 0f), 1.35f,
+                new Vector3(1f, 0.8f, 1f), leafMats[rng.RandiRange(0, 2)]));
+            tree.AddChild(LeafBlob(new Vector3(0.5f, trunkH + 0.9f, -0.4f), 1.0f,
+                new Vector3(1f, 0.75f, 1f), leafMats[rng.RandiRange(0, 2)]));
+            totalH = trunkH + 2.9f;
         }
         AddChild(tree);
         float r = 0.7f * scale;
