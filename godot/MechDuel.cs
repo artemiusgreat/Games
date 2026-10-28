@@ -131,7 +131,7 @@ public partial class MechDuel : Node3D
         {
             RotationDegrees = new Vector3(-48f, -35f, 0f),
             ShadowEnabled = true,
-            LightEnergy = 1.15f,
+            LightEnergy = 1.45f,
             LightColor = new Color(1f, 0.955f, 0.885f)
         };
         sun.DirectionalShadowMaxDistance = 320f;
@@ -153,12 +153,16 @@ public partial class MechDuel : Node3D
                 BackgroundMode = Environment.BGMode.Sky,
                 Sky = new Sky { SkyMaterial = skyMat },
                 AmbientLightSource = Environment.AmbientSource.Sky,
-                AmbientLightEnergy = 0.62f,
+                // 0.62 washed the baked panel/normal detail out to flat
+                // color (owner: 'mechs look like solid default material').
+                // Lower ambient + stronger sun lets the texture and normal
+                // maps model the surface again; fog thinned to match.
+                AmbientLightEnergy = 0.34f,
                 ReflectedLightSource = Environment.ReflectionSource.Sky,
                 TonemapMode = Environment.ToneMapper.Aces,
                 FogEnabled = true,
                 FogLightColor = new Color(0.63f, 0.73f, 0.84f),
-                FogDensity = 0.0021f,
+                FogDensity = 0.0011f,
                 FogSunScatter = 0.25f
             }
         });
