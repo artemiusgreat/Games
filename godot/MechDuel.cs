@@ -47,6 +47,79 @@ public partial class MechDuel : Node3D
         public OmniLight3D Light;
     }
     private readonly System.Collections.Generic.List<Destructible> _destructibles = new();
+
+    // Rubble chunks thrown by a destruction (round 7): simple ballistic
+    // boxes that tumble, bounce once and settle as permanent rubble.
+    private sealed class EnvChunk
+    {
+        public MeshInstance3D Node;
+        public Vector3 Vel;
+        public Vector3 AngAxis = Vector3.Right;
+        public float AngSpeed;
+        public float Radius;
+        public bool Settled;
+    }
+    private readonly System.Collections.Generic.List<EnvChunk> _envChunks = new();
+    private int _envFxEvents; // destruction-FX firings (harness-visible)
+    private static readonly StandardMaterial3D RubbleMat = new StandardMaterial3D
+    { AlbedoColor = new Color(0.32f, 0.30f, 0.27f), Roughness = 0.95f };
+    private static readonly StandardMaterial3D SplinterMat = new StandardMaterial3D
+    { AlbedoColor = new Color(0.23f, 0.16f, 0.09f), Roughness = 1f };
+
+    private void SpawnChunks(Vector3 center, int count, float sizeMin, float sizeMax,
+        Material mat, float upMin, float upMax)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            float size = _fxRng.RandfRange(sizeMin, sizeMax);
+            var mi = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(size, size * _fxRng.RandfRange(0.5f, 0.9f), size) },
+                MaterialOverride = mat,
+            };
+            float ang = _fxRng.RandfRange(0f, Mathf.Tau);
+            mi.GlobalPosition = center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * _fxRng.RandfRange(0f, 1.2f)
+                   + Vector3.Up * _fxRng.RandfRange(0.5f, 2.2f);
+            AddChild(mi);
+            var dir = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
+            _envChunks.Add(new EnvChunk
+            {
+                Node = mi,
+                Vel = dir * _fxRng.RandfRange(1.2f, 3.8f) + Vector3.Up * _fxRng.RandfRange(upMin, upMax),
+                AngAxis = new Vector3(_fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(-1f, 1f)).Normalized(),
+                AngSpeed = _fxRng.RandfRange(2f, 5.5f),
+                Radius = size * 0.55f,
+            });
+        }
+    }
+
+    private void StepEnvChunks(float dt)
+    {
+        if (_envChunks.Count == 0 || dt <= 0f) return;
+        int n = Mathf.Max(1, Mathf.CeilToInt(dt / (1f / 120f)));
+        float h = dt / n;
+        for (int step = 0; step < n; step++)
+            foreach (var c in _envChunks)
+            {
+                if (c.Settled) continue;
+                c.Vel.Y -= 20f * h;
+                c.Node.GlobalPosition += c.Vel * h;
+                if (c.AngSpeed > 0.02f)
+                {
+                    var gt = c.Node.GlobalTransform;
+                    var nb = new Basis(new Quaternion(c.AngAxis, c.AngSpeed * h)) * gt.Basis;
+                    c.Node.GlobalTransform = new Transform3D(nb, gt.Origin);
+                }
+                var pos = c.Node.GlobalPosition;
+                float groundY = Main.HeightAt(pos.X, pos.Z) + c.Radius;
+                if (pos.Y <= groundY)
+                {
+                    c.Node.GlobalPosition = new Vector3(pos.X, groundY, pos.Z);
+                    if (c.Vel.Y < -1.6f) { c.Vel.Y = -c.Vel.Y * 0.22f; c.Vel.X *= 0.55f; c.Vel.Z *= 0.55f; c.AngSpeed *= 0.45f; }
+                    else { c.Settled = true; c.Vel = Vector3.Zero; c.AngSpeed = 0f; }
+                }
+            }
+    }
     private readonly List<Circle> _props = new();
     private readonly System.Collections.Generic.List<Vector2> _buildingPts = new();
 
@@ -128,6 +201,7 @@ public partial class MechDuel : Node3D
     private int _wShotsFired;
     private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
     private Destructible _wEnvB, _wEnvT;
+    private int _wEnvFx0, _wEnvChunks0;
     private int _wEnvStep;
     private bool _wKnocked;
     private double _wDeathT, _wStrafeT, _wLastShotT;
@@ -2019,8 +2093,19 @@ public partial class MechDuel : Node3D
         d.Timer = 1.15f;
         d.PhaseLen = 1.15f;
         RemovePropColliders(d); // falling masonry no longer blocks or stops mechs
-        SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.6f, 0.3f);
-        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING");
+        // Destruction is an EVENT now (round 7 — it used to sink
+        // silently): an explosion burst at the base, a dust flash, and
+        // the facade breaks into chunks that fly, tumble and settle
+        // as rubble around the footprint.
+        _envFxEvents++;
+        var mid = d.Center + Vector3.Up * (d.Height * 0.35f);
+        SpawnExplosionFx(mid);
+        SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.9f, 0.35f);
+        Material facade = null;
+        if (d.Node is MeshInstance3D mi)
+            facade = mi.GetSurfaceOverrideMaterial(0) ?? mi.Mesh?.SurfaceGetMaterial(0);
+        SpawnChunks(mid, 7, 0.9f, 2.0f, facade ?? RubbleMat, 3.5f, 6.5f);
+        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (explosion + chunks)");
     }
 
     // Owner's current rule: a tree is destroyed by ANY interaction —
@@ -2037,7 +2122,14 @@ public partial class MechDuel : Node3D
         d.Timer = smokeLen;
         RemovePropColliders(d);
         var top = d.Center + Vector3.Up * d.Height * 0.7f;
-        SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 0.85f, 0.2f);
+        // Destruction FX (round 7): a fire flash, an ember burst and
+        // wooden splinters that scatter and settle — a hit tree goes
+        // out with a burst of sparks, then smokes out.
+        _envFxEvents++;
+        SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 1.1f, 0.24f);
+        SpawnSparks(top, new Color(1f, 0.6f, 0.22f), 9, 4.4f);
+        _fxSparkBursts--; // tree embers are not a laser burst; keep the counters honest
+        SpawnChunks(top, 3, 0.45f, 0.85f, SplinterMat, 2.5f, 4.5f);
         for (int i = 0; i < 3; i++)
         {
             var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (0.8f + i * 0.9f));
@@ -2104,6 +2196,7 @@ public partial class MechDuel : Node3D
     {
         _combatClock += dt;
         UpdateDestructibles(dt);
+        StepEnvChunks(dt);
         _cdLaser = Mathf.Max(_cdLaser - dt, 0f);
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
@@ -2755,6 +2848,7 @@ public partial class MechDuel : Node3D
                         if (d.Kind == "tree" && d.State == 0 && _wEnvT == null) _wEnvT = d;
                     }
                     if (_wEnvB == null || _wEnvT == null) { WFail("no intact building/tree for the env phase"); return; }
+                    _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count;
                     // Firing position: 16u from the building, toward the arena center.
                     var bc = _wEnvB.Center;
                     var toC = (Vector3.Zero - bc); toC.Y = 0f;
@@ -2770,7 +2864,17 @@ public partial class MechDuel : Node3D
                     _cdLaser = 0f;
                     var bc = _wEnvB.Center;
                     FireLaser(new Vector3(bc.X, bc.Y + _wEnvB.Height * 0.55f, bc.Z));
-                    if (_wEnvB.State == 2) { GD.Print("ENVTEST COLLAPSE-START PASS building gave way under fire"); _wEnvStep = 2; }
+                    if (_wEnvB.State == 2)
+                    {
+                        GD.Print("ENVTEST COLLAPSE-START PASS building gave way under fire");
+                        if (_envFxEvents <= _wEnvFx0) { WFail("building collapsed with NO destruction FX"); return; }
+                        int chunks = _envChunks.Count - _wEnvChunks0;
+                        if (chunks < 7) { WFail($"building broke into only {chunks} chunks (want 7)"); return; }
+                        GD.Print($"ENVTEST FX PASS building died with an explosion and {chunks} flying chunks");
+                        QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
+                        _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count;
+                        _wEnvStep = 2;
+                    }
                     if (_wPhaseT > 20) WFail("building never collapsed");
                 }
                 else if (_wEnvStep == 2 && _wEnvB.State == 4)
@@ -2798,7 +2902,10 @@ public partial class MechDuel : Node3D
                     var aimT = new Vector3(tc.X, tc.Y + 2f, tc.Z);
                     var rayT = _hit.Ray(fromT, (aimT - fromT).Normalized(), 30f, "TW");
                     if (rayT.Target == "PROP" && rayT.T < fromT.DistanceTo(aimT) + 2f) { WFail("destroyed tree still blocks shots"); return; }
-                    GD.Print("ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once");
+                    if (_envFxEvents <= _wEnvFx0) { WFail("tree died with NO destruction FX"); return; }
+                    int splinters = _envChunks.Count - _wEnvChunks0;
+                    if (splinters < 3) { WFail($"tree threw only {splinters} splinters (want 3)"); return; }
+                    GD.Print($"ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once, FX fired (+{splinters} splinters)");
                     _wEnvStep = 3;
                 }
                 else if (_wEnvStep == 3)
