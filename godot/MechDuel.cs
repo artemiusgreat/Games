@@ -72,6 +72,10 @@ public partial class MechDuel : Node3D
     private double _phaseT;
     private int _strideShots;
     private float _minTreeSep, _minMechSep;
+    private int _pLimpStep;
+    private double _pLimpT0;
+    private Vector3 _pLimpStart;
+    private float _pLimpYaw0;
     private Vector3 _lastPlayerPos;
     private float _stallTimer;
     private bool _twistLogged;
@@ -982,18 +986,30 @@ public partial class MechDuel : Node3D
 
     private void UpdatePlayerInput(float delta)
     {
-        // A lost leg immobilizes the mech: no throttle, no leg turning.
-        bool legsOk = _partsPlayer.Alive("leg_L") && _partsPlayer.Alive("leg_R");
-        if (legsOk)
-        {
-            if (Input.IsPhysicalKeyPressed(Key.A)) _playerYaw += TurnRate * delta;
-            if (Input.IsPhysicalKeyPressed(Key.D)) _playerYaw -= TurnRate * delta;
-        }
+        ApplyPlayerInput(delta,
+            Input.IsPhysicalKeyPressed(Key.W), Input.IsPhysicalKeyPressed(Key.S),
+            Input.IsPhysicalKeyPressed(Key.A), Input.IsPhysicalKeyPressed(Key.D),
+            Input.IsPhysicalKeyPressed(Key.Shift));
+    }
+
+    // The player's drive, with the keys passed in so the duel harness
+    // can exercise the REAL input path. Leg damage does NOT gate this:
+    // the round-1 "a lost leg immobilizes" rule was retired — a wrecked
+    // leg only throttles the walker (SpeedFactor: limp 0.55 / crawl
+    // 0.25) and turns slower by the same factor. (The retired gate
+    // survived here after the walker-side rework and left the player
+    // permanently stuck the moment a leg was wrecked: no forward, no
+    // reverse, no turn — the owner's playtest report.)
+    private void ApplyPlayerInput(float delta, bool w, bool s, bool a, bool d, bool shift)
+    {
+        float f = _player.SpeedFactor;
+        if (a) _playerYaw += TurnRate * f * delta;
+        if (d) _playerYaw -= TurnRate * f * delta;
         // SHIFT + W = run mode (1.5x walk speed); reverse stays at walk pace.
-        _running = legsOk && Input.IsPhysicalKeyPressed(Key.Shift) && Input.IsPhysicalKeyPressed(Key.W);
+        _running = shift && w;
         float spd = 0f;
-        if (legsOk && Input.IsPhysicalKeyPressed(Key.W)) spd = PlayerMaxSpeed * (_running ? RunFactor : 1f);
-        else if (legsOk && Input.IsPhysicalKeyPressed(Key.S)) spd = -PlayerMaxSpeed * 0.55f;
+        if (w) spd = PlayerMaxSpeed * (_running ? RunFactor : 1f);
+        else if (s) spd = -PlayerMaxSpeed * 0.55f;
         _player.SetDrive(_playerYaw, spd);
     }
 
@@ -2292,6 +2308,71 @@ public partial class MechDuel : Node3D
                     if (_phaseT > 16) { GD.PrintErr("DUEL FAIL: mech stall never detected"); GetTree().Quit(1); }
                 }
                 break;
+            case 5: // PLAYERLIMP: wreck the PLAYER's leg_L, then drive
+                    // through the real input path (ApplyPlayerInput):
+                    // forward, reverse and turning must all still answer
+                    // at limp throttle. Regression for the retired
+                    // legsOk gate that left the player permanently stuck.
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_phaseT > 34) { GD.PrintErr("DUEL FAIL: playerlimp phase timeout"); GetTree().Quit(1); }
+                if (_pLimpStep == 0 && _phaseT > 0.15f)
+                {
+                    ResetDuel();
+                    _partsPlayer.DamagePart("leg_L", 999f);
+                    if (_partsPlayer.Alive("leg_L")) { GD.PrintErr("DUEL FAIL: player leg_L not wrecked"); GetTree().Quit(1); break; }
+                    if (Mathf.Abs(_player.SpeedFactor - 0.55f) > 0.01f) { GD.PrintErr($"DUEL FAIL: limp factor {_player.SpeedFactor:F2} != 0.55"); GetTree().Quit(1); break; }
+                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f), 0f);
+                    _enemy.Teleport(new Vector3(30f, Main.HeightAt(30f, -30f), -30f), Mathf.Pi);
+                    _playerYaw = 0f; _enemyYaw = Mathf.Pi;
+                    _pLimpStart = _player.RootPos;
+                    _pLimpT0 = _phaseT;
+                    _pLimpStep = 1;
+                }
+                else if (_pLimpStep == 1)
+                {
+                    ApplyPlayerInput(delta, true, false, false, false, false);
+                    if (_phaseT - _pLimpT0 > 3.2f)
+                    {
+                        float fwd = _pLimpStart.Z - _player.RootPos.Z;
+                        float spdNow = _player.Speed;
+                        if (fwd < 3.5f || spdNow < 1.5f || spdNow > 3.1f)
+                        { GD.PrintErr($"DUEL FAIL: limping player barely moved fwd={fwd:F2} spd={spdNow:F2}"); GetTree().Quit(1); break; }
+                        GD.Print($"DUEL PLAYERLIMP FWD fwd={fwd:F2} over 3.2s at spd={spdNow:F2} (limp 0.55x)");
+                        _pLimpStart = _player.RootPos;
+                        _pLimpT0 = _phaseT;
+                        _pLimpStep = 2;
+                    }
+                }
+                else if (_pLimpStep == 2)
+                {
+                    ApplyPlayerInput(delta, false, true, false, false, false);
+                    if (_phaseT - _pLimpT0 > 2.2f)
+                    {
+                        float rev = _player.RootPos.Z - _pLimpStart.Z;
+                        if (rev < 1.2f)
+                        { GD.PrintErr($"DUEL FAIL: limping player cannot reverse rev={rev:F2}"); GetTree().Quit(1); break; }
+                        GD.Print($"DUEL PLAYERLIMP REV rev={rev:F2} over 2.2s");
+                        _pLimpYaw0 = _playerYaw;
+                        _pLimpT0 = _phaseT;
+                        _pLimpStep = 3;
+                    }
+                }
+                else if (_pLimpStep == 3)
+                {
+                    ApplyPlayerInput(delta, false, false, true, false, false);
+                    if (_phaseT - _pLimpT0 > 0.6f)
+                    {
+                        float gain = _playerYaw - _pLimpYaw0;
+                        if (gain < 0.15f)
+                        { GD.PrintErr($"DUEL FAIL: limping player cannot turn gain={gain:F3}"); GetTree().Quit(1); break; }
+                        GD.Print($"DUEL PLAYERLIMP PASS fwd+rev+turn all answer with leg_L wrecked (turn gain={gain:F3} in 0.6s)");
+                        _pLimpStep = 4;
+                        ResetDuel();
+                        QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
+                        SetPhase(6);
+                    }
+                }
+                break;
         }
     }
 
@@ -3306,7 +3387,7 @@ public partial class MechDuel : Node3D
         var after = _afterCapture;
         _afterCapture = null;
         after?.Invoke();
-        if (_phase == 5 && tag == "mech")
+        if (_phase == 6 && tag == "mech")
         {
             GD.Print($"DUEL DONE playerSteps={_player.Steps} atlasSteps={_enemy.Steps} atlasMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
