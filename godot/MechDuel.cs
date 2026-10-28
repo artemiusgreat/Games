@@ -2411,7 +2411,13 @@ public partial class MechDuel : Node3D
                     _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), 0f);
                     _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -12f), -12f), Mathf.Pi);
                     _playerYaw = 0f; _enemyYaw = Mathf.Pi;
+                    _playerVel = Vector3.Zero;
+                    _prevPlayerRoot = _player.RootPos;
                     _camMode = "chase";
+                    // Project through the camera the capture will use:
+                    // run one camera update now, otherwise the reticle
+                    // measurements use last phase's camera pose.
+                    UpdateCamera(0f);
                     _player.TorsoTwist = 0f;
                     _player.TorsoPitch = 0.40f;
                     var aimUp = TorsoAimPoint();
@@ -2439,10 +2445,13 @@ public partial class MechDuel : Node3D
                     if (ryUp > ryDown - 30f)
                     { GD.PrintErr($"DUEL FAIL: reticle does not ride the torso aim (ryUp={ryUp:F0} ryDown={ryDown:F0})"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle screenY {ryDown:F0} -> {ryUp:F0}");
-                    // Proof frame: torso twisted + pitched up — the
-                    // reticle must sit ON the Atlas, off screen center.
-                    _player.TorsoTwist = 0.5f;
-                    _player.TorsoPitch = 0.38f;
+                    // Proof frame: torso pitched up — the reticle
+                    // rides visibly above screen center, over the
+                    // Atlas. (Max pitch would clamp it to the top
+                    // edge: the edge-indicator case, asserted above
+                    // via ryUp hitting the 28px margin.)
+                    _player.TorsoTwist = 0f;
+                    _player.TorsoPitch = 0.18f;
                     _aimPoint = TorsoAimPoint();
                     UpdateReticle();
                     _aimStep = 1;
