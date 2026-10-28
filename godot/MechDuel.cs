@@ -452,7 +452,10 @@ public partial class MechDuel : Node3D
         }
         AddChild(tree);
         float r = 0.7f * scale;
-        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
+        // Owner's rule: trees do NOT block movement — a mech that walks
+        // into one stomps it flat (see StompCheck). Only buildings (and
+        // rocks) keep movement circles. The hit cylinder stays, so
+        // trees still block shots and can be shot/burned.
         var treeCyl = new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = pos.Y, Height = totalH * scale };
         _hit.Props.Add(treeCyl);
         var td = new Destructible
@@ -882,6 +885,37 @@ public partial class MechDuel : Node3D
             b += d * push;
             _player.ApplyRootXZ(a);
             _enemy.ApplyRootXZ(b);
+        }
+    }
+
+    // Any mech whose footprint reaches a standing tree crushes it:
+    // the tree drops into the fast evaporation path (0.8s shrink with
+    // dust), its shot-blocking cylinder is removed at once, and the
+    // mech walks on. Buildings are never stompable.
+    private void StompCheck()
+    {
+        foreach (var w in new[] { _player, _enemy })
+        {
+            if (w == _player ? _playerDead : _enemyDead) continue;
+            var wp = new Vector2(w.RootPos.X, w.RootPos.Z);
+            foreach (var d in _destructibles)
+            {
+                if (d.Kind != "tree" || d.State != 0) continue;
+                var tp = new Vector2(d.Center.X, d.Center.Z);
+                if (wp.DistanceTo(tp) > w.CollisionRadius + 0.35f) continue;
+                d.State = 3;
+                d.PhaseLen = 0.8f;
+                d.Timer = 0.8f;
+                RemovePropColliders(d);
+                for (int i = 0; i < 3; i++)
+                {
+                    var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (0.6f + i * 0.7f));
+                    AddChild(puff);
+                    _puffs.Add((puff, 0.7f));
+                }
+                if (w == _player) _shake = Mathf.Max(_shake, 0.18f);
+                GD.Print($"DUEL STOMP {(w == _player ? "TW" : "ATLAS")} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
+            }
         }
     }
 
@@ -2222,30 +2256,30 @@ public partial class MechDuel : Node3D
                     });
                 }
                 break;
-            case 3: // drive straight at the tree at (6,16)
+            case 3: // STOMP: drive straight at the tree at (6,16) — it must NOT stop the mech; the mech crushes it and walks through
                 _player.SetDrive(0f, 2.6f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 {
                     float sep = new Vector2(_player.RootPos.X - 6f, _player.RootPos.Z - 16f).Length();
                     _minTreeSep = Mathf.Min(_minTreeSep, sep);
-                    float moved = _player.RootPos.DistanceTo(_lastPlayerPos);
-                    _lastPlayerPos = _player.RootPos;
-                    if (_phaseT > 2.0)
+                    Destructible treeD = null;
+                    foreach (var d in _destructibles)
+                        if (d.Kind == "tree" && Mathf.Abs(d.Center.X - 6f) < 0.6f && Mathf.Abs(d.Center.Z - 16f) < 0.6f)
+                            treeD = d;
+                    if (treeD != null && treeD.State != 0 && _minTreeSep < 2.6f)
                     {
-                        if (moved < 0.004f) _stallTimer += delta; else _stallTimer = 0f;
-                        if (_stallTimer > 0.5f)
+                        GD.Print($"DUEL STOMP PASS tree crushed underfoot (minSep={_minTreeSep:F2}), mech walks through");
+                        QueueCapture("res://proof/duel_collision_prop.png", "prop", "prop", () =>
                         {
-                            GD.Print($"DUEL TREE minSep={_minTreeSep:F3} finalSep={sep:F3} sumRadii={0.7f + _player.CollisionRadius:F2} playerPos={_player.RootPos}");
-                            QueueCapture("res://proof/duel_collision_prop.png", "prop", "prop", () =>
-                            {
-                                SetPhase(4);
-                                _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
-                                _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -2f), -2f), Mathf.Pi);
-                                _minMechSep = 1e9f;
-                            });
-                        }
+                            SetPhase(4);
+                            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
+                            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -2f), -2f), Mathf.Pi);
+                            _minMechSep = 1e9f;
+                        });
                     }
-                    if (_phaseT > 14) { GD.PrintErr("DUEL FAIL: tree stall never detected"); GetTree().Quit(1); }
+                    if (_player.RootPos.Z < 12.5f && (treeD == null || treeD.State == 0))
+                    { GD.PrintErr("DUEL FAIL: player passed the tree without stomping it"); GetTree().Quit(1); }
+                    if (_phaseT > 14) { GD.PrintErr("DUEL FAIL: stomp phase timeout"); GetTree().Quit(1); }
                 }
                 break;
             case 4: // mechs driven at each other
@@ -3505,6 +3539,7 @@ public partial class MechDuel : Node3D
             StepWalker(_player, delta);
             StepWalker(_enemy, delta);
             ResolveCollisions();
+            StompCheck();
             if (dt > 0f)
             {
                 var v = (_player.RootPos - _prevPlayerRoot) / dt;
