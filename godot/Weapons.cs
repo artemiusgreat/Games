@@ -16,7 +16,7 @@ public partial class Projectile : Node3D
     public float Damage = 10f;
     public float SplashRadius = 0f; // 0 = direct damage only
     public string OwnerId = "";
-    public int SalvoId; // rockets of one LRM salvo share an id (knockdown accounting)
+    public float WeaponWeight; // firing weapon's tonnage (knockdown-by-weight)
     public float Life = 8f;
     public bool Dead;
     public System.Action<HitModel.Result, Projectile> OnHit;

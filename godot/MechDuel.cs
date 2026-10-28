@@ -65,10 +65,14 @@ public partial class MechDuel : Node3D
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
-    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, int Salvo)> _lrmQueue = new();
-    private int _salvoSeq;
-    // Per-salvo damage buckets for the knockdown rule: (sum, HP before).
-    private readonly System.Collections.Generic.Dictionary<long, (float Sum, float HpBefore)> _salvoDmg = new();
+    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim)> _lrmQueue = new();
+    // Knockdown by weight (owner): impact weight accumulates over a
+    // short window; past 20% of the mech's tonnage it topples.
+    private const float KnockWindow = 1.5f;
+    private const float KnockFrac = 0.20f;
+    private readonly System.Collections.Generic.List<(float T, float W)> _impactTw = new();
+    private readonly System.Collections.Generic.List<(float T, float W)> _impactAtlas = new();
+    private float _combatClock;
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
     private readonly System.Collections.Generic.List<(Label3D L, float Life)> _dmgNums = new();
@@ -703,7 +707,7 @@ public partial class MechDuel : Node3D
         {
             SpawnFlash(hit.Point, new Color(1f, 0.45f, 0.2f), 0.38f, 0.12f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW");
+            if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW", WeaponCatalog.LargeLaser.Weight);
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -717,7 +721,7 @@ public partial class MechDuel : Node3D
         var muzzle = PlayerMuzzle(false);
         var toAim = aimPoint - muzzle;
         var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
-        SpawnProjectile(muzzle, dir * 60f, 5f, 26f, 0f, "TW", rocket: false);
+        SpawnProjectile(muzzle, dir * 60f, 5f, 26f, 0f, "TW", rocket: false, weaponWeight: WeaponCatalog.Autocannon.Weight);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
         GD.Print($"WPN AC fired dir={dir}");
     }
@@ -738,9 +742,8 @@ public partial class MechDuel : Node3D
         if (podL && podR) { for (int i = 0; i < 8; i++) sides.Add(i % 2 == 0); }
         else if (podL) { for (int i = 0; i < 4; i++) sides.Add(true); }
         else { for (int i = 0; i < 4; i++) sides.Add(false); }
-        int salvo = ++_salvoSeq;
         for (int i = 0; i < sides.Count; i++)
-            _lrmQueue.Add((i * 0.07f, sides[i], aimPoint, salvo));
+            _lrmQueue.Add((i * 0.07f, sides[i], aimPoint));
         GD.Print($"WPN LRM salvo queued ({sides.Count} rockets, pods L={podL} R={podR})");
     }
 
@@ -752,7 +755,7 @@ public partial class MechDuel : Node3D
         return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
     }
 
-    private void LaunchRocket(Vector3 aimPoint, bool left, int salvoId = 0)
+    private void LaunchRocket(Vector3 aimPoint, bool left)
     {
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
@@ -762,7 +765,7 @@ public partial class MechDuel : Node3D
         const float speed = 36f, grav = 11f;
         float tof = dist / speed;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
-        SpawnProjectile(muzzle, vel, grav, 7f, 3.0f, "TW", rocket: true, salvoId: salvoId);
+        SpawnProjectile(muzzle, vel, grav, 7f, 3.0f, "TW", rocket: true, weaponWeight: WeaponCatalog.Lrm.PerRocketWeight);
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
     }
 
@@ -778,7 +781,7 @@ public partial class MechDuel : Node3D
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
         MechWalker direct = hit.Target == "TW" ? _player : hit.Target == "ATLAS" ? _enemy : null;
-        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.SalvoId);
+        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight);
         foreach (var (w, id) in new[] { (_player, "TW"), (_enemy, "ATLAS") })
         {
             if (w == direct) continue;
@@ -788,13 +791,13 @@ public partial class MechDuel : Node3D
                 var splashHit = hit;
                 splashHit.Target = id;
                 splashHit.Zone = "splash";
-                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.SalvoId);
+                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight);
             }
         }
     }
 
     private Projectile SpawnProjectile(Vector3 pos, Vector3 vel, float gravity, float dmg,
-        float splash, string owner, bool rocket, int salvoId = 0)
+        float splash, string owner, bool rocket, float weaponWeight = 0f)
     {
         var p = new Projectile
         {
@@ -803,7 +806,7 @@ public partial class MechDuel : Node3D
             Damage = dmg,
             SplashRadius = splash,
             OwnerId = owner,
-            SalvoId = salvoId
+            WeaponWeight = weaponWeight
         };
         p.AddChild(rocket ? WeaponFx.MakeRocket() : (Node3D)WeaponFx.MakeTracer());
         AddChild(p);
@@ -824,15 +827,14 @@ public partial class MechDuel : Node3D
             ExplodeSplash(hit, p);
             return;
         }
-        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.SalvoId);
-        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.SalvoId);
+        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight);
+        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight);
     }
 
-    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, int salvoId = 0)
+    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f)
     {
         bool isPlayer = target == _player;
         if (isPlayer ? _playerDead : _enemyDead) return;
-        float hpBefore = isPlayer ? _hpPlayer : _hpEnemy;
         var parts = isPlayer ? _partsPlayer : _partsEnemy;
         // Local damage routing: torso hits burn the main pool; head hits
         // burn the head part AND the pool; every other part absorbs its
@@ -860,26 +862,22 @@ public partial class MechDuel : Node3D
         GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source);
         if (hp <= 0f) { Die(target); return; }
-        // Knockdown rule (owner): a single hit — or one full LRM salvo,
-        // summed across its rockets — whose firepower exceeds 1/3 of the
-        // target's remaining HP topples the mech. (Against MAX HP the
-        // rule could never fire: the biggest single hit in the game is
-        // the 26-damage autocannon vs an 87-point threshold.)
-        if (salvoId > 0)
+        // Knockdown rule (owner): weight, not damage. Every hit lands
+        // with its weapon's tonnage; impact inside a 1.5s window sums,
+        // and past 20% of the target's own tonnage the mech topples.
+        if (weaponWeight > 0f)
         {
-            long key = ((long)salvoId << 1) | (isPlayer ? 1L : 0L);
-            if (!_salvoDmg.TryGetValue(key, out var acc)) acc = (0f, hpBefore);
-            acc.Sum += dmg;
-            _salvoDmg[key] = acc;
-            if (acc.Sum > acc.HpBefore / 3f)
+            var acc = isPlayer ? _impactTw : _impactAtlas;
+            acc.Add((_combatClock, weaponWeight));
+            acc.RemoveAll(e => _combatClock - e.T > KnockWindow);
+            float sum = 0f;
+            foreach (var e in acc) sum += e.W;
+            float tonnage = isPlayer ? MechSpecs.TimberWolf.Tonnage : MechSpecs.Atlas.Tonnage;
+            if (sum > tonnage * KnockFrac)
             {
-                _salvoDmg.Remove(key);
-                DoKnockdown(target, $"salvo firepower {acc.Sum:F0} > remaining HP {acc.HpBefore:F0} / 3");
+                acc.Clear();
+                DoKnockdown(target, $"impact {sum:F1}t > {KnockFrac * 100f:F0}% of {tonnage:F0}t");
             }
-        }
-        else if (dmg > hpBefore / 3f)
-        {
-            DoKnockdown(target, $"hit firepower {dmg:F0} > remaining HP {hpBefore:F0} / 3");
         }
     }
 
@@ -1048,7 +1046,8 @@ public partial class MechDuel : Node3D
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
         _weaponSel = 0;
         _lrmQueue.Clear();
-        _salvoDmg.Clear();
+        _impactTw.Clear();
+        _impactAtlas.Clear();
         foreach (var p in _shots) p.QueueFree();
         _shots.Clear();
         _lastPuff.Clear();
@@ -1382,7 +1381,7 @@ public partial class MechDuel : Node3D
         // Head destroyed: sensors gone, aim spread triples (1.2 -> 3.6 deg).
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
             _partsEnemy.Alive("head") ? 1.2f : 3.6f);
-        SpawnProjectile(muzzle, dir * 50f, 5f, 18f, 0f, "ATLAS", rocket: false);
+        SpawnProjectile(muzzle, dir * 50f, 5f, 18f, 0f, "ATLAS", rocket: false, weaponWeight: WeaponCatalog.AtlasAc20.Weight);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
         _cdAtlas = 2.4f;
         _atlasShots++;
@@ -1401,6 +1400,7 @@ public partial class MechDuel : Node3D
 
     private void UpdateCombat(float dt)
     {
+        _combatClock += dt;
         _cdLaser = Mathf.Max(_cdLaser - dt, 0f);
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
@@ -1419,7 +1419,7 @@ public partial class MechDuel : Node3D
         {
             var q = _lrmQueue[i];
             q.Delay -= dt;
-            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left, q.Salvo); }
+            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left); }
             else _lrmQueue[i] = q;
         }
         for (int i = _shots.Count - 1; i >= 0; i--)
@@ -1862,7 +1862,7 @@ public partial class MechDuel : Node3D
     // on the part's own largest-volume center — a point guaranteed to
     // sit inside the part). Same precedent as the weapons test's crafted
     // player-death hit.
-    private void CraftHit(MechWalker target, string partId, float dmg, int salvoId = 0)
+    private void CraftHit(MechWalker target, string partId, float dmg, float weaponWeight = 0f)
     {
         var parts = target == _player ? _partsPlayer : _partsEnemy;
         var hit = new HitModel.Result
@@ -1872,7 +1872,7 @@ public partial class MechDuel : Node3D
             Zone = "torso",
             Point = parts.PartAimPoint(partId)
         };
-        ApplyDamage(target, dmg, hit, target == _player ? "ATLAS" : "TW", salvoId);
+        ApplyDamage(target, dmg, hit, target == _player ? "ATLAS" : "TW", weaponWeight);
     }
 
     // Craft via a real HitModel ray: needed for the TW head, whose
@@ -2276,28 +2276,27 @@ public partial class MechDuel : Node3D
                     SetBPhase(9);
                 }
                 break;
-            case 9: // KNOCKDOWN: threshold, fall, recovery, immunity, salvo sum
+            case 9: // KNOCKDOWN BY WEIGHT: window sum vs 20% of tonnage
                 if (_bStep == 0)
                 {
                     ResetDuel();
                     BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
-                    // 100 < 340/3 = 113.3: under the rule, no knockdown.
-                    CraftHit(_enemy, "torso", 100f);
+                    // Atlas 100t -> threshold 20t. One autocannon hit: 12t.
+                    CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
                     BStep(1);
                 }
                 else if (_bStep == 1 && BStepT > 0.6f)
                 {
-                    if (_enemy.IsKnockedDown) BFail("100 dmg knocked a full-HP Atlas (threshold 113)");
-                    GD.Print("KNOCKTEST THRESHOLD PASS 100 dmg vs 113 threshold — no knockdown");
-                    // Pool now 240; 100 > 240/3 = 80: this one topples it.
-                    CraftHit(_enemy, "torso", 100f);
+                    if (_enemy.IsKnockedDown) BFail("single 12t hit knocked a 100t Atlas (threshold 20t)");
+                    GD.Print("KNOCKTEST THRESHOLD PASS single AC hit 12t < 20t — no knockdown");
+                    CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight); // window sum 24t
                     BStep(2);
                 }
                 else if (_bStep == 2 && BStepT > 1.0f)
                 {
                     if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.75f)
                         BFail($"expected Atlas down (amt={_enemy.FallAmount:F2} down={_enemy.IsKnockedDown})");
-                    GD.Print($"KNOCKTEST FALL PASS Atlas toppled (fallAmount={_enemy.FallAmount:F2})");
+                    GD.Print($"KNOCKTEST FALL PASS cumulative 24t topples the Atlas (fallAmount={_enemy.FallAmount:F2})");
                     QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
                     BStep(3);
                 }
@@ -2307,39 +2306,51 @@ public partial class MechDuel : Node3D
                     if (!_enemy.IsKnockedDown && BStepT > 0.5f)
                     {
                         GD.Print("KNOCKTEST RECOVERY PASS Atlas back on its feet");
-                        // Inside the 3s immunity window this hit (100 >
-                        // 140/3) must NOT re-knock.
-                        CraftHit(_enemy, "torso", 100f);
+                        // 30t inside the immunity window must NOT re-knock.
+                        CraftHit(_enemy, "torso", 5f, 30f);
                         BStep(4);
                     }
                 }
                 else if (_bStep == 4 && BStepT > 0.6f)
                 {
                     if (_enemy.IsKnockedDown) BFail("immunity failed: re-knocked inside the window");
-                    GD.Print("KNOCKTEST IMMUNITY PASS no chain-knockdown after recovery");
+                    GD.Print("KNOCKTEST IMMUNITY PASS 30t hit blocked by post-recovery immunity");
                     BStep(5);
                 }
                 else if (_bStep == 5 && BStepT > 3.4f)
                 {
-                    // Immunity over. Salvo accounting at pool 150: small
-                    // torso hits set the pool without ever crossing 1/3.
-                    ResetDuel();
-                    BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
-                    for (int i = 0; i < 19; i++) CraftHit(_enemy, "torso", 10f);
-                    if (_enemy.IsKnockedDown) BFail("small hits knocked the Atlas");
-                    if (Mathf.Abs(_hpEnemy - 150f) > 0.01f) BFail($"salvo setup pool = {_hpEnemy:F1} (want 150)");
-                    const int testSalvo = 777;
-                    for (int i = 0; i < 7; i++) CraftHit(_enemy, "leg_L", 7f, testSalvo);
-                    if (_enemy.IsKnockedDown) BFail("7 rockets (49) crossed a 50 threshold");
-                    GD.Print("KNOCKTEST SALVO-HOLD PASS 7 rockets sum 49 < threshold 50");
-                    CraftHit(_enemy, "leg_L", 7f, testSalvo); // sum 56 > 50
+                    // Immunity over. Window test: a lone 12t hit...
+                    CraftHit(_enemy, "torso", 5f, WeaponCatalog.Autocannon.Weight);
                     BStep(6);
                 }
-                else if (_bStep == 6 && BStepT > 0.9f)
+                else if (_bStep == 6 && BStepT > 2.0f)
                 {
-                    if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.7f)
-                        BFail($"salvo knockdown missing (amt={_enemy.FallAmount:F2})");
-                    GD.Print($"KNOCKTEST SALVO PASS full salvo (56 > 150/3) topples the Atlas (fallAmount={_enemy.FallAmount:F2})");
+                    // ...2s later another 12t: the first has left the 1.5s window.
+                    CraftHit(_enemy, "torso", 5f, WeaponCatalog.Autocannon.Weight);
+                    if (_enemy.IsKnockedDown) BFail("window failed: hits 2s apart accumulated");
+                    GD.Print("KNOCKTEST WINDOW PASS hits 2s apart do not accumulate");
+                    CraftHit(_enemy, "torso", 5f, WeaponCatalog.Autocannon.Weight); // now 24t in-window
+                    BStep(7);
+                }
+                else if (_bStep == 7 && BStepT > 0.9f)
+                {
+                    if (!_enemy.IsKnockedDown) BFail("in-window pair (24t) did not knock");
+                    GD.Print("KNOCKTEST ACCUMULATION PASS in-window pair topples again");
+                    // Salvo vs the Timber Wolf (75t -> threshold 15t):
+                    // rockets land at 2.5t each; 6 sum to exactly 15 (hold),
+                    // the 7th crosses.
+                    for (int i = 0; i < 6; i++) CraftHit(_player, "leg_L", 7f, WeaponCatalog.Lrm.PerRocketWeight);
+                    if (_player.IsKnockedDown) BFail("6 rockets (15t) knocked the TW (threshold is >15)");
+                    GD.Print("KNOCKTEST SALVO-HOLD PASS 6 rockets sum 15t, not over threshold");
+                    CraftHit(_player, "leg_L", 7f, WeaponCatalog.Lrm.PerRocketWeight);
+                    if (!_player.IsKnockedDown) BFail("7th rocket (17.5t) did not knock the TW");
+                    GD.Print("KNOCKTEST SALVO PASS rocket weights accumulate across the salvo");
+                    BStep(8);
+                }
+                else if (_bStep == 8 && BStepT > 0.9f)
+                {
+                    if (_player.FallAmount < 0.7f) BFail($"TW fall not visible (amt={_player.FallAmount:F2})");
+                    GD.Print($"KNOCKTEST TW-FALL PASS player mech toppled by salvo weight (fallAmount={_player.FallAmount:F2})");
                     GD.Print("BRKTEST DONE");
                     GetTree().Quit(0);
                 }
