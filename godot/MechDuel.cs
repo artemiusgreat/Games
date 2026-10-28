@@ -2272,6 +2272,73 @@ public partial class MechDuel : Node3D
                     int n = _rocketsLaunched - _bCount1;
                     if (n != 8) BFail($"post-reset salvo = {n} rockets (want 8)");
                     GD.Print("BRKTEST SALVO8 PASS salvo restored to 8 after reset");
+                    SetBPhase(9);
+                }
+                break;
+            case 9: // KNOCKDOWN: threshold, fall, recovery, immunity, salvo sum
+                if (_bStep == 0)
+                {
+                    ResetDuel();
+                    BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    // 100 < 340/3 = 113.3: under the rule, no knockdown.
+                    CraftHit(_enemy, "torso", 100f);
+                    BStep(1);
+                }
+                else if (_bStep == 1 && BStepT > 0.6f)
+                {
+                    if (_enemy.IsKnockedDown) BFail("100 dmg knocked a full-HP Atlas (threshold 113)");
+                    GD.Print("KNOCKTEST THRESHOLD PASS 100 dmg vs 113 threshold — no knockdown");
+                    // Pool now 240; 100 > 240/3 = 80: this one topples it.
+                    CraftHit(_enemy, "torso", 100f);
+                    BStep(2);
+                }
+                else if (_bStep == 2 && BStepT > 1.0f)
+                {
+                    if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.75f)
+                        BFail($"expected Atlas down (amt={_enemy.FallAmount:F2} down={_enemy.IsKnockedDown})");
+                    GD.Print($"KNOCKTEST FALL PASS Atlas toppled (fallAmount={_enemy.FallAmount:F2})");
+                    QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
+                    BStep(3);
+                }
+                else if (_bStep == 3)
+                {
+                    if (BStepT > 9f) BFail("Atlas never got back up");
+                    if (!_enemy.IsKnockedDown && BStepT > 0.5f)
+                    {
+                        GD.Print("KNOCKTEST RECOVERY PASS Atlas back on its feet");
+                        // Inside the 3s immunity window this hit (100 >
+                        // 140/3) must NOT re-knock.
+                        CraftHit(_enemy, "torso", 100f);
+                        BStep(4);
+                    }
+                }
+                else if (_bStep == 4 && BStepT > 0.6f)
+                {
+                    if (_enemy.IsKnockedDown) BFail("immunity failed: re-knocked inside the window");
+                    GD.Print("KNOCKTEST IMMUNITY PASS no chain-knockdown after recovery");
+                    BStep(5);
+                }
+                else if (_bStep == 5 && BStepT > 3.4f)
+                {
+                    // Immunity over. Salvo accounting at pool 150: small
+                    // torso hits set the pool without ever crossing 1/3.
+                    ResetDuel();
+                    BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    for (int i = 0; i < 19; i++) CraftHit(_enemy, "torso", 10f);
+                    if (_enemy.IsKnockedDown) BFail("small hits knocked the Atlas");
+                    if (Mathf.Abs(_hpEnemy - 150f) > 0.01f) BFail($"salvo setup pool = {_hpEnemy:F1} (want 150)");
+                    const int testSalvo = 777;
+                    for (int i = 0; i < 7; i++) CraftHit(_enemy, "leg_L", 7f, testSalvo);
+                    if (_enemy.IsKnockedDown) BFail("7 rockets (49) crossed a 50 threshold");
+                    GD.Print("KNOCKTEST SALVO-HOLD PASS 7 rockets sum 49 < threshold 50");
+                    CraftHit(_enemy, "leg_L", 7f, testSalvo); // sum 56 > 50
+                    BStep(6);
+                }
+                else if (_bStep == 6 && BStepT > 0.9f)
+                {
+                    if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.7f)
+                        BFail($"salvo knockdown missing (amt={_enemy.FallAmount:F2})");
+                    GD.Print($"KNOCKTEST SALVO PASS full salvo (56 > 150/3) topples the Atlas (fallAmount={_enemy.FallAmount:F2})");
                     GD.Print("BRKTEST DONE");
                     GetTree().Quit(0);
                 }
