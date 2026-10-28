@@ -47,6 +47,10 @@ public sealed class MechParts
         public int BindIndex;
         public string BoneName;
         public bool Detached;
+        // Saved look for the leg-wreck state (restored on unwreck/reset).
+        public Material SavedOverlay;
+        public Vector3 SavedScale;
+        public Vector3 SavedRot;
     }
 
     public sealed class Debris
@@ -68,6 +72,9 @@ public sealed class MechParts
         public float MaxHp;
         public float Hp;
         public bool Destroyed;
+        // Legs only: destroyed but still attached (darkened + deformed),
+        // per the owner's rule that legs never fall off.
+        public bool Wrecked;
         public readonly List<MeshRec> Meshes = new();
         public readonly List<Volume> Volumes = new();
     }
@@ -566,10 +573,58 @@ public sealed class MechParts
         GD.Print($"BRK DMG {_mechId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
-        BreakPart(part, center);
-        GD.Print($"BRK BREAK {_mechId} part={partId} '{part.Display}' at {center}");
+        if (partId == "leg_L" || partId == "leg_R")
+        {
+            // Owner's rule: legs NEVER fall off. A destroyed leg stays
+            // attached — darkened and deformed — and the mech limps.
+            WreckPart(part);
+            GD.Print($"BRK WRECK {_mechId} part={partId} '{part.Display}' (stays attached, mech limps)");
+        }
+        else
+        {
+            BreakPart(part, center);
+            GD.Print($"BRK BREAK {_mechId} part={partId} '{part.Display}' at {center}");
+        }
         OnBreak?.Invoke(partId, center);
         return true;
+    }
+
+    private static readonly StandardMaterial3D WreckOverlay = new()
+    {
+        AlbedoColor = new Color(0.05f, 0.04f, 0.03f, 0.62f),
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        Roughness = 1f
+    };
+
+    // The leg-wreck look: a charred translucent overlay darkens the
+    // leg's own texture, and the meshes are crushed slightly (shorter,
+    // wider) and tilted — deformation without detachment.
+    private void WreckPart(Part part)
+    {
+        part.Destroyed = true;
+        part.Wrecked = true;
+        float tilt = part.Id == "leg_L" ? 0.085f : -0.085f;
+        foreach (var rec in part.Meshes)
+        {
+            rec.SavedOverlay = rec.Mi.MaterialOverlay;
+            rec.SavedScale = rec.Mi.Scale;
+            rec.SavedRot = rec.Mi.Rotation;
+            rec.Mi.MaterialOverlay = WreckOverlay;
+            rec.Mi.Scale = rec.SavedScale * new Vector3(1.07f, 0.92f, 1.07f);
+            rec.Mi.Rotation = rec.SavedRot + new Vector3(0.045f, 0f, tilt);
+        }
+    }
+
+    private void UnWreck(Part part)
+    {
+        if (!part.Wrecked) return;
+        part.Wrecked = false;
+        foreach (var rec in part.Meshes)
+        {
+            rec.Mi.MaterialOverlay = rec.SavedOverlay;
+            rec.Mi.Scale = rec.SavedScale;
+            rec.Mi.Rotation = rec.SavedRot;
+        }
     }
 
     // Death explosion: EVERY part detaches into debris at once —
@@ -581,7 +636,8 @@ public sealed class MechParts
     {
         foreach (var part in _parts.Values)
         {
-            if (part.Destroyed) continue;
+            if (part.Destroyed && !part.Wrecked) continue;
+            if (part.Wrecked) UnWreck(part); // debris piece starts clean
             part.Hp = 0f;
             var center = PartCenterWorld(part.Id);
             BreakPart(part, center);
@@ -714,6 +770,7 @@ public sealed class MechParts
         _debris.Clear();
         foreach (var part in _parts.Values)
         {
+            if (part.Wrecked) UnWreck(part);
             part.Hp = part.MaxHp;
             part.Destroyed = false;
         }

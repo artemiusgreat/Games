@@ -1004,14 +1004,9 @@ public partial class MechDuel : Node3D
         float yawTo = MechWalker.YawOf(toP.Normalized());
         // (A downed Atlas has a leg gone, so the immobile branch below
         // handles it: no drive, but the torso still tracks and fires.)
-        if (!_partsEnemy.Alive("leg_L") || !_partsEnemy.Alive("leg_R"))
-        {
-            // Immobile: legs frozen, but the torso still tracks and fires.
-            _enemy.SetDrive(_enemyYaw, 0f);
-            TrackAtlasTorso(delta, yawTo);
-            _enemy.TorsoPitch = 0f;
-            return;
-        }
+        // (No immobile branch anymore: a leg-wrecked Atlas limps —
+        // the walker's SpeedFactor throttles its drive — and keeps
+        // playing its range game below.)
         float desiredYaw, spd;
         if (dist > 38f) { desiredYaw = yawTo; spd = AtlasMaxSpeed; }
         else if (dist < 26f) { desiredYaw = yawTo; spd = -AtlasMaxSpeed * 0.5f; }
@@ -1450,11 +1445,12 @@ public partial class MechDuel : Node3D
         }
     }
 
-    // Recompute a walker's leg state from its parts. Owner's rule: ANY
-    // lost leg means the mech cannot walk — drive speed is zeroed and it
-    // fights on as a stationary turret (torso twist and weapons still
-    // work), leaning slightly onto the surviving leg. Both legs gone =
-    // disabled, which counts as destroyed.
+    // Recompute a walker's leg state from its parts. Owner's rule
+    // (current): a destroyed leg never falls off and never fells or
+    // kills the mech — it stays attached, darkened and deformed, and
+    // the mech LIMPS: one wrecked leg = 55% speed with a lean and the
+    // dead leg dragged by the walker; both legs wrecked = a 25% crawl.
+    // Death comes only from the HP pool reaching zero.
     private void SyncLegConsequences(MechWalker w, MechParts parts)
     {
         bool lDead = !parts.Alive("leg_L");
@@ -1463,28 +1459,20 @@ public partial class MechDuel : Node3D
         w.SetLegDisabled(false, rDead);
         if (lDead && rDead)
         {
+            w.SpeedFactor = 0.25f;
+            w.LimpRoll = 0f;
+            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} both legs wrecked -> CRAWL (speedFactor 0.25)");
+        }
+        else if (lDead || rDead)
+        {
+            w.SpeedFactor = 0.55f;
+            w.LimpRoll = lDead ? 0.10f : -0.10f;
+            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg wrecked -> LIMP (speedFactor 0.55)");
+        }
+        else
+        {
             w.SpeedFactor = 1f;
             w.LimpRoll = 0f;
-            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} both legs destroyed -> DISABLED (counts as destroyed)");
-            if (w == _player ? !_playerDead : !_enemyDead) Die(w);
-            return;
-        }
-        w.SpeedFactor = (lDead || rDead) ? 0f : 1f;
-        w.LimpRoll = lDead ? 0.10f : rDead ? -0.10f : 0f;
-        if ((lDead || rDead) && !w.IsKnockedDown)
-        {
-            // Owner's rule (current): losing a leg FELLS the mech, toward
-            // the lost leg's side, and it never gets back up. The torso
-            // and weapons keep working from the ground.
-            var heading = MechWalker.HeadingVec(w.LegsYaw);
-            var right = new Vector3(-heading.Z, 0f, heading.X);
-            var fallDir = lDead ? -right : right;
-            if (w.TryKnockDown(fallDir))
-            {
-                AddFeed(w == _player ? "TIMBER WOLF IS DOWN — LEG LOST" : "ATLAS IS DOWN — LEG LOST");
-                GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg lost -> DOWN PERMANENTLY (prone turret)");
-                if (w == _player) _shake = Mathf.Max(_shake, 0.7f);
-            }
         }
     }
 
@@ -1858,8 +1846,8 @@ public partial class MechDuel : Node3D
         _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " — RUN" : "");
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
-            : !lLeg && !rLeg ? "LEGS: BOTH LOST"
-            : lLeg ? "LEGS: RIGHT LOST — DOWN" : "LEGS: LEFT LOST — DOWN";
+            : !lLeg && !rLeg ? "LEGS: BOTH WRECKED — CRAWL"
+            : lLeg ? "LEGS: RIGHT WRECKED — LIMPING" : "LEGS: LEFT WRECKED — LIMPING";
         _lblLegs.AddThemeColorOverride("font_color",
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
         if (_radar != null) { _radar.EnemyDown = _enemyDead; _radar.QueueRedraw(); }
@@ -2503,18 +2491,15 @@ public partial class MechDuel : Node3D
                 }
                 if (_enemyDead && _wPhaseT > _wDeathT + 1.8 && !_wDeadShotQueued)
                 {
-                    // Death may come by pool depletion (hp clamped 0) or
-                    // by double leg loss under the breakable rules — with
-                    // knockdowns toppling the Atlas mid-barrage, aimed
-                    // shots land on the prone mech's legs and can take
-                    // it that way instead. Both are legitimate kills.
-                    bool legKill = !_partsEnemy.Alive("leg_L") && !_partsEnemy.Alive("leg_R");
-                    if (_hpEnemy != 0f && !legKill)
-                        WFail($"dead atlas hp={_hpEnemy:F1} with legs intact (want pool kill or double-leg kill)");
+                    // Death comes only from the HP pool now (owner):
+                    // wrecked legs limp, they never kill — so a dead
+                    // Atlas must show hp == 0 exactly.
+                    if (_hpEnemy != 0f)
+                        WFail($"dead atlas hp={_hpEnemy:F1} (want pool kill, hp 0)");
                     if (!_enemy.Halted) WFail("dead atlas walker not halted");
                     if (!_banner.Visible || _banner.Text != "ATLAS DESTROYED")
                         WFail($"kill banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
-                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}, legKill={legKill}), walker halted, banner 'ATLAS DESTROYED'");
+                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, banner 'ATLAS DESTROYED'");
                     _wDeadShotQueued = true;
                     QueueCapture("res://proof/weapons_atlas_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
                 }
@@ -2918,22 +2903,26 @@ public partial class MechDuel : Node3D
                         CraftHit(_enemy, "leg_L", 30f);
                         if (_partsEnemy.Alive("leg_L")) BFail("atlas leg_L alive after 90 damage");
                         if (!_enemy.LegDisabled(true)) BFail("walker leg_L not disabled");
-                        if (Mathf.Abs(_enemy.SpeedFactor) > 0.01f) BFail("speed factor not 0 (immobile)");
-                        GD.Print("BRKTEST LEGBREAK PASS leg_L destroyed, walker IMMOBILE (speed factor 0) — and the mech falls");
+                        var legPart = _partsEnemy.GetPart("leg_L");
+                        if (!legPart.Wrecked) BFail("leg_L not in wrecked state");
+                        foreach (var rec in legPart.Meshes)
+                            if (rec.Detached) BFail("leg_L mesh DETACHED — legs must never fall off");
+                        if (_enemy.IsKnockedDown) BFail("leg wreck felled the mech (retired fall rule)");
+                        if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f) BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 (limp)");
+                        GD.Print("BRKTEST LEGWRECK PASS leg_L destroyed but ATTACHED (wrecked), mech upright, limp factor 0.55");
                         BStep(3);
                     }
                 }
                 else if (_bStep == 3)
                 {
-                    // Full drive command against the broken leg: the root
-                    // must not translate (a small settle drift is allowed),
-                    // and the good leg's planted contact must hold.
+                    // Full drive on the wrecked leg: the mech must MOVE
+                    // (it limps, it is not immobile) at roughly the 0.55
+                    // limp factor of its measured baseline speed.
                     _enemy.SetDrive(Mathf.Pi, 2.2f);
                     if (_bCount1 == 0 && BStepT > 1.0)
                     {
                         _bVec1 = _enemy.RootPos;
                         _bT0 = _bPhaseT; // BStepT now measures the sample window
-                        _bCount2 = _enemy.Steps;
                         _bCount1 = 1;
                     }
                     else if (_bCount1 == 1 && BStepT > 2.0)
@@ -2945,20 +2934,16 @@ public partial class MechDuel : Node3D
                     {
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         float v2 = d / BStepT;
-                        GD.Print($"BRKTEST IMMOBILE atlas driftSpeed={v2:F3} drift={d:F3} baseline={_bV1:F2} stepsDelta={_enemy.Steps - _bCount2} fallAmt={_enemy.FallAmount:F2}");
-                        if (d > 0.15f) { BFail($"downed mech translated {d:F2}u under full drive"); return; }
-                        // The mech is PRONE now (leg loss fells it — owner's
-                        // current rule), so standing contact semantics do
-                        // not apply; the locomotion invariant is: no steps.
-                        if (_enemy.Steps != _bCount2) { BFail($"downed mech took {_enemy.Steps - _bCount2} steps"); return; }
-                        if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.9f) { BFail("leg-lost mech is not down"); return; }
-                        GD.Print("BRKTEST IMMOBILE PASS leg lost -> mech down, zero translation and zero steps under full drive");
+                        float ratio = _bV1 > 0.1f ? v2 / _bV1 : 0f;
+                        GD.Print($"BRKTEST LIMP atlas limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F2}");
+                        if (ratio < 0.35f || ratio > 0.78f) { BFail($"limp speed ratio {ratio:F2} (want ~0.55 of baseline)"); return; }
+                        GD.Print("BRKTEST LIMP PASS wrecked leg -> mech keeps walking at ~55% speed, leg attached");
                         SetBPhase(6);
                     }
                 }
                 break;
 
-            case 6: // BOTH LEGS: disabled counts as destroyed
+            case 6: // BOTH LEGS WRECKED: crawl at 25% — alive, upright, attached
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
@@ -2966,11 +2951,18 @@ public partial class MechDuel : Node3D
                     CraftHit(_enemy, "leg_R", 30f);
                     CraftHit(_enemy, "leg_R", 30f);
                     CraftHit(_enemy, "leg_R", 30f);
-                    if (!_enemyDead) BFail("atlas not destroyed after both legs lost");
-                    if (!_enemy.Halted) BFail("atlas walker not halted after both legs lost");
-                    if (!_banner.Visible || _banner.Text != "ATLAS DESTROYED")
-                        BFail($"both-legs banner wrong: '{_banner.Text}'");
-                    GD.Print("BRKTEST BOTHLEGS PASS both legs lost -> disabled, halted, banner 'ATLAS DESTROYED'");
+                    if (_enemyDead) BFail("atlas DIED from leg damage — legs never kill (owner)");
+                    if (_enemy.Halted) BFail("atlas walker halted by leg damage");
+                    if (_banner.Visible) BFail($"banner shown for a leg-wrecked mech: '{_banner.Text}'");
+                    if (_enemy.IsKnockedDown) BFail("both-legs wreck felled the mech");
+                    var lr = _partsEnemy.GetPart("leg_R");
+                    if (!lr.Wrecked) BFail("leg_R not wrecked");
+                    foreach (var rec in lr.Meshes)
+                        if (rec.Detached) BFail("leg_R mesh DETACHED");
+                    if (Mathf.Abs(_enemy.SpeedFactor - 0.25f) > 0.01f)
+                        BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.25 (crawl)");
+                    if (_hpEnemy <= 0f) BFail("pool hp drained by leg hits");
+                    GD.Print($"BRKTEST BOTHLEGS PASS both legs wrecked -> CRAWL 0.25x, mech alive (pool hp={_hpEnemy:F0}), upright, legs attached");
                     BStep(1);
                 }
                 else if (_bStep == 1 && BStepT > 2.0)
@@ -2980,9 +2972,6 @@ public partial class MechDuel : Node3D
                 }
                 else if (_bStep == 2 && _pendingPath == null && !_capturing)
                 {
-                    // Reset only after the capture has actually rendered:
-                    // resetting in the same frame as QueueCapture would
-                    // photograph the restored mech instead of the wreck.
                     ResetDuel();
                     BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
                     SetBPhase(7);
@@ -3086,13 +3075,13 @@ public partial class MechDuel : Node3D
                     SetBPhase(9);
                 }
                 break;
-            case 9: // FALL RULE (owner, current): only leg loss fells, forever
+            case 9: // LEG RULE (owner, current): impacts never fell; legs wreck, never detach, never fell
                 if (_bStep == 0)
                 {
                     ResetDuel();
                     BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
-                    // 36t of autocannon impacts inside the old window —
-                    // far past the retired 20t threshold. Legs intact.
+                    // 36t of autocannon impacts — far past every retired
+                    // knockdown threshold. Legs intact.
                     CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
                     CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
                     CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
@@ -3100,54 +3089,31 @@ public partial class MechDuel : Node3D
                 }
                 else if (_bStep == 1 && BStepT > 0.6f)
                 {
-                    if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a mech with intact legs (retired weight rule)");
-                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts, legs intact — the Atlas stands");
+                    if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a mech (retired knockdown)");
+                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts — the Atlas stands (no knockdown rule remains)");
                     _partsEnemy.DamagePart("leg_R", 999f);
                     BStep(2);
                 }
-                else if (_bStep == 2)
+                else if (_bStep == 2 && BStepT > 0.8f)
                 {
-                    if (BStepT > 2.5f) { BFail("leg loss did not fell the Atlas"); return; }
-                    if (_enemy.IsKnockedDown && _enemy.FallAmount > 0.75f)
-                    {
-                        GD.Print($"KNOCKTEST LEGFALL PASS leg lost -> mech down (fallAmount={_enemy.FallAmount:F2})");
-                        QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
-                        BStep(3);
-                    }
-                }
-                else if (_bStep == 3)
-                {
-                    // Wait for the fall to fully settle, THEN take the
-                    // baseline: the root marker shifts ~0.5u while the
-                    // body tips over its feet — that is topple geometry,
-                    // not walking.
-                    if (BStepT > 3f) { BFail("fall never settled"); return; }
-                    if (_enemy.FallAmount >= 0.99f)
-                    {
-                        _bVec1 = _enemy.RootPos;
-                        _bCount2 = _enemy.Steps;
-                        BStep(4);
-                    }
-                }
-                else if (_bStep == 4)
-                {
-                    // Full drive for 3.5s from the settled position: a
-                    // downed mech must neither walk nor get up.
-                    _enemy.SetDrive(Mathf.Pi, 1f);
-                    if (BStepT > 3.5f)
-                    {
-                        if (!_enemy.IsKnockedDown || _enemy.FallAmount < 0.95f)
-                        { BFail($"Atlas got up (amt={_enemy.FallAmount:F2} down={_enemy.IsKnockedDown})"); return; }
-                        float drift = (_enemy.RootPos - _bVec1).Length();
-                        if (drift > 0.3f) { BFail($"downed Atlas walked {drift:F2}u from its settled position"); return; }
-                        if (_enemy.Steps != _bCount2) { BFail($"downed Atlas took {_enemy.Steps - _bCount2} steps"); return; }
-                        GD.Print($"KNOCKTEST PERMANENT PASS settled drift {drift:F3}u under full drive, no steps, still down — no getting up");
-                        ResetDuel();
-                        if (_enemy.IsKnockedDown) { BFail("reset did not stand the Atlas back up"); return; }
-                        GD.Print("KNOCKTEST RESET PASS R reset restores the mech to its feet");
-                        GD.Print("BRKTEST DONE");
-                        GetTree().Quit(0);
-                    }
+                    if (_enemy.IsKnockedDown || _enemy.FallAmount > 0.01f)
+                    { BFail("leg wreck felled the mech (retired fall rule)"); return; }
+                    var lr = _partsEnemy.GetPart("leg_R");
+                    if (!lr.Wrecked) { BFail("leg_R not wrecked"); return; }
+                    foreach (var rec in lr.Meshes)
+                        if (rec.Detached) { BFail("leg_R mesh DETACHED — legs never fall off"); return; }
+                    if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f)
+                    { BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 after leg wreck"); return; }
+                    GD.Print("LEGRULE PASS leg wrecked: attached + darkened, mech upright, limping at 0.55x");
+                    QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
+                    ResetDuel();
+                    if (_partsEnemy.GetPart("leg_R").Wrecked || !_partsEnemy.Alive("leg_R"))
+                    { BFail("reset did not un-wreck leg_R"); return; }
+                    if (Mathf.Abs(_enemy.SpeedFactor - 1f) > 0.01f)
+                    { BFail("reset did not restore full speed"); return; }
+                    GD.Print("LEGRULE RESET PASS R reset un-wrecks the leg and restores speed");
+                    GD.Print("BRKTEST DONE");
+                    GetTree().Quit(0);
                 }
                 break;
         }
