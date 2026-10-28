@@ -59,7 +59,7 @@ public partial class MechWalker : Node3D
     }
 
     private const float StandReachFactor = 0.90f;
-    private const float MaxTorsoTwist = 4.712389f; // 270 degrees (owner)
+    private const float MaxTorsoTwist = 4.712389f; // 270 degrees (owner) // 180 degrees (owner)
 
     private Config _cfg;
     private Node3D _inner;
@@ -142,21 +142,21 @@ public partial class MechWalker : Node3D
     public float SpeedFactor = 1f;
     public float LimpRoll;
 
-    // Knockdown state: a timeline (fall 0.5s, down 1.6s, rise 1.0s) that
-    // tips the root toward _fallDirW by up to ~76 degrees and drops the
-    // hips to rest height, then a 3s immunity window. While the timeline
-    // runs the drive is suppressed and no new steps begin — the feet stay
-    // where they were and the body topples over them.
+    // Fallen state (owner's rule, third iteration): a mech falls ONLY
+    // when it loses a leg, and it never gets back up. The fall tips the
+    // root toward _fallDirW by up to ~76 degrees over 0.5s and drops the
+    // hips to rest height — then it stays there until reset. While down
+    // the drive is suppressed and no new steps begin, but the torso can
+    // still twist and the weapons still fire (a prone turret).
     private float _fallT = -1f;
     private float _fallAmt;
     private Vector3 _fallDirW = Vector3.Forward;
-    private float _immuneT;
     public bool IsKnockedDown => _fallT >= 0f;
     public float FallAmount => _fallAmt;
 
     public bool TryKnockDown(Vector3 awayDirW)
     {
-        if (_fallT >= 0f || _immuneT > 0f || Halted) return false;
+        if (_fallT >= 0f || Halted) return false;
         var d = new Vector3(awayDirW.X, 0f, awayDirW.Z);
         _fallDirW = d.LengthSquared() > 0.01f ? d.Normalized() : Vector3.Forward;
         _fallT = 0f;
@@ -336,7 +336,6 @@ public partial class MechWalker : Node3D
         _targetSpeed = 0f;
         _fallT = -1f;
         _fallAmt = 0f;
-        _immuneT = 0f;
         _sway = Vector3.Zero;
         _bob = 0f;
         _upEased = Vector3.Up;
@@ -371,15 +370,12 @@ public partial class MechWalker : Node3D
         if (!_ready) return;
         DecayFlash((float)delta);
         if (Halted) { SolveAll(); return; }
-        if (_immuneT > 0f) _immuneT -= (float)delta;
         if (_fallT >= 0f)
         {
             _fallT += (float)delta;
             float t = _fallT;
             if (t < 0.5f) { float u = t / 0.5f; _fallAmt = u * u; }
-            else if (t < 2.1f) _fallAmt = 1f;
-            else if (t < 3.1f) { float u = (t - 2.1f) / 1.0f; _fallAmt = 1f - u * u * (3f - 2f * u); }
-            else { _fallT = -1f; _fallAmt = 0f; _immuneT = 3f; }
+            else _fallAmt = 1f; // down for good — no rise, ever
         }
         _acc += Mathf.Min(delta, 0.1);
         const float h = 1f / 120f;

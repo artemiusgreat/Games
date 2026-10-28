@@ -101,10 +101,6 @@ public partial class MechDuel : Node3D
     private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, WeaponDef Def)> _lrmQueue = new();
     // Knockdown by weight (owner): impact weight accumulates over a
     // short window; past 20% of the mech's tonnage it topples.
-    private const float KnockWindow = 1.5f;
-    private const float KnockFrac = 0.20f;
-    private readonly System.Collections.Generic.List<(float T, float W)> _impactTw = new();
-    private readonly System.Collections.Generic.List<(float T, float W)> _impactAtlas = new();
     private float _combatClock;
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     // Per-weapon hit effects: spark bursts (laser), explosion bundles
@@ -755,7 +751,7 @@ public partial class MechDuel : Node3D
         {
             Input.MouseMode = Input.MouseModeEnum.Visible;
         }
-        else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !_test && !_player.IsKnockedDown)
+        else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !_test)
         {
             _player.TorsoTwist -= mm.Relative.X * 0.0030f;
             _player.TorsoPitch -= mm.Relative.Y * 0.0025f;
@@ -784,7 +780,8 @@ public partial class MechDuel : Node3D
         var toP = _player.RootPos - _enemy.RootPos;
         float dist = new Vector2(toP.X, toP.Z).Length();
         float yawTo = MechWalker.YawOf(toP.Normalized());
-        if (_enemy.IsKnockedDown) { _enemy.SetDrive(_enemyYaw, 0f); return; } // down: no drive, no tracking
+        // (A downed Atlas has a leg gone, so the immobile branch below
+        // handles it: no drive, but the torso still tracks and fires.)
         if (!_partsEnemy.Alive("leg_L") || !_partsEnemy.Alive("leg_R"))
         {
             // Immobile: legs frozen, but the torso still tracks and fires.
@@ -1170,38 +1167,9 @@ public partial class MechDuel : Node3D
         GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source);
         if (hp <= 0f) { Die(target); return; }
-        // Knockdown rule (owner): weight, not damage. Every hit lands
-        // with its weapon's tonnage; impact inside a 1.5s window sums,
-        // and past 20% of the target's own tonnage the mech topples.
-        if (weaponWeight > 0f)
-        {
-            var acc = isPlayer ? _impactTw : _impactAtlas;
-            acc.Add((_combatClock, weaponWeight));
-            acc.RemoveAll(e => _combatClock - e.T > KnockWindow);
-            float sum = 0f;
-            foreach (var e in acc) sum += e.W;
-            float tonnage = isPlayer ? MechSpecs.TimberWolf.Tonnage : MechSpecs.Atlas.Tonnage;
-            if (sum > tonnage * KnockFrac)
-            {
-                acc.Clear();
-                DoKnockdown(target, $"impact {sum:F1}t > {KnockFrac * 100f:F0}% of {tonnage:F0}t");
-            }
-        }
-    }
-
-    // Topple a mech away from its attacker. The walker animates the fall
-    // (0.5s down, 1.6s on the ground, 1.0s rise, then 3s immunity); while
-    // down it cannot drive, step, or fire.
-    private void DoKnockdown(MechWalker target, string cause)
-    {
-        var other = target == _player ? _enemy : _player;
-        var away = target.RootPos - other.RootPos;
-        away.Y = 0f;
-        if (away.LengthSquared() < 0.01f) away = -MechWalker.HeadingVec(target.LegsYaw);
-        if (!target.TryKnockDown(away.Normalized())) return;
-        AddFeed(target == _player ? "TIMBER WOLF KNOCKED DOWN" : "ATLAS KNOCKED DOWN");
-        GD.Print($"KNOCK {(target == _player ? "TW" : "ATLAS")} down: {cause}");
-        if (target == _player) _shake = Mathf.Max(_shake, 0.7f);
+        // Knockdown (owner's rule, current): weapon impacts NEVER topple
+        // a mech, however heavy. A mech falls only when it loses a leg
+        // (see SyncLegConsequences), and then it stays down.
     }
 
     // A part just broke off (fired from MechParts.DamagePart): spark burst
@@ -1281,8 +1249,21 @@ public partial class MechDuel : Node3D
         }
         w.SpeedFactor = (lDead || rDead) ? 0f : 1f;
         w.LimpRoll = lDead ? 0.10f : rDead ? -0.10f : 0f;
-        if (lDead || rDead)
-            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg lost -> IMMOBILE (speedFactor 0, turret mode)");
+        if ((lDead || rDead) && !w.IsKnockedDown)
+        {
+            // Owner's rule (current): losing a leg FELLS the mech, toward
+            // the lost leg's side, and it never gets back up. The torso
+            // and weapons keep working from the ground.
+            var heading = MechWalker.HeadingVec(w.LegsYaw);
+            var right = new Vector3(-heading.Z, 0f, heading.X);
+            var fallDir = lDead ? -right : right;
+            if (w.TryKnockDown(fallDir))
+            {
+                AddFeed(w == _player ? "TIMBER WOLF IS DOWN — LEG LOST" : "ATLAS IS DOWN — LEG LOST");
+                GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg lost -> DOWN PERMANENTLY (prone turret)");
+                if (w == _player) _shake = Mathf.Max(_shake, 0.7f);
+            }
+        }
     }
 
     private void Die(MechWalker w)
@@ -1374,8 +1355,6 @@ public partial class MechDuel : Node3D
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
         _weaponSel = 0;
         _lrmQueue.Clear();
-        _impactTw.Clear();
-        _impactAtlas.Clear();
         foreach (var p in _shots) p.QueueFree();
         _shots.Clear();
         _lastPuff.Clear();
@@ -1664,7 +1643,7 @@ public partial class MechDuel : Node3D
         if (_radar != null) { _radar.EnemyDown = _enemyDead; _radar.QueueRedraw(); }
         if (_player.IsKnockedDown)
         {
-            _lblLegs.Text = "STATUS: KNOCKED DOWN";
+            _lblLegs.Text = "STATUS: DOWN — LEG LOST";
             _lblLegs.AddThemeColorOverride("font_color", new Color(1f, 0.42f, 0.32f));
         }
 
@@ -1714,7 +1693,6 @@ public partial class MechDuel : Node3D
     private void UpdateAtlasGunnery(float dt)
     {
         if (_enemyDead || _playerDead) return;
-        if (_enemy.IsKnockedDown) return; // no firing from the ground
         if (_cdAtlas > 0f) return;
         if (!_partsEnemy.Alive("arm_R")) return; // AC/20 mount lost with the right arm
         var muzzle = AtlasMuzzle();
@@ -3317,7 +3295,7 @@ public partial class MechDuel : Node3D
             {
                 UpdatePlayerInput(dt);
                 UpdateEnemyAI(dt);
-                if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead && !_player.IsKnockedDown)
+                if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
                     // One trigger: the left mouse button fires the SELECTED
                     // weapon (1/2/3 or wheel to switch — see the panel).
