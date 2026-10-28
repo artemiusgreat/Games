@@ -131,6 +131,7 @@ public partial class MechDuel : Node3D
 
     // interactive state
     private float _playerYaw;
+    private float _torsoWorldYaw; // mouse-owned torso bearing (round 7)
     private float _enemyYaw = Mathf.Pi;
     private float _orbitDir = 1f;
     private float _orbitTimer;
@@ -149,6 +150,7 @@ public partial class MechDuel : Node3D
     private int _aimStep;
     private double _aimT0;
     private int _aimProj0;
+    private float _aimWorld0, _aimLegs0;
     private float _aimUpY;
     private double _pLimpT0;
     private Vector3 _pLimpStart;
@@ -1049,9 +1051,25 @@ public partial class MechDuel : Node3D
         }
         else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !_test)
         {
-            _player.TorsoTwist -= mm.Relative.X * 0.0030f;
+            // The mouse owns the torso's WORLD bearing (round 7);
+            // MaintainTorsoWorldYaw turns it into a twist each frame.
+            _torsoWorldYaw -= mm.Relative.X * 0.0030f;
             _player.TorsoPitch -= mm.Relative.Y * 0.0025f;
         }
+    }
+
+    // Round 7: the mouse owns the torso's WORLD bearing. A/D turns
+    // the legs underneath; each frame the twist is re-derived so the
+    // torso (and the camera riding it) stays where the mouse put it
+    // instead of being dragged around by leg rotation — the two
+    // inputs no longer fight over the same yaw. The walker's clamp
+    // still bounds the twist, and reading the clamped value back
+    // re-anchors the bearing so the mouse never winds up against
+    // the stop.
+    private void MaintainTorsoWorldYaw()
+    {
+        _player.TorsoTwist = MechWalker.WrapAngle(_torsoWorldYaw - _playerYaw);
+        _torsoWorldYaw = _playerYaw + _player.TorsoTwist;
     }
 
     private void UpdatePlayerInput(float delta)
@@ -1723,6 +1741,7 @@ public partial class MechDuel : Node3D
         _enemyYaw = Mathf.Pi;
         _player.TorsoTwist = 0f;
         _player.TorsoPitch = 0f;
+        _torsoWorldYaw = 0f;
         _enemy.TorsoTwist = 0f;
         _prevPlayerRoot = _player.RootPos;
         _playerVel = Vector3.Zero;
@@ -2614,6 +2633,36 @@ public partial class MechDuel : Node3D
                         if (elev < 0.15f)
                         { GD.PrintErr($"DUEL FAIL: sky-aim rocket barely rose (elevation {elev:F2})"); GetTree().Quit(1); break; }
                         GD.Print($"DUEL AIM ROCKET PASS sky-aim launch elevation={elev:F2} rad vs pointer 0.30 — the lob is bounded");
+                        // Torso-independence setup (round 7): anchor
+                        // the mouse bearing here, then spin the LEGS
+                        // for a second — the torso's world bearing
+                        // must not follow them.
+                        _torsoWorldYaw = _player.TorsoYawWorld;
+                        _aimWorld0 = _player.TorsoYawWorld;
+                        _aimLegs0 = _playerYaw;
+                        _aimT0 = _phaseT;
+                        _aimStep = 4;
+                    }
+                    else if (_phaseT - _aimT0 > 3) { GD.PrintErr("DUEL FAIL: sky-aim salvo never launched"); GetTree().Quit(1); }
+                }
+                else if (_aimStep == 4)
+                {
+                    // Legs rotate at the A/D rate for ~1s while the
+                    // mouse bearing stays put: MaintainTorsoWorldYaw
+                    // (the live path's own method) must hold the
+                    // torso's world yaw steady throughout.
+                    _playerYaw += 0.85f * delta;
+                    _player.SetDrive(_playerYaw, 0f);
+                    MaintainTorsoWorldYaw();
+                    if (_phaseT - _aimT0 > 1.0)
+                    {
+                        float legsTurned = _playerYaw - _aimLegs0;
+                        float torsoDrift = Mathf.Abs(MechWalker.WrapAngle(_player.TorsoYawWorld - _aimWorld0));
+                        if (legsTurned < 0.6f)
+                        { GD.PrintErr($"DUEL FAIL: torso-indep setup only turned the legs {legsTurned:F2} rad"); GetTree().Quit(1); break; }
+                        if (torsoDrift > 0.05f)
+                        { GD.PrintErr($"DUEL FAIL: legs dragged the torso by {torsoDrift:F3} rad (mouse must own the bearing)"); GetTree().Quit(1); break; }
+                        GD.Print($"DUEL AIM TORSO-INDEP PASS legs turned {legsTurned:F2} rad under a fixed mouse bearing; torso drift {torsoDrift:F3} rad");
                         // Proof frame: torso pitched up — the reticle
                         // rides visibly above screen center, over the
                         // Atlas, at its fixed-depth projection.
@@ -2621,14 +2670,13 @@ public partial class MechDuel : Node3D
                         _player.TorsoPitch = 0.18f;
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
-                        _aimStep = 4;
+                        _aimStep = 5;
                         QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
                         {
                             QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
                             SetPhase(7);
                         });
                     }
-                    else if (_phaseT - _aimT0 > 3) { GD.PrintErr("DUEL FAIL: sky-aim salvo never launched"); GetTree().Quit(1); }
                 }
                 break;
         }
@@ -3859,6 +3907,7 @@ public partial class MechDuel : Node3D
             else
             {
                 UpdatePlayerInput(dt);
+                MaintainTorsoWorldYaw();
                 UpdateEnemyAI(dt);
                 _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
