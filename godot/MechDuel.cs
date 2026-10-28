@@ -2760,6 +2760,10 @@ public partial class MechDuel : Node3D
                         if (torsoDrift > 0.05f)
                         { GD.PrintErr($"DUEL FAIL: legs dragged the torso by {torsoDrift:F3} rad (mouse must own the bearing)"); GetTree().Quit(1); break; }
                         GD.Print($"DUEL AIM TORSO-INDEP PASS legs turned {legsTurned:F2} rad under a fixed mouse bearing; torso drift {torsoDrift:F3} rad");
+                        // Restore the original facing for the proof
+                        // frame (the spin left the legs yawed away).
+                        _playerYaw = _aimLegs0;
+                        _player.SetDrive(_playerYaw, 0f);
                         // Proof frame: torso pitched up — the reticle
                         // sits on the true aim point above the Atlas.
                         _player.TorsoTwist = 0f;
