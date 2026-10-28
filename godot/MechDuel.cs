@@ -1113,8 +1113,8 @@ public partial class MechDuel : Node3D
         _panel.OffsetTop = -172; _panel.OffsetBottom = -14;
         var pbg = new StyleBoxFlat
         {
-            BgColor = new Color(0.055f, 0.075f, 0.105f, 0.94f),
-            BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.9f),
+            BgColor = new Color(0.055f, 0.075f, 0.105f, 0.58f),
+            BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.55f),
             ContentMarginLeft = 16, ContentMarginRight = 16,
             ContentMarginTop = 10, ContentMarginBottom = 10,
         };
