@@ -206,6 +206,7 @@ public partial class MechDuel : Node3D
     private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
     private Destructible _wEnvB, _wEnvT;
     private int _wEnvFx0, _wEnvChunks0;
+    private float _wJoltSeen;
     private int _wEnvStep;
     private bool _wKnocked;
     private double _wDeathT, _wStrafeT, _wLastShotT;
@@ -1381,10 +1382,11 @@ public partial class MechDuel : Node3D
         SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
         if (hit.Hit)
         {
-            SpawnFlash(hit.Point, new Color(1f, 0.45f, 0.2f), 0.38f, 0.12f);
-            SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 7, 3.2f); // electric breaker spray
+            SpawnFlash(hit.Point, new Color(0.7f, 0.95f, 1f), 0.55f, 0.16f);
+            SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 16, 6.0f); // electric breaker spray
+            SpawnImpactLight(hit.Point, new Color(0.55f, 0.9f, 1f), 2.4f, 10f, 0.3f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == "ATLAS") ApplyDamage(_enemy, _defEnergy.Damage, hit, "TW", _defEnergy.Weight);
+            if (hit.Target == "ATLAS") ApplyDamage(_enemy, _defEnergy.Damage, hit, "TW", _defEnergy.Weight, "laser");
             else if (hit.Target == "PROP") DamageProp(hit.Point, _defEnergy.Damage);
         }
         else GD.Print("WPN LASER hit=none");
@@ -1492,7 +1494,7 @@ public partial class MechDuel : Node3D
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
         MechWalker direct = hit.Target == "TW" ? _player : hit.Target == "ATLAS" ? _enemy : null;
-        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight);
+        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
         foreach (var (w, id) in new[] { (_player, "TW"), (_enemy, "ATLAS") })
         {
             if (w == direct) continue;
@@ -1502,7 +1504,7 @@ public partial class MechDuel : Node3D
                 var splashHit = hit;
                 splashHit.Target = id;
                 splashHit.Zone = "splash";
-                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight);
+                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight, "rocket");
             }
         }
     }
@@ -1535,22 +1537,28 @@ public partial class MechDuel : Node3D
         if (p.SplashRadius > 0f)
         {
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
+            SpawnFlash(hit.Point, new Color(1f, 0.62f, 0.25f), 1.7f, 0.3f);
+            SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), 3.2f, 14f, 0.5f);
             ExplodeSplash(hit, p);
             if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
             return;
         }
-        SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), 0.45f, 0.14f);
+        SpawnFlash(hit.Point, new Color(1f, 0.72f, 0.35f), 0.62f, 0.18f);
+        SpawnSparks(hit.Point, new Color(1f, 0.8f, 0.5f), 10, 5.2f);
+        _fxSparkBursts--; // cannon impact sparks are not a laser burst
+        SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
         if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
         // Cannon shells scorch what they hit.
         var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
         if (hit.Target == "TW") SpawnScorch(hit.Point, nrm, _player);
         else if (hit.Target == "ATLAS") SpawnScorch(hit.Point, nrm, _enemy);
         else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
-        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight);
-        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight);
+        string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
+        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
     }
 
-    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f)
+    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
     {
         bool isPlayer = target == _player;
         if (isPlayer ? _playerDead : _enemyDead) return;
@@ -1579,7 +1587,7 @@ public partial class MechDuel : Node3D
         }
         float hp = isPlayer ? _hpPlayer : _hpEnemy;
         GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
-        OnDamaged(target, dmg, hit.Point, source);
+        OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
         // a mech, however heavy. A mech falls only when it loses a leg
@@ -1685,9 +1693,30 @@ public partial class MechDuel : Node3D
 
     // ---------- damage feedback / death / HUD ----------
 
-    private void OnDamaged(MechWalker target, float dmg, Vector3 point, string source)
+    private void OnDamaged(MechWalker target, float dmg, Vector3 point, string source, string kind = "")
     {
-        target.FlashPulse();
+        // Round 8: the reaction carries the weapon. Color + jolt per
+        // kind — before this, every hit blinked the same orange and
+        // the body never moved (owner's report).
+        var (flashCol, flashEnergy, jolt) = kind switch
+        {
+            "laser" => (new Color(0.55f, 0.95f, 1f), 1.7f, 0.12f),
+            "rocket" => (new Color(1f, 0.5f, 0.15f), 2.8f, 0.85f),
+            "cannon" => (new Color(1f, 0.85f, 0.45f), 2.6f, 1.0f),
+            "mg" => (new Color(1f, 0.75f, 0.3f), 1.3f, 0.3f),
+            _ => (new Color(1f, 0.55f, 0.2f), 2.4f, 0.4f),
+        };
+        target.FlashPulse(flashCol, flashEnergy);
+        if (jolt > 0f)
+        {
+            MechWalker shooter = source == "TW" ? _player : source == "ATLAS" ? _enemy : null;
+            if (shooter != null && shooter != target)
+            {
+                var push = target.RootPos - shooter.RootPos;
+                push.Y = 0f;
+                if (push.LengthSquared() > 0.01f) target.Jolt(push.Normalized(), jolt);
+            }
+        }
         bool onEnemy = target == _enemy;
         SpawnDmgNumber(point, dmg, onEnemy ? new Color(1f, 0.78f, 0.3f) : new Color(1f, 0.38f, 0.3f));
         if (onEnemy && source == "TW") _cross.Hitmark = 1f;
@@ -2794,6 +2823,8 @@ public partial class MechDuel : Node3D
             _enemy.TorsoTwist = MechWalker.WrapAngle(MechWalker.YawOf(toP.Normalized()) - _enemyYaw);
         if (_wPhaseT > 40) { WFail($"phase {_wPhase} timeout"); return; }
 
+        if (_wPhase == 2 && _atlasDmgEvents > 0)
+            _wJoltSeen = Mathf.Max(_wJoltSeen, _enemy.JoltEnv);
         switch (_wPhase)
         {
             case 0: // settle at the open lane: TW (0,18) vs Atlas (0,-12), 30u
@@ -2816,8 +2847,14 @@ public partial class MechDuel : Node3D
                     if (_atlasDmgEvents != 3 || Mathf.Abs(_atlasDmgTotal - 36f) > 0.01f)
                         WFail($"laser events={_atlasDmgEvents} dmg={_atlasDmgTotal:F1} (want 3 / 36)");
                     if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"laser atlasHp={_hpEnemy:F1} (want 304)");
-                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 atlasHp={_hpEnemy:F0}");
+                    // Round 8: the reaction must carry the weapon —
+                    // a laser hit flashes CYAN and lights the impact.
+                    var lfc = _enemy.LastFlashColor;
+                    if (!(lfc.B > lfc.R + 0.2f)) { WFail($"laser hit flashed {lfc} — want cyan"); return; }
+                    if (_fxLights <= 0) { WFail("laser hit lit no impact light"); return; }
+                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 atlasHp={_hpEnemy:F0} (hit reaction: cyan flash + impact light)");
                     _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
+                    _wJoltSeen = 0f;
                     SetWPhase(2);
                 }
                 break;
@@ -2840,7 +2877,10 @@ public partial class MechDuel : Node3D
                     if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 252 pool under terrain-step routing)");
                     if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f)
                         WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 90 = untouched, shells routed to torso)");
-                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso)");
+                    var cfc = _enemy.LastFlashColor;
+                    if (!(cfc.R > cfc.B + 0.3f && cfc.G > cfc.B + 0.2f)) { WFail($"cannon hit flashed {cfc} — want warm white"); return; }
+                    if (_wJoltSeen < 0.3f) { WFail($"cannon hits barely rocked the Atlas (jolt env peak {_wJoltSeen:F2})"); return; }
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: warm flash + jolt {_wJoltSeen:F2})");
                     _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
                     SetWPhase(3);
                 }
@@ -2856,7 +2896,9 @@ public partial class MechDuel : Node3D
                 if (_wPhaseT > 3.4)
                 {
                     if (_atlasDmgEvents < 5) WFail($"lrm damaging rockets={_atlasDmgEvents}/8 dmg={_atlasDmgTotal:F1}");
-                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_atlasDmgEvents}/8 dmg={_atlasDmgTotal:F1} atlasHp={_hpEnemy:F1}");
+                    var rfc = _enemy.LastFlashColor;
+                    if (!(rfc.R > 0.9f && rfc.B < 0.3f)) { WFail($"rocket hit flashed {rfc} — want deep orange"); return; }
+                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_atlasDmgEvents}/8 dmg={_atlasDmgTotal:F1} atlasHp={_hpEnemy:F1} (reaction: orange flash)");
                     _atlasDmgEvents = 0; _atlasDmgTotal = 0f;
                     WSetup(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f));
                     _wHpSnapshot = _hpEnemy;

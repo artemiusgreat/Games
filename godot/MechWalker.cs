@@ -334,6 +334,7 @@ public partial class MechWalker : Node3D
         _targetSpeed = 0f;
         _fallT = -1f;
         _fallAmt = 0f;
+        _joltEnv = 0f;
         _sway = Vector3.Zero;
         _bob = 0f;
         _upEased = Vector3.Up;
@@ -555,6 +556,13 @@ public partial class MechWalker : Node3D
 
         var q = new Quaternion(Vector3.Up, _upEased);
         _rootBasis = new Basis(q) * Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
+        if (_joltEnv > 0.002f)
+        {
+            _rootBasis = _rootBasis
+                * Basis.Identity.Rotated(Vector3.Right, _joltPitch * _joltEnv)
+                * Basis.Identity.Rotated(Vector3.Forward, _joltRoll * _joltEnv);
+            _joltEnv = Mathf.Max(_joltEnv - h * 2.4f, 0f);
+        }
 
         RefreshPose();
     }
@@ -731,15 +739,43 @@ public partial class MechWalker : Node3D
         foreach (var c in n.GetChildren()) CollectMats(c);
     }
 
-    public void FlashPulse()
+    public Color LastFlashColor { get; private set; } = new Color(1f, 0.55f, 0.2f);
+    public float LastFlashEnergy { get; private set; } = 2.4f;
+    private float _flashEnergy = 2.4f;
+
+    public void FlashPulse() => FlashPulse(new Color(1f, 0.55f, 0.2f), 2.4f);
+
+    // Round 8: the hit flash carries the WEAPON's color and strength —
+    // a laser sting is cyan and brief-feeling, a cannon hit is a warm
+    // white slam, a rocket is deep orange. Before this every hit
+    // blinked the same orange (owner's report).
+    public void FlashPulse(Color col, float energy)
     {
         _flashT = 1f;
+        _flashEnergy = energy;
+        LastFlashColor = col;
+        LastFlashEnergy = energy;
         foreach (var (m, _) in _mats)
         {
             m.EmissionEnabled = true;
-            m.Emission = new Color(1f, 0.55f, 0.2f);
-            m.EmissionEnergyMultiplier = 2.4f;
+            m.Emission = col;
+            m.EmissionEnergyMultiplier = energy;
         }
+    }
+
+    // Impact jolt: the body rocks under a hit and eases back over
+    // ~0.4s. Pitch/roll are the push direction decomposed against the
+    // legs' facing at the moment of the hit.
+    private float _joltPitch, _joltRoll, _joltEnv;
+    public float JoltEnv => _joltEnv;
+    public void Jolt(Vector3 worldPushDir, float strength)
+    {
+        if (worldPushDir.LengthSquared() < 0.01f || strength <= 0f) return;
+        var fwd = HeadingVec(_legsYaw);
+        var right = new Vector3(-fwd.Z, 0f, fwd.X);
+        _joltPitch = -worldPushDir.Dot(fwd) * strength * 0.055f;
+        _joltRoll = worldPushDir.Dot(right) * strength * 0.055f;
+        _joltEnv = 1f;
     }
 
     public void SetDarkened(bool dark)
@@ -753,7 +789,7 @@ public partial class MechWalker : Node3D
         if (_flashT <= 0f) return;
         _flashT = Mathf.Max(_flashT - dt / 0.18f, 0f);
         foreach (var (m, _) in _mats)
-            m.EmissionEnergyMultiplier = 2.4f * _flashT;
+            m.EmissionEnergyMultiplier = _flashEnergy * _flashT;
     }
 
     // ---------- helpers ----------
