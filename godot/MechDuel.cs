@@ -24,6 +24,29 @@ public partial class MechDuel : Node3D
     private const float WorldBound = 80f; // heightfield world is 170 wide
 
     private struct Circle { public Vector2 P; public float R; }
+
+    // Destructible environment (owner): buildings take weapon damage
+    // and collapse into rubble; trees ignite, burn for 3s, then smoke
+    // away over 1-3s. State: 0 intact, 1 burning, 2 collapsing,
+    // 3 evaporating, 4 gone/rubble (colliders removed).
+    private sealed class Destructible
+    {
+        public string Kind;
+        public Node3D Node;
+        public Vector3 Center;      // base center (Y = ground)
+        public float Radius;        // hit-attribution radius (XZ)
+        public float Height;
+        public float Hp;
+        public int State;
+        public float Timer;
+        public float PhaseLen;
+        public float PuffAcc;
+        public float StartScale = 1f;
+        public readonly System.Collections.Generic.List<HitModel.PropCyl> Cyls = new();
+        public readonly System.Collections.Generic.List<Vector2> CirclePts = new();
+        public OmniLight3D Light;
+    }
+    private readonly System.Collections.Generic.List<Destructible> _destructibles = new();
     private readonly List<Circle> _props = new();
     private readonly System.Collections.Generic.List<Vector2> _buildingPts = new();
 
@@ -92,6 +115,8 @@ public partial class MechDuel : Node3D
     private double _wPhaseT;
     private int _wShotsFired;
     private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
+    private Destructible _wEnvB, _wEnvT;
+    private int _wEnvStep;
     private double _wDeathT, _wStrafeT, _wLastShotT;
     private float _wStrafeDir = 1f;
     private int _wPrevShots;
@@ -348,7 +373,17 @@ public partial class MechDuel : Node3D
         AddChild(tree);
         float r = 0.7f * scale;
         _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
-        _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = pos.Y, Height = totalH * scale });
+        var treeCyl = new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = pos.Y, Height = totalH * scale };
+        _hit.Props.Add(treeCyl);
+        var td = new Destructible
+        {
+            Kind = "tree", Node = tree,
+            Center = new Vector3(pos.X, pos.Y, pos.Z),
+            Radius = r, Height = totalH * scale, Hp = 15f, StartScale = scale
+        };
+        td.CirclePts.Add(new Vector2(pos.X, pos.Z));
+        td.Cyls.Add(treeCyl);
+        _destructibles.Add(td);
     }
 
     // Low-poly rock: squashed, randomly tilted icosphere-ish blob. Gets a
@@ -447,6 +482,7 @@ public partial class MechDuel : Node3D
 
     private void AddBuilding(Vector3 pos, Vector3 size)
     {
+        int pc0 = _props.Count, hc0 = _hit.Props.Count;
         float groundY = Main.HeightAt(pos.X, pos.Z);
         pos.Y = groundY + size.Y / 2f - 0.3f;
         var mi = new MeshInstance3D();
@@ -479,6 +515,16 @@ public partial class MechDuel : Node3D
             _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
             _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - 0.3f, Height = size.Y });
         }
+        var bd = new Destructible
+        {
+            Kind = "building", Node = mi,
+            Center = new Vector3(pos.X, groundY, pos.Z),
+            Radius = Mathf.Max(size.X, size.Z) / 2f + 0.3f,
+            Height = size.Y, Hp = 60f
+        };
+        for (int i = pc0; i < _props.Count; i++) bd.CirclePts.Add(_props[i].P);
+        for (int i = hc0; i < _hit.Props.Count; i++) bd.Cyls.Add(_hit.Props[i]);
+        _destructibles.Add(bd);
     }
 
     // ---------- collisions ----------
@@ -791,6 +837,7 @@ public partial class MechDuel : Node3D
             SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 7, 3.2f); // electric breaker spray
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW", WeaponCatalog.LargeLaser.Weight);
+            else if (hit.Target == "PROP") DamageProp(hit.Point, 12f);
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -908,9 +955,11 @@ public partial class MechDuel : Node3D
         {
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
             ExplodeSplash(hit, p);
+            if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
             return;
         }
         SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), 0.45f, 0.14f);
+        if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
         // Cannon shells scorch what they hit.
         var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
         if (hit.Target == "TW") SpawnScorch(hit.Point, nrm, _player);
@@ -1508,9 +1557,145 @@ public partial class MechDuel : Node3D
         return dir.Rotated(axis, theta).Normalized();
     }
 
+    private Destructible PropAt(Vector3 point)
+    {
+        Destructible best = null;
+        float bestD = float.MaxValue;
+        foreach (var d in _destructibles)
+        {
+            if (d.State != 0) continue;
+            float dxz = new Vector2(point.X - d.Center.X, point.Z - d.Center.Z).Length();
+            if (dxz > d.Radius + 0.9f) continue;
+            if (point.Y < d.Center.Y - 0.6f || point.Y > d.Center.Y + d.Height + 0.6f) continue;
+            if (dxz < bestD) { bestD = dxz; best = d; }
+        }
+        return best;
+    }
+
+    private void DamageProp(Vector3 point, float dmg)
+    {
+        var d = PropAt(point);
+        if (d == null) return;
+        if (d.Kind == "tree") { IgniteTree(d); return; }
+        d.Hp -= dmg;
+        GD.Print($"ENVDMG building at ({d.Center.X:F0},{d.Center.Z:F0}) hp={d.Hp:F0}");
+        if (d.Hp <= 0f) StartCollapse(d);
+    }
+
+    private void RemovePropColliders(Destructible d)
+    {
+        foreach (var c in d.Cyls) _hit.Props.Remove(c);
+        foreach (var pt in d.CirclePts)
+            for (int i = 0; i < _props.Count; i++)
+                if (_props[i].P.DistanceSquaredTo(pt) < 0.001f)
+                    _props[i] = new Circle { P = pt, R = 0f };
+    }
+
+    private void StartCollapse(Destructible d)
+    {
+        d.State = 2;
+        d.Timer = 1.15f;
+        d.PhaseLen = 1.15f;
+        RemovePropColliders(d); // falling masonry no longer blocks or stops mechs
+        SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.6f, 0.3f);
+        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING");
+    }
+
+    private void IgniteTree(Destructible d)
+    {
+        d.State = 1;
+        d.Timer = 3f; // owner's spec: burn for 3 seconds
+        d.Light = new OmniLight3D
+        {
+            LightColor = new Color(1f, 0.55f, 0.2f),
+            OmniRange = 7f,
+            LightEnergy = 2.4f,
+            Position = new Vector3(0f, d.Height * 0.75f / Mathf.Max(d.StartScale, 0.01f), 0f)
+        };
+        d.Node.AddChild(d.Light);
+        GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) BURNING");
+    }
+
+    private void UpdateDestructibles(float dt)
+    {
+        foreach (var d in _destructibles)
+        {
+            if (d.State == 1) // tree burning
+            {
+                d.Timer -= dt;
+                if (d.Light != null) d.Light.LightEnergy = 2.3f + Mathf.Sin(_combatClock * 27f) * 0.8f;
+                d.PuffAcc += dt;
+                if (d.PuffAcc > 0.16f)
+                {
+                    d.PuffAcc = 0f;
+                    var top = d.Center + Vector3.Up * d.Height * 0.8f;
+                    SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 0.65f, 0.16f);
+                    var puff = WeaponFx.MakeTrailPuff(top + Vector3.Up * 0.5f);
+                    AddChild(puff);
+                    _puffs.Add((puff, 0.55f));
+                }
+                if (d.Timer <= 0f)
+                {
+                    d.State = 3;
+                    d.PhaseLen = _fxRng.RandfRange(1.2f, 3f); // smoke-out: 1-3s
+                    d.Timer = d.PhaseLen;
+                    if (d.Light != null) { d.Light.QueueFree(); d.Light = null; }
+                    GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) burned out, evaporating ({d.PhaseLen:F1}s)");
+                }
+            }
+            else if (d.State == 3) // tree evaporating in smoke
+            {
+                d.Timer -= dt;
+                float u = Mathf.Clamp(d.Timer / d.PhaseLen, 0f, 1f);
+                d.Node.Scale = Vector3.One * d.StartScale * (0.15f + 0.85f * u);
+                d.PuffAcc += dt;
+                if (d.PuffAcc > 0.2f)
+                {
+                    d.PuffAcc = 0f;
+                    var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (1f + d.Height * 0.4f * u));
+                    AddChild(puff);
+                    _puffs.Add((puff, 0.8f));
+                }
+                if (d.Timer <= 0f)
+                {
+                    d.State = 4;
+                    RemovePropColliders(d);
+                    d.Node.QueueFree();
+                    GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) GONE");
+                }
+            }
+            else if (d.State == 2) // building collapsing
+            {
+                d.Timer -= dt;
+                float u = 1f - Mathf.Clamp(d.Timer / d.PhaseLen, 0f, 1f);
+                float sy = 1f - 0.88f * (u * u * (3f - 2f * u));
+                d.Node.Scale = new Vector3(1f, sy, 1f);
+                var np = d.Node.Position;
+                np.Y = d.Center.Y + d.Height * sy / 2f - 0.3f;
+                d.Node.Position = np;
+                d.PuffAcc += dt;
+                if (d.PuffAcc > 0.14f)
+                {
+                    d.PuffAcc = 0f;
+                    var puff = WeaponFx.MakeTrailPuff(d.Center + new Vector3(_fxRng.RandfRange(-2f, 2f), 0.6f, _fxRng.RandfRange(-2f, 2f)));
+                    AddChild(puff);
+                    _puffs.Add((puff, 0.9f));
+                }
+                if (d.Timer <= 0f)
+                {
+                    d.State = 4;
+                    if (d.Node is MeshInstance3D mi && mi.MaterialOverride is StandardMaterial3D sm)
+                        sm.AlbedoColor = new Color(0.3f, 0.29f, 0.27f); // rubble
+                    GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) RUBBLE");
+                }
+            }
+        }
+    }
+
     private void UpdateCombat(float dt)
     {
         _combatClock += dt;
+        UpdateDestructibles(dt);
         _cdLaser = Mathf.Max(_cdLaser - dt, 0f);
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
@@ -1939,13 +2124,77 @@ public partial class MechDuel : Node3D
                     if (_hpPlayer != 260f || _hpEnemy != 340f || _playerDead || _enemyDead || _banner.Visible)
                         WFail($"reset state wrong hp={_hpPlayer}/{_hpEnemy} dead={_playerDead}/{_enemyDead} banner={_banner.Visible}");
                     GD.Print("WPNTEST RESET PASS hp 260/340 restored, deaths and banner cleared");
-                    GD.Print($"WPNTEST FX sparks={_fxSparkBursts} booms={_fxBooms} scorches={_fxScorches}");
-                    if (_fxSparkBursts <= 0) WFail("no laser spark bursts spawned");
-                    if (_fxBooms <= 0) WFail("no rocket explosions spawned");
-                    if (_fxScorches <= 0) WFail("no cannon scorch marks spawned");
-                    GD.Print("WPNTEST FX PASS laser sparks, rocket explosions and cannon scorches all fired");
-                    GD.Print("WPNTEST DONE");
-                    GetTree().Quit(0);
+                    SetWPhase(8);
+                }
+                break;
+
+            case 8: // ENV: destructible buildings + trees
+                if (_wEnvStep == 0)
+                {
+                    ResetDuel();
+                    _wEnvB = null; _wEnvT = null;
+                    foreach (var d in _destructibles)
+                    {
+                        if (d.Kind == "building" && d.State == 0 && _wEnvB == null) _wEnvB = d;
+                        if (d.Kind == "tree" && d.State == 0 && _wEnvT == null) _wEnvT = d;
+                    }
+                    if (_wEnvB == null || _wEnvT == null) { WFail("no intact building/tree for the env phase"); return; }
+                    // Firing position: 16u from the building, toward the arena center.
+                    var bc = _wEnvB.Center;
+                    var toC = (Vector3.Zero - bc); toC.Y = 0f;
+                    var fp = bc + toC.Normalized() * 16f;
+                    fp.Y = Main.HeightAt(fp.X, fp.Z);
+                    _player.Teleport(fp, MechWalker.YawOf((bc - fp).Normalized()));
+                    _playerYaw = _player.LegsYaw;
+                    _wEnvStep = 1;
+                }
+                else if (_wEnvStep == 1)
+                {
+                    // Laser the building down: 60 HP / 12 per hit = 5 hits.
+                    _cdLaser = 0f;
+                    var bc = _wEnvB.Center;
+                    FireLaser(new Vector3(bc.X, bc.Y + _wEnvB.Height * 0.55f, bc.Z));
+                    if (_wEnvB.State == 2) { GD.Print("ENVTEST COLLAPSE-START PASS building gave way under fire"); _wEnvStep = 2; }
+                    if (_wPhaseT > 20) WFail("building never collapsed");
+                }
+                else if (_wEnvStep == 2 && _wEnvB.State == 4)
+                {
+                    var bc = _wEnvB.Center;
+                    var from = _player.RootPos + Vector3.Up * 8f;
+                    var aimB = new Vector3(bc.X, bc.Y + 2f, bc.Z);
+                    var ray = _hit.Ray(from, (aimB - from).Normalized(), 30f, "TW");
+                    float distB = from.DistanceTo(aimB);
+                    if (ray.Target == "PROP" && ray.T < distB + 2f) { WFail("rubble still blocks shots"); return; }
+                    GD.Print("ENVTEST BUILDING PASS collapsed to rubble, colliders removed, shots pass through");
+                    // Move to the tree and ignite it with one laser hit.
+                    var tc = _wEnvT.Center;
+                    var toC2 = (Vector3.Zero - tc); toC2.Y = 0f;
+                    var fp2 = tc + toC2.Normalized() * 12f;
+                    fp2.Y = Main.HeightAt(fp2.X, fp2.Z);
+                    _player.Teleport(fp2, MechWalker.YawOf((tc - fp2).Normalized()));
+                    _playerYaw = _player.LegsYaw;
+                    _cdLaser = 0f;
+                    FireLaser(new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z));
+                    if (_wEnvT.State != 1) { WFail($"tree did not ignite (state={_wEnvT.State})"); return; }
+                    GD.Print("ENVTEST BURN PASS tree ignited by a laser hit");
+                    _wEnvStep = 3;
+                }
+                else if (_wEnvStep == 3)
+                {
+                    if (!_wCaptured) { _wCaptured = true; QueueCapture("res://proof/env_burning.png", "envBurn", "orbit"); }
+                    if (_wPhaseT > 40) { WFail("tree never finished evaporating"); return; }
+                    if (_wEnvT.State == 4)
+                    {
+                        if (GodotObject.IsInstanceValid(_wEnvT.Node)) { WFail("evaporated tree node still alive"); return; }
+                        GD.Print("ENVTEST TREE PASS burned 3s, smoked out, node freed, colliders removed");
+                        GD.Print($"WPNTEST FX sparks={_fxSparkBursts} booms={_fxBooms} scorches={_fxScorches}");
+                        if (_fxSparkBursts <= 0) WFail("no laser spark bursts spawned");
+                        if (_fxBooms <= 0) WFail("no rocket explosions spawned");
+                        if (_fxScorches <= 0) WFail("no cannon scorch marks spawned");
+                        GD.Print("WPNTEST FX PASS laser sparks, rocket explosions and cannon scorches all fired");
+                        GD.Print("WPNTEST DONE");
+                        GetTree().Quit(0);
+                    }
                 }
                 break;
         }
