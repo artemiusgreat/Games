@@ -596,9 +596,16 @@ public partial class MechWalker : Node3D
         // at twist = 0 this must reproduce the rest pose exactly
         // (root * Yaw(Pi)^-1 * M0 == M0 when legsYaw = 0), otherwise the
         // torso renders 180 degrees off the legs.
+        // Pitch sign: the trailing Yaw(Pi) rest-flip conjugates the
+        // X rotation, so feeding +pitch here rendered the torso nose-
+        // DOWN while the aim model treats +pitch as up — mouse up
+        // visibly dipped the mech (owner's report). Feed (Droop -
+        // pitch): rendered pitch = pitch - Droop, so +pitch points
+        // the torso UP (-18/+27 deg working range) and the death
+        // droop still slumps it nose-down, up to ~49 deg.
         var f = _rootBasis.Orthonormalized()
             * Basis.Identity.Rotated(Vector3.Up, _torsoTwist)
-            * Basis.Identity.Rotated(Vector3.Right, Mathf.Clamp(_torsoPitch + Droop, -0.32f, 0.85f))
+            * Basis.Identity.Rotated(Vector3.Right, Mathf.Clamp(Droop - _torsoPitch, -0.85f, 0.32f))
             * Basis.Identity.Rotated(Vector3.Up, Mathf.Pi);
         var basisSk = _skelGlobal.Basis.Orthonormalized().Transposed() * (f * _torsoM0);
         _skel.SetBoneGlobalPoseOverride(_torsoBone,
@@ -610,10 +617,18 @@ public partial class MechWalker : Node3D
     public float EngineTorsoYaw()
     {
         if (_torsoBone < 0 || _skel == null) return TorsoYawWorld;
+        var f = EngineTorsoFacing();
+        return YawOf(new Vector3(f.X, 0f, f.Z).Normalized());
+    }
+
+    // The torso's facing as the engine actually renders it, Y
+    // included — the ground truth for pitch direction checks.
+    public Vector3 EngineTorsoFacing()
+    {
+        if (_torsoBone < 0 || _skel == null) return Vector3.Forward;
         var pose = _skel.GetBoneGlobalPose(_torsoBone);
         var w = _skel.GlobalTransform.Basis.Orthonormalized() * pose.Basis.Orthonormalized();
-        var f = w * _torsoFwdBoneLocal;
-        return YawOf(new Vector3(f.X, 0f, f.Z).Normalized());
+        return (w * _torsoFwdBoneLocal).Normalized();
     }
 
     private void SolveLeg(Leg leg)

@@ -74,6 +74,8 @@ public partial class MechDuel : Node3D
     private float _minTreeSep, _minMechSep;
     private int _pLimpStep;
     private int _aimStep;
+    private double _aimT0;
+    private float _aimUpY;
     private double _pLimpT0;
     private Vector3 _pLimpStart;
     private float _pLimpYaw0;
@@ -2451,6 +2453,30 @@ public partial class MechDuel : Node3D
                     if (ryUp > ryDown - 8f)
                     { GD.PrintErr($"DUEL FAIL: reticle barely rides the pitch sweep (ryDown={ryDown:F0} ryUp={ryUp:F0})"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle sweeps freely screenY {ryDown:F0} -> {ryUp:F0} in even steps");
+                    // Rendered-pitch check next (steps 1-2): the AIM
+                    // math above is property-based; these read the
+                    // skeleton's actual facing after a StepWalker ran.
+                    _player.TorsoTwist = 0f;
+                    _player.TorsoPitch = 0.35f;
+                    _aimT0 = _phaseT;
+                    _aimStep = 1;
+                }
+                else if (_aimStep == 1 && _phaseT - _aimT0 > 0.3)
+                {
+                    var fUp = _player.EngineTorsoFacing();
+                    if (fUp.Y < 0.15f)
+                    { GD.PrintErr($"DUEL FAIL: rendered torso does not pitch UP with +pitch (facingY={fUp.Y:F3})"); GetTree().Quit(1); break; }
+                    _aimUpY = fUp.Y;
+                    _player.TorsoPitch = -0.25f;
+                    _aimT0 = _phaseT;
+                    _aimStep = 2;
+                }
+                else if (_aimStep == 2 && _phaseT - _aimT0 > 0.3)
+                {
+                    var fDn = _player.EngineTorsoFacing();
+                    if (fDn.Y > -0.08f)
+                    { GD.PrintErr($"DUEL FAIL: rendered torso does not pitch DOWN with -pitch (facingY={fDn.Y:F3})"); GetTree().Quit(1); break; }
+                    GD.Print($"DUEL AIM RENDER PASS rendered torso follows the pitch: up facingY={_aimUpY:F3}, down facingY={fDn.Y:F3}");
                     // Proof frame: torso pitched up — the reticle
                     // rides visibly above screen center, over the
                     // Atlas, at its fixed-depth projection.
@@ -2458,7 +2484,7 @@ public partial class MechDuel : Node3D
                     _player.TorsoPitch = 0.18f;
                     _aimPoint = TorsoAimPoint();
                     UpdateReticle();
-                    _aimStep = 1;
+                    _aimStep = 3;
                     QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
                     {
                         QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
