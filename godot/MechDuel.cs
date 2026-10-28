@@ -1446,6 +1446,22 @@ public partial class MechDuel : Node3D
         _panel.AddThemeStyleboxOverride("panel", pbg);
         layer.AddChild(_panel);
 
+        // Radar scope, top-right (owner): player-centered, north-up.
+        _radar = new RadarView
+        {
+            Player = _player,
+            Enemy = _enemy,
+            CustomMinimumSize = new Vector2(168f, 168f)
+        };
+        _radar.Buildings.AddRange(_buildingPts);
+        _radar.SetAnchorsPreset(Control.LayoutPreset.TopRight);
+        _radar.OffsetLeft = -184f;
+        _radar.OffsetTop = 16f;
+        _radar.OffsetRight = -16f;
+        _radar.OffsetBottom = 184f;
+        _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
+        layer.AddChild(_radar);
+
         var hbox = new HBoxContainer();
         hbox.AddThemeConstantOverride("separation", 20);
         _panel.AddChild(hbox);
