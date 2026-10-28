@@ -660,23 +660,139 @@ public partial class MechDuel : Node3D
     // Procedural facade (terrain-detail ask): a window grid with lit and
     // dark panes, a door at street level and a darker parapet band —
     // drawn once per building into a 256px image texture.
+    // Facade texture, second detail pass (owner): real masonry instead
+    // of flat paint — brick courses with mortar lines and per-brick
+    // tone jitter, or ashlar stone blocks with bevel shading on the
+    // alternate buildings. Windows are NOT painted here anymore: each
+    // window is a dark frame quad with a real transparent glass pane in
+    // front of it (see AddGlassPanes), so alignment is exact on every
+    // face. Door + transom stay painted.
+    private static int BrickHash(int seed, int a, int b)
+    {
+        int h = (seed * 73856093) ^ (a * 19349663) ^ (b * 83492791);
+        h = (h ^ (h >> 13)) * 1274126177;
+        return (h ^ (h >> 16)) & 0x3FF;
+    }
+
     private static ImageTexture MakeFacadeTexture(int seed, Color baseCol)
     {
-        var img = Image.Create(256, 256, false, Image.Format.Rgba8);
-        img.Fill(baseCol);
-        img.FillRect(new Rect2I(0, 0, 256, 12), baseCol.Darkened(0.25f)); // parapet
-        for (int r = 0; r < 6; r++)
-        for (int c = 0; c < 5; c++)
+        var img = Image.Create(512, 512, false, Image.Format.Rgba8);
+        bool stone = seed % 2 == 1;
+        var mortar = baseCol.Darkened(0.42f);
+        img.Fill(mortar);
+        if (stone)
         {
-            int x = 18 + c * 46, y = 26 + r * 34;
-            bool lit = (c * 31 + r * 57 + seed * 101) % 5 < 2;
-            var wc = lit ? new Color(1.0f, 0.84f, 0.52f) : new Color(0.11f, 0.15f, 0.20f);
-            img.FillRect(new Rect2I(x, y, 26, 20), wc);
-            img.FillRect(new Rect2I(x, y, 26, 3), wc.Lightened(0.25f));
+            // Ashlar blocks 124x58 with a light top edge and dark foot.
+            for (int ry = 0; ry < 9; ry++)
+            for (int cx = -1; cx < 5; cx++)
+            {
+                int x = cx * 128 + (ry % 2 == 0 ? 0 : 64), y = ry * 58;
+                int j = BrickHash(seed, cx + 3, ry);
+                var c = baseCol.Lightened((j % 13 - 6) * 0.008f);
+                img.FillRect(new Rect2I(x + 3, y + 3, 122, 52), c);
+                img.FillRect(new Rect2I(x + 3, y + 3, 122, 4), c.Lightened(0.13f));
+                img.FillRect(new Rect2I(x + 3, y + 51, 122, 4), c.Darkened(0.16f));
+            }
         }
-        img.FillRect(new Rect2I(108, 208, 40, 48), new Color(0.09f, 0.075f, 0.06f)); // door
-        img.FillRect(new Rect2I(108, 208, 40, 8), new Color(0.95f, 0.8f, 0.5f));    // transom light
+        else
+        {
+            // Brick courses: 62x26 bricks, 3px mortar, staggered rows.
+            for (int ry = 0; ry < 19; ry++)
+            for (int cx = -1; cx < 9; cx++)
+            {
+                int x = cx * 64 + (ry % 2 == 0 ? 0 : 32), y = ry * 27;
+                int j = BrickHash(seed, cx + 3, ry);
+                var c = baseCol.Lightened((j % 17 - 8) * 0.010f)
+                    .Lerp(new Color(0.45f, 0.16f, 0.10f), (j % 5) * 0.03f);
+                img.FillRect(new Rect2I(x + 2, y + 2, 60, 23), c);
+                img.FillRect(new Rect2I(x + 2, y + 2, 60, 3), c.Lightened(0.10f));
+            }
+        }
+        img.FillRect(new Rect2I(0, 0, 512, 14), baseCol.Darkened(0.3f)); // parapet
+        img.FillRect(new Rect2I(216, 416, 80, 96), new Color(0.10f, 0.08f, 0.06f)); // door
+        img.FillRect(new Rect2I(216, 416, 80, 12), new Color(0.95f, 0.8f, 0.5f));    // transom light
         return ImageTexture.CreateFromImage(img);
+    }
+
+    // Window glass for one building: for each of the four walls, a grid
+    // of dark frame quads with a slightly proud transparent pane over
+    // each. All quads merge into ONE ArrayMesh with an alpha glass
+    // material; frames use a second surface of the same mesh with a
+    // dark opaque material. Local space: the building box is centered
+    // at the mesh origin, so panes ride the collapse scale for free.
+    private static MeshInstance3D MakeGlassPanes(Vector3 size)
+    {
+        var verts = new System.Collections.Generic.List<Vector3>();
+        var norms = new System.Collections.Generic.List<Vector3>();
+        var idx = new System.Collections.Generic.List<int>();
+        var frameMat = new StandardMaterial3D { AlbedoColor = new Color(0.07f, 0.08f, 0.10f), Roughness = 0.9f };
+        var glassMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.55f, 0.72f, 0.85f, 0.38f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            Roughness = 0.06f, Metallic = 0.35f
+        };
+        // face: outward normal, right axis, half extents (w = face width, h = height)
+        var faces = new (Vector3 N, Vector3 R, float W)[]
+        {
+            (new Vector3(0, 0, 1), new Vector3(1, 0, 0), size.X),
+            (new Vector3(0, 0, -1), new Vector3(-1, 0, 0), size.X),
+            (new Vector3(1, 0, 0), new Vector3(0, 0, -1), size.Z),
+            (new Vector3(-1, 0, 0), new Vector3(0, 0, 1), size.Z)
+        };
+        var frameIdx = new System.Collections.Generic.List<int>();
+        var glassIdx = new System.Collections.Generic.List<int>();
+        foreach (var (n, rgt, w) in faces)
+        {
+            float half = (Mathf.Abs(n.Z) > 0.5f ? size.Z : size.X) / 2f + 0.04f;
+            int cols = Mathf.Clamp(Mathf.RoundToInt(w / 2.4f), 3, 6);
+            int rows = Mathf.Clamp(Mathf.RoundToInt(size.Y / 2.8f), 2, 4);
+            for (int ri = 0; ri < rows; ri++)
+            for (int ci = 0; ci < cols; ci++)
+            {
+                float u = (ci + 0.5f) / cols - 0.5f;         // across the face
+                float v = 0.18f + (ri + 0.5f) / rows * 0.72f; // 0 at sill band..1 top
+                var center = n * half + rgt * (u * w)
+                    + Vector3.Up * ((v - 0.5f) * size.Y);
+                float pw = w / cols * 0.52f, ph = size.Y / rows * 0.5f;
+                AddQuad(verts, norms, frameIdx, center - n * 0.02f, rgt, n, pw * 1.18f, ph * 1.18f);
+                AddQuad(verts, norms, glassIdx, center, rgt, n, pw, ph);
+            }
+        }
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+        var mesh = new ArrayMesh();
+        var fArrays = new Godot.Collections.Array(); fArrays.Resize((int)Mesh.ArrayType.Max);
+        fArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        fArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+        fArrays[(int)Mesh.ArrayType.Index] = frameIdx.ToArray();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, fArrays);
+        mesh.SurfaceSetMaterial(0, frameMat);
+        var gArrays = new Godot.Collections.Array(); gArrays.Resize((int)Mesh.ArrayType.Max);
+        gArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        gArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+        gArrays[(int)Mesh.ArrayType.Index] = glassIdx.ToArray();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, gArrays);
+        mesh.SurfaceSetMaterial(1, glassMat);
+        return new MeshInstance3D { Mesh = mesh };
+    }
+
+    private static void AddQuad(System.Collections.Generic.List<Vector3> verts,
+        System.Collections.Generic.List<Vector3> norms,
+        System.Collections.Generic.List<int> idx,
+        Vector3 center, Vector3 right, Vector3 normal, float w, float h)
+    {
+        int b0 = verts.Count;
+        var up = Vector3.Up;
+        verts.Add(center - right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
+        verts.Add(center + right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
+        verts.Add(center + right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
+        verts.Add(center - right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
+        // The per-face right axes above are chosen so this winding
+        // faces outward on all four walls.
+        idx.AddRange(new[] { b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3 });
     }
 
     private void AddBuilding(Vector3 pos, Vector3 size)
@@ -694,6 +810,7 @@ public partial class MechDuel : Node3D
         _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
+        mi.AddChild(MakeGlassPanes(size));
         _buildingPts.Add(new Vector2(pos.X, pos.Z));
         // Circle colliders: one for near-square footprints, two along the
         // long axis for elongated ones. Radius covers the short side plus a
