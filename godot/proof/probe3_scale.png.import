@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1kq61he6via6"
-path="res://.godot/imported/break_limp.png-509cf9ab247a8f8de40e9cdd5b57f5e7.ctex"
+uid="uid://cuwyg8omsoeav"
+path="res://.godot/imported/probe3_scale.png-7c0cbb0a41632a8a8f9271334a110084.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://proof/break_limp.png"
-dest_files=["res://.godot/imported/break_limp.png-509cf9ab247a8f8de40e9cdd5b57f5e7.ctex"]
+source_file="res://proof/probe3_scale.png"
+dest_files=["res://.godot/imported/probe3_scale.png-7c0cbb0a41632a8a8f9271334a110084.ctex"]
 
 [params]
 
