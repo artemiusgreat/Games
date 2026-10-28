@@ -80,6 +80,7 @@ public partial class MechDuel : Node3D
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Age)> _scorches = new();
     private int _fxSparkBursts, _fxBooms, _fxScorches;
     private readonly RandomNumberGenerator _fxRng = new() { Seed = 4242 };
+    private bool _exploding; // true while a death explosion breaks every part at once
     private static readonly BoxMesh SparkMesh = new() { Size = new Vector3(0.11f, 0.11f, 0.11f) };
     private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
     private readonly System.Collections.Generic.List<(Label3D L, float Life)> _dmgNums = new();
@@ -986,6 +987,9 @@ public partial class MechDuel : Node3D
     // consequences.
     private void OnPartBroken(MechParts parts, string partId, Vector3 center)
     {
+        // During a death explosion every part breaks at once: no feed
+        // spam, no per-part consequences (leg loss would re-enter Die).
+        if (_exploding) return;
         SpawnFlash(center, new Color(1f, 0.62f, 0.22f), 0.95f, 0.16f);
         SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
         var part = parts.GetPart(partId);
@@ -1081,6 +1085,23 @@ public partial class MechDuel : Node3D
 
     private void OnDeath(MechWalker w)
     {
+        // Death is an explosion now, not a gray-out (owner): a flash
+        // sequence at the torso, camera shake, and the whole mech comes
+        // apart — every part, torso core included, becomes debris that
+        // rains down and settles on the terrain.
+        var parts = w == _player ? _partsPlayer : _partsEnemy;
+        var center = w.RootPos + Vector3.Up * 6.5f;
+        SpawnFlash(center, new Color(1f, 0.72f, 0.3f), 2.8f, 0.4f);
+        SpawnFlash(center, new Color(1f, 0.95f, 0.72f), 1.5f, 0.25f);
+        SpawnFlash(center + Vector3.Up * 2.2f, new Color(1f, 0.5f, 0.18f), 1.9f, 0.55f);
+        SpawnExplosionFx(center + Vector3.Up * 1.5f);
+        _fxBooms--; // the death bundle is not a rocket hit; keep counters honest
+        _exploding = true;
+        parts.ExplodeAll();
+        _exploding = false;
+        float distToPlayer = w.RootPos.DistanceTo(_player.RootPos);
+        if (w == _player || distToPlayer < 45f) _shake = 1.0f;
+        GD.Print($"DEATHBLOW {(w == _player ? "TW" : "ATLAS")} exploded into debris");
         w.SetDarkened(true);
         if (w == _enemy)
         {

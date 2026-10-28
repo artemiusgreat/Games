@@ -572,6 +572,23 @@ public sealed class MechParts
         return true;
     }
 
+    // Death explosion: EVERY part detaches into debris at once —
+    // including the torso core, which normal damage can never break
+    // (its MaxHp 0 marks it as the pool itself). OnBreak still fires
+    // per part; the owner suppresses the usual consequences while a
+    // whole mech is coming apart.
+    public void ExplodeAll()
+    {
+        foreach (var part in _parts.Values)
+        {
+            if (part.Destroyed) continue;
+            part.Hp = 0f;
+            var center = PartCenterWorld(part.Id);
+            BreakPart(part, center);
+            OnBreak?.Invoke(part.Id, center);
+        }
+    }
+
     // Detach the part's meshes from the skeleton and turn them into
     // falling debris. The skinless-equivalent transform
     // (meshGlobal * bonePose * bindPose) reproduces the skinned vertex
