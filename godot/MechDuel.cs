@@ -1167,25 +1167,33 @@ public partial class MechDuel : Node3D
         var from = _player.BoneWorldPos("torso") + dir * 3.2f;
         _aimFrom = from;
         _aimDir = dir;
-        return _hit.Ray(from, dir, 200f, "TW").Point;
+        var hit = _hit.Ray(from, dir, 200f, "TW");
+        _aimTarget = hit.Hit ? hit.Target : "";
+        return hit.Point;
     }
 
-    // The reticle rides a FIXED-DEPTH point on the aim ray (40u from
-    // the chest), not the ray's hit point. Projecting the hit point
-    // made the target stick to whatever surface the ray touched —
-    // sliding along the enemy's part boxes, then jumping to the
-    // hillside behind it — which reads as snapping and lock-on
-    // (owner's report). A fixed-depth projection is a pure function
-    // of the torso's direction: the target moves freely and evenly
-    // with the mouse. The weapons still converge on the real hit
-    // point, which is on the same ray, so the reticle stays on the
-    // line of fire. When the torso points behind the camera (deep
-    // twist), the projection mirrors — flip it through the center
-    // and clamp to the screen edge.
-    private const float ReticleDepth = 40f;
+    // The reticle marks the aim ray's TRUE hit point — the spot every
+    // weapon converges on. (Round 6 projected a fixed-depth point to
+    // stop the reticle sticking to surfaces; the owner overruled it
+    // in round 8: projected at 40u while the target stands at 25u,
+    // the cursor read "above him" while the ray still crossed his
+    // chest, so cannons hit "through" a high cursor and the laser's
+    // endpoint sat visibly off it. Truth wins: cursor on him = hit
+    // him, cursor above him = shots pass above.) When the torso
+    // points behind the camera (deep twist), the projection mirrors
+    // — flip it through the center and clamp to the screen edge.
+    private string _aimTarget = "";
     private void UpdateReticle()
     {
-        var pt = _aimFrom + _aimDir * ReticleDepth;
+        // Round 8: the reticle marks the TRUE aim point — the spot
+        // every weapon converges on. The round-6 fixed-depth point
+        // never stuck to surfaces, but it also never told the truth:
+        // projected at 40u while the enemy stands at 25u, it read
+        // "above him" while the ray (and the cannon shell on it)
+        // still crossed his chest, and the laser's endpoint sat
+        // visibly off the cursor. The owner's verdict: the cursor
+        // must show where shots land. It does now.
+        var pt = _aimPoint;
         var vp = GetViewport().GetVisibleRect().Size;
         var sp = _cam.UnprojectPosition(pt);
         if (_cam.IsPositionBehind(pt)) sp = vp - sp;
@@ -2557,35 +2565,44 @@ public partial class MechDuel : Node3D
                     float dxz = new Vector2(aimT.X - aimC.X, aimT.Z - aimC.Z).Length();
                     if (dxz < 5f)
                     { GD.PrintErr($"DUEL FAIL: torso twist does not steer the aim (dxz={dxz:F2})"); GetTree().Quit(1); break; }
-                    // Reticle freedom: sweep the pitch in small even
-                    // steps with the Atlas dead ahead (the old
-                    // hit-point projection stuck and jumped as the
-                    // ray crossed its part boxes). Every step must
-                    // move the reticle a small, even amount — no
-                    // sticking (0px) and no snapping (>25px).
+                    // Reticle TRUTH (round 8): sweep the pitch across
+                    // the Atlas; at every step the reticle must sit
+                    // exactly on the projection of the true aim point
+                    // (the spot weapons converge on) — no parallax
+                    // fiction between cursor and impact.
                     _player.TorsoTwist = 0f;
-                    float prevRy = -1f, firstRy = 0f, lastRy = 0f;
+                    var vpAim = GetViewport().GetVisibleRect().Size;
+                    float firstRy = 0f, lastRy = 0f;
                     for (int i = 0; i <= 5; i++)
                     {
                         _player.TorsoPitch = -0.05f + i * 0.02f;
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
-                        float ry = _cross.ReticlePos.Y;
-                        if (i == 0) firstRy = ry;
-                        if (prevRy >= 0f)
-                        {
-                            float stepPx = prevRy - ry;
-                            if (stepPx < 1f || stepPx > 25f)
-                            { GD.PrintErr($"DUEL FAIL: reticle sticks or snaps while sweeping the enemy (step {i}: {stepPx:F1}px)"); _aimStep = 99; GetTree().Quit(1); break; }
-                        }
-                        prevRy = ry;
-                        lastRy = ry;
+                        var exp = _cam.UnprojectPosition(_aimPoint);
+                        exp = new Vector2(
+                            Mathf.Clamp(exp.X, 28f, vpAim.X - 28f),
+                            Mathf.Clamp(exp.Y, 28f, vpAim.Y - 28f));
+                        var got = _cross.ReticlePos;
+                        if (Mathf.Abs(got.X - exp.X) > 6f || Mathf.Abs(got.Y - exp.Y) > 6f)
+                        { GD.PrintErr($"DUEL FAIL: reticle is not on the aim point (step {i}: got {got}, expected {exp})"); _aimStep = 99; GetTree().Quit(1); break; }
+                        if (i == 0) firstRy = got.Y;
+                        lastRy = got.Y;
                     }
                     if (_aimStep == 99) break; // sweep failed above; Quit(1) already queued
-                    float ryDown = firstRy, ryUp = lastRy;
-                    if (ryUp > ryDown - 8f)
-                    { GD.PrintErr($"DUEL FAIL: reticle barely rides the pitch sweep (ryDown={ryDown:F0} ryUp={ryUp:F0})"); GetTree().Quit(1); break; }
-                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle sweeps freely screenY {ryDown:F0} -> {ryUp:F0} in even steps");
+                    if (lastRy > firstRy - 8f)
+                    { GD.PrintErr($"DUEL FAIL: reticle barely rides the pitch sweep (first={firstRy:F0} last={lastRy:F0})"); GetTree().Quit(1); break; }
+                    // The owner's round-8 contract, stated as geometry:
+                    // cursor low on the Atlas => the ray is ON him;
+                    // cursor raised above him => the ray passes OVER.
+                    _player.TorsoPitch = -0.10f;
+                    TorsoAimPoint();
+                    if (_aimTarget != "ATLAS")
+                    { GD.PrintErr($"DUEL FAIL: low cursor should be on the Atlas (target='{_aimTarget}')"); GetTree().Quit(1); break; }
+                    _player.TorsoPitch = 0.30f;
+                    TorsoAimPoint();
+                    if (_aimTarget == "ATLAS")
+                    { GD.PrintErr("DUEL FAIL: raised cursor still intersects the Atlas — shots would hit under a high cursor"); GetTree().Quit(1); break; }
+                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle sits on the true aim point, on Atlas low / over Atlas at 0.30");
                     // Rendered-pitch check next (steps 1-2): the AIM
                     // math above is property-based; these read the
                     // skeleton's actual facing after a StepWalker ran.
@@ -2664,8 +2681,7 @@ public partial class MechDuel : Node3D
                         { GD.PrintErr($"DUEL FAIL: legs dragged the torso by {torsoDrift:F3} rad (mouse must own the bearing)"); GetTree().Quit(1); break; }
                         GD.Print($"DUEL AIM TORSO-INDEP PASS legs turned {legsTurned:F2} rad under a fixed mouse bearing; torso drift {torsoDrift:F3} rad");
                         // Proof frame: torso pitched up — the reticle
-                        // rides visibly above screen center, over the
-                        // Atlas, at its fixed-depth projection.
+                        // sits on the true aim point above the Atlas.
                         _player.TorsoTwist = 0f;
                         _player.TorsoPitch = 0.18f;
                         _aimPoint = TorsoAimPoint();
