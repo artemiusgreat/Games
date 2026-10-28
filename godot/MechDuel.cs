@@ -2370,10 +2370,15 @@ public partial class MechDuel : Node3D
                     ApplyPlayerInput(delta, false, true, false, false, false);
                     if (_phaseT - _pLimpT0 > 2.2f)
                     {
+                        // Net displacement is small because the step
+                        // starts at full forward speed: the walker first
+                        // coasts ~1u forward while decelerating through
+                        // zero. The crisp signals: net backward travel
+                        // AND a live negative drive speed at the end.
                         float rev = _player.RootPos.Z - _pLimpStart.Z;
-                        if (rev < 1.2f)
-                        { GD.PrintErr($"DUEL FAIL: limping player cannot reverse rev={rev:F2}"); GetTree().Quit(1); break; }
-                        GD.Print($"DUEL PLAYERLIMP REV rev={rev:F2} over 2.2s");
+                        if (rev < 0.5f || _player.Speed > -0.8f)
+                        { GD.PrintErr($"DUEL FAIL: limping player cannot reverse rev={rev:F2} spd={_player.Speed:F2}"); GetTree().Quit(1); break; }
+                        GD.Print($"DUEL PLAYERLIMP REV rev={rev:F2} net over 2.2s (after the forward coast), spd={_player.Speed:F2}");
                         _pLimpYaw0 = _playerYaw;
                         _pLimpT0 = _phaseT;
                         _pLimpStep = 3;
