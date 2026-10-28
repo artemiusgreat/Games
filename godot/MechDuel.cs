@@ -105,6 +105,9 @@ public partial class MechDuel : Node3D
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm;
+    private PanelContainer _panel;
+    private Label _lblRange, _lblSpeed, _lblLegs;
+    private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
     private readonly System.Collections.Generic.List<(string Text, float Life)> _feed = new();
     private float _shake;
     private float _playerDroopT, _enemyDroopT;
@@ -1048,60 +1051,116 @@ public partial class MechDuel : Node3D
 
     private void BuildHud(CanvasLayer layer)
     {
-        // Player HP, bottom-left.
-        _lblPlayerHp = MakeLabel(15, new Color(0.85f, 0.95f, 0.85f));
-        _lblPlayerHp.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
-        _lblPlayerHp.OffsetLeft = 18; _lblPlayerHp.OffsetTop = -90; _lblPlayerHp.OffsetRight = 320; _lblPlayerHp.OffsetBottom = -68;
-        layer.AddChild(_lblPlayerHp);
-        _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(280, 22));
-        _barPlayer.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
-        _barPlayer.OffsetLeft = 18; _barPlayer.OffsetTop = -64; _barPlayer.OffsetRight = 298; _barPlayer.OffsetBottom = -40;
-        layer.AddChild(_barPlayer);
+        // ---- Cockpit control panel: one console strip along the bottom
+        // holding mech integrity, per-part status, weapon charge with the
+        // selected weapon marked, and target/system readouts.
+        _panel = new PanelContainer();
+        _panel.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+        _panel.OffsetLeft = 16; _panel.OffsetRight = -16;
+        _panel.OffsetTop = -172; _panel.OffsetBottom = -14;
+        var pbg = new StyleBoxFlat
+        {
+            BgColor = new Color(0.055f, 0.075f, 0.105f, 0.94f),
+            BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.9f),
+            ContentMarginLeft = 16, ContentMarginRight = 16,
+            ContentMarginTop = 10, ContentMarginBottom = 10,
+        };
+        pbg.SetBorderWidthAll(2);
+        pbg.SetCornerRadiusAll(8);
+        _panel.AddThemeStyleboxOverride("panel", pbg);
+        layer.AddChild(_panel);
 
-        // Atlas HP, top-center (hidden once it dies; the banner takes over).
-        _lblEnemyHp = MakeLabel(15, new Color(0.98f, 0.85f, 0.8f));
-        _lblEnemyHp.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
-        _lblEnemyHp.OffsetLeft = -150; _lblEnemyHp.OffsetTop = 14; _lblEnemyHp.OffsetRight = 150; _lblEnemyHp.OffsetBottom = 36;
-        _lblEnemyHp.HorizontalAlignment = HorizontalAlignment.Center;
-        layer.AddChild(_lblEnemyHp);
-        _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
-        _barEnemy.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
-        _barEnemy.OffsetLeft = -150; _barEnemy.OffsetTop = 38; _barEnemy.OffsetRight = 150; _barEnemy.OffsetBottom = 58;
-        layer.AddChild(_barEnemy);
+        var hbox = new HBoxContainer();
+        hbox.AddThemeConstantOverride("separation", 20);
+        _panel.AddChild(hbox);
 
-        // Weapon cooldowns, just right/below the crosshair.
-        var vbox = new VBoxContainer();
-        vbox.SetAnchorsPreset(Control.LayoutPreset.Center);
-        vbox.OffsetLeft = 34; vbox.OffsetTop = 30; vbox.OffsetRight = 220; vbox.OffsetBottom = 118;
-        vbox.AddThemeConstantOverride("separation", 5);
-        layer.AddChild(vbox);
+        Label Title(string t)
+        {
+            var l = MakeLabel(12, new Color(0.62f, 0.7f, 0.78f));
+            l.Text = t;
+            return l;
+        }
+
+        // -- Left: own mech integrity + per-part status grid.
+        var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(372, 0) };
+        leftBox.AddThemeConstantOverride("separation", 4);
+        hbox.AddChild(leftBox);
+        _lblPlayerHp = MakeLabel(16, new Color(0.85f, 0.95f, 0.85f));
+        leftBox.AddChild(_lblPlayerHp);
+        _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(372, 20));
+        leftBox.AddChild(_barPlayer);
+        var grid = new GridContainer { Columns = 4 };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        grid.AddThemeConstantOverride("v_separation", 3);
+        leftBox.AddChild(grid);
+        foreach (var (id, name) in new[]
+        {
+            ("head", "HEAD"), ("arm_L", "ARM L"), ("arm_R", "ARM R"), ("pod_L", "POD L"),
+            ("pod_R", "POD R"), ("leg_L", "LEG L"), ("leg_R", "LEG R"),
+        })
+        {
+            var cell = new VBoxContainer();
+            cell.AddThemeConstantOverride("separation", 1);
+            var lab = MakeLabel(10, new Color(0.75f, 0.8f, 0.85f));
+            lab.Text = name;
+            cell.AddChild(lab);
+            var bar = MakeBar(new Color(0.45f, 0.75f, 0.5f), new Vector2(84, 8));
+            cell.AddChild(bar);
+            grid.AddChild(cell);
+            _partCells[id] = (lab, bar);
+        }
+
+        hbox.AddChild(new VSeparator());
+
+        // -- Center: weapons. The selected row is marked with a pointer
+        // and bright text (set in UpdateHud); the hint line teaches the
+        // switching scheme in-game.
+        var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(308, 0) };
+        midBox.AddThemeConstantOverride("separation", 4);
+        hbox.AddChild(midBox);
+        midBox.AddChild(Title("WEAPONS"));
         (Label, ProgressBar) CdRow(string name)
         {
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
-            var lab = MakeLabel(13, new Color(0.9f, 0.9f, 0.9f, 0.9f));
+            var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(42, 0);
+            lab.CustomMinimumSize = new Vector2(74, 0);
             row.AddChild(lab);
-            var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(120, 11));
+            var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(218, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             row.AddChild(bar);
-            vbox.AddChild(row);
+            midBox.AddChild(row);
             return (lab, bar);
         }
-        var rowLaser = CdRow("LAS");
+        var rowLaser = CdRow("1 LAS");
         _lblCdLaser = rowLaser.Item1; _cdBarLaser = rowLaser.Item2;
-        var rowAc = CdRow("AC");
+        var rowAc = CdRow("2 AC");
         _lblCdAc = rowAc.Item1; _cdBarAc = rowAc.Item2;
-        var rowLrm = CdRow("LRM");
+        var rowLrm = CdRow("3 LRM");
         _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
+        var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
+        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire";
+        midBox.AddChild(hint);
+        _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
+        midBox.AddChild(_lblWeaponStatus);
 
-        // Destroyed-weapon status line under the cooldown rows.
-        _lblWeaponStatus = MakeLabel(14, new Color(1f, 0.42f, 0.32f));
-        _lblWeaponStatus.SetAnchorsPreset(Control.LayoutPreset.Center);
-        _lblWeaponStatus.OffsetLeft = 34; _lblWeaponStatus.OffsetTop = 122;
-        _lblWeaponStatus.OffsetRight = 420; _lblWeaponStatus.OffsetBottom = 190;
-        layer.AddChild(_lblWeaponStatus);
+        hbox.AddChild(new VSeparator());
+
+        // -- Right: target + own systems readouts.
+        var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
+        rightBox.AddThemeConstantOverride("separation", 4);
+        hbox.AddChild(rightBox);
+        _lblEnemyHp = MakeLabel(16, new Color(0.98f, 0.85f, 0.8f));
+        rightBox.AddChild(_lblEnemyHp);
+        _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
+        rightBox.AddChild(_barEnemy);
+        _lblRange = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        rightBox.AddChild(_lblRange);
+        _lblSpeed = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        rightBox.AddChild(_lblSpeed);
+        _lblLegs = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        rightBox.AddChild(_lblLegs);
 
         // Event feed, top-left: part breaks and other combat events.
         _feedLabel = MakeLabel(15, new Color(0.98f, 0.88f, 0.62f));
@@ -1148,6 +1207,15 @@ public partial class MechDuel : Node3D
         lab.AddThemeColorOverride("font_color", destroyed ? CdLabelDead : CdLabelNormal);
     }
 
+    // The selected weapon's panel row carries a pointer marker and, while
+    // the weapon lives, bright text; destroyed rows keep their red.
+    private static void SetSelLabel(Label lab, string baseText, bool selected, bool destroyed)
+    {
+        lab.Text = (selected ? "▶ " : "") + baseText;
+        if (selected && !destroyed)
+            lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
+    }
+
     private void UpdateHud()
     {
         if (_barPlayer == null) return;
@@ -1164,6 +1232,36 @@ public partial class MechDuel : Node3D
         UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / 0.45f, lasDead, _denyLaserT);
         UpdateCdRow(_cdBarAc, _lblCdAc, 1f - _cdAc / 0.85f, acDead, _denyAcT);
         UpdateCdRow(_cdBarLrm, _lblCdLrm, 1f - _cdLrm / 3.5f, lrmDead, _denyLrmT);
+        SetSelLabel(_lblCdLaser, "1 LAS", _weaponSel == 0, lasDead);
+        SetSelLabel(_lblCdAc, "2 AC", _weaponSel == 1, acDead);
+        SetSelLabel(_lblCdLrm, "3 LRM", _weaponSel == 2, lrmDead);
+
+        // Per-part status cells (player mech).
+        foreach (var (id, cell) in _partCells)
+        {
+            var part = _partsPlayer.GetPart(id);
+            float frac = part.MaxHp > 0f ? part.Hp / part.MaxHp : 0f;
+            cell.Bar.Value = frac;
+            var fg = cell.Bar.GetThemeStylebox("fill") as StyleBoxFlat;
+            if (fg != null)
+                fg.BgColor = part.Destroyed ? CdDead
+                    : frac < 0.35f ? new Color(0.9f, 0.45f, 0.2f)
+                    : new Color(0.45f, 0.75f, 0.5f);
+            cell.Lab.AddThemeColorOverride("font_color",
+                part.Destroyed ? CdLabelDead : new Color(0.75f, 0.8f, 0.85f));
+        }
+
+        // Systems readouts: target range, own speed, leg state.
+        float range = new Vector2(_enemy.RootPos.X - _player.RootPos.X,
+                                  _enemy.RootPos.Z - _player.RootPos.Z).Length();
+        _lblRange.Text = _enemyDead ? "TARGET: DESTROYED" : $"TARGET RANGE: {range:F1} u";
+        _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s";
+        bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
+        _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
+            : !lLeg && !rLeg ? "LEGS: BOTH LOST"
+            : lLeg ? "LEGS: RIGHT LOST — IMMOBILE" : "LEGS: LEFT LOST — IMMOBILE";
+        _lblLegs.AddThemeColorOverride("font_color",
+            lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
 
         var status = new System.Collections.Generic.List<string>();
         if (lasDead) status.Add("LASER DESTROYED — LEFT ARM LOST");
@@ -1182,12 +1280,7 @@ public partial class MechDuel : Node3D
         float alpha = 1f;
         if (_hudFlickerT > 0f)
             alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
-        foreach (var c in new Control[]
-        {
-            _barPlayer, _lblPlayerHp, _barEnemy, _lblEnemyHp, _feedLabel,
-            _lblWeaponStatus, _cdBarLaser, _cdBarAc, _cdBarLrm,
-            _lblCdLaser, _lblCdAc, _lblCdLrm, _cross
-        })
+        foreach (var c in new Control[] { _panel, _feedLabel, _cross })
         {
             var m = c.Modulate;
             m.A = alpha;
