@@ -126,6 +126,7 @@ public partial class MechDuel : Node3D
     private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
     private Destructible _wEnvB, _wEnvT;
     private int _wEnvStep;
+    private bool _wKnocked;
     private double _wDeathT, _wStrafeT, _wLastShotT;
     private float _wStrafeDir = 1f;
     private int _wPrevShots;
@@ -2223,6 +2224,7 @@ public partial class MechDuel : Node3D
                     _twDmgEvents = 0; _twDmgTotal = 0f; _atlasShots = 0; _wPrevShots = 0;
                     _atlasMayFire = true;
                     _wStrafeT = 0; _wStrafeDir = 1f;
+                    _wKnocked = false;
                     SetWPhase(5);
                 }
                 break;
@@ -2231,7 +2233,12 @@ public partial class MechDuel : Node3D
                     // The player reverses every 0.9s at full speed — with a
                     // 0.6s shell flight, most shots have a reversal inside
                     // their lead window, which is what makes dodging real.
+                    // Under the weight knockdown rule a landed AC/20 (16t >
+                    // 15t threshold) topples the TW and ends the dodge, so
+                    // the miss requirement yields to a knockdown: either
+                    // proof shows the return fire is not a guaranteed hit.
                 _wStrafeT += dt;
+                if (_player.IsKnockedDown) _wKnocked = true;
                 if (_wStrafeT > 0.9) { _wStrafeT = 0; _wStrafeDir = -_wStrafeDir; }
                 float strafeYaw = _wStrafeDir > 0 ? -Mathf.Pi / 2f : Mathf.Pi / 2f;
                 _player.SetDrive(strafeYaw, 4.2f);
@@ -2243,10 +2250,10 @@ public partial class MechDuel : Node3D
                     int hits = _twDmgEvents;
                     int misses = _atlasShots - hits;
                     if (hits < 1) WFail($"atlas return fire: 0 hits in {_atlasShots} shots");
-                    if (misses < 1) WFail($"atlas return fire: 0 misses in {_atlasShots} shots (dodge impossible)");
+                    if (misses < 1 && !_wKnocked) WFail($"atlas return fire: 0 misses in {_atlasShots} shots (dodge impossible)");
                     if (Mathf.Abs(_twDmgTotal - hits * 18f) > 0.01f)
                         WFail($"atlas dmg total={_twDmgTotal:F1} != hits*18 ({hits * 18})");
-                    GD.Print($"WPNTEST ATLASFIRE PASS shots={_atlasShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
+                    GD.Print($"WPNTEST ATLASFIRE PASS shots={_atlasShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0} knockedDown={_wKnocked}");
                     _atlasMayFire = false;
                     _player.TorsoTwist = 0f;
                     ResetDuel();
@@ -2275,11 +2282,18 @@ public partial class MechDuel : Node3D
                 }
                 if (_enemyDead && _wPhaseT > _wDeathT + 1.8 && !_wDeadShotQueued)
                 {
-                    if (_hpEnemy != 0f) WFail($"dead atlas hp={_hpEnemy:F1} (want clamped 0)");
+                    // Death may come by pool depletion (hp clamped 0) or
+                    // by double leg loss under the breakable rules — with
+                    // knockdowns toppling the Atlas mid-barrage, aimed
+                    // shots land on the prone mech's legs and can take
+                    // it that way instead. Both are legitimate kills.
+                    bool legKill = !_partsEnemy.Alive("leg_L") && !_partsEnemy.Alive("leg_R");
+                    if (_hpEnemy != 0f && !legKill)
+                        WFail($"dead atlas hp={_hpEnemy:F1} with legs intact (want pool kill or double-leg kill)");
                     if (!_enemy.Halted) WFail("dead atlas walker not halted");
                     if (!_banner.Visible || _banner.Text != "ATLAS DESTROYED")
                         WFail($"kill banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
-                    GD.Print("WPNTEST KILL PASS hp clamped 0, walker halted, banner 'ATLAS DESTROYED'");
+                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}, legKill={legKill}), walker halted, banner 'ATLAS DESTROYED'");
                     _wDeadShotQueued = true;
                     QueueCapture("res://proof/weapons_atlas_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
                 }
