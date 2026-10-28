@@ -65,7 +65,10 @@ public partial class MechDuel : Node3D
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
-    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim)> _lrmQueue = new();
+    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, int Salvo)> _lrmQueue = new();
+    private int _salvoSeq;
+    // Per-salvo damage buckets for the knockdown rule: (sum, HP before).
+    private readonly System.Collections.Generic.Dictionary<long, (float Sum, float HpBefore)> _salvoDmg = new();
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
     private readonly System.Collections.Generic.List<(Label3D L, float Life)> _dmgNums = new();
@@ -548,7 +551,7 @@ public partial class MechDuel : Node3D
         {
             Input.MouseMode = Input.MouseModeEnum.Visible;
         }
-        else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !_test)
+        else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !_test && !_player.IsKnockedDown)
         {
             _player.TorsoTwist -= mm.Relative.X * 0.0030f;
             _player.TorsoPitch -= mm.Relative.Y * 0.0025f;
@@ -577,6 +580,7 @@ public partial class MechDuel : Node3D
         var toP = _player.RootPos - _enemy.RootPos;
         float dist = new Vector2(toP.X, toP.Z).Length();
         float yawTo = MechWalker.YawOf(toP.Normalized());
+        if (_enemy.IsKnockedDown) { _enemy.SetDrive(_enemyYaw, 0f); return; } // down: no drive, no tracking
         if (!_partsEnemy.Alive("leg_L") || !_partsEnemy.Alive("leg_R"))
         {
             // Immobile: legs frozen, but the torso still tracks and fires.
@@ -733,8 +737,9 @@ public partial class MechDuel : Node3D
         if (podL && podR) { for (int i = 0; i < 8; i++) sides.Add(i % 2 == 0); }
         else if (podL) { for (int i = 0; i < 4; i++) sides.Add(true); }
         else { for (int i = 0; i < 4; i++) sides.Add(false); }
+        int salvo = ++_salvoSeq;
         for (int i = 0; i < sides.Count; i++)
-            _lrmQueue.Add((i * 0.07f, sides[i], aimPoint));
+            _lrmQueue.Add((i * 0.07f, sides[i], aimPoint, salvo));
         GD.Print($"WPN LRM salvo queued ({sides.Count} rockets, pods L={podL} R={podR})");
     }
 
@@ -746,7 +751,7 @@ public partial class MechDuel : Node3D
         return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
     }
 
-    private void LaunchRocket(Vector3 aimPoint, bool left)
+    private void LaunchRocket(Vector3 aimPoint, bool left, int salvoId = 0)
     {
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
@@ -756,7 +761,7 @@ public partial class MechDuel : Node3D
         const float speed = 36f, grav = 11f;
         float tof = dist / speed;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
-        SpawnProjectile(muzzle, vel, grav, 7f, 3.0f, "TW", rocket: true);
+        SpawnProjectile(muzzle, vel, grav, 7f, 3.0f, "TW", rocket: true, salvoId: salvoId);
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
     }
 
@@ -772,7 +777,7 @@ public partial class MechDuel : Node3D
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
         MechWalker direct = hit.Target == "TW" ? _player : hit.Target == "ATLAS" ? _enemy : null;
-        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId);
+        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.SalvoId);
         foreach (var (w, id) in new[] { (_player, "TW"), (_enemy, "ATLAS") })
         {
             if (w == direct) continue;
@@ -782,13 +787,13 @@ public partial class MechDuel : Node3D
                 var splashHit = hit;
                 splashHit.Target = id;
                 splashHit.Zone = "splash";
-                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId);
+                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.SalvoId);
             }
         }
     }
 
     private Projectile SpawnProjectile(Vector3 pos, Vector3 vel, float gravity, float dmg,
-        float splash, string owner, bool rocket)
+        float splash, string owner, bool rocket, int salvoId = 0)
     {
         var p = new Projectile
         {
@@ -796,7 +801,8 @@ public partial class MechDuel : Node3D
             Gravity = gravity,
             Damage = dmg,
             SplashRadius = splash,
-            OwnerId = owner
+            OwnerId = owner,
+            SalvoId = salvoId
         };
         p.AddChild(rocket ? WeaponFx.MakeRocket() : (Node3D)WeaponFx.MakeTracer());
         AddChild(p);
@@ -817,14 +823,15 @@ public partial class MechDuel : Node3D
             ExplodeSplash(hit, p);
             return;
         }
-        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId);
-        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId);
+        if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.SalvoId);
+        else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.SalvoId);
     }
 
-    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source)
+    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, int salvoId = 0)
     {
         bool isPlayer = target == _player;
         if (isPlayer ? _playerDead : _enemyDead) return;
+        float hpBefore = isPlayer ? _hpPlayer : _hpEnemy;
         var parts = isPlayer ? _partsPlayer : _partsEnemy;
         // Local damage routing: torso hits burn the main pool; head hits
         // burn the head part AND the pool; every other part absorbs its
@@ -851,7 +858,43 @@ public partial class MechDuel : Node3D
         float hp = isPlayer ? _hpPlayer : _hpEnemy;
         GD.Print($"WPN DMG target={(isPlayer ? "TW" : "ATLAS")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source);
-        if (hp <= 0f) Die(target);
+        if (hp <= 0f) { Die(target); return; }
+        // Knockdown rule (owner): a single hit — or one full LRM salvo,
+        // summed across its rockets — whose firepower exceeds 1/3 of the
+        // target's remaining HP topples the mech. (Against MAX HP the
+        // rule could never fire: the biggest single hit in the game is
+        // the 26-damage autocannon vs an 87-point threshold.)
+        if (salvoId > 0)
+        {
+            long key = ((long)salvoId << 1) | (isPlayer ? 1L : 0L);
+            if (!_salvoDmg.TryGetValue(key, out var acc)) acc = (0f, hpBefore);
+            acc.Sum += dmg;
+            _salvoDmg[key] = acc;
+            if (acc.Sum > acc.HpBefore / 3f)
+            {
+                _salvoDmg.Remove(key);
+                DoKnockdown(target, $"salvo firepower {acc.Sum:F0} > remaining HP {acc.HpBefore:F0} / 3");
+            }
+        }
+        else if (dmg > hpBefore / 3f)
+        {
+            DoKnockdown(target, $"hit firepower {dmg:F0} > remaining HP {hpBefore:F0} / 3");
+        }
+    }
+
+    // Topple a mech away from its attacker. The walker animates the fall
+    // (0.5s down, 1.6s on the ground, 1.0s rise, then 3s immunity); while
+    // down it cannot drive, step, or fire.
+    private void DoKnockdown(MechWalker target, string cause)
+    {
+        var other = target == _player ? _enemy : _player;
+        var away = target.RootPos - other.RootPos;
+        away.Y = 0f;
+        if (away.LengthSquared() < 0.01f) away = -MechWalker.HeadingVec(target.LegsYaw);
+        if (!target.TryKnockDown(away.Normalized())) return;
+        AddFeed(target == _player ? "TIMBER WOLF KNOCKED DOWN" : "ATLAS KNOCKED DOWN");
+        GD.Print($"KNOCK {(target == _player ? "TW" : "ATLAS")} down: {cause}");
+        if (target == _player) _shake = Mathf.Max(_shake, 0.7f);
     }
 
     // A part just broke off (fired from MechParts.DamagePart): spark burst
@@ -1004,6 +1047,7 @@ public partial class MechDuel : Node3D
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
         _weaponSel = 0;
         _lrmQueue.Clear();
+        _salvoDmg.Clear();
         foreach (var p in _shots) p.QueueFree();
         _shots.Clear();
         _lastPuff.Clear();
@@ -1271,6 +1315,11 @@ public partial class MechDuel : Node3D
             : lLeg ? "LEGS: RIGHT LOST — IMMOBILE" : "LEGS: LEFT LOST — IMMOBILE";
         _lblLegs.AddThemeColorOverride("font_color",
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
+        if (_player.IsKnockedDown)
+        {
+            _lblLegs.Text = "STATUS: KNOCKED DOWN";
+            _lblLegs.AddThemeColorOverride("font_color", new Color(1f, 0.42f, 0.32f));
+        }
 
         var status = new System.Collections.Generic.List<string>();
         if (lasDead) status.Add("LASER DESTROYED — LEFT ARM LOST");
@@ -1318,6 +1367,7 @@ public partial class MechDuel : Node3D
     private void UpdateAtlasGunnery(float dt)
     {
         if (_enemyDead || _playerDead) return;
+        if (_enemy.IsKnockedDown) return; // no firing from the ground
         if (_cdAtlas > 0f) return;
         if (!_partsEnemy.Alive("arm_R")) return; // AC/20 mount lost with the right arm
         var muzzle = AtlasMuzzle();
@@ -1368,7 +1418,7 @@ public partial class MechDuel : Node3D
         {
             var q = _lrmQueue[i];
             q.Delay -= dt;
-            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left); }
+            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left, q.Salvo); }
             else _lrmQueue[i] = q;
         }
         for (int i = _shots.Count - 1; i >= 0; i--)
@@ -1811,7 +1861,7 @@ public partial class MechDuel : Node3D
     // on the part's own largest-volume center — a point guaranteed to
     // sit inside the part). Same precedent as the weapons test's crafted
     // player-death hit.
-    private void CraftHit(MechWalker target, string partId, float dmg)
+    private void CraftHit(MechWalker target, string partId, float dmg, int salvoId = 0)
     {
         var parts = target == _player ? _partsPlayer : _partsEnemy;
         var hit = new HitModel.Result
@@ -1821,7 +1871,7 @@ public partial class MechDuel : Node3D
             Zone = "torso",
             Point = parts.PartAimPoint(partId)
         };
-        ApplyDamage(target, dmg, hit, target == _player ? "ATLAS" : "TW");
+        ApplyDamage(target, dmg, hit, target == _player ? "ATLAS" : "TW", salvoId);
     }
 
     // Craft via a real HitModel ray: needed for the TW head, whose
@@ -2570,7 +2620,7 @@ public partial class MechDuel : Node3D
             {
                 UpdatePlayerInput(dt);
                 UpdateEnemyAI(dt);
-                if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
+                if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead && !_player.IsKnockedDown)
                 {
                     // One trigger: the left mouse button fires the SELECTED
                     // weapon (1/2/3 or wheel to switch — see the panel).

@@ -142,6 +142,28 @@ public partial class MechWalker : Node3D
     public float SpeedFactor = 1f;
     public float LimpRoll;
 
+    // Knockdown state: a timeline (fall 0.5s, down 1.6s, rise 1.0s) that
+    // tips the root toward _fallDirW by up to ~76 degrees and drops the
+    // hips to rest height, then a 3s immunity window. While the timeline
+    // runs the drive is suppressed and no new steps begin — the feet stay
+    // where they were and the body topples over them.
+    private float _fallT = -1f;
+    private float _fallAmt;
+    private Vector3 _fallDirW = Vector3.Forward;
+    private float _immuneT;
+    public bool IsKnockedDown => _fallT >= 0f;
+    public float FallAmount => _fallAmt;
+
+    public bool TryKnockDown(Vector3 awayDirW)
+    {
+        if (_fallT >= 0f || _immuneT > 0f || Halted) return false;
+        var d = new Vector3(awayDirW.X, 0f, awayDirW.Z);
+        _fallDirW = d.LengthSquared() > 0.01f ? d.Normalized() : Vector3.Forward;
+        _fallT = 0f;
+        _fallAmt = 0f;
+        return true;
+    }
+
     public void SetLegDisabled(bool left, bool disabled)
     {
         var leg = left ? _legL : _legR;
@@ -312,6 +334,9 @@ public partial class MechWalker : Node3D
         _prevYaw = legsYaw;
         _speed = 0f;
         _targetSpeed = 0f;
+        _fallT = -1f;
+        _fallAmt = 0f;
+        _immuneT = 0f;
         _sway = Vector3.Zero;
         _bob = 0f;
         _upEased = Vector3.Up;
@@ -346,6 +371,16 @@ public partial class MechWalker : Node3D
         if (!_ready) return;
         DecayFlash((float)delta);
         if (Halted) { SolveAll(); return; }
+        if (_immuneT > 0f) _immuneT -= (float)delta;
+        if (_fallT >= 0f)
+        {
+            _fallT += (float)delta;
+            float t = _fallT;
+            if (t < 0.5f) { float u = t / 0.5f; _fallAmt = u * u; }
+            else if (t < 2.1f) _fallAmt = 1f;
+            else if (t < 3.1f) { float u = (t - 2.1f) / 1.0f; _fallAmt = 1f - u * u * (3f - 2f * u); }
+            else { _fallT = -1f; _fallAmt = 0f; _immuneT = 3f; }
+        }
         _acc += Mathf.Min(delta, 0.1);
         const float h = 1f / 120f;
         int guard = 0;
@@ -436,12 +471,12 @@ public partial class MechWalker : Node3D
         _prevYaw = _legsYaw;
 
         float dv = _cfg.Accel * h;
-        _speed = Mathf.MoveToward(_speed, _targetSpeed * SpeedFactor, dv);
+        _speed = Mathf.MoveToward(_speed, _fallT >= 0f ? 0f : _targetSpeed * SpeedFactor, dv);
         var vel = HeadingVec(_legsYaw) * _speed;
         _rootPos += vel * h;
 
         var stepping = _legL.StepT >= 0f ? _legL : _legR.StepT >= 0f ? _legR : null;
-        if (stepping == null)
+        if (stepping == null && _fallT < 0f)
         {
             bool settling = Mathf.Abs(_targetSpeed) < 0.01f && Mathf.Abs(_speed) < 0.15f && _yawRate < 0.05f;
             float threshold = settling ? 0.10f : _cfg.StepThreshold;
@@ -488,6 +523,12 @@ public partial class MechWalker : Node3D
         float bobT = doubleSupport ? -0.09f : -0.02f;
         _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-6f * h));
         float yT = DesiredRootY();
+        // Knocked down: the hips drop to rest height (body on the ground).
+        if (_fallAmt > 0.001f)
+        {
+            float restY = Mathf.Min(_legL.SoleTarget.Y, _legR.SoleTarget.Y) + 2.0f;
+            yT = Mathf.Lerp(yT, restY, _fallAmt);
+        }
         _rootPos.Y = Mathf.Lerp(_rootPos.Y, yT, 1f - Mathf.Exp(-8f * h));
 
         var swayT = Vector3.Zero;
@@ -517,7 +558,15 @@ public partial class MechWalker : Node3D
         // upT - right*sin leans the body's top toward its anatomical left.
         if (LimpRoll != 0f)
             upT = (upT - right * Mathf.Sin(LimpRoll)).Normalized();
-        _upEased = _upEased.Lerp(upT, 1f - Mathf.Exp(-3.5f * h)).Normalized();
+        // Knockdown: the up vector tips toward the fall direction by up
+        // to ~76 degrees, scaled by the fall amount.
+        if (_fallAmt > 0.001f)
+        {
+            float ang = 1.32f * _fallAmt;
+            var fallUp = (Vector3.Up * Mathf.Cos(ang) + _fallDirW * Mathf.Sin(ang)).Normalized();
+            upT = (upT * (1f - _fallAmt) + fallUp * _fallAmt).Normalized();
+        }
+        _upEased = _upEased.Lerp(upT, 1f - Mathf.Exp(-(_fallAmt > 0.001f ? 10f : 3.5f) * h)).Normalized();
 
         var q = new Quaternion(Vector3.Up, _upEased);
         _rootBasis = new Basis(q) * Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
