@@ -128,6 +128,15 @@ public partial class Main : Node3D
         return new Vector3(-dhdx, 1f, -dhdz).Normalized();
     }
 
+    // Roads (terrain-detail ask): two strips crossing at (-14, 6) — an
+    // east-west road along z = 6 and a north-south road along x = -14.
+    // Pure coloring: HeightAt is untouched, so gait, hit tests and
+    // collisions never notice them. Distance is to the nearer centerline.
+    public static float RoadDistance(float x, float z)
+    {
+        return Mathf.Min(Mathf.Abs(z - 6f), Mathf.Abs(x + 14f));
+    }
+
     // Ground color without any texture image: grass tones varied by two
     // noise fields (patchiness + fine breakup), dirt on mid slopes, rock
     // on steep faces, pale summits up high.
@@ -148,6 +157,16 @@ public partial class Main : Node3D
         col = col.Lerp(new Color(rock.R * rl, rock.G * rl, rock.B * rl), rockW);
         float peakW = Smooth(13.5f, 19f, h + (grain - 0.5f) * 3f);
         col = col.Lerp(new Color(0.72f, 0.71f, 0.685f), peakW * 0.85f);
+        // Asphalt on the roads, blended over a soft shoulder.
+        float roadD = RoadDistance(x, z);
+        if (roadD < 3.1f)
+        {
+            float rw = 1f - Smooth(2.25f, 3.1f, roadD);
+            float al = 0.85f + 0.3f * grain;
+            var asphalt = new Color(0.16f * al, 0.16f * al, 0.175f * al);
+            if (roadD > 1.85f && roadD < 2.25f) asphalt = asphalt.Lerp(new Color(0.5f, 0.48f, 0.4f), 0.35f); // worn edge line
+            col = col.Lerp(asphalt, rw * 0.94f);
+        }
         return col;
     }
 

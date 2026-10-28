@@ -416,6 +416,74 @@ public partial class MechDuel : Node3D
     // Placement respects the test choreography: duel/weapons/breakable
     // lanes and every spawn/teleport pad stay clear, props keep spacing,
     // trees stay off steep/high ground.
+    // Grass tufts (terrain-detail ask): ~900 instanced crossed quads on
+    // low, gentle, off-road ground. One MultiMesh draw call, no
+    // colliders — purely cosmetic ground cover.
+    private void ScatterGrass()
+    {
+        var rng = new RandomNumberGenerator { Seed = 777 };
+        var spots = new System.Collections.Generic.List<(Vector3 Pos, float Yaw, float S)>();
+        int attempts = 0;
+        while (spots.Count < 900 && attempts++ < 6000)
+        {
+            float x = rng.RandfRange(-78f, 78f), z = rng.RandfRange(-78f, 78f);
+            float h = Main.HeightAt(x, z);
+            if (h > 9f) continue;
+            if (TerrainGrade(x, z) > 0.3f) continue;
+            if (Main.RoadDistance(x, z) < 3.0f) continue;
+            bool bad = false;
+            foreach (var bp in _buildingPts) if (new Vector2(x, z).DistanceTo(bp) < 7f) { bad = true; break; }
+            if (bad) continue;
+            foreach (var c in _props) if (new Vector2(x, z).DistanceTo(c.P) < c.R + 0.6f) { bad = true; break; }
+            if (bad) continue;
+            spots.Add((new Vector3(x, h - 0.03f, z), rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(0.6f, 1.25f)));
+        }
+        // Crossed-quad tuft with a base-to-tip color gradient.
+        var verts = new System.Collections.Generic.List<Vector3>();
+        var cols = new System.Collections.Generic.List<Color>();
+        var idx = new System.Collections.Generic.List<int>();
+        var dark = new Color(0.10f, 0.22f, 0.07f);
+        var tip = new Color(0.38f, 0.55f, 0.20f);
+        for (int q = 0; q < 2; q++)
+        {
+            float a = q * Mathf.Pi / 2f;
+            var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.36f;
+            int b0 = verts.Count;
+            verts.Add(-dir); cols.Add(dark);
+            verts.Add(dir); cols.Add(dark);
+            verts.Add(dir + Vector3.Up * 0.55f); cols.Add(tip);
+            verts.Add(-dir + Vector3.Up * 0.55f); cols.Add(tip);
+            idx.AddRange(new[] { b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3 });
+        }
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        arrays[(int)Mesh.ArrayType.Color] = cols.ToArray();
+        arrays[(int)Mesh.ArrayType.Index] = idx.ToArray();
+        var tuft = new ArrayMesh();
+        tuft.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+        tuft.SurfaceSetMaterial(0, new StandardMaterial3D
+        {
+            VertexColorUseAsAlbedo = true,
+            Roughness = 1f,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled
+        });
+        var mm = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            Mesh = tuft,
+            InstanceCount = spots.Count
+        };
+        for (int i = 0; i < spots.Count; i++)
+        {
+            var (pos, yaw, sc) = spots[i];
+            mm.SetInstanceTransform(i, new Transform3D(
+                Basis.Identity.Rotated(Vector3.Up, yaw).Scaled(Vector3.One * sc), pos));
+        }
+        AddChild(new MultiMeshInstance3D { Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        GD.Print($"DUEL grass tufts={spots.Count}");
+    }
+
     private bool ScatterFree(Vector2 p, float clearR)
     {
         // lanes (x0, x1, z0, z1)
@@ -478,6 +546,36 @@ public partial class MechDuel : Node3D
             rocks++;
         }
         GD.Print($"DUEL scatter trees+={trees} rocks={rocks} propsNow={_props.Count}");
+        ScatterGrass();
+    }
+
+    private static int _facadeSeq;
+    private static readonly Color[] FacadeBases =
+    {
+        new(0.62f, 0.60f, 0.58f), new(0.66f, 0.60f, 0.52f),
+        new(0.55f, 0.58f, 0.62f), new(0.60f, 0.55f, 0.50f)
+    };
+
+    // Procedural facade (terrain-detail ask): a window grid with lit and
+    // dark panes, a door at street level and a darker parapet band —
+    // drawn once per building into a 256px image texture.
+    private static ImageTexture MakeFacadeTexture(int seed, Color baseCol)
+    {
+        var img = Image.Create(256, 256, false, Image.Format.Rgba8);
+        img.Fill(baseCol);
+        img.FillRect(new Rect2I(0, 0, 256, 12), baseCol.Darkened(0.25f)); // parapet
+        for (int r = 0; r < 6; r++)
+        for (int c = 0; c < 5; c++)
+        {
+            int x = 18 + c * 46, y = 26 + r * 34;
+            bool lit = (c * 31 + r * 57 + seed * 101) % 5 < 2;
+            var wc = lit ? new Color(1.0f, 0.84f, 0.52f) : new Color(0.11f, 0.15f, 0.20f);
+            img.FillRect(new Rect2I(x, y, 26, 20), wc);
+            img.FillRect(new Rect2I(x, y, 26, 3), wc.Lightened(0.25f));
+        }
+        img.FillRect(new Rect2I(108, 208, 40, 48), new Color(0.09f, 0.075f, 0.06f)); // door
+        img.FillRect(new Rect2I(108, 208, 40, 8), new Color(0.95f, 0.8f, 0.5f));    // transom light
+        return ImageTexture.CreateFromImage(img);
     }
 
     private void AddBuilding(Vector3 pos, Vector3 size)
@@ -487,7 +585,12 @@ public partial class MechDuel : Node3D
         pos.Y = groundY + size.Y / 2f - 0.3f;
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = size };
-        mi.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.55f, 0.58f) };
+        mi.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoTexture = MakeFacadeTexture(_facadeSeq, FacadeBases[_facadeSeq % FacadeBases.Length]),
+            Roughness = 0.92f
+        };
+        _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
         _buildingPts.Add(new Vector2(pos.X, pos.Z));
