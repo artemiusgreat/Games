@@ -1171,30 +1171,32 @@ public partial class MechDuel : Node3D
         _aimDir = dir;
         var hit = _hit.Ray(from, dir, 200f, "TW");
         _aimTarget = hit.Hit ? hit.Target : "";
-        return hit.Point;
+        // THE aim point is the reticle's point: a fixed 40u along the
+        // ray (rounds 6+8+9 synthesis — see UpdateReticle). The hit
+        // above only feeds _aimTarget bookkeeping; weapons converge
+        // on THIS point, not on the ray's farther hit.
+        return from + dir * AimDepth;
     }
 
-    // The reticle marks the aim ray's TRUE hit point — the spot every
-    // weapon converges on. (Round 6 projected a fixed-depth point to
-    // stop the reticle sticking to surfaces; the owner overruled it
-    // in round 8: projected at 40u while the target stands at 25u,
-    // the cursor read "above him" while the ray still crossed his
-    // chest, so cannons hit "through" a high cursor and the laser's
-    // endpoint sat visibly off it. Truth wins: cursor on him = hit
-    // him, cursor above him = shots pass above.) When the torso
-    // points behind the camera (deep twist), the projection mirrors
-    // — flip it through the center and clamp to the screen edge.
+    // The reticle rides a fixed-depth point on the aim ray — AND
+    // (round 9) the weapons converge on that same point, which is
+    // what makes both of the owner's demands true at once:
+    // round 6: the target must move FREELY (projecting the ray's
+    // hit point made it stick to surfaces and jump between boxes —
+    // round 8's model, and he reported it as grid-snapped within
+    // the day). Round 8: shots must land where the cursor points
+    // (a free cursor the weapons ignored was a lie — cannons hit
+    // under a high cursor because the chest ray still crossed the
+    // enemy). Now the cursor IS the convergence point: every
+    // weapon's line is drawn to it, and the first thing on that
+    // line is what gets hit. Cursor above him = the lines pass
+    // above him. When the torso points behind the camera (deep
+    // twist), the projection mirrors — flip through the center and
+    // clamp to the screen edge.
     private string _aimTarget = "";
+    private const float AimDepth = 40f;
     private void UpdateReticle()
     {
-        // Round 8: the reticle marks the TRUE aim point — the spot
-        // every weapon converges on. The round-6 fixed-depth point
-        // never stuck to surfaces, but it also never told the truth:
-        // projected at 40u while the enemy stands at 25u, it read
-        // "above him" while the ray (and the cannon shell on it)
-        // still crossed his chest, and the laser's endpoint sat
-        // visibly off the cursor. The owner's verdict: the cursor
-        // must show where shots land. It does now.
         var pt = _aimPoint;
         var vp = GetViewport().GetVisibleRect().Size;
         var sp = _cam.UnprojectPosition(pt);
@@ -2671,18 +2673,25 @@ public partial class MechDuel : Node3D
                     if (_aimStep == 99) break; // sweep failed above; Quit(1) already queued
                     if (lastRy > firstRy - 8f)
                     { GD.PrintErr($"DUEL FAIL: reticle barely rides the pitch sweep (first={firstRy:F0} last={lastRy:F0})"); GetTree().Quit(1); break; }
-                    // The owner's round-8 contract, stated as geometry:
-                    // cursor low on the Atlas => the ray is ON him;
-                    // cursor raised above him => the ray passes OVER.
+                    // The synthesis contract, tested through the REAL
+                    // weapon: cursor low on the Atlas => the laser
+                    // HITS him; cursor raised above him => it MISSES
+                    // (round 9: the weapons converge on the cursor's
+                    // own point, so the pointer and the shots agree).
+                    _atlasDmgEvents = 0;
+                    _cdLaser = 0f;
                     _player.TorsoPitch = -0.10f;
-                    TorsoAimPoint();
-                    if (_aimTarget != "ATLAS")
-                    { GD.PrintErr($"DUEL FAIL: low cursor should be on the Atlas (target='{_aimTarget}')"); GetTree().Quit(1); break; }
+                    _aimPoint = TorsoAimPoint();
+                    FireLaser(_aimPoint);
+                    if (_atlasDmgEvents < 1)
+                    { GD.PrintErr("DUEL FAIL: cursor low on the Atlas but the laser missed him"); GetTree().Quit(1); break; }
+                    _cdLaser = 0f;
                     _player.TorsoPitch = 0.30f;
-                    TorsoAimPoint();
-                    if (_aimTarget == "ATLAS")
-                    { GD.PrintErr("DUEL FAIL: raised cursor still intersects the Atlas — shots would hit under a high cursor"); GetTree().Quit(1); break; }
-                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle sits on the true aim point, on Atlas low / over Atlas at 0.30");
+                    _aimPoint = TorsoAimPoint();
+                    FireLaser(_aimPoint);
+                    if (_atlasDmgEvents > 1)
+                    { GD.PrintErr("DUEL FAIL: cursor above the Atlas but a shot still hit him"); GetTree().Quit(1); break; }
+                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle IS the convergence point: laser hits low, misses high");
                     // Rendered-pitch check next (steps 1-2): the AIM
                     // math above is property-based; these read the
                     // skeleton's actual facing after a StepWalker ran.
