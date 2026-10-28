@@ -85,11 +85,20 @@ public partial class MechDuel : Node3D
     private bool _playerDead, _enemyDead;
     private float _cdLaser, _cdAc, _cdLrm, _cdAtlas;
     private int _weaponSel; // selected weapon: 0 laser, 1 autocannon, 2 LRM
+    // MechLab loadout (owner): the equipped weapon defs drive damage,
+    // cooldowns, salvo composition and knockdown weight. Defaults equal
+    // the original fixed fit, so every harness number is unchanged.
+    private readonly LoadoutState _loadout = LoadoutState.DefaultTimberWolf();
+    private WeaponDef _defEnergy, _defBallistic, _defPodL, _defPodR;
+    private readonly string[] _wpnShort = { "1 LAS", "2 AC", "3 LRM" };
+    private bool _labOpen;
+    private MechLab _lab;
+    private bool _labChecked;
     private bool _running; // SHIFT held with W this frame (panel readout)
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
-    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim)> _lrmQueue = new();
+    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, WeaponDef Def)> _lrmQueue = new();
     // Knockdown by weight (owner): impact weight accumulates over a
     // short window; past 20% of the mech's tonnage it topples.
     private const float KnockWindow = 1.5f;
@@ -287,6 +296,24 @@ public partial class MechDuel : Node3D
         layer.AddChild(_cross);
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
+        ApplyLoadout();
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
+        {
+            // Pre-game MechLab (owner): the duel waits behind the lab
+            // until DEPLOY. Test modes skip straight to the duel.
+            _labOpen = true;
+            _lab = new MechLab { Spec = MechSpecs.TimberWolf, Loadout = _loadout };
+            _lab.OnStart = () =>
+            {
+                ApplyLoadout();
+                _lab.QueueFree();
+                _lab = null;
+                _labOpen = false;
+                Input.MouseMode = Input.MouseModeEnum.Captured;
+                GD.Print("LAB deploy: duel started with the lab loadout");
+            };
+            layer.AddChild(_lab);
+        }
 
         _lastPlayerPos = _player.RootPos;
         GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest} props={_props.Count} circles");
@@ -922,25 +949,38 @@ public partial class MechDuel : Node3D
         else if (weapon == "lrm") _denyLrmT = 0.5f;
     }
 
+    private void ApplyLoadout()
+    {
+        _defEnergy = WeaponCatalog.ById(_loadout.WeaponIn("arm_L"));
+        _defBallistic = WeaponCatalog.ById(_loadout.WeaponIn("arm_R"));
+        _defPodL = WeaponCatalog.ById(_loadout.WeaponIn("pod_L"));
+        _defPodR = WeaponCatalog.ById(_loadout.WeaponIn("pod_R"));
+        _wpnShort[0] = "1 " + (_defEnergy?.Short ?? "—");
+        _wpnShort[1] = "2 " + (_defBallistic?.Short ?? "—");
+        _wpnShort[2] = "3 " + ((_defPodL ?? _defPodR)?.Short ?? "—");
+        GD.Print($"LAB loadout energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"} total={_loadout.TotalWeaponWeight:F0}t");
+    }
+
     private void FireLaser(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        if (!_partsPlayer.Alive("arm_L")) { DenyWeapon("laser"); return; }
+        if (!_partsPlayer.Alive("arm_L") || _defEnergy == null) { DenyWeapon("laser"); return; }
         if (_cdLaser > 0f) return;
-        _cdLaser = 0.45f;
+        _cdLaser = _defEnergy.Cooldown;
         var muzzle = PlayerMuzzle(true);
         var toAim = aimPoint - muzzle;
         var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
         var hit = _hit.Ray(muzzle, dir, 140f, "TW");
-        SpawnBeam(muzzle, hit.Point, new Color(1f, 0.22f, 0.12f), 0.085f, 0.12f);
+        bool ppc = _defEnergy.Id == "ppc";
+        SpawnBeam(muzzle, hit.Point, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.085f, 0.12f);
         SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
         if (hit.Hit)
         {
             SpawnFlash(hit.Point, new Color(1f, 0.45f, 0.2f), 0.38f, 0.12f);
             SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 7, 3.2f); // electric breaker spray
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW", WeaponCatalog.LargeLaser.Weight);
-            else if (hit.Target == "PROP") DamageProp(hit.Point, 12f);
+            if (hit.Target == "ATLAS") ApplyDamage(_enemy, _defEnergy.Damage, hit, "TW", _defEnergy.Weight);
+            else if (hit.Target == "PROP") DamageProp(hit.Point, _defEnergy.Damage);
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -948,13 +988,19 @@ public partial class MechDuel : Node3D
     private void FireAutocannon(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        if (!_partsPlayer.Alive("arm_R")) { DenyWeapon("ac"); return; }
+        if (!_partsPlayer.Alive("arm_R") || _defBallistic == null) { DenyWeapon("ac"); return; }
         if (_cdAc > 0f) return;
-        _cdAc = 0.85f;
+        _cdAc = _defBallistic.Cooldown;
         var muzzle = PlayerMuzzle(false);
         var toAim = aimPoint - muzzle;
         var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
-        SpawnProjectile(muzzle, dir * 60f, 5f, 26f, 0f, "TW", rocket: false, weaponWeight: WeaponCatalog.Autocannon.Weight);
+        (float spd, float grav) = _defBallistic.Id switch
+        {
+            "machine_gun" => (85f, 3f),
+            "heavy_cannon" => (46f, 7f),
+            _ => (60f, 5f)
+        };
+        SpawnProjectile(muzzle, dir * spd, grav, _defBallistic.Damage, 0f, "TW", rocket: false, weaponWeight: _defBallistic.Weight);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
         GD.Print($"WPN AC fired dir={dir}");
     }
@@ -967,17 +1013,26 @@ public partial class MechDuel : Node3D
     private void FireLrmSalvo(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        bool podL = _partsPlayer.Alive("pod_L"), podR = _partsPlayer.Alive("pod_R");
+        bool podL = _partsPlayer.Alive("pod_L") && _defPodL != null;
+        bool podR = _partsPlayer.Alive("pod_R") && _defPodR != null;
         if (!podL && !podR) { DenyWeapon("lrm"); return; }
         if (_cdLrm > 0f) return;
-        _cdLrm = 3.5f;
-        var sides = new System.Collections.Generic.List<bool>();
-        if (podL && podR) { for (int i = 0; i < 8; i++) sides.Add(i % 2 == 0); }
-        else if (podL) { for (int i = 0; i < 4; i++) sides.Add(true); }
-        else { for (int i = 0; i < 4; i++) sides.Add(false); }
-        for (int i = 0; i < sides.Count; i++)
-            _lrmQueue.Add((i * 0.07f, sides[i], aimPoint));
-        GD.Print($"WPN LRM salvo queued ({sides.Count} rockets, pods L={podL} R={podR})");
+        _cdLrm = Mathf.Max(podL ? _defPodL.Cooldown : 0f, podR ? _defPodR.Cooldown : 0f);
+        // Each alive, equipped pod fires its own pack; pods interleave.
+        var left = new System.Collections.Generic.List<WeaponDef>();
+        var right = new System.Collections.Generic.List<WeaponDef>();
+        if (podL) for (int i = 0; i < _defPodL.Rockets; i++) left.Add(_defPodL);
+        if (podR) for (int i = 0; i < _defPodR.Rockets; i++) right.Add(_defPodR);
+        var ordered = new System.Collections.Generic.List<(bool Left, WeaponDef Def)>();
+        int li = 0, ri = 0;
+        while (li < left.Count || ri < right.Count)
+        {
+            if (li < left.Count) ordered.Add((true, left[li++]));
+            if (ri < right.Count) ordered.Add((false, right[ri++]));
+        }
+        for (int i = 0; i < ordered.Count; i++)
+            _lrmQueue.Add((i * 0.07f, ordered[i].Left, aimPoint, ordered[i].Def));
+        GD.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
     }
 
     private Vector3 PodMuzzle(bool left)
@@ -988,17 +1043,17 @@ public partial class MechDuel : Node3D
         return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
     }
 
-    private void LaunchRocket(Vector3 aimPoint, bool left)
+    private void LaunchRocket(Vector3 aimPoint, bool left, WeaponDef def)
     {
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
         var toAim = aimPoint - muzzle;
         float dist = Mathf.Max(toAim.Length(), 1f);
         var dir = ApplyInaccuracy(toAim.Normalized(), 1.1f);
-        const float speed = 36f, grav = 11f;
+        (float speed, float grav) = def.Id == "srm" ? (46f, 9f) : (36f, 11f);
         float tof = dist / speed;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
-        SpawnProjectile(muzzle, vel, grav, 7f, 3.0f, "TW", rocket: true, weaponWeight: WeaponCatalog.Lrm.PerRocketWeight);
+        SpawnProjectile(muzzle, vel, grav, def.Damage, def.Splash, "TW", rocket: true, weaponWeight: def.PerRocketWeight);
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
     }
 
@@ -1177,9 +1232,9 @@ public partial class MechDuel : Node3D
 
     private bool WeaponAlive(int sel) => sel switch
     {
-        0 => _partsPlayer.Alive("arm_L"),
-        1 => _partsPlayer.Alive("arm_R"),
-        _ => _partsPlayer.Alive("pod_L") || _partsPlayer.Alive("pod_R"),
+        0 => _partsPlayer.Alive("arm_L") && _defEnergy != null,
+        1 => _partsPlayer.Alive("arm_R") && _defBallistic != null,
+        _ => (_partsPlayer.Alive("pod_L") && _defPodL != null) || (_partsPlayer.Alive("pod_R") && _defPodR != null),
     };
 
     // When the selected weapon is destroyed, fall to the next live one.
@@ -1540,15 +1595,17 @@ public partial class MechDuel : Node3D
         _barEnemy.Value = _hpEnemy / 340f;
         _lblEnemyHp.Text = $"ATLAS — {_hpEnemy:F0} HP";
 
-        bool lasDead = !_partsPlayer.Alive("arm_L");
-        bool acDead = !_partsPlayer.Alive("arm_R");
-        bool lrmDead = !_partsPlayer.Alive("pod_L") && !_partsPlayer.Alive("pod_R");
-        UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / 0.45f, lasDead, _denyLaserT);
-        UpdateCdRow(_cdBarAc, _lblCdAc, 1f - _cdAc / 0.85f, acDead, _denyAcT);
-        UpdateCdRow(_cdBarLrm, _lblCdLrm, 1f - _cdLrm / 3.5f, lrmDead, _denyLrmT);
-        SetSelLabel(_lblCdLaser, "1 LAS", _weaponSel == 0, lasDead);
-        SetSelLabel(_lblCdAc, "2 AC", _weaponSel == 1, acDead);
-        SetSelLabel(_lblCdLrm, "3 LRM", _weaponSel == 2, lrmDead);
+        bool lasDead = !WeaponAlive(0);
+        bool acDead = !WeaponAlive(1);
+        bool lrmDead = !WeaponAlive(2);
+        float lrmCd = Mathf.Max(_defPodL?.Cooldown ?? 0f, _defPodR?.Cooldown ?? 0f);
+        if (lrmCd <= 0f) lrmCd = 3.5f;
+        UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / (_defEnergy?.Cooldown ?? 0.45f), lasDead, _denyLaserT);
+        UpdateCdRow(_cdBarAc, _lblCdAc, 1f - _cdAc / (_defBallistic?.Cooldown ?? 0.85f), acDead, _denyAcT);
+        UpdateCdRow(_cdBarLrm, _lblCdLrm, 1f - _cdLrm / lrmCd, lrmDead, _denyLrmT);
+        SetSelLabel(_lblCdLaser, _wpnShort[0], _weaponSel == 0, lasDead);
+        SetSelLabel(_lblCdAc, _wpnShort[1], _weaponSel == 1, acDead);
+        SetSelLabel(_lblCdLrm, _wpnShort[2], _weaponSel == 2, lrmDead);
 
         // Per-part status cells (player mech).
         foreach (var (id, cell) in _partCells)
@@ -1817,7 +1874,7 @@ public partial class MechDuel : Node3D
         {
             var q = _lrmQueue[i];
             q.Delay -= dt;
-            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left); }
+            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left, q.Def); }
             else _lrmQueue[i] = q;
         }
         for (int i = _shots.Count - 1; i >= 0; i--)
@@ -1906,6 +1963,25 @@ public partial class MechDuel : Node3D
             case 0: // settle
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
+                if (!_labChecked)
+                {
+                    _labChecked = true;
+                    // MechLab rules, exercised on the pure data layer:
+                    // weight cap and slot type must both refuse.
+                    var lab = new LoadoutState();
+                    var spec = MechSpecs.TimberWolf;
+                    var cap = lab.Check(spec, "arm_L", WeaponCatalog.Ppc);
+                    if (cap == null || !cap.Contains("weighs"))
+                    { GD.PrintErr($"DUEL FAIL: lab weight cap not enforced ({cap})"); GetTree().Quit(1); return; }
+                    if (lab.Check(spec, "arm_R", WeaponCatalog.Ppc) == null)
+                    { GD.PrintErr("DUEL FAIL: lab slot type not enforced"); GetTree().Quit(1); return; }
+                    if (lab.TryAssign(spec, "arm_R", WeaponCatalog.Autocannon) != null
+                        || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
+                    { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
+                    if (Mathf.Abs(LoadoutState.DefaultTimberWolf().TotalWeaponWeight - 37f) > 0.01f)
+                    { GD.PrintErr("DUEL FAIL: default fit tonnage != 37t"); GetTree().Quit(1); return; }
+                    GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 37t");
+                }
                 if (_phaseT > 1.6) SetPhase(1);
                 break;
             case 1: // Atlas walks at the player; grab stride + wide frames
@@ -3178,6 +3254,16 @@ public partial class MechDuel : Node3D
     {
         if (_player == null || !_player.IsReady || _enemy == null || !_enemy.IsReady) return;
         float dt = (float)delta;
+
+        if (_labOpen)
+        {
+            // The duel waits behind the MechLab: slow orbit backdrop.
+            float ang = (float)Time.GetTicksMsec() / 1000f * 0.12f;
+            var center = _player.RootPos + Vector3.Up * 6.5f;
+            _cam.GlobalPosition = center + new Vector3(Mathf.Sin(ang) * 27f, 9f, Mathf.Cos(ang) * 27f);
+            _cam.LookAt(center, Vector3.Up);
+            return;
+        }
 
         if (!_frozen)
         {

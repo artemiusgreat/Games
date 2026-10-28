@@ -57,8 +57,9 @@ public sealed class LoadoutState
     public string WeaponIn(string slotId) =>
         Equipped.TryGetValue(slotId, out var w) ? w : null;
 
-    // Returns null on success, else the reason the drop is refused.
-    public string TryAssign(MechSpec spec, string slotId, WeaponDef weapon)
+    // Pure rule check (used live during drag hover): null = the weapon
+    // fits, else the reason it does not.
+    public string Check(MechSpec spec, string slotId, WeaponDef weapon)
     {
         var slot = spec.Slot(slotId);
         if (slot == null) return "no such slot";
@@ -67,6 +68,14 @@ public sealed class LoadoutState
             return $"{weapon.Name} is {weapon.Type} — the {slot.Display} hardpoint takes {slot.Type} only";
         if (weapon.Weight > slot.MaxWeight)
             return $"{weapon.Name} weighs {weapon.Weight:F0}t — the {slot.Display} hardpoint holds {slot.MaxWeight:F0}t max";
+        return null;
+    }
+
+    // Returns null on success, else the reason the drop is refused.
+    public string TryAssign(MechSpec spec, string slotId, WeaponDef weapon)
+    {
+        var err = Check(spec, slotId, weapon);
+        if (err != null) return err;
         Equipped[slotId] = weapon.Id;
         return null;
     }
