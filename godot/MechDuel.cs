@@ -205,8 +205,9 @@ public partial class MechDuel : Node3D
     private int _wShotsFired;
     private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
     private Destructible _wEnvB, _wEnvT;
-    private int _wEnvFx0, _wEnvChunks0;
+    private int _wEnvFx0, _wEnvChunks0, _wEnvParticles0;
     private float _wJoltSeen;
+    private bool _wHitCaptured;
     private int _wEnvStep;
     private bool _wKnocked;
     private double _wDeathT, _wStrafeT, _wLastShotT;
@@ -1236,6 +1237,107 @@ public partial class MechDuel : Node3D
         _fx.Add((glow, life, 0));
     }
 
+    // ---------- GPU particles (round 9) ----------
+    // The mesh-box puffs and short flashes did not read at cockpit
+    // range — the owner reported seeing no fire, explosion or smoke
+    // twice. These are real particle systems: one-shot bursts for
+    // impacts and explosions, and burning emitters that keep a wreck
+    // smoking for seconds. Verified by captured frames at burst
+    // peak this time, not by counters alone.
+    private int _fxParticles;
+    private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
+    private static readonly StandardMaterial3D FireParticleMat = new StandardMaterial3D
+    {
+        AlbedoColor = new Color(1f, 0.58f, 0.14f),
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+    };
+    private static readonly StandardMaterial3D SparkParticleMat = new StandardMaterial3D
+    {
+        AlbedoColor = new Color(0.75f, 0.96f, 1f),
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+    };
+    private static readonly StandardMaterial3D SmokeParticleMat = new StandardMaterial3D
+    {
+        AlbedoColor = new Color(0.52f, 0.52f, 0.55f, 0.42f),
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+    };
+
+    private GpuParticles3D MakeParticles(Vector3 point, StandardMaterial3D mat, int amount,
+        float lifetime, bool oneShot, float velMin, float velMax, Vector3 gravity,
+        float meshRadius, float scaleMin, float scaleMax, float spread)
+    {
+        var pm = new ParticleProcessMaterial
+        {
+            EmissionShape = ParticleProcessMaterial.EmissionShapeEnum.Sphere,
+            EmissionSphereRadius = 0.45f,
+            Direction = Vector3.Up,
+            Spread = spread,
+            InitialVelocityMin = velMin,
+            InitialVelocityMax = velMax,
+            Gravity = gravity,
+            ScaleMin = scaleMin,
+            ScaleMax = scaleMax,
+            DampingMin = 0.4f,
+            DampingMax = 1.2f,
+        };
+        var mesh = new SphereMesh { Radius = meshRadius, Height = meshRadius * 2f, RadialSegments = 6, Rings = 4 };
+        mesh.Material = mat;
+        var p = new GpuParticles3D
+        {
+            Amount = amount,
+            Lifetime = lifetime,
+            OneShot = oneShot,
+            Explosiveness = oneShot ? 0.88f : 0f,
+            ProcessMaterial = pm,
+            DrawPass1 = mesh,
+            VisibilityAabb = new Aabb(-45f, -45f, -45f, 90f, 90f, 90f),
+        };
+        AddChild(p);
+        p.GlobalPosition = point;
+        p.Emitting = true;
+        _fxParticles++;
+        return p;
+    }
+
+    // One-shot fire/smoke/spark burst at a point; freed after it ends.
+    private void SpawnBurst(Vector3 point, StandardMaterial3D mat, int amount, float lifetime,
+        float velMin, float velMax, Vector3 gravity, float meshRadius, float scaleMin, float scaleMax, float spread = 180f)
+    {
+        var p = MakeParticles(point, mat, amount, lifetime, true, velMin, velMax, gravity, meshRadius, scaleMin, scaleMax, spread);
+        _timedFx.Add((p, lifetime + 0.5f, false));
+    }
+
+    // A wreck keeps burning: fire licking up + smoke rising for the
+    // given seconds, then the emitters stop and are freed.
+    private void SpawnBurnEmitter(Vector3 point, float seconds)
+    {
+        var fire = MakeParticles(point, FireParticleMat, 26, 0.9f, false, 2.4f, 4.4f,
+            new Vector3(0f, 2.5f, 0f), 0.3f, 0.8f, 1.5f, 35f);
+        _timedFx.Add((fire, seconds, true));
+        var smoke = MakeParticles(point + Vector3.Up * 0.8f, SmokeParticleMat, 22, 2.8f, false, 1.1f, 2.1f,
+            new Vector3(0f, 1.4f, 0f), 0.55f, 1.6f, 2.8f, 30f);
+        _timedFx.Add((smoke, seconds, true));
+    }
+
+    private void StepTimedFx(float dt)
+    {
+        for (int i = _timedFx.Count - 1; i >= 0; i--)
+        {
+            var (n, ttl, stop) = _timedFx[i];
+            ttl -= dt;
+            if (ttl > 0f) { _timedFx[i] = (n, ttl, stop); continue; }
+            if (stop && n is GpuParticles3D gp)
+            {
+                gp.Emitting = false;
+                _timedFx[i] = (n, 1.8f, false);
+                continue;
+            }
+            n.QueueFree();
+            _timedFx.RemoveAt(i);
+        }
+    }
+
     // A brief real light at an impact or destruction — the one FX
     // that reads at any range (round 8: flashes and 0.14u puffs were
     // too small and short to see). Faded and freed by UpdateCombat.
@@ -1387,6 +1489,7 @@ public partial class MechDuel : Node3D
             SpawnFlash(hit.Point, new Color(0.7f, 0.95f, 1f), 0.55f, 0.16f);
             SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 16, 6.0f); // electric breaker spray
             SpawnImpactLight(hit.Point, new Color(0.55f, 0.9f, 1f), 2.4f, 10f, 0.3f);
+            SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == "ATLAS") ApplyDamage(_enemy, _defEnergy.Damage, hit, "TW", _defEnergy.Weight, "laser");
             else if (hit.Target == "PROP") DamageProp(hit.Point, _defEnergy.Damage);
@@ -1541,6 +1644,8 @@ public partial class MechDuel : Node3D
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
             SpawnFlash(hit.Point, new Color(1f, 0.62f, 0.25f), 1.7f, 0.3f);
             SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), 3.2f, 14f, 0.5f);
+            SpawnBurst(hit.Point, FireParticleMat, 42, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
+            SpawnBurst(hit.Point, SmokeParticleMat, 22, 2.6f, 1.4f, 3f, new Vector3(0f, 1.3f, 0f), 0.55f, 1.5f, 2.6f);
             ExplodeSplash(hit, p);
             if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
             return;
@@ -1548,6 +1653,8 @@ public partial class MechDuel : Node3D
         SpawnFlash(hit.Point, new Color(1f, 0.72f, 0.35f), 0.62f, 0.18f);
         SpawnSparks(hit.Point, new Color(1f, 0.8f, 0.5f), 10, 5.2f);
         _fxSparkBursts--; // cannon impact sparks are not a laser burst
+        SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.13f, 0.6f, 1.1f);
+        SpawnBurst(hit.Point, SmokeParticleMat, 9, 1.6f, 1f, 2.2f, new Vector3(0f, 1.2f, 0f), 0.5f, 1.2f, 2f);
         SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
         if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
         // Cannon shells scorch what they hit.
@@ -1738,6 +1845,9 @@ public partial class MechDuel : Node3D
         SpawnFlash(center + Vector3.Up * 2.2f, new Color(1f, 0.5f, 0.18f), 1.9f, 0.55f);
         SpawnExplosionFx(center + Vector3.Up * 1.5f);
         _fxBooms--; // the death bundle is not a rocket hit; keep counters honest
+        SpawnBurst(center, FireParticleMat, 70, 1.6f, 5f, 12f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2.1f);
+        SpawnBurst(center, SmokeParticleMat, 40, 3.6f, 1.6f, 3.6f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.4f);
+        SpawnBurnEmitter(w.RootPos + Vector3.Up * 1.2f, 8f);
         _exploding = true;
         parts.ExplodeAll();
         _exploding = false;
@@ -2217,6 +2327,9 @@ public partial class MechDuel : Node3D
         if (d.Node is MeshInstance3D mi)
             facade = mi.GetSurfaceOverrideMaterial(0) ?? mi.Mesh?.SurfaceGetMaterial(0);
         SpawnChunks(mid, 10, 0.9f, 2.6f, facade ?? RubbleMat, 3.5f, 7.5f);
+        SpawnBurst(mid, FireParticleMat, 64, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
+        SpawnBurst(mid, SmokeParticleMat, 36, 3.4f, 1.6f, 3.4f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.2f);
+        SpawnBurnEmitter(d.Center + Vector3.Up * 0.6f, 7f);
         GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (explosion + chunks)");
     }
 
@@ -2243,6 +2356,8 @@ public partial class MechDuel : Node3D
         _fxSparkBursts--; // tree embers are not a laser burst; keep the counters honest
         SpawnImpactLight(top, new Color(1f, 0.55f, 0.2f), 2.6f, 11f, 0.55f);
         SpawnChunks(top, 5, 0.45f, 0.95f, SplinterMat, 2.5f, 5f);
+        SpawnBurst(top, FireParticleMat, 36, 1.1f, 4f, 8.5f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.6f);
+        SpawnBurnEmitter(d.Center + Vector3.Up * 0.5f, 5f);
         for (int i = 0; i < 3; i++)
         {
             var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (0.8f + i * 0.9f));
@@ -2325,6 +2440,7 @@ public partial class MechDuel : Node3D
         UpdateDestructibles(dt);
         StepEnvChunks(dt);
         StepImpactLights(dt);
+        StepTimedFx(dt);
         _cdLaser = Mathf.Max(_cdLaser - dt, 0f);
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
@@ -2838,6 +2954,13 @@ public partial class MechDuel : Node3D
 
         if (_wPhase == 2 && _atlasDmgEvents > 0)
             _wJoltSeen = Mathf.Max(_wJoltSeen, _enemy.JoltEnv);
+        if (_wPhase == 3 && _atlasDmgEvents > 0 && !_wHitCaptured)
+        {
+            // Capture a rocket impact at burst peak (round 9: effects
+            // are proven by the frame, not only by counters).
+            _wHitCaptured = true;
+            QueueCapture("res://proof/wpn_rocket_hit.png", "wpnHit", "duelChase");
+        }
         switch (_wPhase)
         {
             case 0: // settle at the open lane: TW (0,18) vs Atlas (0,-12), 30u
@@ -3062,7 +3185,7 @@ public partial class MechDuel : Node3D
                         if (d.Kind == "tree" && d.State == 0 && _wEnvT == null) _wEnvT = d;
                     }
                     if (_wEnvB == null || _wEnvT == null) { WFail("no intact building/tree for the env phase"); return; }
-                    _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count;
+                    _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
                     // Firing position: 16u from the building, toward the arena center.
                     var bc = _wEnvB.Center;
                     var toC = (Vector3.Zero - bc); toC.Y = 0f;
@@ -3085,9 +3208,11 @@ public partial class MechDuel : Node3D
                         int chunks = _envChunks.Count - _wEnvChunks0;
                         if (chunks < 10) { WFail($"building broke into only {chunks} chunks (want 10)"); return; }
                         if (_fxLights <= 0) { WFail("building collapse lit no impact light"); return; }
-                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash and {chunks} flying chunks");
+                        int bp = _fxParticles - _wEnvParticles0;
+                        if (bp < 4) { WFail($"building collapse spawned only {bp} particle systems (want fire+smoke bursts + burning wreck)"); return; }
+                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, {chunks} flying chunks and {bp} particle systems");
                         QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
-                        _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count;
+                        _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
                         _wEnvStep = 2;
                     }
                     if (_wPhaseT > 20) WFail("building never collapsed");
@@ -3120,7 +3245,9 @@ public partial class MechDuel : Node3D
                     if (_envFxEvents <= _wEnvFx0) { WFail("tree died with NO destruction FX"); return; }
                     int splinters = _envChunks.Count - _wEnvChunks0;
                     if (splinters < 5) { WFail($"tree threw only {splinters} splinters (want 5)"); return; }
-                    GD.Print($"ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once, FX fired (+{splinters} splinters)");
+                    int tp = _fxParticles - _wEnvParticles0;
+                    if (tp < 3) { WFail($"tree death spawned only {tp} particle systems (want fire burst + burning wreck)"); return; }
+                    GD.Print($"ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
                     _wEnvStep = 3;
                 }
                 else if (_wEnvStep == 3)
@@ -3135,6 +3262,7 @@ public partial class MechDuel : Node3D
                         if (_fxSparkBursts <= 0) WFail("no laser spark bursts spawned");
                         if (_fxBooms <= 0) WFail("no rocket explosions spawned");
                         if (_fxScorches <= 0) WFail("no cannon scorch marks spawned");
+                        if (_fxParticles <= 0) WFail("no particle systems spawned");
                         GD.Print("WPNTEST FX PASS laser sparks, rocket explosions and cannon scorches all fired");
                         GD.Print("WPNTEST DONE");
                         GetTree().Quit(0);
