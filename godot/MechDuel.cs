@@ -74,6 +74,13 @@ public partial class MechDuel : Node3D
     private readonly System.Collections.Generic.List<(float T, float W)> _impactAtlas = new();
     private float _combatClock;
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
+    // Per-weapon hit effects: spark bursts (laser), explosion bundles
+    // (rockets), scorch decals (cannon shells).
+    private readonly System.Collections.Generic.List<(MeshInstance3D Mi, Vector3 Vel, float Life)> _sparks = new();
+    private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Age)> _scorches = new();
+    private int _fxSparkBursts, _fxBooms, _fxScorches;
+    private readonly RandomNumberGenerator _fxRng = new() { Seed = 4242 };
+    private static readonly BoxMesh SparkMesh = new() { Size = new Vector3(0.11f, 0.11f, 0.11f) };
     private readonly System.Collections.Generic.Dictionary<Projectile, Vector3> _lastPuff = new();
     private readonly System.Collections.Generic.List<(Label3D L, float Life)> _dmgNums = new();
     // ---------- weapons test ----------
@@ -680,6 +687,77 @@ public partial class MechDuel : Node3D
         _fx.Add((f, life, 0));
     }
 
+    // Electric spark burst — the laser's impact signature: a spray of
+    // bright cyan-white sparks with light gravity.
+    private void SpawnSparks(Vector3 point, Color col, int count, float speed)
+    {
+        _fxSparkBursts++;
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = col,
+            EmissionEnabled = true,
+            Emission = col,
+            EmissionEnergyMultiplier = 2.2f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
+        };
+        for (int i = 0; i < count; i++)
+        {
+            var mi = new MeshInstance3D { Mesh = SparkMesh, MaterialOverride = mat };
+            AddChild(mi);
+            mi.GlobalPosition = point;
+            var dir = new Vector3(_fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(0.1f, 1f), _fxRng.RandfRange(-1f, 1f)).Normalized();
+            _sparks.Add((mi, dir * speed * _fxRng.RandfRange(0.5f, 1.15f), _fxRng.RandfRange(0.3f, 0.55f)));
+        }
+    }
+
+    // Rocket impact bundle: core flash, fireball and smoke — the
+    // mini-explosion the owner asked for.
+    private void SpawnExplosionFx(Vector3 point)
+    {
+        _fxBooms++;
+        SpawnFlash(point, new Color(1f, 0.55f, 0.18f), 1.15f, 0.22f);
+        SpawnFlash(point, new Color(1f, 0.9f, 0.65f), 0.5f, 0.12f);
+        SpawnSparks(point, new Color(1f, 0.62f, 0.25f), 5, 3.8f);
+        _fxSparkBursts--; // explosion sparks are not a laser burst; keep the counters honest
+        for (int i = 0; i < 3; i++)
+        {
+            var puff = WeaponFx.MakeTrailPuff(point + new Vector3(_fxRng.RandfRange(-0.5f, 0.5f), _fxRng.RandfRange(0f, 0.6f), _fxRng.RandfRange(-0.5f, 0.5f)));
+            AddChild(puff);
+            _puffs.Add((puff, 0.7f));
+        }
+    }
+
+    // Cannon scorch: a dark burn decal pasted on the struck surface. On
+    // a mech it parents to the walker so it rides the hull; on terrain
+    // or a prop it stays in the world. Fades out over ~7 seconds.
+    private void SpawnScorch(Vector3 point, Vector3 normal, Node3D parent)
+    {
+        _fxScorches++;
+        var mat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.03f, 0.03f, 0.03f, 0.82f),
+            Roughness = 1f,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled
+        };
+        var mi = new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(1.05f, 1.05f) },
+            MaterialOverride = mat
+        };
+        parent.AddChild(mi);
+        mi.GlobalPosition = point + normal * 0.07f;
+        if (normal.LengthSquared() > 0.01f && Mathf.Abs(normal.Dot(Vector3.Up)) < 0.98f)
+            mi.LookAt(point + normal * 2f, Vector3.Up);
+        mi.RotateObjectLocal(Vector3.Forward, _fxRng.RandfRange(0f, Mathf.Tau));
+        _scorches.Add((mi, 0f));
+        if (_scorches.Count > 40)
+        {
+            _scorches[0].Mi.QueueFree();
+            _scorches.RemoveAt(0);
+        }
+    }
+
     // A fire attempt on a weapon whose mounting part is destroyed:
     // logged and flashed on its cooldown bar (HUD step), no cooldown spent.
     private void DenyWeapon(string weapon)
@@ -706,6 +784,7 @@ public partial class MechDuel : Node3D
         if (hit.Hit)
         {
             SpawnFlash(hit.Point, new Color(1f, 0.45f, 0.2f), 0.38f, 0.12f);
+            SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 7, 3.2f); // electric breaker spray
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == "ATLAS") ApplyDamage(_enemy, 12f, hit, "TW", WeaponCatalog.LargeLaser.Weight);
         }
@@ -820,13 +899,19 @@ public partial class MechDuel : Node3D
 
     private void OnProjectileHit(HitModel.Result hit, Projectile p)
     {
-        SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), p.SplashRadius > 0f ? 0.8f : 0.45f, 0.14f);
         GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} part={hit.Part} t={hit.T:F1} point={hit.Point}");
         if (p.SplashRadius > 0f)
         {
+            SpawnExplosionFx(hit.Point); // rockets: mini-explosion
             ExplodeSplash(hit, p);
             return;
         }
+        SpawnFlash(hit.Point, new Color(1f, 0.6f, 0.2f), 0.45f, 0.14f);
+        // Cannon shells scorch what they hit.
+        var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
+        if (hit.Target == "TW") SpawnScorch(hit.Point, nrm, _player);
+        else if (hit.Target == "ATLAS") SpawnScorch(hit.Point, nrm, _enemy);
+        else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
         if (hit.Target == "TW") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight);
         else if (hit.Target == "ATLAS") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight);
     }
@@ -1455,6 +1540,27 @@ public partial class MechDuel : Node3D
                 _puffs[i] = (mi, life);
             }
         }
+        for (int i = _sparks.Count - 1; i >= 0; i--)
+        {
+            var (mi, vel, life) = _sparks[i];
+            life -= dt;
+            if (life <= 0f) { mi.QueueFree(); _sparks.RemoveAt(i); continue; }
+            vel.Y -= 3.4f * dt;
+            mi.GlobalPosition += vel * dt;
+            _sparks[i] = (mi, vel, life);
+        }
+        for (int i = _scorches.Count - 1; i >= 0; i--)
+        {
+            var (mi, age) = _scorches[i];
+            age += dt;
+            if (age > 7f) { mi.QueueFree(); _scorches.RemoveAt(i); continue; }
+            if (age > 5f && mi.MaterialOverride is StandardMaterial3D sm)
+            {
+                var c = sm.AlbedoColor;
+                sm.AlbedoColor = new Color(c.R, c.G, c.B, 0.82f * (7f - age) / 2f);
+            }
+            _scorches[i] = (mi, age);
+        }
         for (int i = _fx.Count - 1; i >= 0; i--)
         {
             // Lifetime is in seconds, but an FX node must also survive at
@@ -1808,6 +1914,11 @@ public partial class MechDuel : Node3D
                     if (_hpPlayer != 260f || _hpEnemy != 340f || _playerDead || _enemyDead || _banner.Visible)
                         WFail($"reset state wrong hp={_hpPlayer}/{_hpEnemy} dead={_playerDead}/{_enemyDead} banner={_banner.Visible}");
                     GD.Print("WPNTEST RESET PASS hp 260/340 restored, deaths and banner cleared");
+                    GD.Print($"WPNTEST FX sparks={_fxSparkBursts} booms={_fxBooms} scorches={_fxScorches}");
+                    if (_fxSparkBursts <= 0) WFail("no laser spark bursts spawned");
+                    if (_fxBooms <= 0) WFail("no rocket explosions spawned");
+                    if (_fxScorches <= 0) WFail("no cannon scorch marks spawned");
+                    GD.Print("WPNTEST FX PASS laser sparks, rocket explosions and cannon scorches all fired");
                     GD.Print("WPNTEST DONE");
                     GetTree().Quit(0);
                 }
