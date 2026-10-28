@@ -19,6 +19,7 @@ public partial class MechDuel : Node3D
 {
     private const float PlayerMaxSpeed = 4.2f;
     private const float AtlasMaxSpeed = 2.2f;
+    private const float RunFactor = 1.5f; // SHIFT run mode: walk speed x1.5
     private const float TurnRate = 0.85f;
     private const float WorldBound = 80f; // heightfield world is 170 wide
 
@@ -60,6 +61,7 @@ public partial class MechDuel : Node3D
     private bool _playerDead, _enemyDead;
     private float _cdLaser, _cdAc, _cdLrm, _cdAtlas;
     private int _weaponSel; // selected weapon: 0 laser, 1 autocannon, 2 LRM
+    private bool _running; // SHIFT held with W this frame (panel readout)
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
@@ -100,6 +102,7 @@ public partial class MechDuel : Node3D
     private double _tPhaseT;
     private float _tSlopeYaw;
     private bool _tStrideLogged;
+    private Vector3 _tRunFrom;
 
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
@@ -561,8 +564,10 @@ public partial class MechDuel : Node3D
             if (Input.IsPhysicalKeyPressed(Key.A)) _playerYaw += TurnRate * delta;
             if (Input.IsPhysicalKeyPressed(Key.D)) _playerYaw -= TurnRate * delta;
         }
+        // SHIFT + W = run mode (1.5x walk speed); reverse stays at walk pace.
+        _running = legsOk && Input.IsPhysicalKeyPressed(Key.Shift) && Input.IsPhysicalKeyPressed(Key.W);
         float spd = 0f;
-        if (legsOk && Input.IsPhysicalKeyPressed(Key.W)) spd = PlayerMaxSpeed;
+        if (legsOk && Input.IsPhysicalKeyPressed(Key.W)) spd = PlayerMaxSpeed * (_running ? RunFactor : 1f);
         else if (legsOk && Input.IsPhysicalKeyPressed(Key.S)) spd = -PlayerMaxSpeed * 0.55f;
         _player.SetDrive(_playerYaw, spd);
     }
@@ -1259,7 +1264,7 @@ public partial class MechDuel : Node3D
         float range = new Vector2(_enemy.RootPos.X - _player.RootPos.X,
                                   _enemy.RootPos.Z - _player.RootPos.Z).Length();
         _lblRange.Text = _enemyDead ? "TARGET: DESTROYED" : $"TARGET RANGE: {range:F1} u";
-        _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s";
+        _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " — RUN" : "");
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
             : !lLeg && !rLeg ? "LEGS: BOTH LOST"
@@ -2354,9 +2359,27 @@ public partial class MechDuel : Node3D
                     {
                         var vp = GetViewport();
                         GD.Print($"TERRAIN RENDER drawCalls={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.DrawCallsInFrame)} prims={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.PrimitivesInFrame)} objects={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.ObjectsInFrame)}");
-                        GD.Print("TERRAINTEST DONE");
-                        GetTree().Quit(0);
+                        // RUN phase setup: back to the flat spawn, facing -Z.
+                        _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 34f), 34f), 0f);
+                        _tRunFrom = _player.RootPos;
+                        _tPhase = 3; _tPhaseT = 0;
                     });
+                    _tPhase = 99;
+                }
+                break;
+            case 3: // RUN: full run-mode speed (walk x1.5) — gait must hold
+                _player.SetDrive(0f, PlayerMaxSpeed * RunFactor);
+                _enemy.SetDrive(_enemy.LegsYaw, 0f);
+                if (_tPhaseT > 3.5)
+                {
+                    var d = new Vector2(_player.RootPos.X - _tRunFrom.X, _player.RootPos.Z - _tRunFrom.Z).Length();
+                    float avg = d / (float)_tPhaseT;
+                    GD.Print($"RUNTEST avgSpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) dist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3}");
+                    if (avg < 5.2f) { TFail($"run avg speed {avg:F2} < 5.2"); return; }
+                    if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
+                    GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");
+                    GD.Print("TERRAINTEST DONE");
+                    GetTree().Quit(0);
                     _tPhase = 99;
                 }
                 break;
