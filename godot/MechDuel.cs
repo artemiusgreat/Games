@@ -106,6 +106,7 @@ public partial class MechDuel : Node3D
     private float _tSlopeYaw;
     private bool _tStrideLogged;
     private Vector3 _tRunFrom;
+    private float _tRunMark = -1f;
 
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
@@ -2484,15 +2485,18 @@ public partial class MechDuel : Node3D
                     _tPhase = 99;
                 }
                 break;
-            case 3: // RUN: full run-mode speed (walk x1.5) — gait must hold
+            case 3: // RUN: full run-mode speed (walk x1.5) — gait must hold.
+                    // Speed is judged on the steady-state segment (after the
+                    // 4.2 u/s^2 acceleration ramp), not the whole window.
                 _player.SetDrive(0f, PlayerMaxSpeed * RunFactor);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
-                if (_tPhaseT > 3.5)
+                if (_tRunMark < 0f && _tPhaseT > 2.0) { _tRunFrom = _player.RootPos; _tRunMark = (float)_tPhaseT; }
+                if (_tPhaseT > 4.2)
                 {
                     var d = new Vector2(_player.RootPos.X - _tRunFrom.X, _player.RootPos.Z - _tRunFrom.Z).Length();
-                    float avg = d / (float)_tPhaseT;
-                    GD.Print($"RUNTEST avgSpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) dist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3}");
-                    if (avg < 5.2f) { TFail($"run avg speed {avg:F2} < 5.2"); return; }
+                    float avg = d / ((float)_tPhaseT - _tRunMark);
+                    GD.Print($"RUNTEST steadySpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) segDist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3}");
+                    if (avg < 5.8f) { TFail($"run steady speed {avg:F2} < 5.8"); return; }
                     if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
                     GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");
                     GD.Print("TERRAINTEST DONE");
