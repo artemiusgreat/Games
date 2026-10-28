@@ -547,11 +547,16 @@ public partial class MechDuel : Node3D
 
     private void UpdatePlayerInput(float delta)
     {
-        if (Input.IsPhysicalKeyPressed(Key.A)) _playerYaw += TurnRate * delta;
-        if (Input.IsPhysicalKeyPressed(Key.D)) _playerYaw -= TurnRate * delta;
+        // A lost leg immobilizes the mech: no throttle, no leg turning.
+        bool legsOk = _partsPlayer.Alive("leg_L") && _partsPlayer.Alive("leg_R");
+        if (legsOk)
+        {
+            if (Input.IsPhysicalKeyPressed(Key.A)) _playerYaw += TurnRate * delta;
+            if (Input.IsPhysicalKeyPressed(Key.D)) _playerYaw -= TurnRate * delta;
+        }
         float spd = 0f;
-        if (Input.IsPhysicalKeyPressed(Key.W)) spd = PlayerMaxSpeed;
-        else if (Input.IsPhysicalKeyPressed(Key.S)) spd = -PlayerMaxSpeed * 0.55f;
+        if (legsOk && Input.IsPhysicalKeyPressed(Key.W)) spd = PlayerMaxSpeed;
+        else if (legsOk && Input.IsPhysicalKeyPressed(Key.S)) spd = -PlayerMaxSpeed * 0.55f;
         _player.SetDrive(_playerYaw, spd);
     }
 
@@ -560,6 +565,14 @@ public partial class MechDuel : Node3D
         var toP = _player.RootPos - _enemy.RootPos;
         float dist = new Vector2(toP.X, toP.Z).Length();
         float yawTo = MechWalker.YawOf(toP.Normalized());
+        if (!_partsEnemy.Alive("leg_L") || !_partsEnemy.Alive("leg_R"))
+        {
+            // Immobile: legs frozen, but the torso still tracks and fires.
+            _enemy.SetDrive(_enemyYaw, 0f);
+            TrackAtlasTorso(delta, yawTo);
+            _enemy.TorsoPitch = 0f;
+            return;
+        }
         float desiredYaw, spd;
         if (dist > 38f) { desiredYaw = yawTo; spd = AtlasMaxSpeed; }
         else if (dist < 26f) { desiredYaw = yawTo; spd = -AtlasMaxSpeed * 0.5f; }
@@ -882,9 +895,11 @@ public partial class MechDuel : Node3D
         }
     }
 
-    // Recompute a walker's leg state from its parts: one dead leg drags
-    // (walker.SetLegDisabled) at 0.55x speed with a limp toward the dead
-    // side; both dead = disabled, which counts as destroyed.
+    // Recompute a walker's leg state from its parts. Owner's rule: ANY
+    // lost leg means the mech cannot walk — drive speed is zeroed and it
+    // fights on as a stationary turret (torso twist and weapons still
+    // work), leaning slightly onto the surviving leg. Both legs gone =
+    // disabled, which counts as destroyed.
     private void SyncLegConsequences(MechWalker w, MechParts parts)
     {
         bool lDead = !parts.Alive("leg_L");
@@ -899,10 +914,10 @@ public partial class MechDuel : Node3D
             if (w == _player ? !_playerDead : !_enemyDead) Die(w);
             return;
         }
-        w.SpeedFactor = (lDead || rDead) ? 0.55f : 1f;
-        w.LimpRoll = lDead ? 0.13f : rDead ? -0.13f : 0f;
+        w.SpeedFactor = (lDead || rDead) ? 0f : 1f;
+        w.LimpRoll = lDead ? 0.10f : rDead ? -0.10f : 0f;
         if (lDead || rDead)
-            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg lost: speedFactor={w.SpeedFactor:F2} limpRoll={w.LimpRoll:F2}");
+            GD.Print($"BRK {(w == _player ? "TW" : "ATLAS")} leg lost -> IMMOBILE (speedFactor 0, turret mode)");
     }
 
     private void Die(MechWalker w)
@@ -1908,18 +1923,13 @@ public partial class MechDuel : Node3D
                 }
                 break;
 
-            case 5: // LEG (Atlas): baseline speed, break leg_L, limp speed
-                    // + dragging foot stays under the hip, gait continues
+            case 5: // LEG (Atlas): baseline speed, break leg_L, then the
+                    // mech must NOT walk at all (owner's rule: a lost leg
+                    // immobilizes; it fights on as a stationary turret)
                 _player.SetDrive(0f, 0f);
                 if (_bStep == 0)
                 {
                     _enemy.SetDrive(Mathf.Pi, 0f);
-                    if (BStepT > 0.9)
-                    {
-                        // The left foot's rest slot in root space: the
-                        // reference the drag lock must hold later.
-                        _bHomeLocal = _enemy.GlobalTransform.AffineInverse() * _enemy.SoleWorld(true);
-                    }
                     if (BStepT > 1.0) BStep(1);
                 }
                 else if (_bStep == 1)
@@ -1950,33 +1960,17 @@ public partial class MechDuel : Node3D
                         CraftHit(_enemy, "leg_L", 30f);
                         if (_partsEnemy.Alive("leg_L")) BFail("atlas leg_L alive after 90 damage");
                         if (!_enemy.LegDisabled(true)) BFail("walker leg_L not disabled");
-                        if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f) BFail("speed factor not 0.55");
-                        GD.Print("BRKTEST LEGBREAK PASS leg_L destroyed, walker dragging at 0.55x");
-                        _bDragMax = 0f;
+                        if (Mathf.Abs(_enemy.SpeedFactor) > 0.01f) BFail("speed factor not 0 (immobile)");
+                        GD.Print("BRKTEST LEGBREAK PASS leg_L destroyed, walker IMMOBILE (speed factor 0)");
                         BStep(3);
                     }
                 }
                 else if (_bStep == 3)
                 {
+                    // Full drive command against the broken leg: the root
+                    // must not translate (a small settle drift is allowed),
+                    // and the good leg's planted contact must hold.
                     _enemy.SetDrive(Mathf.Pi, 2.2f);
-                    if (BStepT > 0.3f)
-                    {
-                        // Drag lock measured in root space (world sole-vs-
-                        // hip distance conflates the limp body lean: the
-                        // hip rides ~7u up on a rolled root). A locked
-                        // foot holds its rest slot; a stepping foot would
-                        // swing ~a stride length through it. The bound
-                        // grew 0.45 -> 0.65 in the terrain step: with the
-                        // unified clock (StepWalker substeps) the mech
-                        // covers its full window distance and walks out
-                        // into the arena's transition slopes, where root
-                        // tilt projects the locked sole ~0.5u in root
-                        // space. Still far under a stride length (~1.7u),
-                        // and the good leg's planted diff stays 0.000.
-                        var local = _enemy.GlobalTransform.AffineInverse() * _enemy.SoleWorld(true);
-                        float dev = new Vector2(local.X - _bHomeLocal.X, local.Z - _bHomeLocal.Z).Length();
-                        if (dev > _bDragMax) _bDragMax = dev;
-                    }
                     if (_bCount1 == 0 && BStepT > 1.0)
                     {
                         _bVec1 = _enemy.RootPos;
@@ -1985,20 +1979,17 @@ public partial class MechDuel : Node3D
                     }
                     else if (_bCount1 == 1 && BStepT > 2.0)
                     {
-                        QueueCapture("res://proof/break_limp.png", "blimp", "brkAtlas");
+                        QueueCapture("res://proof/break_immobile.png", "blimp", "brkAtlas");
                         _bCount1 = 2;
                     }
                     else if (_bCount1 == 2 && BStepT > 3.0)
                     {
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         float v2 = d / BStepT;
-                        float ratio = v2 / _bV1;
-                        GD.Print($"BRKTEST LIMP atlas limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F3} dragDevFromHomeMax={_bDragMax:F3} maxPlantedDiff={_enemy.MaxPlantedDiff():F3}");
-                        if (ratio > 0.605f) { BFail($"limp ratio {ratio:F3} > 0.55 + 10%"); return; }
-                        if (v2 < 0.7f) { BFail($"limp speed {v2:F2}: mech barely moves"); return; }
-                        if (_bDragMax > 0.65f) { BFail($"dragging sole leaves its home slot by {_bDragMax:F2}u"); return; }
+                        GD.Print($"BRKTEST IMMOBILE atlas driftSpeed={v2:F3} drift={d:F3} baseline={_bV1:F2} maxPlantedDiff={_enemy.MaxPlantedDiff():F3}");
+                        if (d > 0.15f) { BFail($"immobile mech translated {d:F2}u under full drive"); return; }
                         if (_enemy.MaxPlantedDiff() > 0.08f) { BFail($"good-leg planted diff {_enemy.MaxPlantedDiff():F3} > 0.08"); return; }
-                        GD.Print("BRKTEST LIMP PASS speed <= 0.55x baseline, drag foot locked at its home slot, gait contact holds");
+                        GD.Print("BRKTEST IMMOBILE PASS leg lost -> zero translation under full drive, good-leg contact holds");
                         SetBPhase(6);
                     }
                 }
