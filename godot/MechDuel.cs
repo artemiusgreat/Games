@@ -2303,6 +2303,12 @@ public partial class MechDuel : Node3D
         if (_phase == 5 && tag == "mech")
         {
             GD.Print($"DUEL DONE playerSteps={_player.Steps} atlasSteps={_enemy.Steps} atlasMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
+            // One frame from the interactive chase camera (the player's
+            // actual view) before quitting — framing proof for cam changes.
+            QueueCapture("res://proof/duel_chase.png", "chase", "chase");
+        }
+        else if (tag == "chase")
+        {
             GetTree().Quit();
         }
     }
@@ -2408,12 +2414,12 @@ public partial class MechDuel : Node3D
         {
             var torsoYaw = _player.TorsoYawWorld;
             var back = -MechWalker.HeadingVec(torsoYaw);
-            var target = _player.RootPos + back * 16.5f + Vector3.Up * 7.2f;
+            var target = _player.RootPos + back * 17.5f + Vector3.Up * 10.6f;
             if (delta > 0f)
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
                 _cam.GlobalPosition = target;
-            var look = _player.RootPos + Vector3.Up * 8.2f + MechWalker.HeadingVec(torsoYaw) * 5f;
+            var look = _player.RootPos + Vector3.Up * 9.2f + MechWalker.HeadingVec(torsoYaw) * 6f;
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)
