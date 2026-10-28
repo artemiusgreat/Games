@@ -136,9 +136,12 @@ public partial class MechWalker : Node3D
     public bool Halted { get; set; }
     public float Droop { get; set; }
 
-    // Breakable-parts state (owner-driven): a disabled leg stops stepping
-    // and drags its foot under the hip; SpeedFactor caps the drive;
-    // LimpRoll leans the body (positive = toward the model's left).
+    // Breakable-parts state (owner-driven): a wrecked (disabled) leg
+    // keeps stepping with the gait — the whole mech is slower via
+    // SpeedFactor, and the wrecked leg moves at that same reduced
+    // pace (owner's round-7 call; the earlier rigid drag read as the
+    // leg floating). LimpRoll leans the body (toward the model's left
+    // when positive).
     public float SpeedFactor = 1f;
     public float LimpRoll;
 
@@ -168,12 +171,7 @@ public partial class MechWalker : Node3D
     {
         var leg = left ? _legL : _legR;
         leg.Disabled = disabled;
-        if (disabled)
-        {
-            leg.StepT = -1f;
-            leg.Planted = true;
-            leg.HasPrev = false;
-        }
+        if (disabled) leg.HasPrev = false;
     }
 
     public bool LegDisabled(bool left) => (left ? _legL : _legR).Disabled;
@@ -479,7 +477,7 @@ public partial class MechWalker : Node3D
             Leg best = null; float bestLag = threshold;
             foreach (var leg in new[] { _legL, _legR })
             {
-                if (leg.Disabled || !leg.Planted || !Other(leg).Planted) continue;
+                if (!leg.Planted || !Other(leg).Planted) continue;
                 var home = HomeSlot(leg, _rootPos + vel * 0.30f);
                 float lag = new Vector2(leg.SoleTarget.X - home.X, leg.SoleTarget.Z - home.Z).Length();
                 if (lag > bestLag) { bestLag = lag; best = leg; }
@@ -488,18 +486,9 @@ public partial class MechWalker : Node3D
         }
         AdvanceLeg(_legL, h);
         AdvanceLeg(_legR, h);
-        // A disabled leg never steps: its foot target rides under the hip,
-        // scraping along the terrain (visible drag; the IK still solves).
-        foreach (var leg in new[] { _legL, _legR })
-        {
-            if (!leg.Disabled) continue;
-            leg.StepT = -1f;
-            leg.Planted = true;
-            var home = HomeSlot(leg, _rootPos);
-            leg.SoleTarget = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
-            leg.PlantBasisW = FootBasisAt(leg.SoleTarget, _legsYaw);
-            leg.CurBasisW = leg.PlantBasisW;
-        }
+        // A wrecked leg steps like any other (see the state comment
+        // above): no drag override — its stride shortens naturally
+        // with the mech's throttled speed.
 
         UpdateRoot(h);
         SolveAll();
@@ -671,7 +660,8 @@ public partial class MechWalker : Node3D
                 var soleW = _skelGlobal * (leg.SolvedAnklePose * leg.SoleOffLocal);
                 leg.LastPlantedDiff = soleW.Y - Main.HeightAt(soleW.X, soleW.Z);
             }
-            // A disabled leg drags by design: its slide is not a gait error.
+            // A wrecked leg still plants and steps; keep it exempt
+            // from slide scoring while the limp lean settles.
             if (!leg.Disabled && leg.Planted && leg.HasPrev)
             {
                 float drift = new Vector2(leg.SolvedSoleWorld.X - leg.PrevSoleWorld.X,

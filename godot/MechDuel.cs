@@ -148,6 +148,7 @@ public partial class MechDuel : Node3D
     private Vector3 _bHomeLocal;
     private int _bCount1, _bCount2;
     private bool _bFlag1;
+    private bool _bSawWreckSwing;
     private Vector3 _camFocus;
 
     // ---------- terrain test ----------
@@ -1493,7 +1494,8 @@ public partial class MechDuel : Node3D
     // (current): a destroyed leg never falls off and never fells or
     // kills the mech — it stays attached, darkened and deformed, and
     // the mech LIMPS: one wrecked leg = 55% speed with a lean and the
-    // dead leg dragged by the walker; both legs wrecked = a 25% crawl.
+    // wrecked leg keeps stepping at the throttled pace; both legs
+    // wrecked = a 25% crawl.
     // Death comes only from the HP pool reaching zero.
     private void SyncLegConsequences(MechWalker w, MechParts parts)
     {
@@ -3082,8 +3084,8 @@ public partial class MechDuel : Node3D
                 break;
 
             case 5: // LEG (Atlas): baseline speed, break leg_L, then the
-                    // mech must NOT walk at all (owner's rule: a lost leg
-                    // immobilizes; it fights on as a stationary turret)
+                    // mech limps at the 0.55 factor with the wrecked leg
+                    // still stepping (round 7: no rigid drag)
                 _player.SetDrive(0f, 0f);
                 if (_bStep == 0)
                 {
@@ -3125,6 +3127,7 @@ public partial class MechDuel : Node3D
                         if (_enemy.IsKnockedDown) BFail("leg wreck felled the mech (retired fall rule)");
                         if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f) BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 (limp)");
                         GD.Print("BRKTEST LEGWRECK PASS leg_L destroyed but ATTACHED (wrecked), mech upright, limp factor 0.55");
+                        _bSawWreckSwing = false;
                         BStep(3);
                     }
                 }
@@ -3134,6 +3137,7 @@ public partial class MechDuel : Node3D
                     // (it limps, it is not immobile) at roughly the 0.55
                     // limp factor of its measured baseline speed.
                     _enemy.SetDrive(Mathf.Pi, 2.2f);
+                    if (!_enemy.LegPlanted(true)) _bSawWreckSwing = true;
                     if (_bCount1 == 0 && BStepT > 1.0)
                     {
                         _bVec1 = _enemy.RootPos;
@@ -3152,7 +3156,8 @@ public partial class MechDuel : Node3D
                         float ratio = _bV1 > 0.1f ? v2 / _bV1 : 0f;
                         GD.Print($"BRKTEST LIMP atlas limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F2}");
                         if (ratio < 0.35f || ratio > 0.78f) { BFail($"limp speed ratio {ratio:F2} (want ~0.55 of baseline)"); return; }
-                        GD.Print("BRKTEST LIMP PASS wrecked leg -> mech keeps walking at ~55% speed, leg attached");
+                        if (!_bSawWreckSwing) { BFail("wrecked leg never left the ground while limping — it must keep stepping, not drag"); return; }
+                        GD.Print("BRKTEST LIMP PASS wrecked leg -> mech keeps walking at ~55% speed, leg attached AND still stepping");
                         SetBPhase(6);
                     }
                 }
