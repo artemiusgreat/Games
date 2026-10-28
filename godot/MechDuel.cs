@@ -25,6 +25,7 @@ public partial class MechDuel : Node3D
 
     private struct Circle { public Vector2 P; public float R; }
     private readonly List<Circle> _props = new();
+    private readonly System.Collections.Generic.List<Vector2> _buildingPts = new();
 
     private MechWalker _player;
     private MechWalker _enemy;
@@ -125,6 +126,7 @@ public partial class MechDuel : Node3D
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm;
     private PanelContainer _panel;
+    private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;
     private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
     private readonly System.Collections.Generic.List<(string Text, float Life)> _feed = new();
@@ -452,6 +454,7 @@ public partial class MechDuel : Node3D
         mi.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.55f, 0.58f) };
         mi.Position = pos;
         AddChild(mi);
+        _buildingPts.Add(new Vector2(pos.X, pos.Z));
         // Circle colliders: one for near-square footprints, two along the
         // long axis for elongated ones. Radius covers the short side plus a
         // margin; extreme corners can poke slightly past a circle (POC).
@@ -1421,6 +1424,7 @@ public partial class MechDuel : Node3D
             : lLeg ? "LEGS: RIGHT LOST — IMMOBILE" : "LEGS: LEFT LOST — IMMOBILE";
         _lblLegs.AddThemeColorOverride("font_color",
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
+        if (_radar != null) { _radar.EnemyDown = _enemyDead; _radar.QueueRedraw(); }
         if (_player.IsKnockedDown)
         {
             _lblLegs.Text = "STATUS: KNOCKED DOWN";
