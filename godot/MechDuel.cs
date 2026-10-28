@@ -850,7 +850,7 @@ public partial class MechDuel : Node3D
             Kind = "building", Node = mi,
             Center = new Vector3(pos.X, groundY, pos.Z),
             Radius = Mathf.Max(size.X, size.Z) / 2f + 0.3f,
-            Height = size.Y, Hp = 60f
+            Height = size.Y, Hp = 40f
         };
         for (int i = pc0; i < _props.Count; i++) bd.CirclePts.Add(_props[i].P);
         for (int i = hc0; i < _hit.Props.Count; i++) bd.Cyls.Add(_hit.Props[i]);
@@ -908,16 +908,7 @@ public partial class MechDuel : Node3D
                 if (d.Kind != "tree" || d.State != 0) continue;
                 var tp = new Vector2(d.Center.X, d.Center.Z);
                 if (wp.DistanceTo(tp) > w.CollisionRadius + 0.35f) continue;
-                d.State = 3;
-                d.PhaseLen = 0.8f;
-                d.Timer = 0.8f;
-                RemovePropColliders(d);
-                for (int i = 0; i < 3; i++)
-                {
-                    var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (0.6f + i * 0.7f));
-                    AddChild(puff);
-                    _puffs.Add((puff, 0.7f));
-                }
+                DestroyTree(d, 0.8f);
                 if (w == _player) _shake = Mathf.Max(_shake, 0.18f);
                 GD.Print($"DUEL STOMP {(w == _player ? "TW" : "ATLAS")} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
             }
@@ -1990,7 +1981,7 @@ public partial class MechDuel : Node3D
     {
         var d = PropAt(point);
         if (d == null) return;
-        if (d.Kind == "tree") { IgniteTree(d); return; }
+        if (d.Kind == "tree") { DestroyTree(d, 1.0f); return; }
         d.Hp -= dmg;
         GD.Print($"ENVDMG building at ({d.Center.X:F0},{d.Center.Z:F0}) hp={d.Hp:F0}");
         if (d.Hp <= 0f) StartCollapse(d);
@@ -2015,49 +2006,35 @@ public partial class MechDuel : Node3D
         GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING");
     }
 
-    private void IgniteTree(Destructible d)
+    // Owner's current rule: a tree is destroyed by ANY interaction —
+    // a single weapon hit of any kind, or a stomp. Its colliders come
+    // off immediately (shots and mechs pass from that frame) and the
+    // mesh smokes out over ~1s. This supersedes the round-2 spec
+    // (ignite, burn 3s, then evaporate), under which a hit tree kept
+    // standing and blocking shots for up to ~6 seconds.
+    private void DestroyTree(Destructible d, float smokeLen)
     {
-        d.State = 1;
-        d.Timer = 3f; // owner's spec: burn for 3 seconds
-        d.Light = new OmniLight3D
+        if (d.State != 0) return;
+        d.State = 3;
+        d.PhaseLen = smokeLen;
+        d.Timer = smokeLen;
+        RemovePropColliders(d);
+        var top = d.Center + Vector3.Up * d.Height * 0.7f;
+        SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 0.85f, 0.2f);
+        for (int i = 0; i < 3; i++)
         {
-            LightColor = new Color(1f, 0.55f, 0.2f),
-            OmniRange = 7f,
-            LightEnergy = 2.4f,
-            Position = new Vector3(0f, d.Height * 0.75f / Mathf.Max(d.StartScale, 0.01f), 0f)
-        };
-        d.Node.AddChild(d.Light);
-        GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) BURNING");
+            var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (0.8f + i * 0.9f));
+            AddChild(puff);
+            _puffs.Add((puff, 0.8f));
+        }
+        GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) DESTROYED");
     }
 
     private void UpdateDestructibles(float dt)
     {
         foreach (var d in _destructibles)
         {
-            if (d.State == 1) // tree burning
-            {
-                d.Timer -= dt;
-                if (d.Light != null) d.Light.LightEnergy = 2.3f + Mathf.Sin(_combatClock * 27f) * 0.8f;
-                d.PuffAcc += dt;
-                if (d.PuffAcc > 0.16f)
-                {
-                    d.PuffAcc = 0f;
-                    var top = d.Center + Vector3.Up * d.Height * 0.8f;
-                    SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 0.65f, 0.16f);
-                    var puff = WeaponFx.MakeTrailPuff(top + Vector3.Up * 0.5f);
-                    AddChild(puff);
-                    _puffs.Add((puff, 0.55f));
-                }
-                if (d.Timer <= 0f)
-                {
-                    d.State = 3;
-                    d.PhaseLen = _fxRng.RandfRange(1.2f, 3f); // smoke-out: 1-3s
-                    d.Timer = d.PhaseLen;
-                    if (d.Light != null) { d.Light.QueueFree(); d.Light = null; }
-                    GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) burned out, evaporating ({d.PhaseLen:F1}s)");
-                }
-            }
-            else if (d.State == 3) // tree evaporating in smoke
+            if (d.State == 3) // tree destroyed: smoking out
             {
                 d.Timer -= dt;
                 float u = Mathf.Clamp(d.Timer / d.PhaseLen, 0f, 1f);
@@ -2725,7 +2702,7 @@ public partial class MechDuel : Node3D
                 }
                 else if (_wEnvStep == 1)
                 {
-                    // Laser the building down: 60 HP / 12 per hit = 5 hits.
+                    // Laser the building down: 40 HP / 12 per hit = 4 hits.
                     _cdLaser = 0f;
                     var bc = _wEnvB.Center;
                     FireLaser(new Vector3(bc.X, bc.Y + _wEnvB.Height * 0.55f, bc.Z));
@@ -2741,7 +2718,9 @@ public partial class MechDuel : Node3D
                     float distB = from.DistanceTo(aimB);
                     if (ray.Target == "PROP" && ray.T < distB + 2f) { WFail("rubble still blocks shots"); return; }
                     GD.Print("ENVTEST BUILDING PASS collapsed to rubble, colliders removed, shots pass through");
-                    // Move to the tree and ignite it with one laser hit.
+                    // Move to the tree: ONE hit of any kind destroys
+                    // it, and its shot-blocking cylinder is gone from
+                    // that same frame (owner's rule).
                     var tc = _wEnvT.Center;
                     var toC2 = (Vector3.Zero - tc); toC2.Y = 0f;
                     var fp2 = tc + toC2.Normalized() * 12f;
@@ -2750,18 +2729,22 @@ public partial class MechDuel : Node3D
                     _playerYaw = _player.LegsYaw;
                     _cdLaser = 0f;
                     FireLaser(new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z));
-                    if (_wEnvT.State != 1) { WFail($"tree did not ignite (state={_wEnvT.State})"); return; }
-                    GD.Print("ENVTEST BURN PASS tree ignited by a laser hit");
+                    if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
+                    var fromT = _player.RootPos + Vector3.Up * 8f;
+                    var aimT = new Vector3(tc.X, tc.Y + 2f, tc.Z);
+                    var rayT = _hit.Ray(fromT, (aimT - fromT).Normalized(), 30f, "TW");
+                    if (rayT.Target == "PROP" && rayT.T < fromT.DistanceTo(aimT) + 2f) { WFail("destroyed tree still blocks shots"); return; }
+                    GD.Print("ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once");
                     _wEnvStep = 3;
                 }
                 else if (_wEnvStep == 3)
                 {
-                    if (!_wCaptured) { _wCaptured = true; QueueCapture("res://proof/env_burning.png", "envBurn", "duelChase"); }
-                    if (_wPhaseT > 40) { WFail("tree never finished evaporating"); return; }
+                    if (!_wCaptured) { _wCaptured = true; QueueCapture("res://proof/env_tree_destroyed.png", "envTreeDown", "duelChase"); }
+                    if (_wPhaseT > 40) { WFail("destroyed tree never finished smoking out"); return; }
                     if (_wEnvT.State == 4)
                     {
-                        if (GodotObject.IsInstanceValid(_wEnvT.Node)) { WFail("evaporated tree node still alive"); return; }
-                        GD.Print("ENVTEST TREE PASS burned 3s, smoked out, node freed, colliders removed");
+                        if (GodotObject.IsInstanceValid(_wEnvT.Node)) { WFail("destroyed tree node still alive"); return; }
+                        GD.Print("ENVTEST TREE PASS destroyed on one hit, smoked out in ~1s, node freed");
                         GD.Print($"WPNTEST FX sparks={_fxSparkBursts} booms={_fxBooms} scorches={_fxScorches}");
                         if (_fxSparkBursts <= 0) WFail("no laser spark bursts spawned");
                         if (_fxBooms <= 0) WFail("no rocket explosions spawned");
