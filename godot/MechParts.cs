@@ -688,6 +688,20 @@ public sealed class MechParts
     public void StepDebris(float dt)
     {
         if (dt <= 0f) return;
+        // Substep at 120 Hz like the gait: with a raw frame dt the
+        // gravity increment per step (20*dt) can exceed the settle
+        // threshold outright — at dt 0.2 a resting piece gains
+        // -4 u/s every frame, bounces at 0.22 restitution forever,
+        // and never settles (measured: breakable POD phase timing
+        // out at slow render rates; the same class of bug as the
+        // gait dt clamp found in the terrain stage).
+        int n = Mathf.Max(1, Mathf.CeilToInt(dt / (1f / 120f)));
+        float h = dt / n;
+        for (int i = 0; i < n; i++) StepDebrisStep(h);
+    }
+
+    private void StepDebrisStep(float dt)
+    {
         foreach (var d in _debris)
         {
             if (d.Settled) continue;
