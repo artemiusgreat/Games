@@ -8,6 +8,11 @@ public partial class Crosshair : Control
 {
     public float Hitmark;
     public Vector2 Sway;
+    // Screen position of the reticle, set by the duel every frame to
+    // the projection of the torso's aim point — the reticle rides
+    // where the torso actually points instead of sitting at screen
+    // center. Negative X = unset (fall back to screen center).
+    public Vector2 ReticlePos = new Vector2(-999f, -999f);
 
     public override void _Ready()
     {
@@ -26,7 +31,7 @@ public partial class Crosshair : Control
 
     public override void _Draw()
     {
-        var c = GetViewportRect().Size * 0.5f + Sway;
+        var c = (ReticlePos.X > -100f ? ReticlePos : GetViewportRect().Size * 0.5f) + Sway;
         // Owner's ask: the reticle must be unmissable — longer, thicker
         // arms in bright amber over a dark outline pass, so it reads
         // against sky, terrain and the mech's own hull alike.

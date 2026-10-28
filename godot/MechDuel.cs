@@ -73,6 +73,7 @@ public partial class MechDuel : Node3D
     private int _strideShots;
     private float _minTreeSep, _minMechSep;
     private int _pLimpStep;
+    private int _aimStep;
     private double _pLimpT0;
     private Vector3 _pLimpStart;
     private float _pLimpYaw0;
@@ -1062,14 +1063,35 @@ public partial class MechDuel : Node3D
 
     // ---------- weapons ----------
 
-    // Crosshair aim: raycast the shared hit model from the camera; player
-    // weapons converge on whatever it lands on (max 200u), not on the
-    // camera axis at infinity.
-    private Vector3 AimPointFromCamera()
+    // Torso aim (owner's model): the aim ray leaves the chest along
+    // the TORSO's facing — mouse twist and pitch steer it — and the
+    // weapons converge on whatever it lands on (max 200u). The reticle
+    // is drawn at this point's screen projection (UpdateReticle), so
+    // the cursor target visibly rides the torso instead of sitting on
+    // the camera axis, which crossed the player's own back.
+    private Vector3 _aimPoint;
+    private Vector3 TorsoAimPoint()
     {
-        var from = _cam.GlobalPosition;
-        var dir = -_cam.GlobalTransform.Basis.Z.Normalized();
+        float yaw = _player.TorsoYawWorld;
+        float p = _player.TorsoPitch;
+        var h = MechWalker.HeadingVec(yaw);
+        var dir = new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
+        var from = _player.BoneWorldPos("torso") + dir * 3.2f;
         return _hit.Ray(from, dir, 200f, "TW").Point;
+    }
+
+    // Project the aim point into screen space for the reticle. When
+    // the torso points behind the camera (deep twist), the projection
+    // mirrors — flip it through the center and clamp to the screen
+    // edge so the reticle still indicates the direction.
+    private void UpdateReticle()
+    {
+        var vp = GetViewport().GetVisibleRect().Size;
+        var sp = _cam.UnprojectPosition(_aimPoint);
+        if (_cam.IsPositionBehind(_aimPoint)) sp = vp - sp;
+        _cross.ReticlePos = new Vector2(
+            Mathf.Clamp(sp.X, 28f, vp.X - 28f),
+            Mathf.Clamp(sp.Y, 28f, vp.Y - 28f));
     }
 
     // Muzzle hardpoints: the Timber Wolf's forearm cannons sit on the
@@ -2368,9 +2390,62 @@ public partial class MechDuel : Node3D
                         GD.Print($"DUEL PLAYERLIMP PASS fwd+rev+turn all answer with leg_L wrecked (turn gain={gain:F3} in 0.6s)");
                         _pLimpStep = 4;
                         ResetDuel();
-                        QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
                         SetPhase(6);
                     }
+                }
+                break;
+            case 6: // AIM: the aim ray follows the TORSO (owner's model):
+                    // pitch and twist steer TorsoAimPoint, and the
+                    // reticle's screen position rides the projection.
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(Mathf.Pi, 0f);
+                if (_phaseT > 20) { GD.PrintErr("DUEL FAIL: aim phase timeout"); GetTree().Quit(1); }
+                if (_aimStep == 0 && _phaseT > 0.15f)
+                {
+                    ResetDuel();
+                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), 0f);
+                    _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -12f), -12f), Mathf.Pi);
+                    _playerYaw = 0f; _enemyYaw = Mathf.Pi;
+                    _camMode = "chase";
+                    _player.TorsoTwist = 0f;
+                    _player.TorsoPitch = 0.40f;
+                    var aimUp = TorsoAimPoint();
+                    _player.TorsoPitch = -0.30f;
+                    var aimDown = TorsoAimPoint();
+                    if (aimUp.Y < aimDown.Y + 8f)
+                    { GD.PrintErr($"DUEL FAIL: torso pitch does not steer the aim (up Y={aimUp.Y:F1} down Y={aimDown.Y:F1})"); GetTree().Quit(1); break; }
+                    _player.TorsoPitch = 0f;
+                    var aimC = TorsoAimPoint();
+                    _player.TorsoTwist = 1.2f;
+                    var aimT = TorsoAimPoint();
+                    float dxz = new Vector2(aimT.X - aimC.X, aimT.Z - aimC.Z).Length();
+                    if (dxz < 5f)
+                    { GD.PrintErr($"DUEL FAIL: torso twist does not steer the aim (dxz={dxz:F2})"); GetTree().Quit(1); break; }
+                    _player.TorsoTwist = 0.5f;
+                    _player.TorsoPitch = 0.38f;
+                    _aimPoint = TorsoAimPoint();
+                    UpdateReticle();
+                    float ryUp = _cross.ReticlePos.Y;
+                    _player.TorsoTwist = 0f;
+                    _player.TorsoPitch = -0.30f;
+                    _aimPoint = TorsoAimPoint();
+                    UpdateReticle();
+                    float ryDown = _cross.ReticlePos.Y;
+                    if (ryUp > ryDown - 30f)
+                    { GD.PrintErr($"DUEL FAIL: reticle does not ride the torso aim (ryUp={ryUp:F0} ryDown={ryDown:F0})"); GetTree().Quit(1); break; }
+                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle screenY {ryDown:F0} -> {ryUp:F0}");
+                    // Proof frame: torso twisted + pitched up — the
+                    // reticle must sit ON the Atlas, off screen center.
+                    _player.TorsoTwist = 0.5f;
+                    _player.TorsoPitch = 0.38f;
+                    _aimPoint = TorsoAimPoint();
+                    UpdateReticle();
+                    _aimStep = 1;
+                    QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
+                    {
+                        QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
+                        SetPhase(7);
+                    });
                 }
                 break;
         }
@@ -3387,7 +3462,7 @@ public partial class MechDuel : Node3D
         var after = _afterCapture;
         _afterCapture = null;
         after?.Invoke();
-        if (_phase == 6 && tag == "mech")
+        if (_phase == 7 && tag == "mech")
         {
             GD.Print($"DUEL DONE playerSteps={_player.Steps} atlasSteps={_enemy.Steps} atlasMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
@@ -3570,11 +3645,12 @@ public partial class MechDuel : Node3D
             {
                 UpdatePlayerInput(dt);
                 UpdateEnemyAI(dt);
+                _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
                     // One trigger: the left mouse button fires the SELECTED
                     // weapon (1/2/3 or wheel to switch — see the panel).
-                    var aim = AimPointFromCamera();
+                    var aim = _aimPoint;
                     if (Input.IsMouseButtonPressed(MouseButton.Left))
                     {
                         if (_weaponSel == 0) FireLaser(aim);
@@ -3608,6 +3684,8 @@ public partial class MechDuel : Node3D
                 Mathf.Sin((float)_simT * 2.7f + 0.8f) * 9f);
         }
         else _cross.Sway = Vector2.Zero;
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_labOpen)
+            UpdateReticle();
         UpdateCamera(_frozen ? 0f : dt);
         if (_pendingPath != null && !_capturing) DoCapture();
     }
