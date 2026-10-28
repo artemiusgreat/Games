@@ -17,16 +17,16 @@ public partial class Crosshair : Control
     public override void _Process(double delta)
     {
         if (Hitmark > 0f)
-        {
             Hitmark = Mathf.Max(Hitmark - (float)delta / 0.22f, 0f);
-            QueueRedraw();
-        }
-        if (Sway.LengthSquared() > 0.01f) QueueRedraw();
+        // Redraw every frame: the first _Draw can run before layout
+        // gives this control its size, and a reticle drawn once at a
+        // zero size would otherwise sit in the corner forever.
+        QueueRedraw();
     }
 
     public override void _Draw()
     {
-        var c = Size * 0.5f + Sway;
+        var c = GetViewportRect().Size * 0.5f + Sway;
         // Owner's ask: the reticle must be unmissable — longer, thicker
         // arms in bright amber over a dark outline pass, so it reads
         // against sky, terrain and the mech's own hull alike.
