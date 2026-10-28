@@ -303,6 +303,7 @@ public partial class MechDuel : Node3D
             // Pre-game MechLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
             _labOpen = true;
+            Input.MouseMode = Input.MouseModeEnum.Visible;
             _panel.Visible = false;
             _radar.Visible = false;
             _feedLabel.Visible = false;
@@ -720,6 +721,10 @@ public partial class MechDuel : Node3D
 
     public override void _Input(InputEvent e)
     {
+        // While the MechLab is open the mouse belongs to the GUI: the
+        // click-to-capture below would hide the cursor the moment a
+        // drag starts and kill drag-and-drop (owner's bug report).
+        if (_labOpen) return;
         if (e is InputEventKey rk && rk.Pressed && !rk.Echo && rk.Keycode == Key.R)
         {
             ResetDuel();
