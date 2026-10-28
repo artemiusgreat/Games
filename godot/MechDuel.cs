@@ -302,6 +302,9 @@ public partial class MechDuel : Node3D
             // Pre-game MechLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
             _labOpen = true;
+            _panel.Visible = false;
+            _radar.Visible = false;
+            _feedLabel.Visible = false;
             _lab = new MechLab { Spec = MechSpecs.TimberWolf, Loadout = _loadout };
             _lab.OnStart = () =>
             {
@@ -309,6 +312,9 @@ public partial class MechDuel : Node3D
                 _lab.QueueFree();
                 _lab = null;
                 _labOpen = false;
+                _panel.Visible = true;
+                _radar.Visible = true;
+                _feedLabel.Visible = true;
                 Input.MouseMode = Input.MouseModeEnum.Captured;
                 GD.Print("LAB deploy: duel started with the lab loadout");
             };
@@ -3260,7 +3266,7 @@ public partial class MechDuel : Node3D
             // The duel waits behind the MechLab: slow orbit backdrop.
             float ang = (float)Time.GetTicksMsec() / 1000f * 0.12f;
             var center = _player.RootPos + Vector3.Up * 6.5f;
-            _cam.GlobalPosition = center + new Vector3(Mathf.Sin(ang) * 27f, 9f, Mathf.Cos(ang) * 27f);
+            _cam.GlobalPosition = center + new Vector3(Mathf.Sin(ang) * 21f, 7.5f, Mathf.Cos(ang) * 21f);
             _cam.LookAt(center, Vector3.Up);
             return;
         }

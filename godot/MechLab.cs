@@ -56,7 +56,7 @@ public partial class MechLab : Control
     public override void _Ready()
     {
         SetAnchorsPreset(LayoutPreset.FullRect);
-        var bg = new ColorRect { Color = new Color(0.03f, 0.045f, 0.07f, 0.88f) };
+        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.965f) };
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
