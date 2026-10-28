@@ -41,6 +41,7 @@ public partial class MechDuel : Node3D
         public float Timer;
         public float PhaseLen;
         public float PuffAcc;
+        public float FxAcc;
         public float StartScale = 1f;
         public readonly System.Collections.Generic.List<HitModel.PropCyl> Cyls = new();
         public readonly System.Collections.Generic.List<Vector2> CirclePts = new();
@@ -1232,6 +1233,38 @@ public partial class MechDuel : Node3D
         _fx.Add((glow, life, 0));
     }
 
+    // A brief real light at an impact or destruction — the one FX
+    // that reads at any range (round 8: flashes and 0.14u puffs were
+    // too small and short to see). Faded and freed by UpdateCombat.
+    private readonly System.Collections.Generic.List<(OmniLight3D Light, float Life, float Max, float Energy0)> _lights = new();
+    private int _fxLights;
+    private void SpawnImpactLight(Vector3 point, Color col, float energy, float range, float life)
+    {
+        var l = new OmniLight3D
+        {
+            LightColor = col,
+            LightEnergy = energy,
+            OmniRange = range,
+            ShadowEnabled = false,
+        };
+        AddChild(l);
+        l.GlobalPosition = point;
+        _lights.Add((l, life, life, energy));
+        _fxLights++;
+    }
+
+    private void StepImpactLights(float dt)
+    {
+        for (int i = _lights.Count - 1; i >= 0; i--)
+        {
+            var (l, life, max, e0) = _lights[i];
+            life -= dt;
+            if (life <= 0f) { l.QueueFree(); _lights.RemoveAt(i); continue; }
+            l.LightEnergy = e0 * (life / max);
+            _lights[i] = (l, life, max, e0);
+        }
+    }
+
     private void SpawnFlash(Vector3 point, Color col, float radius, float life)
     {
         var f = WeaponFx.MakeFlash(point, col, radius);
@@ -2146,11 +2179,13 @@ public partial class MechDuel : Node3D
         _envFxEvents++;
         var mid = d.Center + Vector3.Up * (d.Height * 0.35f);
         SpawnExplosionFx(mid);
+        SpawnFlash(mid, new Color(1f, 0.8f, 0.5f), 2.6f, 0.5f);
         SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.9f, 0.35f);
+        SpawnImpactLight(mid, new Color(1f, 0.6f, 0.25f), 3.2f, 16f, 0.8f);
         Material facade = null;
         if (d.Node is MeshInstance3D mi)
             facade = mi.GetSurfaceOverrideMaterial(0) ?? mi.Mesh?.SurfaceGetMaterial(0);
-        SpawnChunks(mid, 7, 0.9f, 2.0f, facade ?? RubbleMat, 3.5f, 6.5f);
+        SpawnChunks(mid, 10, 0.9f, 2.6f, facade ?? RubbleMat, 3.5f, 7.5f);
         GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (explosion + chunks)");
     }
 
@@ -2175,7 +2210,8 @@ public partial class MechDuel : Node3D
         SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 1.1f, 0.24f);
         SpawnSparks(top, new Color(1f, 0.6f, 0.22f), 9, 4.4f);
         _fxSparkBursts--; // tree embers are not a laser burst; keep the counters honest
-        SpawnChunks(top, 3, 0.45f, 0.85f, SplinterMat, 2.5f, 4.5f);
+        SpawnImpactLight(top, new Color(1f, 0.55f, 0.2f), 2.6f, 11f, 0.55f);
+        SpawnChunks(top, 5, 0.45f, 0.95f, SplinterMat, 2.5f, 5f);
         for (int i = 0; i < 3; i++)
         {
             var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (0.8f + i * 0.9f));
@@ -2199,8 +2235,16 @@ public partial class MechDuel : Node3D
                 {
                     d.PuffAcc = 0f;
                     var puff = WeaponFx.MakeTrailPuff(d.Center + Vector3.Up * (1f + d.Height * 0.4f * u));
+                    puff.Scale = Vector3.One * _fxRng.RandfRange(6f, 9f);
                     AddChild(puff);
-                    _puffs.Add((puff, 0.8f));
+                    _puffs.Add((puff, 1.3f));
+                }
+                d.FxAcc += dt;
+                if (d.FxAcc > 0.34f)
+                {
+                    d.FxAcc = 0f;
+                    SpawnFlash(d.Center + Vector3.Up * (0.8f + d.Height * 0.3f * u),
+                        new Color(1f, 0.5f, 0.15f), 0.9f, 0.22f); // the fire still burning as it smokes out
                 }
                 if (d.Timer <= 0f)
                 {
@@ -2223,9 +2267,15 @@ public partial class MechDuel : Node3D
                 if (d.PuffAcc > 0.14f)
                 {
                     d.PuffAcc = 0f;
-                    var puff = WeaponFx.MakeTrailPuff(d.Center + new Vector3(_fxRng.RandfRange(-2f, 2f), 0.6f, _fxRng.RandfRange(-2f, 2f)));
+                    // A rising dust/smoke COLUMN, not sparks of dust:
+                    // puffs scaled ~9x, spawned higher as the collapse
+                    // progresses, living ~1.6s (round 8: the 0.14u
+                    // puffs were invisible beyond a few meters).
+                    var puff = WeaponFx.MakeTrailPuff(d.Center + new Vector3(
+                        _fxRng.RandfRange(-3.2f, 3.2f), 0.6f + u * d.Height * 0.55f, _fxRng.RandfRange(-3.2f, 3.2f)));
+                    puff.Scale = Vector3.One * _fxRng.RandfRange(7f, 11f);
                     AddChild(puff);
-                    _puffs.Add((puff, 0.9f));
+                    _puffs.Add((puff, 1.6f));
                 }
                 if (d.Timer <= 0f)
                 {
@@ -2243,6 +2293,7 @@ public partial class MechDuel : Node3D
         _combatClock += dt;
         UpdateDestructibles(dt);
         StepEnvChunks(dt);
+        StepImpactLights(dt);
         _cdLaser = Mathf.Max(_cdLaser - dt, 0f);
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
@@ -2977,8 +3028,9 @@ public partial class MechDuel : Node3D
                         GD.Print("ENVTEST COLLAPSE-START PASS building gave way under fire");
                         if (_envFxEvents <= _wEnvFx0) { WFail("building collapsed with NO destruction FX"); return; }
                         int chunks = _envChunks.Count - _wEnvChunks0;
-                        if (chunks < 7) { WFail($"building broke into only {chunks} chunks (want 7)"); return; }
-                        GD.Print($"ENVTEST FX PASS building died with an explosion and {chunks} flying chunks");
+                        if (chunks < 10) { WFail($"building broke into only {chunks} chunks (want 10)"); return; }
+                        if (_fxLights <= 0) { WFail("building collapse lit no impact light"); return; }
+                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash and {chunks} flying chunks");
                         QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
                         _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count;
                         _wEnvStep = 2;
@@ -3012,7 +3064,7 @@ public partial class MechDuel : Node3D
                     if (rayT.Target == "PROP" && rayT.T < fromT.DistanceTo(aimT) + 2f) { WFail("destroyed tree still blocks shots"); return; }
                     if (_envFxEvents <= _wEnvFx0) { WFail("tree died with NO destruction FX"); return; }
                     int splinters = _envChunks.Count - _wEnvChunks0;
-                    if (splinters < 3) { WFail($"tree threw only {splinters} splinters (want 3)"); return; }
+                    if (splinters < 5) { WFail($"tree threw only {splinters} splinters (want 5)"); return; }
                     GD.Print($"ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once, FX fired (+{splinters} splinters)");
                     _wEnvStep = 3;
                 }
