@@ -59,6 +59,7 @@ public partial class MechDuel : Node3D
     private float _hpPlayer = 260f, _hpEnemy = 340f;
     private bool _playerDead, _enemyDead;
     private float _cdLaser, _cdAc, _cdLrm, _cdAtlas;
+    private int _weaponSel; // selected weapon: 0 laser, 1 autocannon, 2 LRM
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
@@ -512,6 +513,22 @@ public partial class MechDuel : Node3D
             ResetDuel();
             return;
         }
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
+        {
+            // Weapon selection: keys 1/2/3, mouse wheel cycles.
+            if (e is InputEventKey sk && sk.Pressed && !sk.Echo)
+            {
+                if (sk.Keycode == Key.Key1) _weaponSel = 0;
+                else if (sk.Keycode == Key.Key2) _weaponSel = 1;
+                else if (sk.Keycode == Key.Key3) _weaponSel = 2;
+            }
+            else if (e is InputEventMouseButton wb && wb.Pressed &&
+                     (wb.ButtonIndex == MouseButton.WheelUp || wb.ButtonIndex == MouseButton.WheelDown))
+            {
+                int d = wb.ButtonIndex == MouseButton.WheelDown ? 1 : -1;
+                _weaponSel = (_weaponSel + d + 3) % 3;
+            }
+        }
         if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
             if (Input.MouseMode != Input.MouseModeEnum.Captured)
@@ -844,6 +861,25 @@ public partial class MechDuel : Node3D
             SyncLegConsequences(parts == _partsPlayer ? _player : _enemy, parts);
         else if (partId == "head" && parts == _partsPlayer)
             _hudFlickerT = 1.2f;
+        if (parts == _partsPlayer) AutoSwitchWeapon();
+    }
+
+    private bool WeaponAlive(int sel) => sel switch
+    {
+        0 => _partsPlayer.Alive("arm_L"),
+        1 => _partsPlayer.Alive("arm_R"),
+        _ => _partsPlayer.Alive("pod_L") || _partsPlayer.Alive("pod_R"),
+    };
+
+    // When the selected weapon is destroyed, fall to the next live one.
+    private void AutoSwitchWeapon()
+    {
+        if (_partsPlayer == null || WeaponAlive(_weaponSel)) return;
+        for (int i = 1; i <= 3; i++)
+        {
+            int cand = (_weaponSel + i) % 3;
+            if (WeaponAlive(cand)) { _weaponSel = cand; return; }
+        }
     }
 
     // Recompute a walker's leg state from its parts: one dead leg drags
@@ -939,6 +975,7 @@ public partial class MechDuel : Node3D
         _lastDenied = "";
         _feed.Clear();
         _cdLaser = _cdAc = _cdLrm = _cdAtlas = 0f;
+        _weaponSel = 0;
         _lrmQueue.Clear();
         foreach (var p in _shots) p.QueueFree();
         _shots.Clear();
@@ -2418,10 +2455,15 @@ public partial class MechDuel : Node3D
                 UpdateEnemyAI(dt);
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
+                    // One trigger: the left mouse button fires the SELECTED
+                    // weapon (1/2/3 or wheel to switch — see the panel).
                     var aim = AimPointFromCamera();
-                    if (Input.IsMouseButtonPressed(MouseButton.Left)) FireLaser(aim);
-                    if (Input.IsMouseButtonPressed(MouseButton.Right)) FireAutocannon(aim);
-                    if (Input.IsPhysicalKeyPressed(Key.Space)) FireLrmSalvo(aim);
+                    if (Input.IsMouseButtonPressed(MouseButton.Left))
+                    {
+                        if (_weaponSel == 0) FireLaser(aim);
+                        else if (_weaponSel == 1) FireAutocannon(aim);
+                        else FireLrmSalvo(aim);
+                    }
                 }
             }
             StepWalker(_player, delta);
