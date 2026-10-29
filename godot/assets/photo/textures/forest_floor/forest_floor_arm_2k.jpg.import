@@ -3,19 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dl03kq17w5nfp"
-path="res://.godot/imported/forest_floor_arm_2k.jpg-6cce32962392fbf8c1f268f23575bbde.ctex"
+path.s3tc="res://.godot/imported/forest_floor_arm_2k.jpg-6cce32962392fbf8c1f268f23575bbde.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/photo/textures/forest_floor/forest_floor_arm_2k.jpg"
-dest_files=["res://.godot/imported/forest_floor_arm_2k.jpg-6cce32962392fbf8c1f268f23575bbde.ctex"]
+dest_files=["res://.godot/imported/forest_floor_arm_2k.jpg-6cce32962392fbf8c1f268f23575bbde.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

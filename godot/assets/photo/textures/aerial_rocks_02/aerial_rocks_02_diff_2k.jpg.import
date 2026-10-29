@@ -3,19 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvkhggy16ntvf"
-path="res://.godot/imported/aerial_rocks_02_diff_2k.jpg-22aa20a9ae42dd05d75fc88136a86c0d.ctex"
+path.s3tc="res://.godot/imported/aerial_rocks_02_diff_2k.jpg-22aa20a9ae42dd05d75fc88136a86c0d.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/photo/textures/aerial_rocks_02/aerial_rocks_02_diff_2k.jpg"
-dest_files=["res://.godot/imported/aerial_rocks_02_diff_2k.jpg-22aa20a9ae42dd05d75fc88136a86c0d.ctex"]
+dest_files=["res://.godot/imported/aerial_rocks_02_diff_2k.jpg-22aa20a9ae42dd05d75fc88136a86c0d.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

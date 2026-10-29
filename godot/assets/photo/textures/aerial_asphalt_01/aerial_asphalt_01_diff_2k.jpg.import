@@ -3,19 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cg0h12d0lhfbk"
-path="res://.godot/imported/aerial_asphalt_01_diff_2k.jpg-134da87ec2a0ddba2f6b8df58b46ba31.ctex"
+path.s3tc="res://.godot/imported/aerial_asphalt_01_diff_2k.jpg-134da87ec2a0ddba2f6b8df58b46ba31.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/photo/textures/aerial_asphalt_01/aerial_asphalt_01_diff_2k.jpg"
-dest_files=["res://.godot/imported/aerial_asphalt_01_diff_2k.jpg-134da87ec2a0ddba2f6b8df58b46ba31.ctex"]
+dest_files=["res://.godot/imported/aerial_asphalt_01_diff_2k.jpg-134da87ec2a0ddba2f6b8df58b46ba31.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

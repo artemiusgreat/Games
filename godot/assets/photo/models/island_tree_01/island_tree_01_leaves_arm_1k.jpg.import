@@ -3,19 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bc18yh7ludqu2"
-path="res://.godot/imported/island_tree_01_leaves_arm_1k.jpg-c1b7a2d154d8d876e5a5144ac383cf4c.ctex"
+path.s3tc="res://.godot/imported/island_tree_01_leaves_arm_1k.jpg-c1b7a2d154d8d876e5a5144ac383cf4c.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/photo/models/island_tree_01/island_tree_01_leaves_arm_1k.jpg"
-dest_files=["res://.godot/imported/island_tree_01_leaves_arm_1k.jpg-c1b7a2d154d8d876e5a5144ac383cf4c.ctex"]
+dest_files=["res://.godot/imported/island_tree_01_leaves_arm_1k.jpg-c1b7a2d154d8d876e5a5144ac383cf4c.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
