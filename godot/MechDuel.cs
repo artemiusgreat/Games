@@ -3313,11 +3313,14 @@ public partial class MechDuel : Node3D
                     // owner reported: cursor on target, hits low).
                     _cdLaser = 0f;
                     Vector3 conv = Vector3.Zero; bool onCrown = false;
+                    var crownCtr = new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z);
                     for (float pp = 0.15f; pp >= -0.55f; pp -= 0.025f)
                     {
                         _player.TorsoPitch = pp;
                         conv = TorsoAimPoint();
-                        if (_aimTarget == "PROP") { onCrown = true; break; }
+                        // Any PROP along the view line is not enough —
+                        // the convergence must be ON this tree's crown.
+                        if (_aimTarget == "PROP" && conv.DistanceTo(crownCtr) < 3.5f) { onCrown = true; break; }
                     }
                     if (!onCrown) { WFail("no pitch puts the cursor on the crown"); return; }
                     FireLaser(conv);
