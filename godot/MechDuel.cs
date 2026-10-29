@@ -1206,17 +1206,22 @@ public partial class MechDuel : Node3D
         {
             var camPos = _cam.GlobalPosition;
             var viewHit = _hit.Ray(camPos, (_reticlePoint - camPos).Normalized(), 220f, "TW");
-            if (viewHit.Hit && viewHit.Point.DistanceTo(_player.RootPos) <= 60f)
+            // NO range cap (owner, round 13): a 60u limit from the
+            // chest-ray era silently rejected the cursor's hit on
+            // far targets and the shot fell back to the free point —
+            // in the sky. Whatever the cursor points at IS the
+            // target, at any range the cast can see.
+            if (viewHit.Hit)
             {
                 _aimTarget = viewHit.Target;
                 return viewHit.Point;
             }
         }
         // Fallback (round 11): the chest ray's MECH/PROP hit within
-        // 60u, else the free 40u point.
+        // weapon reach, else the free 40u point.
         var hit = _hit.Ray(from, dir, 200f, "TW");
         _aimTarget = hit.Hit ? hit.Target : "";
-        if (hit.Hit && hit.T <= 60f && (hit.Target == "ATLAS" || hit.Target == "PROP"))
+        if (hit.Hit && hit.T <= 140f && (hit.Target == "ATLAS" || hit.Target == "PROP"))
             return hit.Point;
         return _reticlePoint;
     }
@@ -3379,9 +3384,38 @@ public partial class MechDuel : Node3D
                         if (_fxScorches <= 0) WFail("no cannon scorch marks spawned");
                         if (_fxParticles <= 0) WFail("no particle systems spawned");
                         GD.Print("WPNTEST FX PASS laser sparks, rocket explosions and cannon scorches all fired");
-                        GD.Print("WPNTEST DONE");
-                        GetTree().Quit(0);
+                        _wEnvStep = 4; _wPhaseT = 0f;
                     }
+                }
+                else if (_wEnvStep == 4)
+                {
+                    // FAR TARGET (owner, round 13): at 85u the old
+                    // 60u convergence cap rejected the cursor's hit
+                    // and shots fell back to the free point — in the
+                    // sky. Hunt the pitch until the cursor sits on
+                    // the Atlas, then require exact laser damage.
+                    _hpEnemy = 340f;
+                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 45f), 45f), 0f);
+                    _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -40f), -40f), Mathf.Pi);
+                    _playerYaw = 0f; _enemyYaw = Mathf.Pi;
+                    _player.SetDrive(0f, 0f); _enemy.SetDrive(Mathf.Pi, 0f);
+                    _player.TorsoTwist = 0f;
+                    _playerVel = Vector3.Zero; _prevPlayerRoot = _player.RootPos;
+                    UpdateCamera(0f);
+                    Vector3 convF = Vector3.Zero; bool onFar = false;
+                    for (float pp = 0.30f; pp >= -0.30f; pp -= 0.01f)
+                    {
+                        _player.TorsoPitch = pp;
+                        convF = TorsoAimPoint();
+                        if (_aimTarget == "ATLAS") { onFar = true; break; }
+                    }
+                    if (!onFar) { WFail("no pitch puts the cursor on the far Atlas"); return; }
+                    _cdLaser = 0f;
+                    FireLaser(convF);
+                    if (340f - _hpEnemy < 11.9f) { WFail($"far cursor shot did not damage the Atlas (hp={_hpEnemy:F0})"); return; }
+                    GD.Print($"ENVTEST FAR-TARGET PASS cursor convergence at 85u: laser hit the Atlas for {340f - _hpEnemy:F0}");
+                    GD.Print("WPNTEST DONE");
+                    GetTree().Quit(0);
                 }
                 break;
         }
