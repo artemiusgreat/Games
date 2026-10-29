@@ -1209,17 +1209,32 @@ public partial class MechDuel : Node3D
             // MECH and PROP hits converge at ANY range (owner,
             // round 13): a 60u cap from the chest-ray era silently
             // rejected the cursor's hit on far targets and the shot
-            // fell back to the free point — in the sky. TERRAIN is
-            // backdrop, not a target: it converges only within 60u
-            // (the ground at your feet, a near slope). Aiming OVER a
-            // mech at a distant hillside must behave like aiming at
-            // the sky past him — converging on the backdrop would
-            // drag the muzzle's line down through the mech standing
-            // in front of it (the AIM sweep's raised-cursor case).
-            if (viewHit.Hit && (viewHit.Target != "TERRAIN" || viewHit.Point.DistanceTo(_player.RootPos) <= 60f))
+            // fell back to the free point — in the sky. TERRAIN
+            // converges within 60u outright (the ground at your
+            // feet, a near slope). Beyond 60u the hillside is a real
+            // target too (owner: shooting at the hill shot the sky)
+            // — but only when the chest's own line to that point is
+            // clear of mechs and props. If a mech stands in front of
+            // the backdrop, the hillside stays backdrop: converging
+            // on it would drag the muzzle's line down through the
+            // mech (the AIM sweep's raised-cursor case), so the shot
+            // follows the aim line over him instead.
+            if (viewHit.Hit)
             {
-                _aimTarget = viewHit.Target;
-                return viewHit.Point;
+                bool farTerrain = viewHit.Target == "TERRAIN" && viewHit.Point.DistanceTo(_player.RootPos) > 60f;
+                if (!farTerrain)
+                {
+                    _aimTarget = viewHit.Target;
+                    return viewHit.Point;
+                }
+                var toPt = viewHit.Point - from;
+                var block = _hit.Ray(from, toPt.Normalized(), toPt.Length(), "TW");
+                if (!block.Hit || block.Target == "TERRAIN")
+                {
+                    _aimTarget = "TERRAIN";
+                    return viewHit.Point;
+                }
+                // Blocked by a mech/prop: backdrop — fall through.
             }
         }
         // Fallback (round 11): the chest ray's MECH/PROP hit within
@@ -3419,6 +3434,21 @@ public partial class MechDuel : Node3D
                     FireLaser(convF);
                     if (340f - _hpEnemy < 11.9f) { WFail($"far cursor shot did not damage the Atlas (hp={_hpEnemy:F0})"); return; }
                     GD.Print($"ENVTEST FAR-TARGET PASS cursor convergence at 85u: laser hit the Atlas for {340f - _hpEnemy:F0}");
+                    // FAR HILL (owner, round 13): the cursor on a
+                    // distant hillside with a clear line must
+                    // converge on the hill itself, not the sky. The
+                    // Atlas steps aside so nothing blocks the line.
+                    _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), Mathf.Pi);
+                    UpdateCamera(0f);
+                    Vector3 convH = Vector3.Zero; bool onHill = false;
+                    for (float pp = 0.30f; pp >= -0.30f; pp -= 0.01f)
+                    {
+                        _player.TorsoPitch = pp;
+                        convH = TorsoAimPoint();
+                        if (_aimTarget == "TERRAIN" && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
+                    }
+                    if (!onHill) { WFail("no pitch puts the cursor on the far hillside"); return; }
+                    GD.Print($"ENVTEST FAR-HILL PASS cursor converges on the hillside at {convH.DistanceTo(_player.RootPos):F0}u with a clear line");
                     GD.Print("WPNTEST DONE");
                     GetTree().Quit(0);
                 }
