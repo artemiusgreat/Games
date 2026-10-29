@@ -4513,10 +4513,17 @@ public partial class MechDuel : Node3D
         if (_labOpen)
         {
             // The duel waits behind the MechLab: slow orbit backdrop.
-            float ang = (float)Time.GetTicksMsec() / 1000f * 0.12f;
-            var center = _player.RootPos + Vector3.Up * 6.5f;
-            _cam.GlobalPosition = center + new Vector3(Mathf.Sin(ang) * 21f, 7.5f, Mathf.Cos(ang) * 21f);
+            // Framed for the paperdoll (owner): closer than before
+            // (21u left the mech small behind the dim backdrop) and
+            // the look target is offset sideways so the mech stands
+            // in the paperdoll area on the right, not behind the
+            // weapon catalog on the left.
+            float ang = (float)Time.GetTicksMsec() / 1000f * 0.09f;
+            var center = _player.RootPos + Vector3.Up * 6.0f;
+            var back = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
+            _cam.GlobalPosition = center + back * 15.5f + Vector3.Up * 5.0f;
             _cam.LookAt(center, Vector3.Up);
+            _cam.RotateY(0.22f); // pan left in camera space: the mech shifts right, into the paperdoll area, at any orbit angle
             return;
         }
 
