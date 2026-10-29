@@ -56,13 +56,18 @@ public partial class MechLab : Control
 
     public override void _Ready()
     {
-        SetAnchorsPreset(LayoutPreset.FullRect);
+        // Anchors AND offsets: SetAnchorsPreset alone left this
+        // code-created control at a 0x0 rect under its CanvasLayer
+        // (measured live), which collapsed the backdrop ColorRect
+        // to nothing while the containers overflowed visibly — the
+        // lab's text sat directly on the bright scene.
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 1f) }; // fully opaque: text contrast cannot depend on the scene behind
-        bg.SetAnchorsPreset(LayoutPreset.FullRect);
+        bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
         var root = new VBoxContainer();
-        root.SetAnchorsPreset(LayoutPreset.FullRect);
+        root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         root.AddThemeConstantOverride("separation", 10);
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
@@ -73,6 +78,7 @@ public partial class MechLab : Control
         root.AddChild(title);
         var sub = new Label { Text = "Drag a weapon onto a hardpoint — or click a weapon, then click a hardpoint. Type and tonnage must fit. Click an occupied hardpoint with nothing selected to strip just that slot." };
         sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+        sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
 
         var mid = new HBoxContainer();
@@ -99,15 +105,16 @@ public partial class MechLab : Control
             row.AddThemeFontSizeOverride("font_size", 14);
             row.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
             row.AddThemeColorOverride("font_hover_color", new Color(1f, 0.98f, 0.9f));
-            var rowSb = new StyleBoxFlat { BgColor = new Color(0.09f, 0.12f, 0.16f, 1f) };
-            rowSb.SetCornerRadiusAll(4);
-            row.AddThemeStyleboxOverride("normal", rowSb);
-            var rowSbH = new StyleBoxFlat { BgColor = new Color(0.16f, 0.21f, 0.28f, 1f) };
-            rowSbH.SetCornerRadiusAll(4);
-            row.AddThemeStyleboxOverride("hover", rowSbH);
-            var rowSbP = new StyleBoxFlat { BgColor = new Color(0.22f, 0.28f, 0.36f, 1f) };
-            rowSbP.SetCornerRadiusAll(4);
-            row.AddThemeStyleboxOverride("pressed", rowSbP);
+            // Inner padding around the weapon text (owner).
+            StyleBoxFlat RowBox(Color c)
+            {
+                var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 10f, ContentMarginRight = 10f, ContentMarginTop = 5f, ContentMarginBottom = 5f };
+                b.SetCornerRadiusAll(4);
+                return b;
+            }
+            row.AddThemeStyleboxOverride("normal", RowBox(new Color(0.09f, 0.12f, 0.16f, 1f)));
+            row.AddThemeStyleboxOverride("hover", RowBox(new Color(0.16f, 0.21f, 0.28f, 1f)));
+            row.AddThemeStyleboxOverride("pressed", RowBox(new Color(0.22f, 0.28f, 0.36f, 1f)));
             var captured = w;
             row.Pressed += () =>
             {
@@ -192,7 +199,7 @@ public partial class MechLab : Control
         _jetsBtn.Pressed += () =>
         {
             Loadout.JumpJets = !Loadout.JumpJets;
-            SetHint(Loadout.JumpJets ? "Jump jets fitted — SPACE fires them in the duel." : "Jump jets removed — this mech stays grounded.");
+            SetHint(Loadout.JumpJets ? "Jump jets fitted — hold SPACE in the duel to fly." : "Jump jets removed — this mech stays grounded.");
             Refresh();
         };
         btnRow.AddChild(_jetsBtn);
