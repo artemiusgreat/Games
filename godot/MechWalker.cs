@@ -87,17 +87,24 @@ public partial class MechWalker : Node3D
     private float _yawRate;
     private float _speed;
     private float _jumpH, _jumpVel;
+    private float _groundY; // gait-followed root height; the jump arc rides on top unsmoothed
     public bool JumpJets; // thrusters fitted AND chassis capable (set by the duel from spec+loadout)
+    public float JumpCharge = 1f; // thruster load 0..1: a jump spends it all, ~5s ground recharge
+    public float JumpHeight => _jumpH;
     public bool Airborne => _jumpH > 0.02f;
 
-    // Jump jets: a ballistic hop on top of the gait's root height.
-    // Returns false when jets are absent or the mech is already
-    // airborne / knocked down.
+    // Jump jets (owner): enough load to lift the mech OVER an
+    // enemy — launch 28 u/s against gravity 24 gives a ~16u apex,
+    // feet above a 14u Atlas. Costs the full charge; auto-recharges
+    // on the ground in ~5s, like a long weapon cooldown. Returns
+    // false when jets are absent, the charge is short, or the mech
+    // is already airborne / knocked down.
     public bool TryJump()
     {
-        if (!JumpJets || _jumpH > 0.001f || _fallT >= 0f) return false;
-        _jumpVel = 9.5f;
+        if (!JumpJets || JumpCharge < 0.999f || _jumpH > 0.001f || _fallT >= 0f) return false;
+        _jumpVel = 28f;
         _jumpH = 0.001f;
+        JumpCharge = 0f;
         return true;
     }
     private float _targetSpeed;
@@ -370,7 +377,8 @@ public partial class MechWalker : Node3D
             leg.CurBasisW = leg.PlantBasisW;
             leg.HasPrev = false;
         }
-        _rootPos.Y = DesiredRootY();
+        _groundY = DesiredRootY();
+        _rootPos.Y = _groundY;
         RefreshPose();
     }
 
@@ -492,6 +500,8 @@ public partial class MechWalker : Node3D
             _jumpH += _jumpVel * h;
             if (_jumpH <= 0f) { _jumpH = 0f; _jumpVel = 0f; }
         }
+        if (_jumpH <= 0f && JumpCharge < 1f)
+            JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // ~5s auto-recharge, grounded only
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
         _prevYaw = _legsYaw;
 
@@ -538,14 +548,15 @@ public partial class MechWalker : Node3D
         bool doubleSupport = _legL.Planted && _legR.Planted;
         float bobT = doubleSupport ? -0.09f : -0.02f;
         _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-6f * h));
-        float yT = DesiredRootY() + _jumpH;
+        float yT = DesiredRootY();
         // Knocked down: the hips drop to rest height (body on the ground).
         if (_fallAmt > 0.001f)
         {
             float restY = Mathf.Min(_legL.SoleTarget.Y, _legR.SoleTarget.Y) + 2.0f;
             yT = Mathf.Lerp(yT, restY, _fallAmt);
         }
-        _rootPos.Y = Mathf.Lerp(_rootPos.Y, yT, 1f - Mathf.Exp(-8f * h));
+        _groundY = Mathf.Lerp(_groundY, yT, 1f - Mathf.Exp(-8f * h));
+        _rootPos.Y = _groundY + _jumpH; // the arc itself is NOT smoothed — full ballistic height
 
         var swayT = Vector3.Zero;
         if (_legL.StepT >= 0f) swayT = _rootBasis * new Vector3(_legR.HomeLocal.X * _scaleF, 0f, 0f) * 0.22f;
