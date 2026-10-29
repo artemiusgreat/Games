@@ -1555,7 +1555,11 @@ public partial class MechDuel : Node3D
         // it. +0.9u on prop cylinders only; mechs stay exact.
         var hit = _hit.Ray(muzzle, dir, 140f, "TW", 0.9f);
         bool ppc = _defEnergy.Id == "ppc";
-        SpawnBeam(muzzle, hit.Point, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
+        // The beam ends where the shot ends (owner): on a hit,
+        // the hit point; on a miss — the sky — the cursor's own
+        // point. It used to draw to the raycast's no-hit endpoint
+        // (muzzle + dir x 140), streaking far past the reticle.
+        SpawnBeam(muzzle, hit.Hit ? hit.Point : aimPoint, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
         SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
         if (hit.Hit)
         {
@@ -2910,6 +2914,16 @@ public partial class MechDuel : Node3D
                     FireLaser(_aimPoint);
                     if (_atlasDmgEvents > 1)
                     { GD.PrintErr("DUEL FAIL: cursor above the Atlas but a shot still hit him"); GetTree().Quit(1); break; }
+                    // Beam length on a miss (owner): the ray stops
+                    // at the cursor's point — it must NOT run to
+                    // the raycast's 140u no-hit endpoint.
+                    float beamLen = -1f;
+                    for (int i = _fx.Count - 1; i >= 0; i--)
+                        if (_fx[i].Node is MeshInstance3D bmi && bmi.Mesh is BoxMesh bxm) { beamLen = bxm.Size.Z; break; }
+                    float wantLen = PlayerMuzzle(true).DistanceTo(_aimPoint);
+                    if (beamLen < 0f || Mathf.Abs(beamLen - wantLen) > 3f)
+                    { GD.PrintErr($"DUEL FAIL: sky-shot beam runs {beamLen:F1}u but the cursor point is {wantLen:F1}u from the muzzle"); GetTree().Quit(1); break; }
+                    GD.Print($"DUEL BEAMEND PASS sky-shot beam stops at the cursor point ({beamLen:F1}u, not the 140u raycast end)");
                     // The torso clamp is ±135° (a 270° total arc):
                     // an over-range command must be clamped by the
                     // setter, never reaching fully backward.
