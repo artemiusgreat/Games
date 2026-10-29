@@ -15,6 +15,7 @@ public partial class MechLab : Control
 
     private Label _hint;
     private Label _tonnage;
+    private Button _jetsBtn;
     private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
     private string _selectedWeapon; // click-to-assign path
 
@@ -166,6 +167,14 @@ public partial class MechLab : Control
         var strip = new Button { Text = "STRIP ALL" };
         strip.Pressed += () => { Loadout.Strip(); SetHint("All hardpoints emptied."); Refresh(); };
         btnRow.AddChild(strip);
+        _jetsBtn = new Button();
+        _jetsBtn.Pressed += () =>
+        {
+            Loadout.JumpJets = !Loadout.JumpJets;
+            SetHint(Loadout.JumpJets ? "Jump jets fitted — SPACE fires them in the duel." : "Jump jets removed — this mech stays grounded.");
+            Refresh();
+        };
+        btnRow.AddChild(_jetsBtn);
         var start = new Button { Text = "DEPLOY  ▶" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
@@ -181,6 +190,13 @@ public partial class MechLab : Control
 
     public void Refresh()
     {
+        if (_jetsBtn != null)
+        {
+            _jetsBtn.Text = Spec.JumpCapable
+                ? $"JUMP JETS: {(Loadout.JumpJets ? "FITTED" : "NONE")}"
+                : "JUMP JETS: N/A — CHASSIS";
+            _jetsBtn.Disabled = !Spec.JumpCapable;
+        }
         foreach (var (id, panel) in _slots)
         {
             var wid = Loadout.WeaponIn(id);
