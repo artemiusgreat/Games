@@ -15,6 +15,7 @@ public sealed class MechSpec
     public string Id;
     public string Name;
     public float Tonnage;
+    public bool JumpCapable; // chassis can mount jump jets (thrusters)
     public SlotDef[] Slots;
 
     public SlotDef Slot(string id)
@@ -28,7 +29,7 @@ public static class MechSpecs
 {
     public static readonly MechSpec TimberWolf = new()
     {
-        Id = "timberwolf", Name = "TIMBER WOLF", Tonnage = 75f,
+        Id = "timberwolf", Name = "TIMBER WOLF", Tonnage = 75f, JumpCapable = true,
         Slots = new[]
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
@@ -40,7 +41,7 @@ public static class MechSpecs
 
     public static readonly MechSpec Atlas = new()
     {
-        Id = "atlas", Name = "ATLAS", Tonnage = 100f,
+        Id = "atlas", Name = "ATLAS", Tonnage = 100f, JumpCapable = false,
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 18f },
@@ -53,6 +54,10 @@ public static class MechSpecs
 public sealed class LoadoutState
 {
     public readonly System.Collections.Generic.Dictionary<string, string> Equipped = new();
+
+    // Jump jets (thrusters) fitted. Only meaningful on a JumpCapable
+    // chassis; the duel's effective rule is spec.JumpCapable && JumpJets.
+    public bool JumpJets;
 
     public string WeaponIn(string slotId) =>
         Equipped.TryGetValue(slotId, out var w) ? w : null;
@@ -104,6 +109,7 @@ public sealed class LoadoutState
     public static LoadoutState DefaultTimberWolf()
     {
         var l = new LoadoutState();
+        l.JumpJets = true; // default fit: thrusters loaded
         l.Equipped["arm_L"] = "large_laser";
         l.Equipped["arm_R"] = "autocannon";
         l.Equipped["pod_L"] = "lrm";
