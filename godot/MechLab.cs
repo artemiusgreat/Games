@@ -189,10 +189,10 @@ public partial class MechLab : Control
             // Panel centers as fractions of the area, by slot id.
             var centers = new System.Collections.Generic.Dictionary<string, Vector2>
             {
-                ["pod_L"] = new Vector2(0.26f, 0.13f),
-                ["pod_R"] = new Vector2(0.74f, 0.13f),
-                ["arm_L"] = new Vector2(0.17f, 0.55f),
-                ["arm_R"] = new Vector2(0.83f, 0.55f),
+                ["pod_L"] = new Vector2(0.24f, 0.11f),
+                ["pod_R"] = new Vector2(0.76f, 0.11f),
+                ["arm_L"] = new Vector2(0.15f, 0.60f),
+                ["arm_R"] = new Vector2(0.85f, 0.60f),
             };
             foreach (var (id, panel) in _panels)
             {
@@ -204,17 +204,37 @@ public partial class MechLab : Control
             }
             QueueRedraw();
         }
+        // Where each hardpoint lives on the machine, as fractions
+        // of the paperdoll area (tuned to the showroom framing).
+        private static readonly System.Collections.Generic.Dictionary<string, Vector2> Anchors = new()
+        {
+            ["pod_L"] = new Vector2(0.30f, 0.27f),
+            ["pod_R"] = new Vector2(0.64f, 0.27f),
+            ["arm_L"] = new Vector2(0.16f, 0.47f),
+            ["arm_R"] = new Vector2(0.76f, 0.45f),
+        };
+
         public override void _Draw()
         {
             if (Size.X < 10f) return;
-            var hub = Size * new Vector2(0.5f, 0.36f);
-            var line = new Color(0.5f, 0.58f, 0.66f, 0.45f);
-            foreach (var (_, panel) in _panels)
-                DrawLine(panel.Position + panel.Size * 0.5f, hub, line, 2f);
-            // center node: a small diamond over the mech's chest
-            var d = 7f;
-            DrawColoredPolygon(new[] { hub + new Vector2(0, -d), hub + new Vector2(d, 0), hub + new Vector2(0, d), hub + new Vector2(-d, 0) },
-                new Color(0.95f, 0.8f, 0.45f, 0.8f));
+            var line = new Color(0.5f, 0.58f, 0.66f, 0.5f);
+            var dot = new Color(0.95f, 0.8f, 0.45f, 0.9f);
+            foreach (var (id, panel) in _panels)
+            {
+                if (!Anchors.TryGetValue(id, out var af)) continue;
+                var anchor = af * Size;
+                // The line runs from the panel's EDGE (not its
+                // center, not a shared hub) to the slot's own
+                // place on the mech (owner).
+                var rect = new Rect2(panel.Position, panel.Size);
+                var c = rect.GetCenter();
+                var dir = anchor - c;
+                float t = 1f;
+                if (Mathf.Abs(dir.X) > 0.001f) t = Mathf.Min(t, (rect.Size.X * 0.5f) / Mathf.Abs(dir.X));
+                if (Mathf.Abs(dir.Y) > 0.001f) t = Mathf.Min(t, (rect.Size.Y * 0.5f) / Mathf.Abs(dir.Y));
+                DrawLine(c + dir * t, anchor, line, 2f);
+                DrawCircle(anchor, 3.5f, dot);
+            }
         }
     }
 
@@ -333,7 +353,7 @@ public partial class MechLab : Control
         mid.AddChild(paperdoll);
         foreach (var slot in Spec.Slots)
         {
-            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(200, 96) };
+            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(190, 92) };
             var sb = new StyleBoxFlat
             {
                 BgColor = new Color(0.06f, 0.085f, 0.12f, 0.92f),
@@ -347,6 +367,7 @@ public partial class MechLab : Control
             var vb = new VBoxContainer();
             panel.AddChild(vb);
             var head = new Label { Text = $"{slot.Display} — {slot.Type} · max {slot.MaxWeight:F0}t" };
+            head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
             var tileRow = new HBoxContainer();
