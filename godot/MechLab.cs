@@ -121,6 +121,17 @@ public partial class MechLab : Control
                 Poly(new Color(1f, 0.55f, 0.2f), new Vector2(21, 39), new Vector2(27, 39), new Vector2(24, 45));
                 break;
         }
+        // Contrast band (owner): the abbreviation sits on this
+        // dark strip instead of over the bright silhouette.
+        var band = new Color(0.04f, 0.05f, 0.07f, 1f);
+        for (int y = 37; y < 47; y++)
+            for (int x = 1; x < 47; x++)
+                img.SetPixel(x, y, band);
+        for (int i = 0; i < 48; i++)
+        {
+            img.SetPixel(i, 0, border); img.SetPixel(i, 47, border);
+            img.SetPixel(0, i, border); img.SetPixel(47, i, border);
+        }
         var tex = ImageTexture.CreateFromImage(img);
         _icons[w.Id] = tex;
         return tex;
@@ -211,25 +222,37 @@ public partial class MechLab : Control
         var catTitle = new Label { Text = "WEAPONS" };
         catTitle.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
         catBox.AddChild(catTitle);
+        // The catalog scrolls (owner): the full list outgrows the
+        // screen height once tiles made the rows taller.
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
+        scroll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        catBox.AddChild(scroll);
+        var rowsBox = new VBoxContainer();
+        rowsBox.AddThemeConstantOverride("separation", 4);
+        rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        scroll.AddChild(rowsBox);
         foreach (var w in WeaponCatalog.All)
         {
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
-            var rowPanel = new PanelContainer();
+            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46) };
             StyleBoxFlat RowBox(Color c)
             {
-                var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 10f, ContentMarginRight = 10f, ContentMarginTop = 5f, ContentMarginBottom = 5f };
+                var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
                 b.SetCornerRadiusAll(4);
                 return b;
             }
             rowPanel.AddThemeStyleboxOverride("panel", RowBox(new Color(0.09f, 0.12f, 0.16f, 1f)));
             var hb = new HBoxContainer();
-            hb.AddThemeConstantOverride("separation", 10);
+            hb.AddThemeConstantOverride("separation", 14); // clear gap between tile and name (owner)
             rowPanel.AddChild(hb);
             var drag = new DragTile { WeaponId = w.Id, Lab = this };
             drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
             drag.MouseExited += () => drag.Modulate = Colors.White;
-            hb.AddChild(TileVisual(w, 38, drag));
+            var tileCtl = TileVisual(w, 34, drag);
+            tileCtl.SizeFlagsVertical = SizeFlags.ShrinkCenter; // the tile fits INSIDE the row band (owner)
+            hb.AddChild(tileCtl);
             var lab = new Label
             {
                 Text = $"{w.Name}   ·   {w.Weight:F0}t   ·   {w.Type}   ·   dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")}   ·   cd {w.Cooldown:F2}s",
@@ -239,7 +262,7 @@ public partial class MechLab : Control
             lab.AddThemeFontSizeOverride("font_size", 14);
             lab.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
             hb.AddChild(lab);
-            catBox.AddChild(rowPanel);
+            rowsBox.AddChild(rowPanel);
         }
 
         // -- Hardpoints (right): paperdoll-ish 2x2 --
@@ -269,7 +292,7 @@ public partial class MechLab : Control
             var tileRow = new HBoxContainer();
             tileRow.AddThemeConstantOverride("separation", 10);
             vb.AddChild(tileRow);
-            panel.Tile = new Control { CustomMinimumSize = new Vector2(46, 46) };
+            panel.Tile = new Control { CustomMinimumSize = new Vector2(46, 46), MouseFilter = MouseFilterEnum.Ignore }; // input falls through to the panel: right-click on the tile still strips the slot
             panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
             panel.TileTex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             panel.Tile.AddChild(panel.TileTex);
