@@ -239,6 +239,8 @@ public partial class MechDuel : Node3D
     private bool _tStrideLogged;
     private Vector3 _tRunFrom;
     private float _tRunMark = -1f;
+    private float _tJumpApex, _tJumpGround;
+    private bool _tJumpTried;
 
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
@@ -1099,6 +1101,7 @@ public partial class MechDuel : Node3D
             Input.IsPhysicalKeyPressed(Key.W), Input.IsPhysicalKeyPressed(Key.S),
             Input.IsPhysicalKeyPressed(Key.A), Input.IsPhysicalKeyPressed(Key.D),
             Input.IsPhysicalKeyPressed(Key.Shift));
+        if (Input.IsPhysicalKeyPressed(Key.Space)) _player.TryJump(); // jump jets (fitted mechs only)
     }
 
     // The player's drive, with the keys passed in so the duel harness
@@ -1529,6 +1532,11 @@ public partial class MechDuel : Node3D
 
     private void ApplyLoadout()
     {
+        // Jump jets (owner): effective only when the chassis can
+        // mount them AND the loadout has them fitted. The Atlas
+        // chassis cannot — it never jumps.
+        _player.JumpJets = MechSpecs.TimberWolf.JumpCapable && _loadout.JumpJets;
+        _enemy.JumpJets = MechSpecs.Atlas.JumpCapable;
         _defEnergy = WeaponCatalog.ById(_loadout.WeaponIn("arm_L"));
         _defBallistic = WeaponCatalog.ById(_loadout.WeaponIn("arm_R"));
         _defPodL = WeaponCatalog.ById(_loadout.WeaponIn("pod_L"));
@@ -2146,7 +2154,7 @@ public partial class MechDuel : Node3D
         var rowLrm = CdRow("3 LRM");
         _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
         var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
-        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire";
+        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · SPACE — jump jets";
         midBox.AddChild(hint);
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         midBox.AddChild(_lblWeaponStatus);
@@ -4175,6 +4183,35 @@ public partial class MechDuel : Node3D
                     if (avg < 6.4f) { TFail($"run steady speed {avg:F2} < 6.4"); return; }
                     if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
                     GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");
+                    // JUMP setup: flat spawn, jets fitted on the player.
+                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 34f), 34f), 0f);
+                    _player.JumpJets = true;
+                    _tJumpApex = 0f; _tJumpTried = false;
+                    _tPhase = 4; _tPhaseT = 0;
+                }
+                break;
+            case 4: // JUMP: jets fitted -> ballistic hop; unfitted -> nothing.
+                _player.SetDrive(0f, 0f);
+                _enemy.SetDrive(_enemy.LegsYaw, 0f);
+                if (!_tJumpTried && _tPhaseT > 0.6)
+                {
+                    _tJumpGround = _player.RootPos.Y;
+                    if (_enemy.TryJump()) { TFail("Atlas jumped without jets"); return; }
+                    if (!_player.TryJump()) { TFail("fitted player refused to jump"); return; }
+                    _tJumpTried = true;
+                }
+                if (_tJumpTried)
+                {
+                    float hgt = _player.RootPos.Y - _tJumpGround;
+                    if (hgt > _tJumpApex) _tJumpApex = hgt;
+                }
+                if (_tPhaseT > 2.6)
+                {
+                    float settle = Mathf.Abs(_player.RootPos.Y - _tJumpGround);
+                    GD.Print($"JUMPTEST apex={_tJumpApex:F2} settle={settle:F3}");
+                    if (_tJumpApex < 1.0f) { TFail($"jump apex {_tJumpApex:F2} < 1.0"); return; }
+                    if (settle > 0.2f) { TFail($"mech did not land (settle {settle:F3})"); return; }
+                    GD.Print("JUMPTEST PASS jets lift the mech ~1.9u and set it back down; the unfitted Atlas cannot jump");
                     GD.Print("TERRAINTEST DONE");
                     GetTree().Quit(0);
                     _tPhase = 99;
