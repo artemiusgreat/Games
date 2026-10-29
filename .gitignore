@@ -16,3 +16,6 @@ unity/UnityPoc/UserSettings/
 [Bb]in/
 [Oo]bj/
 .godot/
+
+# Photoreal probe: raw Poly Haven scans are re-fetched + decimated locally (see godot/assets/photo/*.py)
+godot/assets/photo/models_raw/
