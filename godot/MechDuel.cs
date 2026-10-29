@@ -128,6 +128,7 @@ public partial class MechDuel : Node3D
     private MechWalker _enemy;
     private Camera3D _cam;
     private bool _test;
+    private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
     private double _simT;
 
     // interactive state
@@ -272,6 +273,7 @@ public partial class MechDuel : Node3D
             if (arg == "--weapons-test") _weaponsTest = true;
             if (arg == "--breakable-test") _breakTest = true;
             if (arg == "--terrain-test") _terrainTest = true;
+            if (arg == "--lab-shot") _labShot = true;
         }
         _hit = new HitModel();
 
@@ -4496,6 +4498,14 @@ public partial class MechDuel : Node3D
 
     public override void _Process(double delta)
     {
+        if (_labShot && Time.GetTicksMsec() > 20000)
+        {
+            _labShot = false;
+            GetViewport().GetTexture().GetImage().SavePng("/tmp/lab_live.png");
+            GD.Print("LABSHOT saved");
+            GetTree().Quit();
+            return;
+        }
 
         if (_player == null || !_player.IsReady || _enemy == null || !_enemy.IsReady) return;
         float dt = (float)delta;

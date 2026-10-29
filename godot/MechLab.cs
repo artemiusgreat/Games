@@ -62,7 +62,7 @@ public partial class MechLab : Control
         // to nothing while the containers overflowed visibly — the
         // lab's text sat directly on the bright scene.
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 1f) }; // fully opaque: text contrast cannot depend on the scene behind
+        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.85f) }; // translucent (owner): the mech stays visible behind the lab, dimmed enough to read against
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
