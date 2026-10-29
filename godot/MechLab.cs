@@ -324,7 +324,7 @@ public partial class MechLab : Control
                 b.SetCornerRadiusAll(4);
                 return b;
             }
-            rowPanel.AddThemeStyleboxOverride("panel", RowBox(new Color(0.09f, 0.12f, 0.16f, 1f)));
+            rowPanel.AddThemeStyleboxOverride("panel", RowBox(new Color(0.09f, 0.12f, 0.16f, 0.66f))); // semi-transparent (owner): the scene shows through the weapon list
             var hb = new HBoxContainer();
             hb.AddThemeConstantOverride("separation", 16); // clear gap between tile and name (owner)
             rowPanel.AddChild(hb);
