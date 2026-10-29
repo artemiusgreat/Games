@@ -134,6 +134,10 @@ public partial class MechDuel : Node3D
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private int _photoPhase;
     private float _photoT, _fpsSum;
+    private ulong _warmStart; // photo-mode shader warmup (lab): wall-clock start, 0 = not begun
+    private int _warmPose;    // warmup camera pose index (4 = done)
+    private int _warmPoseFrames; // frames rendered at the current pose
+    private bool _warmFx;   // warmup FX burst fired
     private int _fpsN;
     private double _simT;
 
@@ -4616,6 +4620,55 @@ public partial class MechDuel : Node3D
             // (plus a barely-there sway) replaces the orbit: the
             // paperdoll mapping only makes sense from the front.
             _labLight.Visible = true;
+            if (_photo && _warmPose < 4)
+            {
+                // Shader warmup (#6, photo mode only): while the lab
+                // is up, sweep the camera through the duel's
+                // viewpoints and fire one underground FX burst, so
+                // every pipeline — splat terrain, foliage, fog,
+                // beams, particles — compiles BEFORE the duel
+                // instead of hitching mid-fight. Timing is
+                // wall-clock with a 2-frame minimum per pose, so the
+                // sweep completes on any hardware (a raw delta sum
+                // was skipped entirely by llvmpipe's giant first
+                // frames).
+                if (_warmStart == 0) _warmStart = Time.GetTicksMsec();
+                _warmPoseFrames++;
+                ulong warmEl = Time.GetTicksMsec() - _warmStart;
+                var wc = _player.RootPos + Vector3.Up * 5.6f;
+                switch (_warmPose)
+                {
+                    case 0:
+                        _cam.GlobalPosition = new Vector3(58f, 34f, 64f);
+                        _cam.LookAt(new Vector3(-6f, 0f, -6f), Vector3.Up);
+                        break;
+                    case 1:
+                        _cam.GlobalPosition = new Vector3(-21f, Main.HeightAt(-21f, 0f) + 2.1f, -1f);
+                        _cam.LookAt(_player.RootPos + Vector3.Up * 5.5f, Vector3.Up);
+                        break;
+                    case 2:
+                        _cam.GlobalPosition = new Vector3(-88f, 44f, 90f);
+                        _cam.LookAt(new Vector3(12f, 0f, -12f), Vector3.Up);
+                        break;
+                    default:
+                        _cam.GlobalPosition = wc + new Vector3(10f, 3.4f, 10f);
+                        _cam.LookAt(wc, Vector3.Up);
+                        break;
+                }
+                _labLight.GlobalRotation = _cam.GlobalRotation;
+                if (!_warmFx && _warmPose >= 1)
+                {
+                    _warmFx = true;
+                    var under = new Vector3(0f, -60f, 0f);
+                    SpawnBeam(under, under + new Vector3(6f, 2f, 0f), new Color(1f, 0.2f, 0.15f), 0.15f, 0.4f);
+                    SpawnExplosionFx(under + new Vector3(4f, 0f, 4f));
+                    SpawnImpactLight(under, new Color(1f, 0.6f, 0.3f), 3f, 12f, 0.4f);
+                    GD.Print("PHOTO warmup: camera sweep + underground FX burst");
+                }
+                ulong sliceEnd = _warmPose switch { 0 => 900UL, 1 => 1800UL, 2 => 2600UL, _ => 3400UL };
+                if (warmEl > sliceEnd && _warmPoseFrames >= 2) { _warmPose++; _warmPoseFrames = 0; }
+                return;
+            }
             float sway = Mathf.Sin((float)Time.GetTicksMsec() / 1000f * 0.15f) * 0.045f;
             var center = _player.RootPos + Vector3.Up * 5.6f;
             var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
