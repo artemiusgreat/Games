@@ -57,7 +57,7 @@ public partial class MechLab : Control
     public override void _Ready()
     {
         SetAnchorsPreset(LayoutPreset.FullRect);
-        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.965f) };
+        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 1f) }; // fully opaque: text contrast cannot depend on the scene behind
         bg.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
@@ -69,10 +69,10 @@ public partial class MechLab : Control
 
         var title = new Label { Text = $"MECH LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS" };
         title.AddThemeFontSizeOverride("font_size", 26);
-        title.AddThemeColorOverride("font_color", new Color(0.9f, 0.93f, 0.95f));
+        title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
-        var sub = new Label { Text = "Drag a weapon onto a hardpoint — or click a weapon, then click a hardpoint. Type and tonnage must fit." };
-        sub.AddThemeColorOverride("font_color", new Color(0.62f, 0.7f, 0.78f));
+        var sub = new Label { Text = "Drag a weapon onto a hardpoint — or click a weapon, then click a hardpoint. Type and tonnage must fit. Click an occupied hardpoint with nothing selected to strip just that slot." };
+        sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         root.AddChild(sub);
 
         var mid = new HBoxContainer();
@@ -85,7 +85,7 @@ public partial class MechLab : Control
         catBox.AddThemeConstantOverride("separation", 4);
         mid.AddChild(catBox);
         var catTitle = new Label { Text = "WEAPONS" };
-        catTitle.AddThemeColorOverride("font_color", new Color(0.62f, 0.7f, 0.78f));
+        catTitle.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
         catBox.AddChild(catTitle);
         foreach (var w in WeaponCatalog.All)
         {
@@ -97,6 +97,17 @@ public partial class MechLab : Control
                 Alignment = HorizontalAlignment.Left
             };
             row.AddThemeFontSizeOverride("font_size", 14);
+            row.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+            row.AddThemeColorOverride("font_hover_color", new Color(1f, 0.98f, 0.9f));
+            var rowSb = new StyleBoxFlat { BgColor = new Color(0.09f, 0.12f, 0.16f, 1f) };
+            rowSb.SetCornerRadiusAll(4);
+            row.AddThemeStyleboxOverride("normal", rowSb);
+            var rowSbH = new StyleBoxFlat { BgColor = new Color(0.16f, 0.21f, 0.28f, 1f) };
+            rowSbH.SetCornerRadiusAll(4);
+            row.AddThemeStyleboxOverride("hover", rowSbH);
+            var rowSbP = new StyleBoxFlat { BgColor = new Color(0.22f, 0.28f, 0.36f, 1f) };
+            rowSbP.SetCornerRadiusAll(4);
+            row.AddThemeStyleboxOverride("pressed", rowSbP);
             var captured = w;
             row.Pressed += () =>
             {
@@ -128,7 +139,7 @@ public partial class MechLab : Control
             var vb = new VBoxContainer();
             panel.AddChild(vb);
             var head = new Label { Text = $"{slot.Display} — {slot.Type} · max {slot.MaxWeight:F0}t" };
-            head.AddThemeColorOverride("font_color", new Color(0.62f, 0.7f, 0.78f));
+            head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
             panel.WeaponLabel = new Label();
             panel.WeaponLabel.AddThemeFontSizeOverride("font_size", 17);
@@ -141,6 +152,15 @@ public partial class MechLab : Control
                     var w = WeaponCatalog.ById(_selectedWeapon);
                     var err = Loadout.TryAssign(Spec, capturedSlot.Id, w);
                     SetHint(err ?? $"{w.Name} installed in the {capturedSlot.Display}.");
+                    Refresh();
+                }
+                else if (e is InputEventMouseButton mb3 && mb3.Pressed && mb3.ButtonIndex == MouseButton.Left
+                         && _selectedWeapon == null && Loadout.WeaponIn(capturedSlot.Id) != null)
+                {
+                    // Strip ONE slot by click (owner): left-click an
+                    // occupied hardpoint with no weapon selected.
+                    Loadout.Clear(capturedSlot.Id);
+                    SetHint($"{capturedSlot.Display} emptied.");
                     Refresh();
                 }
                 else if (e is InputEventMouseButton mb2 && mb2.Pressed && mb2.ButtonIndex == MouseButton.Right)
@@ -157,6 +177,7 @@ public partial class MechLab : Control
         // -- Bottom bar --
         _tonnage = new Label();
         _tonnage.AddThemeFontSizeOverride("font_size", 16);
+        _tonnage.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
         root.AddChild(_tonnage);
         _hint = new Label { Text = "Right-click a hardpoint to empty it." };
         _hint.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
