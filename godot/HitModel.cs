@@ -58,7 +58,9 @@ public sealed class HitModel
     public readonly List<PropCyl> Props = new();
     public readonly List<MechCap> Mechs = new();
 
-    public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId)
+    // inflateProps widens PROP cylinders for this cast only (the
+    // laser's hit thickness — the beam visual stays hair-thin).
+    public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId, float inflateProps = 0f)
     {
         dir = dir.Normalized();
         var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
@@ -66,7 +68,7 @@ public sealed class HitModel
         if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = "TERRAIN"; }
         foreach (var p in Props)
         {
-            float t = RayCylinder(from, dir, p.P, p.R, p.BaseY, p.Height, best.T);
+            float t = RayCylinder(from, dir, p.P, p.R + inflateProps, p.BaseY, p.Height, best.T);
             if (t >= 0f) { best.Hit = true; best.T = t; best.Target = "PROP"; }
         }
         foreach (var m in Mechs)

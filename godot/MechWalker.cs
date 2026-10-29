@@ -59,7 +59,7 @@ public partial class MechWalker : Node3D
     }
 
     private const float StandReachFactor = 0.90f;
-    private const float MaxTorsoTwist = 4.712389f; // 270 degrees (owner) // 180 degrees (owner)
+    private const float MaxTorsoTwist = 2.356194f; // ±135° = a 270° total arc (owner's clarification 2026-10-28: the torso must never reach fully backward — no walking forward while looking behind)
 
     private Config _cfg;
     private Node3D _inner;

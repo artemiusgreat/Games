@@ -140,6 +140,7 @@ public partial class MechDuel : Node3D
     // capture state
     private bool _frozen, _capturing;
     private string _pendingPath, _pendingTag, _camMode = "chase";
+    private float _camOffsetX = 2.2f; // chase-cam shoulder offset (owner: configurable, ,/.// keys)
     private System.Action _afterCapture;
 
     // test choreography
@@ -1022,6 +1023,16 @@ public partial class MechDuel : Node3D
         // click-to-capture below would hide the cursor the moment a
         // drag starts and kill drag-and-drop (owner's bug report).
         if (_labOpen) return;
+        if (e is InputEventKey ck && ck.Pressed && !ck.Echo && !_labOpen)
+        {
+            // Camera shoulder offset (owner, configurable in play):
+            // , / . slide the chase camera sideways, / recenters.
+            // The reticle is a projection of the 3D aim point, so it
+            // stays exactly on target at any offset.
+            if (ck.Keycode == Key.Comma) _camOffsetX = Mathf.Max(_camOffsetX - 0.4f, -5f);
+            else if (ck.Keycode == Key.Period) _camOffsetX = Mathf.Min(_camOffsetX + 0.4f, 5f);
+            else if (ck.Keycode == Key.Slash) _camOffsetX = 0f;
+        }
         if (e is InputEventKey rk && rk.Pressed && !rk.Echo && rk.Keycode == Key.R)
         {
             ResetDuel();
@@ -1480,7 +1491,12 @@ public partial class MechDuel : Node3D
         var muzzle = PlayerMuzzle(true);
         var toAim = aimPoint - muzzle;
         var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
-        var hit = _hit.Ray(muzzle, dir, 140f, "TW");
+        // The laser's hit area is wider than its visual beam (owner):
+        // at ranges inside the 40u convergence point the beam still
+        // travels offset from the cursor line by the muzzle parallax,
+        // so a dead-center aim at a narrow trunk could thread past
+        // it. +0.9u on prop cylinders only; mechs stay exact.
+        var hit = _hit.Ray(muzzle, dir, 140f, "TW", 0.9f);
         bool ppc = _defEnergy.Id == "ppc";
         SpawnBeam(muzzle, hit.Point, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.085f, 0.12f);
         SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
@@ -2807,7 +2823,14 @@ public partial class MechDuel : Node3D
                     FireLaser(_aimPoint);
                     if (_atlasDmgEvents > 1)
                     { GD.PrintErr("DUEL FAIL: cursor above the Atlas but a shot still hit him"); GetTree().Quit(1); break; }
-                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle IS the convergence point: laser hits low, misses high");
+                    // The torso clamp is ±135° (a 270° total arc):
+                    // an over-range command must be clamped by the
+                    // setter, never reaching fully backward.
+                    _player.TorsoTwist = 3.4f;
+                    if (_player.TorsoTwist > 2.3562f + 0.001f)
+                    { GD.PrintErr($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg exceeds the ±135 clamp"); _aimStep = 99; GetTree().Quit(1); break; }
+                    _player.TorsoTwist = 0f;
+                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle IS the convergence point: laser hits low, misses high; twist clamped at ±135");
                     // Rendered-pitch check next (steps 1-2): the AIM
                     // math above is property-based; these read the
                     // skeleton's actual facing after a StepWalker ran.
@@ -3240,7 +3263,13 @@ public partial class MechDuel : Node3D
                     _player.Teleport(fp2, MechWalker.YawOf((tc - fp2).Normalized()));
                     _playerYaw = _player.LegsYaw;
                     _cdLaser = 0f;
-                    FireLaser(new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z));
+                    // Aimed 0.7u OFF the trunk axis: a hair-thin hit
+                    // ray threads past the narrow trunk (the owner's
+                    // centered-aim miss); the laser's hit thickness
+                    // must still destroy the tree.
+                    var toT = tc - fp2; toT.Y = 0f;
+                    var latT = new Vector3(-toT.Z, 0f, toT.X).Normalized();
+                    FireLaser(new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z) + latT * 0.7f);
                     if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * 8f;
                     var aimT = new Vector3(tc.X, tc.Y + 2f, tc.Z);
@@ -3251,7 +3280,7 @@ public partial class MechDuel : Node3D
                     if (splinters < 5) { WFail($"tree threw only {splinters} splinters (want 5)"); return; }
                     int tp = _fxParticles - _wEnvParticles0;
                     if (tp < 3) { WFail($"tree death spawned only {tp} particle systems (want fire burst + burning wreck)"); return; }
-                    GD.Print($"ENVTEST TREE-HIT PASS one laser hit destroyed the tree, colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
+                    GD.Print($"ENVTEST TREE-HIT PASS one laser hit aimed 0.7u off-axis destroyed the tree (hit thickness), colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
                     _wEnvStep = 3;
                 }
                 else if (_wEnvStep == 3)
@@ -4108,12 +4137,14 @@ public partial class MechDuel : Node3D
         {
             var torsoYaw = _player.TorsoYawWorld;
             var back = -MechWalker.HeadingVec(torsoYaw);
-            var target = _player.RootPos + back * 15.0f + Vector3.Up * 15.5f;
+            var hv = MechWalker.HeadingVec(torsoYaw);
+            var rightV = new Vector3(-hv.Z, 0f, hv.X); // torso right — camera over the right shoulder
+            var target = _player.RootPos + back * 15.0f + Vector3.Up * 15.5f + rightV * _camOffsetX;
             if (delta > 0f)
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
                 _cam.GlobalPosition = target;
-            var look = _player.RootPos + Vector3.Up * 5.5f + MechWalker.HeadingVec(torsoYaw) * 10f;
+            var look = _player.RootPos + Vector3.Up * 5.5f + MechWalker.HeadingVec(torsoYaw) * 10f + rightV * _camOffsetX;
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)
