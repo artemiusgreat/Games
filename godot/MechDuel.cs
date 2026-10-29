@@ -1069,7 +1069,13 @@ public partial class MechDuel : Node3D
             // The mouse owns the torso's WORLD bearing (round 7);
             // MaintainTorsoWorldYaw turns it into a twist each frame.
             _torsoWorldYaw -= mm.Relative.X * 0.0030f;
-            _player.TorsoPitch -= mm.Relative.Y * 0.0025f;
+            // The mouse target roams free (owner, round 13): the
+            // wide aim pitch accumulates past the torso's mechanical
+            // clamp, and the torso follows only as far as its stops
+            // allow. Seeded from the torso on first motion.
+            if (float.IsNaN(_player.AimPitchWide)) _player.AimPitchWide = _player.TorsoPitch;
+            _player.AimPitchWide = Mathf.Clamp(_player.AimPitchWide - mm.Relative.Y * 0.0025f, -1.35f, 1.35f);
+            _player.TorsoPitch = _player.AimPitchWide;
         }
     }
 
@@ -1176,7 +1182,10 @@ public partial class MechDuel : Node3D
     private Vector3 TorsoAimPoint()
     {
         float yaw = _player.TorsoYawWorld;
-        float p = _player.TorsoPitch;
+        // Aim direction: the wide mouse pitch when the player has
+        // taken it past the torso clamp, else the torso's own pitch
+        // (every harness phase drives TorsoPitch directly).
+        float p = float.IsNaN(_player.AimPitchWide) ? _player.TorsoPitch : _player.AimPitchWide;
         var h = MechWalker.HeadingVec(yaw);
         var dir = new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
         var from = _player.BoneWorldPos("torso") + dir * 3.2f;
@@ -1960,6 +1969,7 @@ public partial class MechDuel : Node3D
         _enemy.SetDarkened(false);
         _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 30f), 30f), 0f);
         _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+        _player.AimPitchWide = float.NaN;
         _playerYaw = 0f;
         _enemyYaw = Mathf.Pi;
         _player.TorsoTwist = 0f;
@@ -2813,6 +2823,24 @@ public partial class MechDuel : Node3D
                     float dxz = new Vector2(aimT.X - aimC.X, aimT.Z - aimC.Z).Length();
                     if (dxz < 5f)
                     { GD.PrintErr($"DUEL FAIL: torso twist does not steer the aim (dxz={dxz:F2})"); GetTree().Quit(1); break; }
+                    // WIDE AIM (round 13): the mouse target is not
+                    // bound by the torso clamp — with AimPitchWide
+                    // driven to -1.05 the convergence must land on
+                    // the ground right in front of the feet, in the
+                    // screen's lower half, while the torso's own
+                    // pitch stays clamped at -0.32.
+                    _player.TorsoTwist = 0f;
+                    _player.TorsoPitch = 0f;
+                    _player.AimPitchWide = -1.05f;
+                    var aimWide = TorsoAimPoint();
+                    var scrW = _cam.UnprojectPosition(aimWide);
+                    var vpW = GetViewport().GetVisibleRect().Size;
+                    if (_aimTarget != "TERRAIN" || aimWide.DistanceTo(_player.RootPos) > 30f || scrW.Y < vpW.Y * 0.5f)
+                    { GD.PrintErr($"DUEL FAIL: wide aim cannot reach the feet (target='{_aimTarget}' dist={aimWide.DistanceTo(_player.RootPos):F1} scrY={scrW.Y:F0}/{vpW.Y:F0})"); GetTree().Quit(1); break; }
+                    if (_player.TorsoPitch < -0.33f)
+                    { GD.PrintErr("DUEL FAIL: torso pitch escaped its clamp"); GetTree().Quit(1); break; }
+                    _player.AimPitchWide = float.NaN;
+                    GD.Print($"DUEL WIDEAIM PASS free mouse pitch reaches the ground in front of the feet (dist {aimWide.DistanceTo(_player.RootPos):F1}u, screen y {scrW.Y:F0}/{vpW.Y:F0}); torso pitch stays clamped");
                     // Reticle TRUTH (round 8): sweep the pitch across
                     // the Atlas; at every step the reticle must sit
                     // exactly on the projection of the true aim point

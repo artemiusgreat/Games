@@ -129,6 +129,13 @@ public partial class MechWalker : Node3D
         get => _torsoPitch;
         set => _torsoPitch = Mathf.Clamp(value, -0.32f, 0.48f);
     }
+    // The AIM pitch (owner, round 13): the mouse target is NOT bound
+    // by the torso's mechanical clamp — the reticle must reach the
+    // ground in front of the feet and the sky above. The torso mesh
+    // follows TorsoPitch to its stops; the aim direction uses this
+    // wider range (MechDuel owns the live value; NaN there means
+    // "follow TorsoPitch", which is what every harness phase sets).
+    public float AimPitchWide = float.NaN;
     public float TorsoYawWorld => _legsYaw + _torsoTwist;
 
     // Combat state set by the owner: a halted walker keeps its last solved
