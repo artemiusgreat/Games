@@ -3440,13 +3440,22 @@ public partial class MechDuel : Node3D
                     // Atlas steps aside so nothing blocks the line.
                     _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), Mathf.Pi);
                     UpdateCamera(0f);
+                    // Hunt like a player: sweep the twist as well —
+                    // some lanes' chest lines are blocked by crowns
+                    // (correct backdrop behavior), others are clear.
                     Vector3 convH = Vector3.Zero; bool onHill = false;
-                    for (float pp = 0.30f; pp >= -0.30f; pp -= 0.01f)
+                    for (float tw = -0.4f; tw <= 0.41f && !onHill; tw += 0.2f)
                     {
-                        _player.TorsoPitch = pp;
-                        convH = TorsoAimPoint();
-                        if (_aimTarget == "TERRAIN" && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
+                        _player.TorsoTwist = tw;
+                        UpdateCamera(0f);
+                        for (float pp = 0.30f; pp >= -0.30f; pp -= 0.01f)
+                        {
+                            _player.TorsoPitch = pp;
+                            convH = TorsoAimPoint();
+                            if (_aimTarget == "TERRAIN" && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
+                        }
                     }
+                    _player.TorsoTwist = 0f;
                     if (!onHill) { WFail("no pitch puts the cursor on the far hillside"); return; }
                     GD.Print($"ENVTEST FAR-HILL PASS cursor converges on the hillside at {convH.DistanceTo(_player.RootPos):F0}u with a clear line");
                     GD.Print("WPNTEST DONE");
