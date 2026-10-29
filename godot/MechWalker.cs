@@ -59,7 +59,10 @@ public partial class MechWalker : Node3D
     }
 
     private const float StandReachFactor = 0.90f;
-    private const float MaxTorsoTwist = 2.356194f; // ±135° = a 270° total arc (owner's clarification 2026-10-28: the torso must never reach fully backward — no walking forward while looking behind)
+    // Torso twist was clamped to ±135° (a 270° arc) until 2026-10-29,
+    // when the owner removed the clamp: the torso rotates the full
+    // 360°, including fully backward. The setter below no longer
+    // clamps; angles wrap naturally through WrapAngle upstream.
 
     private Config _cfg;
     private Node3D _inner;
@@ -141,7 +144,7 @@ public partial class MechWalker : Node3D
     public float TorsoTwist
     {
         get => _torsoTwist;
-        set => _torsoTwist = Mathf.Clamp(value, -MaxTorsoTwist, MaxTorsoTwist);
+        set => _torsoTwist = value; // unclamped (owner, 2026-10-29): full 360° torso rotation
     }
     public float TorsoPitch
     {
