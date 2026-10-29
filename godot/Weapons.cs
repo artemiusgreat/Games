@@ -68,7 +68,8 @@ public static class WeaponFx
         return m;
     }
 
-    private static StandardMaterial3D _tracerMat;
+    private static StandardMaterial3D _tracerCoreMat;
+    private static StandardMaterial3D _tracerGlowMat;
     private static StandardMaterial3D _rocketBodyMat;
     private static StandardMaterial3D _rocketTipMat;
 
@@ -96,16 +97,37 @@ public static class WeaponFx
         return mi;
     }
 
-    // Autocannon tracer: small elongated glowing sphere (axis = -Z fwd,
-    // the projectile node LookAts along its velocity).
-    public static MeshInstance3D MakeTracer()
+    // Autocannon tracer: a DARK slug with an emissive halo (owner:
+    // the old flat unshaded orange washed out in daylight — too
+    // bright to see against a bright sky). The near-black core is a
+    // lit material, so it silhouettes against sky and ground in the
+    // day; its orange emission plus the translucent halo shell carry
+    // it at night. Axis = -Z fwd; the projectile node LookAts along
+    // its velocity.
+    public static Node3D MakeTracer()
     {
-        _tracerMat ??= Unshaded(new Color(1f, 0.62f, 0.15f));
-        var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        mi.Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f };
-        mi.MaterialOverride = _tracerMat;
-        mi.Scale = new Vector3(1f, 1f, 3.2f);
-        return mi;
+        _tracerCoreMat ??= new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.05f, 0.04f, 0.03f),
+            Metallic = 0.55f,
+            Roughness = 0.35f,
+            EmissionEnabled = true,
+            Emission = new Color(1f, 0.38f, 0.06f),
+            EmissionEnergyMultiplier = 0.7f
+        };
+        _tracerGlowMat ??= Unshaded(new Color(1f, 0.5f, 0.1f, 0.38f), alpha: true);
+        var root = new Node3D();
+        var core = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        core.Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f };
+        core.MaterialOverride = _tracerCoreMat;
+        core.Scale = new Vector3(1f, 1f, 3.2f);
+        root.AddChild(core);
+        var glow = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        glow.Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f };
+        glow.MaterialOverride = _tracerGlowMat;
+        glow.Scale = new Vector3(2.1f, 2.1f, 3.8f);
+        root.AddChild(glow);
+        return root;
     }
 
     // Rocket: gray cylinder body + orange tip cone, nose toward -Z.
