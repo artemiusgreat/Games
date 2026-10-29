@@ -168,6 +168,50 @@ public partial class MechLab : Control
         return root;
     }
 
+    // MW4-style paperdoll (owner): the hardpoint panels float at
+    // mech-schematic positions — missile pods up at the shoulders,
+    // arms out at the sides — with connector lines to a center
+    // node, over the orbiting mech behind the lab. Panels are
+    // positioned by slot id whenever the area resizes.
+    private sealed partial class PaperdollArea : Control
+    {
+        private readonly System.Collections.Generic.Dictionary<string, Control> _panels = new();
+        public void AddPanel(string slotId, Control panel) { _panels[slotId] = panel; AddChild(panel); }
+        public override void _Ready() { Resized += Layout; }
+        public void Layout()
+        {
+            // Panel centers as fractions of the area, by slot id.
+            var centers = new System.Collections.Generic.Dictionary<string, Vector2>
+            {
+                ["pod_L"] = new Vector2(0.26f, 0.13f),
+                ["pod_R"] = new Vector2(0.74f, 0.13f),
+                ["arm_L"] = new Vector2(0.17f, 0.55f),
+                ["arm_R"] = new Vector2(0.83f, 0.55f),
+            };
+            foreach (var (id, panel) in _panels)
+            {
+                if (!centers.TryGetValue(id, out var c)) c = new Vector2(0.5f, 0.5f);
+                var want = c * Size - panel.Size * 0.5f;
+                panel.Position = new Vector2(
+                    Mathf.Clamp(want.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
+                    Mathf.Clamp(want.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
+            }
+            QueueRedraw();
+        }
+        public override void _Draw()
+        {
+            if (Size.X < 10f) return;
+            var hub = Size * new Vector2(0.5f, 0.36f);
+            var line = new Color(0.5f, 0.58f, 0.66f, 0.45f);
+            foreach (var (_, panel) in _panels)
+                DrawLine(panel.Position + panel.Size * 0.5f, hub, line, 2f);
+            // center node: a small diamond over the mech's chest
+            var d = 7f;
+            DrawColoredPolygon(new[] { hub + new Vector2(0, -d), hub + new Vector2(d, 0), hub + new Vector2(0, d), hub + new Vector2(-d, 0) },
+                new Color(0.95f, 0.8f, 0.45f, 0.8f));
+        }
+    }
+
     private sealed partial class SlotPanel : PanelContainer
     {
         public string SlotId;
@@ -276,15 +320,14 @@ public partial class MechLab : Control
             rowsBox.AddChild(rowPanel);
         }
 
-        // -- Hardpoints (right): paperdoll-ish 2x2 --
-        var slotGrid = new GridContainer { Columns = 2 };
-        slotGrid.AddThemeConstantOverride("h_separation", 16);
-        slotGrid.AddThemeConstantOverride("v_separation", 16);
-        slotGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        mid.AddChild(slotGrid);
+        // -- Hardpoints (right): MW4-style paperdoll over the mech --
+        var paperdoll = new PaperdollArea();
+        paperdoll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        paperdoll.SizeFlagsVertical = SizeFlags.ExpandFill;
+        mid.AddChild(paperdoll);
         foreach (var slot in Spec.Slots)
         {
-            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(250, 108) };
+            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(225, 104) };
             var sb = new StyleBoxFlat
             {
                 BgColor = new Color(0.06f, 0.085f, 0.12f, 0.92f),
@@ -356,8 +399,9 @@ public partial class MechLab : Control
                 }
             };
             _slots[slot.Id] = panel;
-            slotGrid.AddChild(panel);
+            paperdoll.AddPanel(slot.Id, panel);
         }
+        paperdoll.Layout();
 
         // -- Bottom bar --
         _tonnage = new Label();
