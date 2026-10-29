@@ -143,15 +143,19 @@ public partial class MechLab : Control
     {
         Control root = drag != null ? drag : new Control();
         root.CustomMinimumSize = new Vector2(size, size);
-        var tex = new TextureRect { Texture = Icon(w), StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
+        // ExpandMode IgnoreSize is load-bearing: KeepSize makes
+        // the TextureRect's minimum size the texture's 48px, which
+        // inflates the whole tile past the row (measured live).
+        var tex = new TextureRect { Texture = Icon(w), StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = MouseFilterEnum.Ignore };
         tex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         root.AddChild(tex);
         // Backdrop strip behind the abbreviation (owner): a real
         // UI element, not just the baked texture band.
         var strip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
         strip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-        strip.OffsetTop = -(size >= 44 ? 16 : 14);
-        strip.OffsetBottom = 0;
+        strip.OffsetLeft = 2; strip.OffsetRight = -2; // inset: the strip must not cover the tile's border (owner)
+        strip.OffsetTop = -(size >= 44 ? 16 : 14) - 2;
+        strip.OffsetBottom = -2;
         root.AddChild(strip);
         var ab = new Label { Text = Abbrev(w), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
         ab.AddThemeFontSizeOverride("font_size", size >= 44 ? 12 : 10);
@@ -243,7 +247,7 @@ public partial class MechLab : Control
         {
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
-            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46), ClipContents = true }; // nothing paints outside the row band
+            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true }; // row sized to fit the tile with air around it
             StyleBoxFlat RowBox(Color c)
             {
                 var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
@@ -257,7 +261,7 @@ public partial class MechLab : Control
             var drag = new DragTile { WeaponId = w.Id, Lab = this };
             drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
             drag.MouseExited += () => drag.Modulate = Colors.White;
-            var tileCtl = TileVisual(w, 34, drag);
+            var tileCtl = TileVisual(w, 40, drag);
             tileCtl.SizeFlagsVertical = SizeFlags.ShrinkCenter; // the tile fits INSIDE the row band (owner)
             hb.AddChild(tileCtl);
             var lab = new Label
@@ -300,13 +304,14 @@ public partial class MechLab : Control
             tileRow.AddThemeConstantOverride("separation", 10);
             vb.AddChild(tileRow);
             panel.Tile = new Control { CustomMinimumSize = new Vector2(46, 46), MouseFilter = MouseFilterEnum.Ignore }; // input falls through to the panel: right-click on the tile still strips the slot
-            panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
+            panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = MouseFilterEnum.Ignore };
             panel.TileTex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             panel.Tile.AddChild(panel.TileTex);
             var slotStrip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
             slotStrip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-            slotStrip.OffsetTop = -16;
-            slotStrip.OffsetBottom = 0;
+            slotStrip.OffsetLeft = 2; slotStrip.OffsetRight = -2;
+            slotStrip.OffsetTop = -18;
+            slotStrip.OffsetBottom = -2;
             panel.Tile.AddChild(slotStrip);
             panel.TileAbbrev = new Label { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
             panel.TileAbbrev.AddThemeFontSizeOverride("font_size", 12);
