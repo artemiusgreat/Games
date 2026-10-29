@@ -1182,21 +1182,31 @@ public partial class MechDuel : Node3D
         var from = _player.BoneWorldPos("torso") + dir * 3.2f;
         _aimFrom = from;
         _aimDir = dir;
+        _reticlePoint = from + dir * AimDepth;
+        // Round 12: converge on the point UNDER THE CURSOR — a ray
+        // from the CAMERA through the reticle. The high camera broke
+        // the chest-ray convergence: the view line and the torso
+        // line now diverge steeply, so shots converging on the chest
+        // ray's hit landed visibly BELOW the cursor (reticle on the
+        // Atlas's chest, beam in its legs — the owner's screenshot).
+        // The camera ray defines what the player is pointing at, at
+        // any camera height: its first hit within 60u of the player
+        // is where every weapon goes. Live play always runs the
+        // chase camera; harness proof poses keep the chest logic.
+        if (_camMode == "chase")
+        {
+            var camPos = _cam.GlobalPosition;
+            var viewHit = _hit.Ray(camPos, (_reticlePoint - camPos).Normalized(), 220f, "TW");
+            if (viewHit.Hit && viewHit.Point.DistanceTo(_player.RootPos) <= 60f)
+            {
+                _aimTarget = viewHit.Target;
+                return viewHit.Point;
+            }
+        }
+        // Fallback (round 11): the chest ray's MECH/PROP hit within
+        // 60u, else the free 40u point.
         var hit = _hit.Ray(from, dir, 200f, "TW");
         _aimTarget = hit.Hit ? hit.Target : "";
-        _reticlePoint = from + dir * AimDepth;
-        // Round 11: weapons converge on the chest ray's hit when it
-        // lands on a MECH or a PROP within 60u — the things you
-        // actually shoot at. Converging only at the fixed 40u point
-        // left the muzzle parallax unpaid at close range: cursor
-        // dead-center on a trunk at 12u, the beam (flown from the
-        // arm) passing ~1.7u wide of it — the owner's laser AND
-        // cannon misses, straight through the visible center. Now
-        // the convergence depth IS the target's depth, so the
-        // parallax is zero exactly where the target stands. Terrain
-        // hits keep the free 40u point: sweeping across hillsides
-        // never sticks or terraces, and the reticle always projects
-        // the free point, so its motion is unchanged from round 9.
         if (hit.Hit && hit.T <= 60f && (hit.Target == "ATLAS" || hit.Target == "PROP"))
             return hit.Point;
         return _reticlePoint;
@@ -3295,21 +3305,21 @@ public partial class MechDuel : Node3D
                     // the chest ray must catch it, convergence must
                     // land on it, and one hit must drop the tree.
                     _player.TorsoTwist = 0f;
-                    var toT = tc - fp2; toT.Y = 0f;
-                    var latT = new Vector3(-toT.Z, 0f, toT.X).Normalized();
-                    var chestP = _player.BoneWorldPos("torso");
-                    var crownPt = tc + latT * 1.5f + Vector3.Up * (_wEnvT.Height * 0.75f);
-                    var dTr = crownPt - chestP;
-                    _player.TorsoPitch = Mathf.Atan2(dTr.Y, new Vector2(dTr.X, dTr.Z).Length());
-                    // Torso yaw must track the offset point too: the
-                    // teleport faced the trunk axis; rotate the legs
-                    // (and read back the yaw) to face the crown point.
-                    _playerYaw = MechWalker.YawOf(dTr.Normalized());
-                    _player.SetDrive(_playerYaw, 0f);
+                    // Aim the way the player does: hunt the pitch
+                    // until the RETICLE sits on the crown — the
+                    // camera-ray convergence reports the prop. With
+                    // the high camera that pitch is steeper than the
+                    // torso-to-crown line (the round-12 offset the
+                    // owner reported: cursor on target, hits low).
                     _cdLaser = 0f;
-                    var conv = TorsoAimPoint();
-                    if (_aimTarget != "PROP") { WFail($"chest ray missed the crown (target='{_aimTarget}')"); return; }
-                    if (conv.DistanceTo(crownPt) > 2.4f) { WFail($"convergence point {conv} is not on the crown {crownPt}"); return; }
+                    Vector3 conv = Vector3.Zero; bool onCrown = false;
+                    for (float pp = 0.15f; pp >= -0.55f; pp -= 0.025f)
+                    {
+                        _player.TorsoPitch = pp;
+                        conv = TorsoAimPoint();
+                        if (_aimTarget == "PROP") { onCrown = true; break; }
+                    }
+                    if (!onCrown) { WFail("no pitch puts the cursor on the crown"); return; }
                     FireLaser(conv);
                     if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * 8f;
