@@ -130,6 +130,11 @@ public partial class MechDuel : Node3D
     private DirectionalLight3D _labLight; // lab-only fill: the mech must read as the centerpiece, not a silhouette
     private bool _test;
     private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
+    private bool _photo; // photoreal probe environment (PhotoEnv / assets/photo)
+    private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
+    private int _photoPhase;
+    private float _photoT, _fpsSum;
+    private int _fpsN;
     private double _simT;
 
     // interactive state
@@ -275,7 +280,11 @@ public partial class MechDuel : Node3D
             if (arg == "--breakable-test") _breakTest = true;
             if (arg == "--terrain-test") _terrainTest = true;
             if (arg == "--lab-shot") _labShot = true;
+            if (arg == "--photo") _photo = true;
+            if (arg == "--photo-test") { _photo = true; _photoTest = true; }
         }
+        if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
+            _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
         _hit = new HitModel();
 
         var sun = new DirectionalLight3D
@@ -305,9 +314,7 @@ public partial class MechDuel : Node3D
             GroundHorizonColor = new Color(0.56f, 0.56f, 0.52f),
             GroundCurve = 0.08f
         };
-        AddChild(new WorldEnvironment
-        {
-            Environment = new Environment
+        var duelEnv = new Environment
             {
                 BackgroundMode = Environment.BGMode.Sky,
                 Sky = new Sky { SkyMaterial = skyMat },
@@ -323,8 +330,9 @@ public partial class MechDuel : Node3D
                 FogLightColor = new Color(0.63f, 0.73f, 0.84f),
                 FogDensity = 0.0011f,
                 FogSunScatter = 0.25f
-            }
-        });
+            };
+        if (_photo) PhotoEnv.Tune(duelEnv, sun);
+        AddChild(new WorldEnvironment { Environment = duelEnv });
 
         BuildTerrain();
         // Round-1 props (same spots as Main) + a few more for a fuller map.
@@ -340,6 +348,13 @@ public partial class MechDuel : Node3D
         AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(8f, 6f, 5f));
         AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(5f, 9f, 5f));
         ScatterNature();
+        if (_photo)
+        {
+            var propPts = new System.Collections.Generic.List<(Vector2 P, float R)>();
+            foreach (var c in _props) propPts.Add((c.P, c.R));
+            PhotoEnv.AddGrassField(this, _buildingPts, propPts);
+            PhotoEnv.AddBackdrop(this);
+        }
 
         _player = new MechWalker { Name = "PlayerTimberwolf" };
         AddChild(_player);
@@ -401,7 +416,7 @@ public partial class MechDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest)
         {
             // Pre-game MechLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -447,7 +462,9 @@ public partial class MechDuel : Node3D
     private void BuildTerrain()
     {
         // Shared heightfield mesh (vertices on grid nodes = HeightAt).
-        AddChild(new MeshInstance3D { Mesh = Main.CreateTerrainMesh() });
+        var mi = new MeshInstance3D { Mesh = Main.CreateTerrainMesh() };
+        if (_photo) mi.MaterialOverride = PhotoEnv.TerrainMaterial();
+        AddChild(mi);
     }
 
     private void AddTree(Vector3 pos) => AddTreeV(pos, 0, 1f, 0f);
@@ -498,6 +515,16 @@ public partial class MechDuel : Node3D
             new StandardMaterial3D { AlbedoColor = new Color(0.09f + tint * 0.04f, 0.34f, 0.11f), Roughness = 0.9f }
         };
         float totalH;
+        if (_photo)
+        {
+            // Photoreal probe: a scanned tree model replaces the
+            // procedural parts; cylinders + registration below are
+            // unchanged, so the tree collides and burns as before.
+            PhotoEnv.AddTreeModel(tree, variety, rng);
+            totalH = variety == 1 ? 7.6f : 5.9f;
+        }
+        else
+        {
         // Tapered trunk, common to all varieties.
         float trunkH = variety == 1 ? 3.2f : 2.8f;
         var trunk = new MeshInstance3D
@@ -558,6 +585,7 @@ public partial class MechDuel : Node3D
                 new Vector3(1f, 0.75f, 1f), leafMats[rng.RandiRange(0, 2)]));
             totalH = trunkH + 2.9f;
         }
+        }
         AddChild(tree);
         float r = 0.7f * scale;
         // Owner's rule: trees do NOT block movement — a mech that walks
@@ -594,6 +622,17 @@ public partial class MechDuel : Node3D
     private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
     {
         float groundY = Main.HeightAt(pos.X, pos.Z);
+        if (_photo)
+        {
+            // Photoreal probe: scanned rock at the same spot, scale
+            // and collider; only the visual changes.
+            var rock = PhotoEnv.MakeRock(scl);
+            rock.Position = new Vector3(pos.X, groundY - 0.30f * scl.Y, pos.Z);
+            rock.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
+            AddChild(rock);
+        }
+        else
+        {
         var mi = new MeshInstance3D();
         mi.Mesh = new SphereMesh { Radius = 1f, Height = 2f, RadialSegments = 7, Rings = 3 };
         float g = 0.36f + tint * 0.14f;
@@ -606,6 +645,7 @@ public partial class MechDuel : Node3D
         mi.Scale = scl;
         mi.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
         AddChild(mi);
+        }
         float r = Mathf.Max(scl.X, scl.Z) * 0.92f;
         _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
         _hit.Props.Add(new HitModel.PropCyl
@@ -926,11 +966,13 @@ public partial class MechDuel : Node3D
         pos.Y = groundY + size.Y / 2f - 0.3f;
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = size };
-        mi.MaterialOverride = new StandardMaterial3D
-        {
-            AlbedoTexture = MakeFacadeTexture(_facadeSeq, FacadeBases[_facadeSeq % FacadeBases.Length]),
-            Roughness = 0.92f
-        };
+        mi.MaterialOverride = _photo
+            ? PhotoEnv.BuildingMaterial(size)
+            : new StandardMaterial3D
+            {
+                AlbedoTexture = MakeFacadeTexture(_facadeSeq, FacadeBases[_facadeSeq % FacadeBases.Length]),
+                Roughness = 0.92f
+            };
         _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
@@ -2660,7 +2702,7 @@ public partial class MechDuel : Node3D
             if (life <= 0f && frames >= 3) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
             else _fx[i] = (_fx[i].Node, life, frames);
         }
-        if (!_test && !_terrainTest && ((!_weaponsTest && !_breakTest) || _atlasMayFire)) UpdateAtlasGunnery(dt);
+        if (!_test && !_terrainTest && !_photoTest && ((!_weaponsTest && !_breakTest) || _atlasMayFire)) UpdateAtlasGunnery(dt);
     }
 
     // ---------- test choreography ----------
@@ -4322,6 +4364,30 @@ public partial class MechDuel : Node3D
 
     // ---------- captures / camera ----------
 
+    // Photoreal probe driver: settle, capture the overview and the
+    // ground frame, report draw calls / primitives / fps (fps on
+    // this GPU-less VM is llvmpipe software rendering — the number
+    // that matters is measured on the owner's laptop).
+    private void UpdatePhotoTest(float dt)
+    {
+        _photoT += dt;
+        if (_photoT > 0.5f) { _fpsSum += (float)Engine.GetFramesPerSecond(); _fpsN++; }
+        if (_photoPhase == 0 && _photoT > 2.5f)
+        {
+            _photoPhase = 1;
+            QueueCapture("res://proof/photo_tuft.png", "ptuft", "photoTuft", () =>
+            QueueCapture("res://proof/photo_overview.png", "pover", "photoOver", () =>
+                QueueCapture("res://proof/photo_ground.png", "pground", "photoGround", () =>
+                {
+                    long draws = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame);
+                    long prims = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame);
+                    GD.Print($"PHOTO STATS drawCalls={draws} primitives={prims} avgFps={(_fpsN > 0 ? _fpsSum / _fpsN : 0f):F1} (llvmpipe — not representative)");
+                    GD.Print("PHOTO DONE");
+                    GetTree().Quit();
+                })));
+        }
+    }
+
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
     {
         if (_pendingPath != null || _capturing) return;
@@ -4454,6 +4520,27 @@ public partial class MechDuel : Node3D
             _cam.GlobalPosition = new Vector3(-88f, 44f, 90f);
             _cam.LookAt(new Vector3(12f, 0f, -12f), Vector3.Up);
         }
+        else if (_camMode == "photoOver")
+        {
+            // Photoreal probe money shot: elevated over the arena,
+            // both mechs in frame, mountains behind.
+            _cam.GlobalPosition = new Vector3(58f, 34f, 64f);
+            _cam.LookAt(new Vector3(-6f, 0f, -6f), Vector3.Up);
+        }
+        else if (_camMode == "photoTuft")
+        {
+            // Debug: one tuft cluster at arm's length.
+            _cam.GlobalPosition = new Vector3(-18.6f, Main.HeightAt(-18.6f, 2.2f) + 0.55f, 2.2f);
+            _cam.LookAt(new Vector3(-21.5f, Main.HeightAt(-21.5f, -1.5f) + 0.30f, -1.5f), Vector3.Up);
+        }
+        else if (_camMode == "photoGround")
+        {
+            // Ground level by the hand-placed trees, looking across
+            // the road at the Timber Wolf.
+            var tp = new Vector3(-21f, Main.HeightAt(-21f, 0f) + 2.1f, -1f);
+            _cam.GlobalPosition = tp;
+            _cam.LookAt(_player.RootPos + Vector3.Up * 5.5f, Vector3.Up);
+        }
         else if (_camMode == "slopeSide")
         {
             var p = _player.RootPos;
@@ -4546,6 +4633,7 @@ public partial class MechDuel : Node3D
             if (_breakTest) UpdateBreakTest(dt);
             else if (_weaponsTest) UpdateWeaponsTest(dt);
             else if (_terrainTest) UpdateTerrainTest(dt);
+            else if (_photoTest) UpdatePhotoTest(dt);
             else if (_test) UpdateTest(dt);
             else
             {
@@ -4591,7 +4679,7 @@ public partial class MechDuel : Node3D
                 Mathf.Sin((float)_simT * 2.7f + 0.8f) * 9f);
         }
         else _cross.Sway = Vector2.Zero;
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_labOpen)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_labOpen)
             UpdateReticle();
         UpdateCamera(_frozen ? 0f : dt);
         if (_pendingPath != null && !_capturing) DoCapture();
