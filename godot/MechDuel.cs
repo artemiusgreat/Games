@@ -4535,7 +4535,7 @@ public partial class MechDuel : Node3D
             var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the mech, slightly to its side
             _cam.GlobalPosition = center + viewDir * 14.5f + Vector3.Up * 3.4f;
             _cam.LookAt(center, Vector3.Up);
-            _cam.RotateY(0.30f); // pan in camera space: mech into the paperdoll area (right of the catalog)
+            _cam.RotateY(0.38f); // pan in camera space: mech into the paperdoll area, centered under its slot panels (owner)
             _labLight.GlobalRotation = _cam.GlobalRotation;
             return;
         }
