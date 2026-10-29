@@ -241,11 +241,14 @@ public partial class MechDuel : Node3D
     private float _tRunMark = -1f;
     private float _tJumpApex, _tJumpGround;
     private bool _tJumpTried;
+    private int _tJumpStage;
+    private float _tJumpMarkT;
+    private Vector2 _tJumpXZ;
 
     private Crosshair _cross;
-    private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm;
+    private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
-    private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm;
+    private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
     private PanelContainer _panel;
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;
@@ -978,7 +981,9 @@ public partial class MechDuel : Node3D
         var d = b - a;
         float dist = d.Length();
         float min = _player.CollisionRadius + _enemy.CollisionRadius;
-        if (dist < min)
+        // Flyover (owner): a jumping mech passes OVER the other —
+        // no separation push while either is high above the ground.
+        if (dist < min && _player.JumpHeight < 12f && _enemy.JumpHeight < 12f)
         {
             if (dist < 1e-4f) d = new Vector2(0f, 1f);
             else d /= dist;
@@ -999,6 +1004,7 @@ public partial class MechDuel : Node3D
         foreach (var w in new[] { _player, _enemy })
         {
             if (w == _player ? _playerDead : _enemyDead) continue;
+            if (w.JumpHeight > 3f) continue; // flying over the canopy is not a stomp
             var wp = new Vector2(w.RootPos.X, w.RootPos.Z);
             foreach (var d in _destructibles)
             {
@@ -2153,6 +2159,8 @@ public partial class MechDuel : Node3D
         _lblCdAc = rowAc.Item1; _cdBarAc = rowAc.Item2;
         var rowLrm = CdRow("3 LRM");
         _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
+        var rowThr = CdRow("THRUST");
+        _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
         hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · SPACE — jump jets";
         midBox.AddChild(hint);
@@ -2248,6 +2256,18 @@ public partial class MechDuel : Node3D
         UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / (_defEnergy?.Cooldown ?? 0.45f), lasDead, _denyLaserT);
         UpdateCdRow(_cdBarAc, _lblCdAc, 1f - _cdAc / (_defBallistic?.Cooldown ?? 0.85f), acDead, _denyAcT);
         UpdateCdRow(_cdBarLrm, _lblCdLrm, 1f - _cdLrm / lrmCd, lrmDead, _denyLrmT);
+        // Thrusters (owner): charge readout alongside the weapon
+        // cooldowns — teal when the full jump charge is ready.
+        if (_cdBarThr != null)
+        {
+            bool fitted = _player.JumpJets;
+            _cdBarThr.Value = fitted ? _player.JumpCharge : 0f;
+            var tfg = _cdBarThr.GetThemeStylebox("fill") as StyleBoxFlat;
+            if (tfg != null) tfg.BgColor = !fitted ? CdDead
+                : _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
+            _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
+            _lblThr.Text = !fitted ? "THRUST —" : _player.Airborne ? "THRUST ▲" : "THRUST";
+        }
         SetSelLabel(_lblCdLaser, _wpnShort[0], _weaponSel == 0, lasDead);
         SetSelLabel(_lblCdAc, _wpnShort[1], _weaponSel == 1, acDead);
         SetSelLabel(_lblCdLrm, _wpnShort[2], _weaponSel == 2, lrmDead);
@@ -4190,31 +4210,60 @@ public partial class MechDuel : Node3D
                     _tPhase = 4; _tPhaseT = 0;
                 }
                 break;
-            case 4: // JUMP: jets fitted -> ballistic hop; unfitted -> nothing.
+            case 4: // JUMP: full-charge jets clear an enemy; charge refills in ~5s.
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
-                if (!_tJumpTried && _tPhaseT > 0.6)
-                {
-                    _tJumpGround = _player.RootPos.Y;
-                    if (_enemy.TryJump()) { TFail("Atlas jumped without jets"); return; }
-                    if (!_player.TryJump()) { TFail("fitted player refused to jump"); return; }
-                    _tJumpTried = true;
-                }
                 if (_tJumpTried)
                 {
-                    float hgt = _player.RootPos.Y - _tJumpGround;
-                    if (hgt > _tJumpApex) _tJumpApex = hgt;
+                    float hgtNow = _player.RootPos.Y - _tJumpGround;
+                    if (hgtNow > _tJumpApex) _tJumpApex = hgtNow;
                 }
-                if (_tPhaseT > 2.6)
+                switch (_tJumpStage)
                 {
-                    float settle = Mathf.Abs(_player.RootPos.Y - _tJumpGround);
-                    GD.Print($"JUMPTEST apex={_tJumpApex:F2} settle={settle:F3}");
-                    if (_tJumpApex < 1.0f) { TFail($"jump apex {_tJumpApex:F2} < 1.0"); return; }
-                    if (settle > 0.2f) { TFail($"mech did not land (settle {settle:F3})"); return; }
-                    GD.Print("JUMPTEST PASS jets lift the mech ~1.9u and set it back down; the unfitted Atlas cannot jump");
-                    GD.Print("TERRAINTEST DONE");
-                    GetTree().Quit(0);
-                    _tPhase = 99;
+                    case 0: // settle, then jump on a full charge
+                        if (_tPhaseT > 0.6)
+                        {
+                            _tJumpGround = _player.RootPos.Y;
+                            if (_enemy.TryJump()) { TFail("Atlas jumped without jets"); return; }
+                            if (!_player.TryJump()) { TFail("fitted player refused to jump on a full charge"); return; }
+                            if (_player.JumpCharge > 0.01f) { TFail("jump did not spend the thruster charge"); return; }
+                            if (_player.TryJump()) { TFail("second jump fired on a spent charge"); return; }
+                            _tJumpTried = true; _tJumpStage = 1;
+                        }
+                        break;
+                    case 1: // at flyover height, park the Atlas underneath: no push allowed
+                        if (_player.JumpHeight > 12f)
+                        {
+                            _tJumpXZ = new Vector2(_player.RootPos.X, _player.RootPos.Z);
+                            _enemy.Teleport(new Vector3(_tJumpXZ.X, Main.HeightAt(_tJumpXZ.X, _tJumpXZ.Y), _tJumpXZ.Y), 0f);
+                            _tJumpMarkT = (float)_tPhaseT; _tJumpStage = 2;
+                        }
+                        else if (_tPhaseT > 3.0) { TFail($"jump never reached flyover height (apex so far {_tJumpApex:F1})"); return; }
+                        break;
+                    case 2: // hold under the falling mech briefly, then clear the landing zone
+                        if (_tPhaseT > _tJumpMarkT + 0.3)
+                        {
+                            var nowXZ = new Vector2(_player.RootPos.X, _player.RootPos.Z);
+                            if (nowXZ.DistanceTo(_tJumpXZ) > 0.05f) { TFail("flyover pushed the jumping mech sideways"); return; }
+                            _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), 0f);
+                            _tJumpStage = 3;
+                        }
+                        break;
+                    case 3: // landed + recharged -> the next jump must be available again
+                        if (_player.JumpHeight <= 0f && _player.JumpCharge >= 0.999f)
+                        {
+                            float settle = Mathf.Abs(_player.RootPos.Y - _tJumpGround);
+                            GD.Print($"JUMPTEST apex={_tJumpApex:F2} settle={settle:F3} doneT={_tPhaseT:F1}");
+                            if (_tJumpApex < 14f) { TFail($"jump apex {_tJumpApex:F2} < 14 - feet would not clear a 14u mech"); return; }
+                            if (settle > 0.2f) { TFail($"mech did not land (settle {settle:F3})"); return; }
+                            if (!_player.TryJump()) { TFail("recharged thrusters refused the next jump"); return; }
+                            GD.Print("JUMPTEST PASS full-charge jump clears enemy height, flyover has no collision push, charge auto-refills and jumps again");
+                            GD.Print("TERRAINTEST DONE");
+                            GetTree().Quit(0);
+                            _tPhase = 99;
+                        }
+                        else if (_tPhaseT > 10.0) { TFail($"no landing/recharge by {_tPhaseT:F1}s (charge {_player.JumpCharge:F2})"); return; }
+                        break;
                 }
                 break;
         }
