@@ -90,6 +90,12 @@ public partial class MechLab : Control
         }
         void Poly(Color c, params Vector2[] pts)
         {
+            // Artwork lives in the top ~70% of the tile: the
+            // abbreviation strip owns the base, and silhouettes
+            // drawn full-height disappeared behind it (the
+            // 'cut image' in the owner's screenshots).
+            for (int i = 0; i < pts.Length; i++)
+                pts[i] = new Vector2(24f + (pts[i].X - 24f) * 0.82f, 1f + pts[i].Y * 0.68f);
             for (int y = 0; y < 48; y++)
                 for (int x = 0; x < 48; x++)
                 {
