@@ -252,7 +252,7 @@ public partial class MechLab : Control
         // to nothing while the containers overflowed visibly — the
         // lab's text sat directly on the bright scene.
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.85f) }; // translucent (owner): the mech stays visible behind the lab, dimmed enough to read against
+        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.55f) }; // light dim (owner): the mech is the lab's centerpiece and must read clearly through it; panels and rows carry their own opaque backgrounds
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
@@ -333,7 +333,7 @@ public partial class MechLab : Control
         mid.AddChild(paperdoll);
         foreach (var slot in Spec.Slots)
         {
-            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(225, 104) };
+            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(200, 96) };
             var sb = new StyleBoxFlat
             {
                 BgColor = new Color(0.06f, 0.085f, 0.12f, 0.92f),
@@ -352,7 +352,7 @@ public partial class MechLab : Control
             var tileRow = new HBoxContainer();
             tileRow.AddThemeConstantOverride("separation", 10);
             vb.AddChild(tileRow);
-            panel.Tile = new Control { CustomMinimumSize = new Vector2(46, 46), MouseFilter = MouseFilterEnum.Ignore }; // input falls through to the panel: right-click on the tile still strips the slot
+            panel.Tile = new Control { CustomMinimumSize = new Vector2(40, 40), MouseFilter = MouseFilterEnum.Ignore }; // input falls through to the panel: right-click on the tile still strips the slot
             panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = MouseFilterEnum.Ignore };
             panel.TileTex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             panel.Tile.AddChild(panel.TileTex);
