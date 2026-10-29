@@ -3437,25 +3437,49 @@ public partial class MechDuel : Node3D
                     // FAR HILL (owner, round 13): the cursor on a
                     // distant hillside with a clear line must
                     // converge on the hill itself, not the sky. The
-                    // Atlas steps aside so nothing blocks the line.
+                    // Atlas steps aside. Deterministic setup: from
+                    // the arena center, scan the rim for the highest
+                    // slope whose chest line is clear of props, face
+                    // it, then hunt the pitch onto it. (Forward
+                    // lanes from the south pad never reach a far
+                    // slope — the far rim is low there and the view
+                    // ray exits the arena; measured, verify34c.)
                     _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), Mathf.Pi);
-                    UpdateCamera(0f);
-                    // Hunt like a player: sweep the twist as well —
-                    // some lanes' chest lines are blocked by crowns
-                    // (correct backdrop behavior), others are clear.
-                    Vector3 convH = Vector3.Zero; bool onHill = false;
-                    for (float tw = -0.4f; tw <= 0.41f && !onHill; tw += 0.2f)
+                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 0f), 0f), 0f);
+                    _playerVel = Vector3.Zero; _prevPlayerRoot = _player.RootPos;
+                    var chest0 = _player.RootPos + Vector3.Up * 8.5f;
+                    // The slope must rise across a VALLEY: a
+                    // continuous rise is met at its nearest point
+                    // (~44u, measured verify34h) and can never
+                    // produce a far convergence. Score candidates by
+                    // (rim height - midpoint height) and take the
+                    // best clear-line lane.
+                    Vector3 hillPt = Vector3.Zero; float hillBest = -1e9f;
+                    for (int k = 0; k < 16; k++)
                     {
-                        _player.TorsoTwist = tw;
-                        UpdateCamera(0f);
-                        for (float pp = 0.30f; pp >= -0.30f; pp -= 0.01f)
-                        {
-                            _player.TorsoPitch = pp;
-                            convH = TorsoAimPoint();
-                            if (_aimTarget == "TERRAIN" && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
-                        }
+                        float a = k * Mathf.Tau / 16f;
+                        var cand = new Vector3(Mathf.Sin(a) * 78f, 0f, -Mathf.Cos(a) * 78f);
+                        cand.Y = Main.HeightAt(cand.X, cand.Z);
+                        var mid = cand * 0.5f;
+                        float score = cand.Y - Main.HeightAt(mid.X, mid.Z);
+                        if (score <= hillBest || cand.Y < _player.RootPos.Y + 8f) continue;
+                        var toC = cand - chest0;
+                        var probe = _hit.Ray(chest0, toC.Normalized(), toC.Length(), "TW");
+                        if (probe.Hit && probe.Target != "TERRAIN") continue;
+                        hillBest = score; hillPt = cand;
                     }
+                    if (hillBest < 8f) { WFail($"no valley-to-rim lane with a clear line (best score={hillBest:F1})"); return; }
+                    _playerYaw = MechWalker.YawOf((hillPt - _player.RootPos).Normalized());
+                    _player.SetDrive(_playerYaw, 0f);
                     _player.TorsoTwist = 0f;
+                    UpdateCamera(0f);
+                    Vector3 convH = Vector3.Zero; bool onHill = false;
+                    for (float pp = 0.40f; pp >= -0.10f; pp -= 0.01f)
+                    {
+                        _player.TorsoPitch = pp;
+                        convH = TorsoAimPoint();
+                        if (_aimTarget == "TERRAIN" && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
+                    }
                     if (!onHill) { WFail("no pitch puts the cursor on the far hillside"); return; }
                     GD.Print($"ENVTEST FAR-HILL PASS cursor converges on the hillside at {convH.DistanceTo(_player.RootPos):F0}u with a clear line");
                     GD.Print("WPNTEST DONE");
