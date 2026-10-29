@@ -244,6 +244,9 @@ public partial class MechDuel : Node3D
     private int _tJumpStage;
     private float _tJumpMarkT;
     private Vector2 _tJumpXZ;
+    private float _tApex2, _tBurnDist, _tBurnSpeed;
+    private Vector2 _tFlyStart;
+    private bool _tParked;
 
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
@@ -1107,7 +1110,7 @@ public partial class MechDuel : Node3D
             Input.IsPhysicalKeyPressed(Key.W), Input.IsPhysicalKeyPressed(Key.S),
             Input.IsPhysicalKeyPressed(Key.A), Input.IsPhysicalKeyPressed(Key.D),
             Input.IsPhysicalKeyPressed(Key.Shift));
-        if (Input.IsPhysicalKeyPressed(Key.Space)) _player.TryJump(); // jump jets (fitted mechs only)
+        _player.SetThrust(Input.IsPhysicalKeyPressed(Key.Space)); // thrusters: hold SPACE to fly (fitted mechs only)
     }
 
     // The player's drive, with the keys passed in so the duel harness
@@ -1127,6 +1130,7 @@ public partial class MechDuel : Node3D
         _running = shift && w;
         float spd = 0f;
         if (w) spd = PlayerMaxSpeed * (_running ? RunFactor : 1f);
+        if (w && _player.Thrusting) spd += 3.0f; // jets burning + forward key: the thrusters push the mech forward too (owner)
         else if (s) spd = -PlayerMaxSpeed * 0.55f;
         _player.SetDrive(_playerYaw, spd);
     }
@@ -2162,7 +2166,7 @@ public partial class MechDuel : Node3D
         var rowThr = CdRow("THRUST");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
-        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · SPACE — jump jets";
+        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · SPACE (hold) — thrusters";
         midBox.AddChild(hint);
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         midBox.AddChild(_lblWeaponStatus);
@@ -4203,66 +4207,101 @@ public partial class MechDuel : Node3D
                     if (avg < 6.4f) { TFail($"run steady speed {avg:F2} < 6.4"); return; }
                     if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
                     GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");
-                    // JUMP setup: flat spawn, jets fitted on the player.
+                    // FLY setup: flat spawn, jets fitted, tanks full.
                     _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 34f), 34f), 0f);
                     _player.JumpJets = true;
-                    _tJumpApex = 0f; _tJumpTried = false;
+                    _player.JumpCharge = 1f;
+                    _playerYaw = 0f;
+                    _tJumpApex = 0f; _tApex2 = 0f; _tJumpTried = false; _tJumpStage = 0; _tParked = false;
                     _tPhase = 4; _tPhaseT = 0;
                 }
                 break;
-            case 4: // JUMP: full-charge jets clear an enemy; charge refills in ~5s.
-                _player.SetDrive(0f, 0f);
+            case 4: // FLY: hold-to-thrust — burn, flyover, descent, partial burn, recharge.
+                if (_tJumpStage == 1) ApplyPlayerInput(0.016f, true, false, false, false, false); // W held: drive + jet push
+                else _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
-                if (_tJumpTried)
+                if (_tJumpStage >= 1 && _tJumpStage <= 2)
                 {
                     float hgtNow = _player.RootPos.Y - _tJumpGround;
                     if (hgtNow > _tJumpApex) _tJumpApex = hgtNow;
                 }
+                if (_tJumpStage == 4)
+                {
+                    float hgtNow = _player.RootPos.Y - _tJumpGround;
+                    if (hgtNow > _tApex2) _tApex2 = hgtNow;
+                }
+                if (_tPhaseT > 26.0) { TFail($"FLYTEST timeout in stage {_tJumpStage} (charge {_player.JumpCharge:F2}, h {_player.JumpHeight:F1})"); return; }
                 switch (_tJumpStage)
                 {
-                    case 0: // settle, then jump on a full charge
+                    case 0: // settle; the unfitted Atlas must not lift even with thrust commanded
+                        _enemy.SetThrust(true);
                         if (_tPhaseT > 0.6)
                         {
+                            if (_enemy.JumpHeight > 0.05f) { TFail("Atlas lifted without jets"); return; }
+                            _enemy.SetThrust(false);
                             _tJumpGround = _player.RootPos.Y;
-                            if (_enemy.TryJump()) { TFail("Atlas jumped without jets"); return; }
-                            if (!_player.TryJump()) { TFail("fitted player refused to jump on a full charge"); return; }
-                            if (_player.JumpCharge > 0.01f) { TFail("jump did not spend the thruster charge"); return; }
-                            if (_player.TryJump()) { TFail("second jump fired on a spent charge"); return; }
-                            _tJumpTried = true; _tJumpStage = 1;
+                            _tFlyStart = new Vector2(_player.RootPos.X, _player.RootPos.Z);
+                            _player.SetThrust(true);
+                            _tJumpStage = 1;
                         }
                         break;
-                    case 1: // at flyover height, park the Atlas underneath: no push allowed
-                        if (_player.JumpHeight > 12f)
+                    case 1: // full burn, W held — climb past enemy height while the jets push forward
+                        if (!_tParked && _player.JumpHeight > 12f)
                         {
                             _tJumpXZ = new Vector2(_player.RootPos.X, _player.RootPos.Z);
                             _enemy.Teleport(new Vector3(_tJumpXZ.X, Main.HeightAt(_tJumpXZ.X, _tJumpXZ.Y), _tJumpXZ.Y), 0f);
-                            _tJumpMarkT = (float)_tPhaseT; _tJumpStage = 2;
+                            _tJumpMarkT = (float)_tPhaseT; _tParked = true;
                         }
-                        else if (_tPhaseT > 3.0) { TFail($"jump never reached flyover height (apex so far {_tJumpApex:F1})"); return; }
-                        break;
-                    case 2: // hold under the falling mech briefly, then clear the landing zone
-                        if (_tPhaseT > _tJumpMarkT + 0.3)
+                        if (_tParked && _tPhaseT > _tJumpMarkT + 0.3 && _enemy.RootPos.X > -50f)
                         {
                             var nowXZ = new Vector2(_player.RootPos.X, _player.RootPos.Z);
-                            if (nowXZ.DistanceTo(_tJumpXZ) > 0.05f) { TFail("flyover pushed the jumping mech sideways"); return; }
+                            // forward flight moves the mech; the flyover check is LATERAL push only
+                            if (Mathf.Abs(nowXZ.X - _tJumpXZ.X) > 0.05f) { TFail("flyover pushed the flying mech sideways"); return; }
                             _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), 0f);
+                        }
+                        if (_player.JumpCharge <= 0f)
+                        {
+                            _tBurnDist = new Vector2(_player.RootPos.X - _tFlyStart.X, _player.RootPos.Z - _tFlyStart.Y).Length();
+                            _tBurnSpeed = _player.Speed;
+                            _player.SetThrust(false);
+                            _tJumpStage = 2;
+                        }
+                        break;
+                    case 2: // tanks empty: gravity takes it back down
+                        if (_player.JumpHeight <= 0f && _tPhaseT > 3.4)
+                        {
+                            GD.Print($"FLYTEST burn apex={_tJumpApex:F1} burnDist={_tBurnDist:F1} burnEndSpeed={_tBurnSpeed:F1}");
+                            if (_tJumpApex < 14f) { TFail($"full-burn apex {_tJumpApex:F1} < 14 - cannot clear an enemy"); return; }
+                            // The push is judged on SPEED at burn end:
+                            // walk alone caps at 4.2; jets+W must read
+                            // ~7.2 (the accel ramp eats the distance
+                            // signal: 9.1u with push vs ~7.1 without).
+                            if (_tBurnSpeed < 6.5f) { TFail($"burn-end speed {_tBurnSpeed:F1} < 6.5 - thrusters did not push the mech forward"); return; }
+                            if (_tBurnDist < 8.5f) { TFail($"burn travel {_tBurnDist:F1} < 8.5"); return; }
                             _tJumpStage = 3;
                         }
                         break;
-                    case 3: // landed + recharged -> the next jump must be available again
-                        if (_player.JumpHeight <= 0f && _player.JumpCharge >= 0.999f)
+                    case 3: // partial recharge -> a shorter, lower flight
+                        if (_player.JumpCharge >= 0.45f) { _player.SetThrust(true); _tJumpStage = 4; }
+                        break;
+                    case 4: // partial burn spent -> descend and land
+                        if (_tApex2 > 0.5f && _player.JumpHeight <= 0f)
                         {
-                            float settle = Mathf.Abs(_player.RootPos.Y - _tJumpGround);
-                            GD.Print($"JUMPTEST apex={_tJumpApex:F2} settle={settle:F3} doneT={_tPhaseT:F1}");
-                            if (_tJumpApex < 14f) { TFail($"jump apex {_tJumpApex:F2} < 14 - feet would not clear a 14u mech"); return; }
-                            if (settle > 0.2f) { TFail($"mech did not land (settle {settle:F3})"); return; }
-                            if (!_player.TryJump()) { TFail("recharged thrusters refused the next jump"); return; }
-                            GD.Print("JUMPTEST PASS full-charge jump clears enemy height, flyover has no collision push, charge auto-refills and jumps again");
+                            _player.SetThrust(false);
+                            GD.Print($"FLYTEST partial apex={_tApex2:F1} (full {_tJumpApex:F1})");
+                            if (_tApex2 < 3f) { TFail($"partial-charge flight too low ({_tApex2:F1})"); return; }
+                            if (_tApex2 > _tJumpApex - 4f) { TFail($"partial flight ({_tApex2:F1}) not lower than full ({_tJumpApex:F1})"); return; }
+                            _tJumpStage = 5;
+                        }
+                        break;
+                    case 5: // full recharge on the ground completes the contract
+                        if (_player.JumpCharge >= 0.999f)
+                        {
+                            GD.Print("FLYTEST PASS hold-to-fly: full burn clears enemy height with forward push and no flyover shove, empty tanks descend, partial charge flies lower, ground recharge refills");
                             GD.Print("TERRAINTEST DONE");
                             GetTree().Quit(0);
                             _tPhase = 99;
                         }
-                        else if (_tPhaseT > 10.0) { TFail($"no landing/recharge by {_tPhaseT:F1}s (charge {_player.JumpCharge:F2})"); return; }
                         break;
                 }
                 break;
@@ -4457,6 +4496,7 @@ public partial class MechDuel : Node3D
 
     public override void _Process(double delta)
     {
+
         if (_player == null || !_player.IsReady || _enemy == null || !_enemy.IsReady) return;
         float dt = (float)delta;
 
