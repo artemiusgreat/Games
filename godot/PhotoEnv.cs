@@ -477,17 +477,38 @@ void fragment() {
     public static void Tune(Environment env, DirectionalLight3D sun)
     {
         env.SdfgiEnabled = true;
+        // Optimization #2 (owner): fewer, cheaper cascades + probe
+        // occlusion; convergence cost is spread thinner, which
+        // flattens frame times. Quality at arena scale is unchanged
+        // in practice — 4 cascades cover 170u comfortably.
+        env.SdfgiCascades = 4;
+        env.SdfgiUseOcclusion = true;
+        env.SdfgiMinCellSize = 0.35f;
         env.SsaoEnabled = true;
         env.VolumetricFogEnabled = true;
         env.VolumetricFogDensity = 0.0022f; // probe run 1 white-out: volumetric density is its own dial, and the default buried the scene
         env.FogDensity = 0.0016f; // distance haze like the reference shot
         env.GlowEnabled = true;
-        env.GlowIntensity = 0.25f;
+        env.GlowIntensity = 0.15f;
         env.GlowStrength = 0.7f;
-        env.TonemapExposure = 1.06f;
-        env.AmbientLightEnergy = 0.42f;
-        sun.LightEnergy = 1.6f;
+        // Look pass (owner: fog + bright light overilluminated the
+        // scene). The wash came from stacked ambient terms — sky
+        // ambient 0.42 + full-strength SDFGI bounce + bright fog —
+        // so the fix is to let the SUN carry the image and deepen
+        // everything else: lower exposure, weaker ambient and
+        // bounce, darker fog, and a gentle filmic contrast/
+        // saturation adjustment on top. The haze itself stays.
+        env.TonemapExposure = 0.94f;
+        env.AmbientLightEnergy = 0.30f;
+        env.SdfgiEnergy = 0.85f;
+        env.FogLightColor = new Color(0.55f, 0.65f, 0.78f);
+        env.VolumetricFogAlbedo = new Color(0.55f, 0.65f, 0.78f);
+        env.AdjustmentEnabled = true;
+        env.AdjustmentBrightness = 1.0f;
+        env.AdjustmentContrast = 1.08f;
+        env.AdjustmentSaturation = 1.05f;
+        sun.LightEnergy = 1.45f;
         sun.DirectionalShadowMaxDistance = 520f;
-        GD.Print("PHOTO env tuned: SDFGI + SSAO + volumetric fog + glow");
+        GD.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }
 }
