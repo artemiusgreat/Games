@@ -86,6 +86,20 @@ public partial class MechWalker : Node3D
     private float _prevYaw;
     private float _yawRate;
     private float _speed;
+    private float _jumpH, _jumpVel;
+    public bool JumpJets; // thrusters fitted AND chassis capable (set by the duel from spec+loadout)
+    public bool Airborne => _jumpH > 0.02f;
+
+    // Jump jets: a ballistic hop on top of the gait's root height.
+    // Returns false when jets are absent or the mech is already
+    // airborne / knocked down.
+    public bool TryJump()
+    {
+        if (!JumpJets || _jumpH > 0.001f || _fallT >= 0f) return false;
+        _jumpVel = 9.5f;
+        _jumpH = 0.001f;
+        return true;
+    }
     private float _targetSpeed;
     private float _bob;
     private Vector3 _sway = Vector3.Zero;
@@ -338,6 +352,7 @@ public partial class MechWalker : Node3D
         _legsYaw = legsYaw;
         _prevYaw = legsYaw;
         _speed = 0f;
+        _jumpH = 0f; _jumpVel = 0f;
         _targetSpeed = 0f;
         _fallT = -1f;
         _fallAmt = 0f;
@@ -469,6 +484,14 @@ public partial class MechWalker : Node3D
 
     private void GaitStep(float h)
     {
+        // Jump arc (gravity 24 u/s^2, launch 9.5 u/s: ~1.9u apex,
+        // ~0.8s airborne) integrated per substep like the gait.
+        if (_jumpVel != 0f || _jumpH > 0f)
+        {
+            _jumpVel -= 24f * h;
+            _jumpH += _jumpVel * h;
+            if (_jumpH <= 0f) { _jumpH = 0f; _jumpVel = 0f; }
+        }
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
         _prevYaw = _legsYaw;
 
@@ -515,7 +538,7 @@ public partial class MechWalker : Node3D
         bool doubleSupport = _legL.Planted && _legR.Planted;
         float bobT = doubleSupport ? -0.09f : -0.02f;
         _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-6f * h));
-        float yT = DesiredRootY();
+        float yT = DesiredRootY() + _jumpH;
         // Knocked down: the hips drop to rest height (body on the ground).
         if (_fallAmt > 0.001f)
         {
