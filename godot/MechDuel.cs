@@ -1597,7 +1597,7 @@ public partial class MechDuel : Node3D
         {
             "machine_gun" => (85f, 3f),
             "heavy_cannon" => (46f, 7f),
-            _ => (95f, 5f) // autocannon (owner: 60 felt floaty at duel ranges)
+            _ => (140f, 5f) // autocannon (owner: 60 felt floaty, 95 still slow — 140 now)
         };
         SpawnProjectile(muzzle, dir * spd, grav, _defBallistic.Damage, 0f, "TW", rocket: false, weaponWeight: _defBallistic.Weight);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
