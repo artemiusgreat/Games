@@ -127,6 +127,7 @@ public partial class MechDuel : Node3D
     private MechWalker _player;
     private MechWalker _enemy;
     private Camera3D _cam;
+    private DirectionalLight3D _labLight; // lab-only fill: the mech must read as the centerpiece, not a silhouette
     private bool _test;
     private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
     private double _simT;
@@ -286,6 +287,14 @@ public partial class MechDuel : Node3D
         };
         sun.DirectionalShadowMaxDistance = 320f;
         AddChild(sun);
+        _labLight = new DirectionalLight3D
+        {
+            LightEnergy = 0.85f,
+            LightColor = new Color(0.9f, 0.95f, 1f),
+            ShadowEnabled = false,
+            Visible = false
+        };
+        AddChild(_labLight);
         var skyMat = new ProceduralSkyMaterial
         {
             SkyTopColor = new Color(0.20f, 0.40f, 0.71f),
@@ -408,6 +417,7 @@ public partial class MechDuel : Node3D
                 _lab.QueueFree();
                 _lab = null;
                 _labOpen = false;
+                if (_labLight != null) _labLight.Visible = false;
                 _panel.Visible = true;
                 _radar.Visible = true;
                 _feedLabel.Visible = true;
@@ -4512,18 +4522,21 @@ public partial class MechDuel : Node3D
 
         if (_labOpen)
         {
-            // The duel waits behind the MechLab: slow orbit backdrop.
-            // Framed for the paperdoll (owner): closer than before
-            // (21u left the mech small behind the dim backdrop) and
-            // the look target is offset sideways so the mech stands
-            // in the paperdoll area on the right, not behind the
-            // weapon catalog on the left.
-            float ang = (float)Time.GetTicksMsec() / 1000f * 0.09f;
-            var center = _player.RootPos + Vector3.Up * 6.0f;
-            var back = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
-            _cam.GlobalPosition = center + back * 15.5f + Vector3.Up * 5.0f;
+            // The duel waits behind the MechLab: a showroom view
+            // (owner, MW4-style) — the mech stands front three-
+            // quarter in the paperdoll area, lit by a lab fill, so
+            // the slot panels sit ON the machine. A fixed angle
+            // (plus a barely-there sway) replaces the orbit: the
+            // paperdoll mapping only makes sense from the front.
+            _labLight.Visible = true;
+            float sway = Mathf.Sin((float)Time.GetTicksMsec() / 1000f * 0.15f) * 0.045f;
+            var center = _player.RootPos + Vector3.Up * 5.6f;
+            var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
+            var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the mech, slightly to its side
+            _cam.GlobalPosition = center + viewDir * 14.5f + Vector3.Up * 3.4f;
             _cam.LookAt(center, Vector3.Up);
-            _cam.RotateY(0.22f); // pan left in camera space: the mech shifts right, into the paperdoll area, at any orbit angle
+            _cam.RotateY(0.30f); // pan in camera space: mech into the paperdoll area (right of the catalog)
+            _labLight.GlobalRotation = _cam.GlobalRotation;
             return;
         }
 
