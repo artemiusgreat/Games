@@ -89,24 +89,22 @@ public partial class MechWalker : Node3D
     private float _jumpH, _jumpVel;
     private float _groundY; // gait-followed root height; the jump arc rides on top unsmoothed
     public bool JumpJets; // thrusters fitted AND chassis capable (set by the duel from spec+loadout)
-    public float JumpCharge = 1f; // thruster load 0..1: a jump spends it all, ~5s ground recharge
+    public float JumpCharge = 1f; // thruster load 0..1: burning drains it (~2.2s of flight), ~5s ground recharge
     public float JumpHeight => _jumpH;
     public bool Airborne => _jumpH > 0.02f;
 
-    // Jump jets (owner): enough load to lift the mech OVER an
-    // enemy — launch 28 u/s against gravity 24 gives a ~16u apex,
-    // feet above a 14u Atlas. Costs the full charge; auto-recharges
-    // on the ground in ~5s, like a long weapon cooldown. Returns
-    // false when jets are absent, the charge is short, or the mech
-    // is already airborne / knocked down.
-    public bool TryJump()
-    {
-        if (!JumpJets || JumpCharge < 0.999f || _jumpH > 0.001f || _fallT >= 0f) return false;
-        _jumpVel = 28f;
-        _jumpH = 0.001f;
-        JumpCharge = 0f;
-        return true;
-    }
+    private bool _thrustHeld;
+    public bool Thrusting { get; private set; }
+
+    // Thrusters (owner, replacing the ballistic jump): HOLD the
+    // key to fly. SetThrust is the held state; while held with
+    // charge remaining the jets climb (capped ~10.5 u/s) and drain
+    // the full charge in ~2.2s of burn — enough to rise well above
+    // a 14u enemy. Release the key or empty the tanks and gravity
+    // (24 u/s^2, terminal -18) brings the mech down. A partial
+    // charge flies proportionally lower. The charge auto-refills
+    // on the ground in ~5s.
+    public void SetThrust(bool on) => _thrustHeld = on;
     private float _targetSpeed;
     private float _bob;
     private Vector3 _sway = Vector3.Zero;
@@ -359,7 +357,7 @@ public partial class MechWalker : Node3D
         _legsYaw = legsYaw;
         _prevYaw = legsYaw;
         _speed = 0f;
-        _jumpH = 0f; _jumpVel = 0f;
+        _jumpH = 0f; _jumpVel = 0f; _thrustHeld = false; Thrusting = false;
         _targetSpeed = 0f;
         _fallT = -1f;
         _fallAmt = 0f;
@@ -492,11 +490,21 @@ public partial class MechWalker : Node3D
 
     private void GaitStep(float h)
     {
-        // Jump arc (gravity 24 u/s^2, launch 9.5 u/s: ~1.9u apex,
-        // ~0.8s airborne) integrated per substep like the gait.
-        if (_jumpVel != 0f || _jumpH > 0f)
+        // Thruster flight, integrated per substep like the gait:
+        // burn climbs and drains, otherwise gravity rules.
+        Thrusting = _thrustHeld && JumpJets && JumpCharge > 0f && _fallT < 0f;
+        if (Thrusting)
         {
-            _jumpVel -= 24f * h;
+            JumpCharge = Mathf.Max(0f, JumpCharge - h / 2.2f);
+            _jumpVel = Mathf.Min(_jumpVel + 34f * h, 10.5f);
+        }
+        else if (_jumpH > 0f)
+        {
+            _jumpVel = Mathf.Max(_jumpVel - 24f * h, -18f);
+        }
+        else _jumpVel = 0f;
+        if (_jumpH > 0f || _jumpVel > 0f)
+        {
             _jumpH += _jumpVel * h;
             if (_jumpH <= 0f) { _jumpH = 0f; _jumpVel = 0f; }
         }
