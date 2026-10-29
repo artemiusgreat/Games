@@ -19,7 +19,7 @@ public partial class MechDuel : Node3D
 {
     private const float PlayerMaxSpeed = 4.2f;
     private const float AtlasMaxSpeed = 2.2f;
-    private const float RunFactor = 1.65f; // SHIFT run mode: walk speed x1.65 (owner: slightly faster than the old x1.5)
+    private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 0.85f;
     private const float WorldBound = 80f; // heightfield world is 170 wide
 
@@ -1676,8 +1676,8 @@ public partial class MechDuel : Node3D
         (float spd, float grav) = _defBallistic.Id switch
         {
             "machine_gun" => (85f, 3f),
-            "heavy_cannon" => (46f, 7f),
-            _ => (140f, 5f) // autocannon (owner: 60 felt floaty, 95 still slow — 140 now)
+            "heavy_cannon" => (138f, 7f), // 46 x3 (owner, 2026-10-29: every cannon bullet 3x faster)
+            _ => (420f, 5f) // autocannon 140 x3 (same owner instruction; the 60->95->140 history is in git)
         };
         SpawnProjectile(muzzle, dir * spd, grav, _defBallistic.Damage, 0f, "TW", rocket: false, weaponWeight: _defBallistic.Weight);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
@@ -2421,12 +2421,12 @@ public partial class MechDuel : Node3D
         if (dist > 75f) return;
         var los = _hit.Ray(muzzle, (target - muzzle).Normalized(), dist, "ATLAS");
         if (los.Hit && los.Target != "TW") return; // blocked: building/terrain
-        float tof = dist / 50f;
+        float tof = dist / 150f; // matches the shell speed below (50 x3, owner 2026-10-29) — lead and flight must use the same number
         var aim = target + _playerVel * tof;
         // Head destroyed: sensors gone, aim spread triples (1.2 -> 3.6 deg).
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
             _partsEnemy.Alive("head") ? 1.2f : 3.6f);
-        SpawnProjectile(muzzle, dir * 50f, 5f, 18f, 0f, "ATLAS", rocket: false, weaponWeight: WeaponCatalog.AtlasAc20.Weight);
+        SpawnProjectile(muzzle, dir * 150f, 5f, 18f, 0f, "ATLAS", rocket: false, weaponWeight: WeaponCatalog.AtlasAc20.Weight); // 50 x3 (owner: every cannon bullet 3x — the dodge window narrows with it)
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
         _cdAtlas = 2.4f;
         _atlasShots++;
@@ -3014,14 +3014,17 @@ public partial class MechDuel : Node3D
                     if (beamLen < 0f || Mathf.Abs(beamLen - wantLen) > 3f)
                     { GD.PrintErr($"DUEL FAIL: sky-shot beam runs {beamLen:F1}u but the cursor point is {wantLen:F1}u from the muzzle"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL BEAMEND PASS sky-shot beam stops at the cursor point ({beamLen:F1}u, not the 140u raycast end)");
-                    // The torso clamp is ±135° (a 270° total arc):
-                    // an over-range command must be clamped by the
-                    // setter, never reaching fully backward.
+                    // Torso twist is UNCLAMPED (owner, 2026-10-29):
+                    // a 195° command must stick — the torso rotates
+                    // the full 360°, fully backward included.
                     _player.TorsoTwist = 3.4f;
-                    if (_player.TorsoTwist > 2.3562f + 0.001f)
-                    { GD.PrintErr($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg exceeds the ±135 clamp"); _aimStep = 99; GetTree().Quit(1); break; }
+                    if (_player.TorsoTwist < 3.39f)
+                    { GD.PrintErr($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg was clamped (full 360 required)"); _aimStep = 99; GetTree().Quit(1); break; }
+                    _player.TorsoTwist = -3.4f;
+                    if (_player.TorsoTwist > -3.39f)
+                    { GD.PrintErr($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg was clamped (full 360 required)"); _aimStep = 99; GetTree().Quit(1); break; }
                     _player.TorsoTwist = 0f;
-                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle IS the convergence point: laser hits low, misses high; twist clamped at ±135");
+                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle IS the convergence point: laser hits low, misses high; twist unclamped (full 360)");
                     // Rendered-pitch check next (steps 1-2): the AIM
                     // math above is property-based; these read the
                     // skeleton's actual facing after a StepWalker ran.
@@ -3284,14 +3287,17 @@ public partial class MechDuel : Node3D
                 }
                 break;
 
-            case 5: // Atlas return fire vs a strafing player: hits AND misses.
-                    // The player reverses every 0.9s at full speed — with a
-                    // 0.6s shell flight, most shots have a reversal inside
-                    // their lead window, which is what makes dodging real.
-                    // Under the weight knockdown rule a landed AC/20 (16t >
-                    // 15t threshold) topples the TW and ends the dodge, so
-                    // the miss requirement yields to a knockdown: either
-                    // proof shows the return fire is not a guaranteed hit.
+            case 5: // Atlas return fire vs a strafing player.
+                    // The player reverses every 0.9s at full speed. At the
+                    // original 50 u/s shell the 0.9s flight let a reversal
+                    // land inside the lead window — strafing genuinely
+                    // dodged. Since 2026-10-29 the AC/20 flies at 150
+                    // (owner: Atlas matches the player's cannon changes,
+                    // symmetric rules), flight is ~0.3s, the strafe
+                    // displaces ~1.2u — inside the target's own radius —
+                    // so return fire is RELIABLE now, by design. The
+                    // owner flagged this as provisional: if Atlas feels
+                    // unfair in his visual test, the speed reverts.
                 _wStrafeT += dt;
                 if (_player.IsKnockedDown) _wKnocked = true;
                 if (_wStrafeT > 0.9) { _wStrafeT = 0; _wStrafeDir = -_wStrafeDir; }
@@ -3305,20 +3311,15 @@ public partial class MechDuel : Node3D
                     int hits = _twDmgEvents;
                     int misses = _atlasShots - hits;
                     if (hits < 1) WFail($"atlas return fire: 0 hits in {_atlasShots} shots");
-                    // The pass band is 2..5 hits of 6, from MEASURED
-                    // outcomes on unchanged code: 3, 5, 4, 4, 2 across
-                    // five runs (verify21..26). The dodge reverses on
-                    // accumulated frame dt, so where each shot lands
-                    // in the strafe cycle is pacing luck — the count
-                    // is a distribution, not a constant. The band
-                    // still proves the phase's purpose both ways:
-                    // >=2 = return fire lands real damage through a
-                    // dodge; <=5 = it is not an auto-hit (the seeded
-                    // cone + velocity lead can genuinely miss). The
-                    // sharp assertion stays the exact damage total
-                    // below (hits x 18, no tolerance games there).
-                    if (hits < 2) WFail($"atlas return fire ineffective: {hits} hits in {_atlasShots} shots");
-                    if (hits > 5) WFail($"atlas return fire never misses a strafing target: {hits} hits in {_atlasShots} shots");
+                    // Pass band at 150 u/s: 5..6 hits of 6. The one
+                    // allowed miss is the seeded ±1.2° cone at long
+                    // range plus pacing luck in the reversal cycle;
+                    // anything less means return fire broke. The old
+                    // 2..5 dodge band (measured at 50 u/s, verify21..26)
+                    // died with the dodge window itself. The sharp
+                    // assertion stays the exact damage total below
+                    // (hits x 18, no tolerance games there).
+                    if (hits < 5) WFail($"atlas return fire unreliable at matched speed: {hits} hits in {_atlasShots} shots");
                     if (Mathf.Abs(_twDmgTotal - hits * 18f) > 0.01f)
                         WFail($"atlas dmg total={_twDmgTotal:F1} != hits*18 ({hits * 18})");
                     GD.Print($"WPNTEST ATLASFIRE PASS shots={_atlasShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
@@ -4262,7 +4263,7 @@ public partial class MechDuel : Node3D
                     var d = new Vector2(_player.RootPos.X - _tRunFrom.X, _player.RootPos.Z - _tRunFrom.Z).Length();
                     float avg = d / ((float)_tPhaseT - _tRunMark);
                     GD.Print($"RUNTEST steadySpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) segDist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3}");
-                    if (avg < 6.4f) { TFail($"run steady speed {avg:F2} < 6.4"); return; }
+                    if (avg < 11.4f) { TFail($"run steady speed {avg:F2} < 11.4"); return; }
                     if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
                     GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");
                     // FLY setup: flat spawn, jets fitted, tanks full.
