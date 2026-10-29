@@ -140,7 +140,6 @@ public partial class MechDuel : Node3D
     // capture state
     private bool _frozen, _capturing;
     private string _pendingPath, _pendingTag, _camMode = "chase";
-    private float _camOffsetX = 2.2f; // chase-cam shoulder offset (owner: configurable, ,/.// keys)
     private System.Action _afterCapture;
 
     // test choreography
@@ -547,6 +546,17 @@ public partial class MechDuel : Node3D
         // trees still block shots and can be shot/burned.
         var treeCyl = new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = pos.Y, Height = totalH * scale };
         _hit.Props.Add(treeCyl);
+        // The canopy is a collider too (owner, three reports): the
+        // visible crown spans ~+-2u (branches + leaf blobs) but only
+        // the 0.7u trunk collided, so shots through the leaves —
+        // aimed at the tree's visible center — passed through
+        // nothing. A tree now collides as it looks.
+        var canopyCyl = new HitModel.PropCyl
+        {
+            P = new Vector2(pos.X, pos.Z), R = 2.0f * scale,
+            BaseY = pos.Y + totalH * scale * 0.38f, Height = totalH * scale * 0.62f
+        };
+        _hit.Props.Add(canopyCyl);
         var td = new Destructible
         {
             Kind = "tree", Node = tree,
@@ -555,6 +565,7 @@ public partial class MechDuel : Node3D
         };
         td.CirclePts.Add(new Vector2(pos.X, pos.Z));
         td.Cyls.Add(treeCyl);
+        td.Cyls.Add(canopyCyl);
         _destructibles.Add(td);
     }
 
@@ -1023,16 +1034,6 @@ public partial class MechDuel : Node3D
         // click-to-capture below would hide the cursor the moment a
         // drag starts and kill drag-and-drop (owner's bug report).
         if (_labOpen) return;
-        if (e is InputEventKey ck && ck.Pressed && !ck.Echo && !_labOpen)
-        {
-            // Camera shoulder offset (owner, configurable in play):
-            // , / . slide the chase camera sideways, / recenters.
-            // The reticle is a projection of the 3D aim point, so it
-            // stays exactly on target at any offset.
-            if (ck.Keycode == Key.Comma) _camOffsetX = Mathf.Max(_camOffsetX - 0.4f, -5f);
-            else if (ck.Keycode == Key.Period) _camOffsetX = Mathf.Min(_camOffsetX + 0.4f, 5f);
-            else if (ck.Keycode == Key.Slash) _camOffsetX = 0f;
-        }
         if (e is InputEventKey rk && rk.Pressed && !rk.Echo && rk.Keycode == Key.R)
         {
             ResetDuel();
@@ -2096,7 +2097,7 @@ public partial class MechDuel : Node3D
         var rowLrm = CdRow("3 LRM");
         _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
         var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
-        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · , / . — camera shift · / — center camera";
+        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire";
         midBox.AddChild(hint);
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         midBox.AddChild(_lblWeaponStatus);
@@ -2305,15 +2306,24 @@ public partial class MechDuel : Node3D
 
     private Destructible PropAt(Vector3 point, float extraReach = 0f)
     {
+        // Attribution by the destructible's OWN hit cylinders: a hit
+        // point belongs to a prop when it lands on (or within reach
+        // of) one of its cylinders, in that cylinder's height band.
+        // (Center-distance attribution broke twice — the laser's
+        // inflated entry point, then the tree canopy's edge.)
         Destructible best = null;
         float bestD = float.MaxValue;
         foreach (var d in _destructibles)
         {
             if (d.State != 0) continue;
-            float dxz = new Vector2(point.X - d.Center.X, point.Z - d.Center.Z).Length();
-            if (dxz > d.Radius + 0.9f + extraReach) continue;
-            if (point.Y < d.Center.Y - 0.6f || point.Y > d.Center.Y + d.Height + 0.6f) continue;
-            if (dxz < bestD) { bestD = dxz; best = d; }
+            foreach (var c in d.Cyls)
+            {
+                float dxz = new Vector2(point.X - c.P.X, point.Z - c.P.Y).Length();
+                float over = dxz - c.R;
+                if (over > 0.35f + extraReach) continue;
+                if (point.Y < c.BaseY - 0.6f || point.Y > c.BaseY + c.Height + 0.6f) continue;
+                if (over < bestD) { bestD = over; best = d; }
+            }
         }
         return best;
     }
@@ -3276,21 +3286,30 @@ public partial class MechDuel : Node3D
                     fp2.Y = Main.HeightAt(fp2.X, fp2.Z);
                     _player.Teleport(fp2, MechWalker.YawOf((tc - fp2).Normalized()));
                     _playerYaw = _player.LegsYaw;
-                    // The owner's live scenario, scripted: torso
-                    // centered on the trunk from 12u — the arm's
-                    // parallax at that range is ~1.9u against a 0.7u
-                    // trunk, so only convergence AT the target's
-                    // depth can hit. TorsoAimPoint must return a
-                    // point ON the trunk, and the laser fired at it
-                    // must destroy the tree in one hit.
+                    // The owner's live scenario, scripted — twice
+                    // over. He aims at the tree's VISIBLE center: the
+                    // crown, ~1.5u off the trunk axis at 0.75 height.
+                    // Round 11 converged on the trunk but the crown
+                    // had no collider at all, so the shot still went
+                    // through the leaves. Now the canopy collides:
+                    // the chest ray must catch it, convergence must
+                    // land on it, and one hit must drop the tree.
                     _player.TorsoTwist = 0f;
+                    var toT = tc - fp2; toT.Y = 0f;
+                    var latT = new Vector3(-toT.Z, 0f, toT.X).Normalized();
                     var chestP = _player.BoneWorldPos("torso");
-                    var trunkPt = new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z);
-                    var dTr = trunkPt - chestP;
+                    var crownPt = tc + latT * 1.5f + Vector3.Up * (_wEnvT.Height * 0.75f);
+                    var dTr = crownPt - chestP;
                     _player.TorsoPitch = Mathf.Atan2(dTr.Y, new Vector2(dTr.X, dTr.Z).Length());
+                    // Torso yaw must track the offset point too: the
+                    // teleport faced the trunk axis; rotate the legs
+                    // (and read back the yaw) to face the crown point.
+                    _playerYaw = MechWalker.YawOf(dTr.Normalized());
+                    _player.SetDrive(_playerYaw, 0f);
                     _cdLaser = 0f;
                     var conv = TorsoAimPoint();
-                    if (conv.DistanceTo(trunkPt) > 1.2f) { WFail($"convergence point {conv} is not on the trunk {trunkPt}"); return; }
+                    if (_aimTarget != "PROP") { WFail($"chest ray missed the crown (target='{_aimTarget}')"); return; }
+                    if (conv.DistanceTo(crownPt) > 2.4f) { WFail($"convergence point {conv} is not on the crown {crownPt}"); return; }
                     FireLaser(conv);
                     if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * 8f;
@@ -3302,7 +3321,7 @@ public partial class MechDuel : Node3D
                     if (splinters < 5) { WFail($"tree threw only {splinters} splinters (want 5)"); return; }
                     int tp = _fxParticles - _wEnvParticles0;
                     if (tp < 3) { WFail($"tree death spawned only {tp} particle systems (want fire burst + burning wreck)"); return; }
-                    GD.Print($"ENVTEST TREE-HIT PASS torso-centered laser converged on the trunk and destroyed the tree in one hit, colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
+                    GD.Print($"ENVTEST TREE-HIT PASS laser aimed at the visible crown (1.5u off-axis) converged on it and destroyed the tree in one hit, colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
                     _wEnvStep = 3;
                 }
                 else if (_wEnvStep == 3)
@@ -4159,14 +4178,16 @@ public partial class MechDuel : Node3D
         {
             var torsoYaw = _player.TorsoYawWorld;
             var back = -MechWalker.HeadingVec(torsoYaw);
-            var hv = MechWalker.HeadingVec(torsoYaw);
-            var rightV = new Vector3(-hv.Z, 0f, hv.X); // torso right — camera over the right shoulder
-            var target = _player.RootPos + back * 15.0f + Vector3.Up * 15.5f + rightV * _camOffsetX;
+            // Centered and HIGH (owner, round 12): no sideways
+            // offset — the camera sits on the torso axis, lifted
+            // well above the mech so the field in front of it is
+            // visible over the hull.
+            var target = _player.RootPos + back * 16.0f + Vector3.Up * 23.0f;
             if (delta > 0f)
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
                 _cam.GlobalPosition = target;
-            var look = _player.RootPos + Vector3.Up * 5.5f + MechWalker.HeadingVec(torsoYaw) * 10f + rightV * _camOffsetX;
+            var look = _player.RootPos + Vector3.Up * 4.5f + MechWalker.HeadingVec(torsoYaw) * 14f;
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)
