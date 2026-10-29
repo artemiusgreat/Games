@@ -3456,8 +3456,14 @@ public partial class MechDuel : Node3D
                         for (int k = 0; k < 16 && !onHill; k++)
                         {
                             float a = k * Mathf.Tau / 16f;
+                            // Teleport applies the yaw NOW; SetDrive
+                            // would only take effect on the next
+                            // walker step — the first search swept one
+                            // lane sixteen times (measured: no far
+                            // convergence anywhere, because every
+                            // 'facing' was still yaw 0).
+                            _player.Teleport(new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y), pad.Y), a);
                             _playerYaw = a;
-                            _player.SetDrive(a, 0f);
                             _player.TorsoTwist = 0f;
                             UpdateCamera(0f);
                             for (float pp = 0.40f; pp >= -0.10f; pp -= 0.02f)
