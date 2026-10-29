@@ -1555,7 +1555,7 @@ public partial class MechDuel : Node3D
         // it. +0.9u on prop cylinders only; mechs stay exact.
         var hit = _hit.Ray(muzzle, dir, 140f, "TW", 0.9f);
         bool ppc = _defEnergy.Id == "ppc";
-        SpawnBeam(muzzle, hit.Point, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.085f, 0.12f);
+        SpawnBeam(muzzle, hit.Point, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
         SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
         if (hit.Hit)
         {
