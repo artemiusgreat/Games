@@ -146,6 +146,13 @@ public partial class MechLab : Control
         var tex = new TextureRect { Texture = Icon(w), StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
         tex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         root.AddChild(tex);
+        // Backdrop strip behind the abbreviation (owner): a real
+        // UI element, not just the baked texture band.
+        var strip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
+        strip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+        strip.OffsetTop = -(size >= 44 ? 16 : 14);
+        strip.OffsetBottom = 0;
+        root.AddChild(strip);
         var ab = new Label { Text = Abbrev(w), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
         ab.AddThemeFontSizeOverride("font_size", size >= 44 ? 12 : 10);
         ab.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
@@ -236,7 +243,7 @@ public partial class MechLab : Control
         {
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
-            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46) };
+            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46), ClipContents = true }; // nothing paints outside the row band
             StyleBoxFlat RowBox(Color c)
             {
                 var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
@@ -245,7 +252,7 @@ public partial class MechLab : Control
             }
             rowPanel.AddThemeStyleboxOverride("panel", RowBox(new Color(0.09f, 0.12f, 0.16f, 1f)));
             var hb = new HBoxContainer();
-            hb.AddThemeConstantOverride("separation", 14); // clear gap between tile and name (owner)
+            hb.AddThemeConstantOverride("separation", 16); // clear gap between tile and name (owner)
             rowPanel.AddChild(hb);
             var drag = new DragTile { WeaponId = w.Id, Lab = this };
             drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
@@ -296,6 +303,11 @@ public partial class MechLab : Control
             panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
             panel.TileTex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             panel.Tile.AddChild(panel.TileTex);
+            var slotStrip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
+            slotStrip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+            slotStrip.OffsetTop = -16;
+            slotStrip.OffsetBottom = 0;
+            panel.Tile.AddChild(slotStrip);
             panel.TileAbbrev = new Label { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
             panel.TileAbbrev.AddThemeFontSizeOverride("font_size", 12);
             panel.TileAbbrev.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
