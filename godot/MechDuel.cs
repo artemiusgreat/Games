@@ -1183,11 +1183,22 @@ public partial class MechDuel : Node3D
         _aimDir = dir;
         var hit = _hit.Ray(from, dir, 200f, "TW");
         _aimTarget = hit.Hit ? hit.Target : "";
-        // THE aim point is the reticle's point: a fixed 40u along the
-        // ray (rounds 6+8+9 synthesis — see UpdateReticle). The hit
-        // above only feeds _aimTarget bookkeeping; weapons converge
-        // on THIS point, not on the ray's farther hit.
-        return from + dir * AimDepth;
+        _reticlePoint = from + dir * AimDepth;
+        // Round 11: weapons converge on the chest ray's hit when it
+        // lands on a MECH or a PROP within 60u — the things you
+        // actually shoot at. Converging only at the fixed 40u point
+        // left the muzzle parallax unpaid at close range: cursor
+        // dead-center on a trunk at 12u, the beam (flown from the
+        // arm) passing ~1.7u wide of it — the owner's laser AND
+        // cannon misses, straight through the visible center. Now
+        // the convergence depth IS the target's depth, so the
+        // parallax is zero exactly where the target stands. Terrain
+        // hits keep the free 40u point: sweeping across hillsides
+        // never sticks or terraces, and the reticle always projects
+        // the free point, so its motion is unchanged from round 9.
+        if (hit.Hit && hit.T <= 60f && (hit.Target == "ATLAS" || hit.Target == "PROP"))
+            return hit.Point;
+        return _reticlePoint;
     }
 
     // The reticle rides a fixed-depth point on the aim ray — AND
@@ -1206,10 +1217,11 @@ public partial class MechDuel : Node3D
     // twist), the projection mirrors — flip through the center and
     // clamp to the screen edge.
     private string _aimTarget = "";
+    private Vector3 _reticlePoint;
     private const float AimDepth = 40f;
     private void UpdateReticle()
     {
-        var pt = _aimPoint;
+        var pt = _reticlePoint;
         var vp = GetViewport().GetVisibleRect().Size;
         var sp = _cam.UnprojectPosition(pt);
         if (_cam.IsPositionBehind(pt)) sp = vp - sp;
@@ -1540,7 +1552,7 @@ public partial class MechDuel : Node3D
         {
             "machine_gun" => (85f, 3f),
             "heavy_cannon" => (46f, 7f),
-            _ => (60f, 5f)
+            _ => (95f, 5f) // autocannon (owner: 60 felt floaty at duel ranges)
         };
         SpawnProjectile(muzzle, dir * spd, grav, _defBallistic.Damage, 0f, "TW", rocket: false, weaponWeight: _defBallistic.Weight);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
@@ -1642,7 +1654,9 @@ public partial class MechDuel : Node3D
             OwnerId = owner,
             WeaponWeight = weaponWeight
         };
-        p.AddChild(rocket ? WeaponFx.MakeRocket() : (Node3D)WeaponFx.MakeTracer());
+        var vis = rocket ? WeaponFx.MakeRocket() : (Node3D)WeaponFx.MakeTracer();
+        vis.Scale = Vector3.One * (rocket ? 1.5f : 1.6f); // owner: projectiles slightly larger
+        p.AddChild(vis);
         AddChild(p);
         p.GlobalPosition = pos;
         if (vel.LengthSquared() > 0.01f) p.LookAt(pos + vel, Vector3.Up);
@@ -2082,7 +2096,7 @@ public partial class MechDuel : Node3D
         var rowLrm = CdRow("3 LRM");
         _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
         var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
-        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire";
+        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · , / . — camera shift · / — center camera";
         midBox.AddChild(hint);
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         midBox.AddChild(_lblWeaponStatus);
@@ -2792,7 +2806,7 @@ public partial class MechDuel : Node3D
                         _player.TorsoPitch = -0.05f + i * 0.02f;
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
-                        var exp = _cam.UnprojectPosition(_aimPoint);
+                        var exp = _cam.UnprojectPosition(_reticlePoint);
                         exp = new Vector2(
                             Mathf.Clamp(exp.X, 28f, vpAim.X - 28f),
                             Mathf.Clamp(exp.Y, 28f, vpAim.Y - 28f));
@@ -3262,14 +3276,22 @@ public partial class MechDuel : Node3D
                     fp2.Y = Main.HeightAt(fp2.X, fp2.Z);
                     _player.Teleport(fp2, MechWalker.YawOf((tc - fp2).Normalized()));
                     _playerYaw = _player.LegsYaw;
+                    // The owner's live scenario, scripted: torso
+                    // centered on the trunk from 12u — the arm's
+                    // parallax at that range is ~1.9u against a 0.7u
+                    // trunk, so only convergence AT the target's
+                    // depth can hit. TorsoAimPoint must return a
+                    // point ON the trunk, and the laser fired at it
+                    // must destroy the tree in one hit.
+                    _player.TorsoTwist = 0f;
+                    var chestP = _player.BoneWorldPos("torso");
+                    var trunkPt = new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z);
+                    var dTr = trunkPt - chestP;
+                    _player.TorsoPitch = Mathf.Atan2(dTr.Y, new Vector2(dTr.X, dTr.Z).Length());
                     _cdLaser = 0f;
-                    // Aimed 0.7u OFF the trunk axis: a hair-thin hit
-                    // ray threads past the narrow trunk (the owner's
-                    // centered-aim miss); the laser's hit thickness
-                    // must still destroy the tree.
-                    var toT = tc - fp2; toT.Y = 0f;
-                    var latT = new Vector3(-toT.Z, 0f, toT.X).Normalized();
-                    FireLaser(new Vector3(tc.X, tc.Y + _wEnvT.Height * 0.6f, tc.Z) + latT * 0.7f);
+                    var conv = TorsoAimPoint();
+                    if (conv.DistanceTo(trunkPt) > 1.2f) { WFail($"convergence point {conv} is not on the trunk {trunkPt}"); return; }
+                    FireLaser(conv);
                     if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * 8f;
                     var aimT = new Vector3(tc.X, tc.Y + 2f, tc.Z);
@@ -3280,7 +3302,7 @@ public partial class MechDuel : Node3D
                     if (splinters < 5) { WFail($"tree threw only {splinters} splinters (want 5)"); return; }
                     int tp = _fxParticles - _wEnvParticles0;
                     if (tp < 3) { WFail($"tree death spawned only {tp} particle systems (want fire burst + burning wreck)"); return; }
-                    GD.Print($"ENVTEST TREE-HIT PASS one laser hit aimed 0.7u off-axis destroyed the tree (hit thickness), colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
+                    GD.Print($"ENVTEST TREE-HIT PASS torso-centered laser converged on the trunk and destroyed the tree in one hit, colliders removed at once, FX fired (+{splinters} splinters, {tp} particle systems)");
                     _wEnvStep = 3;
                 }
                 else if (_wEnvStep == 3)
