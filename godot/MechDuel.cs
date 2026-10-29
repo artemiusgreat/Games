@@ -3409,6 +3409,13 @@ public partial class MechDuel : Node3D
                 }
                 else if (_wEnvStep == 4)
                 {
+                    // The weapons suite's captures leave _camMode on
+                    // a proof pose, which disables TorsoAimPoint's
+                    // camera-ray branch — every ENV hunt before this
+                    // line silently ran on the chest fallback (the
+                    // far Atlas passed through it, masking the fact).
+                    // Live play is always chase; restore it here.
+                    _camMode = "chase";
                     // FAR TARGET (owner, round 13): at 85u the old
                     // 60u convergence cap rejected the cursor's hit
                     // and shots fell back to the free point — in the
