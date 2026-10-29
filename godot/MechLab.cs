@@ -356,7 +356,7 @@ public partial class MechLab : Control
             var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(190, 92) };
             var sb = new StyleBoxFlat
             {
-                BgColor = new Color(0.06f, 0.085f, 0.12f, 0.92f),
+                BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), // translucent (owner): the mech shows through the slot backdrops
                 BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f),
                 ContentMarginLeft = 12, ContentMarginRight = 12,
                 ContentMarginTop = 10, ContentMarginBottom = 10
@@ -366,7 +366,7 @@ public partial class MechLab : Control
             panel.AddThemeStyleboxOverride("panel", sb);
             var vb = new VBoxContainer();
             panel.AddChild(vb);
-            var head = new Label { Text = $"{slot.Display} — {slot.Type} · max {slot.MaxWeight:F0}t" };
+            var head = new Label { Text = $"{slot.Type} · max {slot.MaxWeight:F0}t" }; // slot names removed (owner): type + capacity only
             head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
