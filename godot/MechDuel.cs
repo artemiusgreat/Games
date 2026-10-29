@@ -1508,7 +1508,7 @@ public partial class MechDuel : Node3D
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == "ATLAS") ApplyDamage(_enemy, _defEnergy.Damage, hit, "TW", _defEnergy.Weight, "laser");
-            else if (hit.Target == "PROP") DamageProp(hit.Point, _defEnergy.Damage);
+            else if (hit.Target == "PROP") DamageProp(hit.Point, _defEnergy.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -2289,7 +2289,7 @@ public partial class MechDuel : Node3D
         return dir.Rotated(axis, theta).Normalized();
     }
 
-    private Destructible PropAt(Vector3 point)
+    private Destructible PropAt(Vector3 point, float extraReach = 0f)
     {
         Destructible best = null;
         float bestD = float.MaxValue;
@@ -2297,16 +2297,16 @@ public partial class MechDuel : Node3D
         {
             if (d.State != 0) continue;
             float dxz = new Vector2(point.X - d.Center.X, point.Z - d.Center.Z).Length();
-            if (dxz > d.Radius + 0.9f) continue;
+            if (dxz > d.Radius + 0.9f + extraReach) continue;
             if (point.Y < d.Center.Y - 0.6f || point.Y > d.Center.Y + d.Height + 0.6f) continue;
             if (dxz < bestD) { bestD = dxz; best = d; }
         }
         return best;
     }
 
-    private void DamageProp(Vector3 point, float dmg)
+    private void DamageProp(Vector3 point, float dmg, float extraReach = 0f)
     {
-        var d = PropAt(point);
+        var d = PropAt(point, extraReach);
         if (d == null) return;
         if (d.Kind == "tree") { DestroyTree(d, 1.0f); return; }
         d.Hp -= dmg;
