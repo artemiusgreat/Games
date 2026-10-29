@@ -19,17 +19,131 @@ public partial class MechLab : Control
     private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
     private string _selectedWeapon; // click-to-assign path
 
-    private sealed partial class WeaponRow : Button
+    // The weapon TILE (owner): the small square icon is the drag
+    // handle and the click target — the row's text is inert.
+    private sealed partial class DragTile : Control
     {
         public string WeaponId;
         public MechLab Lab;
         public override Variant _GetDragData(Vector2 atPosition)
         {
-            var preview = new Label { Text = Text };
-            preview.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
+            var w = WeaponCatalog.ById(WeaponId);
+            var preview = new PanelContainer();
+            var sb = new StyleBoxFlat { BgColor = new Color(0.1f, 0.13f, 0.17f, 0.95f), ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 6, ContentMarginBottom = 6 };
+            sb.SetCornerRadiusAll(4);
+            preview.AddThemeStyleboxOverride("panel", sb);
+            var pl = new Label { Text = Abbrev(w) };
+            pl.AddThemeFontSizeOverride("font_size", 15);
+            pl.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
+            preview.AddChild(pl);
             SetDragPreview(preview);
             return WeaponId;
         }
+        public override void _GuiInput(InputEvent e)
+        {
+            if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+                Lab?.SelectWeapon(WeaponId);
+        }
+    }
+
+    public void SelectWeapon(string id)
+    {
+        _selectedWeapon = id;
+        var w = WeaponCatalog.ById(id);
+        SetHint($"{w.Name} selected — click a hardpoint to install it, or drag its icon.");
+    }
+
+    // Short tile text per weapon.
+    public static string Abbrev(WeaponDef w) => w.Id switch
+    {
+        "small_laser" => "SL",
+        "medium_laser" => "ML",
+        "large_laser" => "LL",
+        "ppc" => "PPC",
+        "machine_gun" => "MG",
+        "autocannon" => "AC",
+        "heavy_cannon" => "HC",
+        "srm" => "SRM",
+        "lrm" => "LRM",
+        "atlas_ac20" => "AC20",
+        _ => w.Name.Length >= 2 ? w.Name.Substring(0, 2).ToUpperInvariant() : w.Name,
+    };
+
+    private static readonly System.Collections.Generic.Dictionary<string, ImageTexture> _icons = new();
+
+    // Procedural 48x48 weapon icons: a type silhouette (bolt /
+    // shell / rocket) in an accent color on a dark tile.
+    public static ImageTexture Icon(WeaponDef w)
+    {
+        if (_icons.TryGetValue(w.Id, out var cached)) return cached;
+        var accent = w.Id == "ppc" ? new Color(0.45f, 0.72f, 1f)
+            : w.Type == WeaponSlotType.Energy ? new Color(1f, 0.45f, 0.32f)
+            : w.Type == WeaponSlotType.Ballistic ? new Color(1f, 0.8f, 0.35f)
+            : new Color(0.95f, 0.6f, 0.3f);
+        var img = Image.CreateEmpty(48, 48, false, Image.Format.Rgba8);
+        img.Fill(new Color(0.07f, 0.09f, 0.12f, 1f));
+        var border = accent * 0.55f; border.A = 1f;
+        for (int i = 0; i < 48; i++)
+        {
+            img.SetPixel(i, 0, border); img.SetPixel(i, 47, border);
+            img.SetPixel(0, i, border); img.SetPixel(47, i, border);
+        }
+        void Poly(Color c, params Vector2[] pts)
+        {
+            for (int y = 0; y < 48; y++)
+                for (int x = 0; x < 48; x++)
+                {
+                    var pt = new Vector2(x + 0.5f, y + 0.5f);
+                    bool inside = false;
+                    for (int a = 0, b = pts.Length - 1; a < pts.Length; b = a++)
+                    {
+                        if ((pts[a].Y > pt.Y) != (pts[b].Y > pt.Y) &&
+                            pt.X < (pts[b].X - pts[a].X) * (pt.Y - pts[a].Y) / (pts[b].Y - pts[a].Y) + pts[a].X)
+                            inside = !inside;
+                    }
+                    if (inside) img.SetPixel(x, y, c);
+                }
+        }
+        switch (w.Type)
+        {
+            case WeaponSlotType.Energy: // lightning bolt
+                Poly(accent, new Vector2(28, 3), new Vector2(14, 27), new Vector2(22, 27), new Vector2(17, 45), new Vector2(34, 20), new Vector2(26, 20));
+                break;
+            case WeaponSlotType.Ballistic: // shell: tip + body + base band
+                Poly(accent, new Vector2(19, 16), new Vector2(29, 16), new Vector2(24, 4));
+                Poly(accent, new Vector2(19, 16), new Vector2(29, 16), new Vector2(29, 41), new Vector2(19, 41));
+                Poly(accent * 0.55f, new Vector2(19, 35), new Vector2(29, 35), new Vector2(29, 41), new Vector2(19, 41));
+                break;
+            default: // Missile: rocket with fins + flame
+                Poly(accent, new Vector2(24, 3), new Vector2(30, 13), new Vector2(30, 30), new Vector2(18, 30), new Vector2(18, 13));
+                Poly(accent, new Vector2(18, 25), new Vector2(11, 38), new Vector2(18, 38));
+                Poly(accent, new Vector2(30, 25), new Vector2(37, 38), new Vector2(30, 38));
+                Poly(new Color(1f, 0.55f, 0.2f), new Vector2(21, 39), new Vector2(27, 39), new Vector2(24, 45));
+                break;
+        }
+        var tex = ImageTexture.CreateFromImage(img);
+        _icons[w.Id] = tex;
+        return tex;
+    }
+
+    // Builds the visual tile (icon + abbreviation) at a size; the
+    // children ignore the mouse so the tile itself takes the input.
+    private static Control TileVisual(WeaponDef w, float size, DragTile drag = null)
+    {
+        Control root = drag != null ? drag : new Control();
+        root.CustomMinimumSize = new Vector2(size, size);
+        var tex = new TextureRect { Texture = Icon(w), StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
+        tex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        root.AddChild(tex);
+        var ab = new Label { Text = Abbrev(w), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
+        ab.AddThemeFontSizeOverride("font_size", size >= 44 ? 12 : 10);
+        ab.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
+        ab.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
+        ab.AddThemeConstantOverride("shadow_offset_x", 1);
+        ab.AddThemeConstantOverride("shadow_offset_y", 1);
+        ab.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        root.AddChild(ab);
+        return root;
     }
 
     private sealed partial class SlotPanel : PanelContainer
@@ -37,6 +151,10 @@ public partial class MechLab : Control
         public string SlotId;
         public MechLab Lab;
         public Label WeaponLabel;
+        public Control Tile;
+        public TextureRect TileTex;
+        public Label TileAbbrev;
+        public Label WeightLabel;
         public override bool _CanDropData(Vector2 atPosition, Variant data)
         {
             var wid = data.AsString();
@@ -76,7 +194,7 @@ public partial class MechLab : Control
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
-        var sub = new Label { Text = "Drag a weapon onto a hardpoint — or click a weapon, then click a hardpoint. Type and tonnage must fit. Click an occupied hardpoint with nothing selected to strip just that slot." };
+        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint — or click the icon, then click a hardpoint. Type and tonnage must fit. Click an occupied hardpoint with nothing selected to strip just that slot." };
         sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
@@ -95,33 +213,33 @@ public partial class MechLab : Control
         catBox.AddChild(catTitle);
         foreach (var w in WeaponCatalog.All)
         {
-            var row = new WeaponRow
-            {
-                WeaponId = w.Id,
-                Lab = this,
-                Text = $"{w.Name}   ·   {w.Weight:F0}t   ·   {w.Type}   ·   dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")}   ·   cd {w.Cooldown:F2}s",
-                Alignment = HorizontalAlignment.Left
-            };
-            row.AddThemeFontSizeOverride("font_size", 14);
-            row.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
-            row.AddThemeColorOverride("font_hover_color", new Color(1f, 0.98f, 0.9f));
-            // Inner padding around the weapon text (owner).
+            // Row = [draggable tile] + inert text (owner: drag and
+            // click live on the square icon, not the text).
+            var rowPanel = new PanelContainer();
             StyleBoxFlat RowBox(Color c)
             {
                 var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 10f, ContentMarginRight = 10f, ContentMarginTop = 5f, ContentMarginBottom = 5f };
                 b.SetCornerRadiusAll(4);
                 return b;
             }
-            row.AddThemeStyleboxOverride("normal", RowBox(new Color(0.09f, 0.12f, 0.16f, 1f)));
-            row.AddThemeStyleboxOverride("hover", RowBox(new Color(0.16f, 0.21f, 0.28f, 1f)));
-            row.AddThemeStyleboxOverride("pressed", RowBox(new Color(0.22f, 0.28f, 0.36f, 1f)));
-            var captured = w;
-            row.Pressed += () =>
+            rowPanel.AddThemeStyleboxOverride("panel", RowBox(new Color(0.09f, 0.12f, 0.16f, 1f)));
+            var hb = new HBoxContainer();
+            hb.AddThemeConstantOverride("separation", 10);
+            rowPanel.AddChild(hb);
+            var drag = new DragTile { WeaponId = w.Id, Lab = this };
+            drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
+            drag.MouseExited += () => drag.Modulate = Colors.White;
+            hb.AddChild(TileVisual(w, 38, drag));
+            var lab = new Label
             {
-                _selectedWeapon = captured.Id;
-                SetHint($"{captured.Name} selected — click a hardpoint to install it.");
+                Text = $"{w.Name}   ·   {w.Weight:F0}t   ·   {w.Type}   ·   dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")}   ·   cd {w.Cooldown:F2}s",
+                VerticalAlignment = VerticalAlignment.Center,
+                MouseFilter = MouseFilterEnum.Ignore
             };
-            catBox.AddChild(row);
+            lab.AddThemeFontSizeOverride("font_size", 14);
+            lab.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+            hb.AddChild(lab);
+            catBox.AddChild(rowPanel);
         }
 
         // -- Hardpoints (right): paperdoll-ish 2x2 --
@@ -148,9 +266,29 @@ public partial class MechLab : Control
             var head = new Label { Text = $"{slot.Display} — {slot.Type} · max {slot.MaxWeight:F0}t" };
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
-            panel.WeaponLabel = new Label();
-            panel.WeaponLabel.AddThemeFontSizeOverride("font_size", 17);
-            vb.AddChild(panel.WeaponLabel);
+            var tileRow = new HBoxContainer();
+            tileRow.AddThemeConstantOverride("separation", 10);
+            vb.AddChild(tileRow);
+            panel.Tile = new Control { CustomMinimumSize = new Vector2(46, 46) };
+            panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
+            panel.TileTex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            panel.Tile.AddChild(panel.TileTex);
+            panel.TileAbbrev = new Label { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
+            panel.TileAbbrev.AddThemeFontSizeOverride("font_size", 12);
+            panel.TileAbbrev.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
+            panel.TileAbbrev.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
+            panel.TileAbbrev.AddThemeConstantOverride("shadow_offset_x", 1);
+            panel.TileAbbrev.AddThemeConstantOverride("shadow_offset_y", 1);
+            panel.TileAbbrev.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            panel.Tile.AddChild(panel.TileAbbrev);
+            tileRow.AddChild(panel.Tile);
+            panel.WeightLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
+            panel.WeightLabel.AddThemeFontSizeOverride("font_size", 15);
+            panel.WeightLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.8f, 0.86f));
+            tileRow.AddChild(panel.WeightLabel);
+            panel.WeaponLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
+            panel.WeaponLabel.AddThemeFontSizeOverride("font_size", 15);
+            tileRow.AddChild(panel.WeaponLabel);
             var capturedSlot = slot;
             panel.GuiInput += (InputEvent e) =>
             {
@@ -229,9 +367,17 @@ public partial class MechLab : Control
         {
             var wid = Loadout.WeaponIn(id);
             var w = wid != null ? WeaponCatalog.ById(wid) : null;
-            panel.WeaponLabel.Text = w != null ? $"{w.Name} — {w.Weight:F0}t" : "— EMPTY —";
-            panel.WeaponLabel.AddThemeColorOverride("font_color",
-                w != null ? new Color(0.9f, 0.93f, 0.95f) : new Color(0.55f, 0.5f, 0.45f));
+            // Occupied slots show the square icon + abbreviation
+            // (owner), not the weapon's full name.
+            panel.Tile.Visible = w != null;
+            if (w != null)
+            {
+                panel.TileTex.Texture = Icon(w);
+                panel.TileAbbrev.Text = Abbrev(w);
+            }
+            panel.WeightLabel.Text = w != null ? $"{w.Weight:F0}t" : "";
+            panel.WeaponLabel.Text = w == null ? "— EMPTY —" : "";
+            panel.WeaponLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.5f, 0.45f));
         }
         if (_tonnage != null)
             _tonnage.Text = $"WEAPONS: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis";
