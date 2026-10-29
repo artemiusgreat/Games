@@ -1206,12 +1206,17 @@ public partial class MechDuel : Node3D
         {
             var camPos = _cam.GlobalPosition;
             var viewHit = _hit.Ray(camPos, (_reticlePoint - camPos).Normalized(), 220f, "TW");
-            // NO range cap (owner, round 13): a 60u limit from the
-            // chest-ray era silently rejected the cursor's hit on
-            // far targets and the shot fell back to the free point —
-            // in the sky. Whatever the cursor points at IS the
-            // target, at any range the cast can see.
-            if (viewHit.Hit)
+            // MECH and PROP hits converge at ANY range (owner,
+            // round 13): a 60u cap from the chest-ray era silently
+            // rejected the cursor's hit on far targets and the shot
+            // fell back to the free point — in the sky. TERRAIN is
+            // backdrop, not a target: it converges only within 60u
+            // (the ground at your feet, a near slope). Aiming OVER a
+            // mech at a distant hillside must behave like aiming at
+            // the sky past him — converging on the backdrop would
+            // drag the muzzle's line down through the mech standing
+            // in front of it (the AIM sweep's raised-cursor case).
+            if (viewHit.Hit && (viewHit.Target != "TERRAIN" || viewHit.Point.DistanceTo(_player.RootPos) <= 60f))
             {
                 _aimTarget = viewHit.Target;
                 return viewHit.Point;
