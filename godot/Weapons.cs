@@ -76,7 +76,7 @@ public static class WeaponFx
     // the owner can fade it over its short life.
     public static MeshInstance3D MakeBeam(Vector3 a, Vector3 b, Color core, float width)
     {
-        var mi = new MeshInstance3D();
+        var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         float len = a.DistanceTo(b);
         mi.Mesh = new BoxMesh { Size = new Vector3(width, width, Mathf.Max(len, 0.1f)) };
         mi.MaterialOverride = Unshaded(core, alpha: core.A < 0.99f);
@@ -89,7 +89,7 @@ public static class WeaponFx
     // Impact / muzzle flash: one unshaded sphere.
     public static MeshInstance3D MakeFlash(Vector3 point, Color col, float radius)
     {
-        var mi = new MeshInstance3D();
+        var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         mi.Mesh = new SphereMesh { Radius = radius, Height = radius * 2f };
         mi.MaterialOverride = Unshaded(col);
         mi.GlobalTransform = new Transform3D(Basis.Identity, point);
@@ -101,7 +101,7 @@ public static class WeaponFx
     public static MeshInstance3D MakeTracer()
     {
         _tracerMat ??= Unshaded(new Color(1f, 0.62f, 0.15f));
-        var mi = new MeshInstance3D();
+        var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         mi.Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f };
         mi.MaterialOverride = _tracerMat;
         mi.Scale = new Vector3(1f, 1f, 3.2f);
@@ -114,11 +114,11 @@ public static class WeaponFx
         _rocketBodyMat ??= new StandardMaterial3D { AlbedoColor = new Color(0.62f, 0.62f, 0.66f), Roughness = 0.5f };
         _rocketTipMat ??= Unshaded(new Color(1f, 0.45f, 0.1f));
         var root = new Node3D();
-        var body = new MeshInstance3D();
+        var body = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         body.Mesh = new CylinderMesh { TopRadius = 0.09f, BottomRadius = 0.09f, Height = 0.72f };
         body.MaterialOverride = _rocketBodyMat;
         body.RotationDegrees = new Vector3(90f, 0f, 0f); // cylinder Y axis -> Z
-        var tip = new MeshInstance3D();
+        var tip = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         tip.Mesh = new CylinderMesh { TopRadius = 0f, BottomRadius = 0.09f, Height = 0.3f };
         tip.MaterialOverride = _rocketTipMat;
         tip.RotationDegrees = new Vector3(-90f, 0f, 0f);
@@ -132,7 +132,7 @@ public static class WeaponFx
     // the owner can fade each puff independently.
     public static MeshInstance3D MakeTrailPuff(Vector3 pos)
     {
-        var mi = new MeshInstance3D();
+        var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         mi.Mesh = new BoxMesh { Size = new Vector3(0.14f, 0.14f, 0.14f) };
         mi.MaterialOverride = Unshaded(new Color(0.9f, 0.9f, 0.92f, 0.45f), alpha: true);
         mi.GlobalTransform = new Transform3D(Basis.Identity, pos);
