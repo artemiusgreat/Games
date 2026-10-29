@@ -19,7 +19,7 @@ public partial class MechDuel : Node3D
 {
     private const float PlayerMaxSpeed = 4.2f;
     private const float AtlasMaxSpeed = 2.2f;
-    private const float RunFactor = 1.5f; // SHIFT run mode: walk speed x1.5
+    private const float RunFactor = 1.65f; // SHIFT run mode: walk speed x1.65 (owner: slightly faster than the old x1.5)
     private const float TurnRate = 0.85f;
     private const float WorldBound = 80f; // heightfield world is 170 wide
 
@@ -1114,7 +1114,7 @@ public partial class MechDuel : Node3D
         float f = _player.SpeedFactor;
         if (a) _playerYaw += TurnRate * f * delta;
         if (d) _playerYaw -= TurnRate * f * delta;
-        // SHIFT + W = run mode (1.5x walk speed); reverse stays at walk pace.
+        // SHIFT + W = run mode (RunFactor x walk speed); reverse stays at walk pace.
         _running = shift && w;
         float spd = 0f;
         if (w) spd = PlayerMaxSpeed * (_running ? RunFactor : 1f);
@@ -4161,7 +4161,7 @@ public partial class MechDuel : Node3D
                     _tPhase = 99;
                 }
                 break;
-            case 3: // RUN: full run-mode speed (walk x1.5) — gait must hold.
+            case 3: // RUN: full run-mode speed (walk x RunFactor) — gait must hold.
                     // Speed is judged on the steady-state segment (after the
                     // 4.2 u/s^2 acceleration ramp), not the whole window.
                 _player.SetDrive(0f, PlayerMaxSpeed * RunFactor);
@@ -4172,7 +4172,7 @@ public partial class MechDuel : Node3D
                     var d = new Vector2(_player.RootPos.X - _tRunFrom.X, _player.RootPos.Z - _tRunFrom.Z).Length();
                     float avg = d / ((float)_tPhaseT - _tRunMark);
                     GD.Print($"RUNTEST steadySpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) segDist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3}");
-                    if (avg < 5.8f) { TFail($"run steady speed {avg:F2} < 5.8"); return; }
+                    if (avg < 6.4f) { TFail($"run steady speed {avg:F2} < 6.4"); return; }
                     if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
                     GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");
                     GD.Print("TERRAINTEST DONE");
