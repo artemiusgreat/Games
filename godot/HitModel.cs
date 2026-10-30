@@ -22,7 +22,7 @@ public sealed class HitModel
         public bool Hit;
         public float T;
         public Vector3 Point;
-        public string Target;   // mech id ("TW"/"ATLAS"), "PROP", "TERRAIN", "" = nothing
+        public string Target;   // mech id ("PLAYER"/"ENEMY"), "PROP", "TERRAIN", "" = nothing
         public string Zone;     // mech hits only: "legs" / "torso" / "head"
         public float ZoneFrac;  // mech hits only: 0 at the sole, 1 at the top
         public string Part;     // mech hits only: breakable part id (via PartResolver), "" if unset

@@ -96,7 +96,7 @@ public sealed class MechParts
         var byName = new Dictionary<string, MeshInstance3D>();
         CollectMeshes(walker.ModelRoot, byName);
 
-        if (mechId == "TW")
+        if (mechId == "timberwolf")
         {
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
