@@ -1719,21 +1719,19 @@ public partial class MechDuel
     private void UpdateGaitShot(float dt)
     {
         _gaitT += dt;
-        if (_gaitT > 1.9f && !_gaitDumped)
+        // Lateral audit, continuous: hip/knee/ankle laterals in the
+        // enemy's facing frame, dumped through the whole stride so
+        // the worst inward instant is visible, not just one sample.
+        _gaitDumpT += dt;
+        if (_gaitT > 0.6f && _gaitDumpT > 0.25f)
         {
-            _gaitDumped = true;
-            // Lateral audit: hip/knee/ankle world X relative to the
-            // enemy root, in the enemy's own facing frame.
-            var fwd = new Vector3(_player.RootPos.X - _enemy.RootPos.X, 0f, _player.RootPos.Z - _enemy.RootPos.Z).Normalized();
+            _gaitDumpT = 0f;
+            var fwd = new Vector3(Mathf.Sin(_enemy.LegsYaw), 0f, Mathf.Cos(_enemy.LegsYaw));
             var right = new Vector3(fwd.Z, 0f, -fwd.X);
-            foreach (var (nm, skel) in new[] { ("ENEMY", _enemy) })
+            foreach (var (legName, hip, knee, ankle, planted, stepT) in _enemy.DebugLegJoints())
             {
-                var joints = skel.DebugLegJoints();
-                foreach (var (legName, hip, knee, ankle) in joints)
-                {
-                    float Lat(Vector3 p) => (p - skel.RootPos).Dot(right);
-                    GD.Print($"GAITDBG {nm} {legName}: hipLat={Lat(hip):F3} kneeLat={Lat(knee):F3} ankleLat={Lat(ankle):F3} hipY={hip.Y - skel.RootPos.Y:F2} kneeY={knee.Y - skel.RootPos.Y:F2} ankleY={ankle.Y - skel.RootPos.Y:F2}");
-                }
+                float Lat(Vector3 p) => (p - _enemy.RootPos).Dot(right);
+                GD.Print($"GAITDBG t={_gaitT:F2} {legName}: hipLat={Lat(hip):F3} kneeLat={Lat(knee):F3} ankleLat={Lat(ankle):F3} planted={planted} stepT={stepT:F2}");
             }
         }
         if (_gaitT > 1.9f && _camMode != "enemySide" && _camMode != "enemyFront")

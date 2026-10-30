@@ -49,6 +49,7 @@ public partial class MechWalker : Node3D
         public Basis PlantBasisW;
         public Basis CurBasisW;
         public Vector3 StepFrom, StepTo;
+        public Vector3 StepFromLocal, StepToLocal; // swing endpoints in the yaw (facing) frame
         public Basis StepBasisFrom, StepBasisTo;
         public float StepT = -1f;
         public Transform3D SolvedAnklePose;
@@ -373,16 +374,17 @@ public partial class MechWalker : Node3D
     }
 
     // Debug: world positions of a leg's joints (gait audits).
-    public (string, Vector3, Vector3, Vector3)[] DebugLegJoints()
+    public (string, Vector3, Vector3, Vector3, bool, float)[] DebugLegJoints()
     {
-        var o = new (string, Vector3, Vector3, Vector3)[2];
+        var o = new (string, Vector3, Vector3, Vector3, bool, float)[2];
         var legs = new[] { _legL, _legR };
         var gt = _skel.GlobalTransform;
         for (int i = 0; i < 2; i++)
             o[i] = (legs[i].Name,
                 gt * _skel.GetBoneGlobalPose(legs[i].Hip).Origin,
                 gt * _skel.GetBoneGlobalPose(legs[i].Knee).Origin,
-                gt * _skel.GetBoneGlobalPose(legs[i].Ankle).Origin);
+                gt * _skel.GetBoneGlobalPose(legs[i].Ankle).Origin,
+                legs[i].Planted, legs[i].StepT);
         return o;
     }
 
@@ -492,6 +494,11 @@ public partial class MechWalker : Node3D
 
     private Leg Other(Leg leg) => leg == _legL ? _legR : _legL;
 
+    // The walker's yaw (facing) frame: origin at the root, axes
+    // from the legs yaw alone (no terrain tilt). Home slots and
+    // swing paths are defined in this frame.
+    private Basis YawBasis() => Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
+
     private void BeginStep(Leg leg)
     {
         var vel = HeadingVec(_legsYaw) * _speed;
@@ -499,6 +506,16 @@ public partial class MechWalker : Node3D
         var home = HomeSlot(leg, predRoot) + vel * 0.30f;
         leg.StepFrom = leg.SoleTarget;
         leg.StepTo = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
+        // Swing endpoints in the FACING frame (owner: leg motion
+        // must read in the sagittal plane from the front — a
+        // world-space lerp cuts across the body whenever the mech
+        // turns mid-step, the 'needs to pee' scissor). AdvanceLeg
+        // re-projects both endpoints through the CURRENT yaw every
+        // substep, so the foot travels a clean in-frame line while
+        // the body rotates under it.
+        var inv = YawBasis().Inverse();
+        leg.StepFromLocal = inv * (leg.StepFrom - _rootPos);
+        leg.StepToLocal = inv * (leg.StepTo - _rootPos);
         leg.StepBasisFrom = leg.CurBasisW;
         leg.StepBasisTo = FootBasisAt(leg.StepTo, _legsYaw);
         leg.StepT = 0f;
@@ -512,8 +529,17 @@ public partial class MechWalker : Node3D
         leg.StepT += h / _cfg.StepTime;
         float t = Mathf.Clamp(leg.StepT, 0f, 1f);
         float e = t * t * (3f - 2f * t);
-        var pos = leg.StepFrom.Lerp(leg.StepTo, e);
+        // Re-project the swing through the CURRENT facing frame:
+        // the in-frame path is a straight sagittal line (lateral
+        // component constant by construction), however much the
+        // mech turned during the step. The target's local height
+        // tracks the real ground under its moving world position.
+        var yawB = YawBasis();
+        var toW = _rootPos + yawB * leg.StepToLocal;
+        leg.StepToLocal.Y = Main.HeightAt(toW.X, toW.Z) - _rootPos.Y;
+        var pos = _rootPos + yawB * leg.StepFromLocal.Lerp(leg.StepToLocal, e);
         pos.Y += Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;
+        leg.StepTo = new Vector3(toW.X, _rootPos.Y + leg.StepToLocal.Y, toW.Z);
         leg.SoleTarget = pos;
         var qa = leg.StepBasisFrom.GetRotationQuaternion();
         var qb = leg.StepBasisTo.GetRotationQuaternion();
@@ -523,6 +549,7 @@ public partial class MechWalker : Node3D
         {
             leg.StepT = -1f;
             leg.Planted = true;
+            leg.StepBasisTo = FootBasisAt(leg.StepTo, _legsYaw); // refresh: the yaw may have turned during the step
             leg.SoleTarget = leg.StepTo;
             leg.PlantBasisW = leg.StepBasisTo;
             leg.CurBasisW = leg.StepBasisTo;

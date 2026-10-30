@@ -43,7 +43,7 @@ public partial class MechDuel : Node3D
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
     private float _gaitT;
-    private bool _gaitDumped;
+    private float _gaitDumpT;
     private int _photoPhase;
     private float _photoT, _fpsSum;
     private ulong _warmStart; // photo-mode shader warmup (lab): wall-clock start, 0 = not begun
