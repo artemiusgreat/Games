@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://TimberwolfTest.cs" id="1_tw"]
-
-[node name="TimberwolfTest" type="Node3D"]
-script = ExtResource("1_tw")
