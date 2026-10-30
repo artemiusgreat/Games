@@ -1384,6 +1384,7 @@ public partial class MechDuel : Node3D
     // smoking for seconds. Verified by captured frames at burst
     // peak this time, not by counters alone.
     private int _fxParticles;
+    private int _laserRescues; // test-fallback rescues inside FireLaser; the duel AIM phase asserts zero during stable shots
     private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
     // Round 20 (owner: the fire looked like "a couple of yellow
     // bubbles" — it WAS bubbles: the draw pass was a low-poly
@@ -1748,11 +1749,23 @@ public partial class MechDuel : Node3D
         bool camTruth = _camMode == "chase" && !_labOpen;
         if (camTruth)
         {
-            var camDir = -_cam.GlobalTransform.Basis.Z;
+            // The view line is camera -> _reticlePoint (the torso
+            // aim's 40u point) — the SAME line TorsoAimPoint casts.
+            // Round 20's first cut used the camera's raw forward
+            // (-Basis.Z) instead: from the high chase rig that ray
+            // always lands on the ground in front of the mech, so
+            // every live shot hit the dirt at its feet no matter
+            // where the cursor was (owner's screenshot; the suites
+            // passed only because the test fallback below rescued
+            // them). The reticle line is the truth in play and in
+            // tests alike.
+            var camDir = (_reticlePoint - _cam.GlobalPosition).Normalized();
             hit = _hit.Ray(_cam.GlobalPosition, camDir, 220f, "TW", 0.9f);
             bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
+                _laserRescues++;
+                GD.Print("WPN LASER fallback-rescue (camera verdict disagreed with the harness aim point)");
                 // Harness shots aim by explicit point from cameras
                 // that may still be settling between phases — when
                 // the camera's verdict disagrees with the point the
@@ -3125,12 +3138,22 @@ public partial class MechDuel : Node3D
                     // (round 9: the weapons converge on the cursor's
                     // own point, so the pointer and the shots agree).
                     _atlasDmgEvents = 0;
+                    int rescues0 = _laserRescues;
                     _cdLaser = 0f;
                     _player.TorsoPitch = -0.10f;
                     _aimPoint = TorsoAimPoint();
                     FireLaser(_aimPoint);
                     if (_atlasDmgEvents < 1)
                     { GD.PrintErr("DUEL FAIL: cursor low on the Atlas but the laser missed him"); GetTree().Quit(1); break; }
+                    // Regression guard scoped to THIS shot: a stable
+                    // chase shot that HITS must come from the camera
+                    // path unaided. (The raised shot below may
+                    // legitimately rescue: its aim point is a
+                    // synthetic free point over the Atlas, and the
+                    // camera's far-terrain verdict disagrees on the
+                    // endpoint while agreeing on the miss.)
+                    if (_laserRescues != rescues0)
+                    { GD.PrintErr("DUEL FAIL: the laser needed the harness fallback for a stable hitting shot — the live camera path is broken (round 20 regression guard)"); GetTree().Quit(1); break; }
                     _cdLaser = 0f;
                     _player.TorsoPitch = 0.30f;
                     _aimPoint = TorsoAimPoint();
