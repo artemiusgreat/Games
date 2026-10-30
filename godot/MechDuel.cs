@@ -1385,9 +1385,92 @@ public partial class MechDuel : Node3D
     // peak this time, not by counters alone.
     private int _fxParticles;
     private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
+    // Round 20 (owner: the fire looked like "a couple of yellow
+    // bubbles" — it WAS bubbles: the draw pass was a low-poly
+    // SPHERE mesh in flat orange). Fire, smoke and dust are now
+    // billboarded quads with procedural sprites and lifetime color
+    // ramps: a flame is a noisy teardrop that runs white-yellow ->
+    // orange -> deep red -> gone, smoke/dust are eroded soft puffs
+    // that swell and fade.
+    private static ImageTexture FlameTexture()
+    {
+        const int N = 128;
+        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
+        // A narrow, tall teardrop with a pointed tip — v1's fat
+        // round blob mass read as a pale rounded SQUARE in the
+        // proof frame (the burn emitter's flames), not as fire.
+        var blobs = new (float X, float Y, float R, float W)[]
+        {
+            (0.50f, 0.80f, 0.27f, 1.00f), (0.47f, 0.64f, 0.21f, 0.90f),
+            (0.53f, 0.49f, 0.155f, 0.82f), (0.49f, 0.34f, 0.11f, 0.72f),
+            (0.51f, 0.21f, 0.07f, 0.60f),
+        };
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            float u = x / (float)(N - 1), v = y / (float)(N - 1);
+            float a = 0f;
+            foreach (var (bx, by, br, bw) in blobs)
+            {
+                float d2 = ((u - bx) * (u - bx) + (v - by) * (v - by)) / (br * br);
+                a += bw * Mathf.Exp(-d2 * 2.6f);
+            }
+            float n = Mathf.Sin(u * 39.7f + v * 17.3f) * Mathf.Sin(u * 11.9f - v * 29.1f);
+            a *= 0.82f + 0.28f * n; // erode the edge so it is not a clean ellipse
+            a *= Mathf.Clamp(1.25f - v * 0.45f, 0f, 1f); // base burns denser than the tip
+            a = Mathf.Clamp(a, 0f, 1f);
+            img.SetPixel(x, y, new Color(1f, 1f, 1f, a * a * (3f - 2f * a)));
+        }
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    private static ImageTexture PuffTexture()
+    {
+        const int N = 128;
+        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
+        var rng = new System.Random(777);
+        var blobs = new (float X, float Y, float R)[9];
+        for (int i = 0; i < blobs.Length; i++)
+            blobs[i] = (0.5f + (float)(rng.NextDouble() - 0.5) * 0.20f,
+                        0.5f + (float)(rng.NextDouble() - 0.5) * 0.20f,
+                        0.17f + (float)rng.NextDouble() * 0.12f);
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            float u = x / (float)(N - 1), v = y / (float)(N - 1);
+            float a = 0f;
+            foreach (var (bx, by, br) in blobs)
+            {
+                float d2 = ((u - bx) * (u - bx) + (v - by) * (v - by)) / (br * br);
+                a += Mathf.Exp(-d2 * 2.2f);
+            }
+            // A radial window guarantees ZERO alpha at the quad's
+            // border — the first version let a blob reach the edge,
+            // and the dust read as crisp white plaques in the proof
+            // frame instead of a soft cloud.
+            float r = new Vector2(u - 0.5f, v - 0.5f).Length() * 2f;
+            float win = Mathf.Clamp((1f - r) / 0.45f, 0f, 1f);
+            a = Mathf.Clamp(a * 0.55f, 0f, 1f) * win * win;
+            img.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+        }
+        return ImageTexture.CreateFromImage(img);
+    }
+
     private static readonly StandardMaterial3D FireParticleMat = new StandardMaterial3D
     {
-        AlbedoColor = new Color(1f, 0.58f, 0.14f),
+        AlbedoColor = new Color(1f, 1f, 1f, 0.95f),
+        AlbedoTexture = FlameTexture(),
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+    };
+
+    private static readonly StandardMaterial3D DustParticleMat = new StandardMaterial3D
+    {
+        AlbedoColor = new Color(0.70f, 0.64f, 0.53f, 0.60f),
+        AlbedoTexture = PuffTexture(),
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
     };
     private static readonly StandardMaterial3D SparkParticleMat = new StandardMaterial3D
@@ -1398,7 +1481,9 @@ public partial class MechDuel : Node3D
     private static readonly StandardMaterial3D SmokeParticleMat = new StandardMaterial3D
     {
         AlbedoColor = new Color(0.52f, 0.52f, 0.55f, 0.42f),
+        AlbedoTexture = PuffTexture(),
         Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
     };
 
@@ -1420,7 +1505,32 @@ public partial class MechDuel : Node3D
             DampingMin = 0.4f,
             DampingMax = 1.2f,
         };
-        var mesh = new SphereMesh { Radius = meshRadius, Height = meshRadius * 2f, RadialSegments = 6, Rings = 4 };
+        if (mat == FireParticleMat)
+        {
+            pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
+                Offsets = new float[] { 0f, 0.30f, 0.62f, 1f },
+                Colors = new Color[] { new Color(1f, 0.80f, 0.35f, 0.95f), new Color(1f, 0.50f, 0.10f, 0.9f),
+                                       new Color(0.85f, 0.20f, 0.03f, 0.5f), new Color(0.30f, 0.05f, 0.01f, 0f) } } };
+            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.55f)); sc.AddPoint(new Vector2(0.35f, 1f)); sc.AddPoint(new Vector2(1f, 1.3f));
+            pm.ScaleCurve = new CurveTexture { Curve = sc };
+        }
+        else if (mat == SmokeParticleMat || mat == DustParticleMat)
+        {
+            float a0 = mat == DustParticleMat ? 0.5f : 0.5f;
+            pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
+                Offsets = new float[] { 0f, 1f },
+                Colors = new Color[] { new Color(1f, 1f, 1f, a0), new Color(1f, 1f, 1f, 0f) } } };
+            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.75f)); sc.AddPoint(new Vector2(1f, 2.5f));
+            pm.ScaleCurve = new CurveTexture { Curve = sc };
+        }
+        PrimitiveMesh mesh;
+        if (mat.BillboardMode == BaseMaterial3D.BillboardModeEnum.Particles)
+            // Flames stand taller than wide; puffs stay square.
+            mesh = new QuadMesh { Size = mat == FireParticleMat
+                ? new Vector2(meshRadius * 1.7f, meshRadius * 2.9f)
+                : new Vector2(meshRadius * 2f, meshRadius * 2f) };
+        else
+            mesh = new SphereMesh { Radius = meshRadius, Height = meshRadius * 2f, RadialSegments = 6, Rings = 4 };
         mesh.Material = mat;
         var p = new GpuParticles3D
         {
@@ -1997,7 +2107,7 @@ public partial class MechDuel : Node3D
             "mg" => (new Color(1f, 0.75f, 0.3f), 1.3f, 0.3f),
             _ => (new Color(1f, 0.55f, 0.2f), 2.4f, 0.4f),
         };
-        target.FlashPulse(flashCol, flashEnergy);
+        target.FlashPulse(flashCol, flashEnergy, point); // local to the hit (round 20)
         if (jolt > 0f)
         {
             MechWalker shooter = source == "TW" ? _player : source == "ATLAS" ? _enemy : null;
@@ -2529,14 +2639,18 @@ public partial class MechDuel : Node3D
         SpawnFlash(mid, new Color(1f, 0.8f, 0.5f), 2.6f, 0.5f);
         SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.9f, 0.35f);
         SpawnImpactLight(mid, new Color(1f, 0.6f, 0.25f), 3.2f, 16f, 0.8f);
-        Material facade = null;
-        if (d.Node is MeshInstance3D mi)
-            facade = mi.GetSurfaceOverrideMaterial(0) ?? mi.Mesh?.SurfaceGetMaterial(0);
-        SpawnChunks(mid, 10, 0.9f, 2.6f, facade ?? RubbleMat, 3.5f, 7.5f);
+        // Round 20 (owner): a destroyed building turns to DUST, not
+        // blocks — no more facade chunks. A two-layer dust cloud
+        // billows out and hangs, and a low rubble mound stays on the
+        // footprint as the ruin.
+        SpawnBurst(d.Center + Vector3.Up * 1.2f, DustParticleMat, 46, 3.4f, 2.5f, 7f, new Vector3(0f, 0.9f, 0f), 1.1f, 1.6f, 3.2f);
+        SpawnBurst(mid, DustParticleMat, 26, 2.6f, 1.5f, 4.5f, new Vector3(0f, 0.6f, 0f), 0.9f, 1.4f, 2.6f);
+        // The ruin itself is the building's own mesh: UpdateDestructibles
+        // squashes it to 12% height and darkens it to rubble colors.
         SpawnBurst(mid, FireParticleMat, 64, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
         SpawnBurst(mid, SmokeParticleMat, 36, 3.4f, 1.6f, 3.4f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.2f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.6f, 7f);
-        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (explosion + chunks)");
+        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (explosion + dust)");
     }
 
     // Owner's current rule: a tree is destroyed by ANY interaction —
@@ -2562,7 +2676,8 @@ public partial class MechDuel : Node3D
         _fxSparkBursts--; // tree embers are not a laser burst; keep the counters honest
         SpawnImpactLight(top, new Color(1f, 0.55f, 0.2f), 2.6f, 11f, 0.55f);
         SpawnChunks(top, 5, 0.45f, 0.95f, SplinterMat, 2.5f, 5f);
-        SpawnBurst(top, FireParticleMat, 36, 1.1f, 4f, 8.5f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.6f);
+        SpawnBurst(top, FireParticleMat, 48, 1.25f, 4f, 8.5f, new Vector3(0f, -6f, 0f), 0.22f, 0.9f, 1.9f);
+        SpawnBurst(top + Vector3.Up * 0.6f, SmokeParticleMat, 14, 2.8f, 1.2f, 2.6f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.5f, 2.6f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.5f, 5f);
         for (int i = 0; i < 3; i++)
         {
@@ -2615,20 +2730,11 @@ public partial class MechDuel : Node3D
                 var np = d.Node.Position;
                 np.Y = d.Center.Y + d.Height * sy / 2f - 0.3f;
                 d.Node.Position = np;
-                d.PuffAcc += dt;
-                if (d.PuffAcc > 0.14f)
-                {
-                    d.PuffAcc = 0f;
-                    // A rising dust/smoke COLUMN, not sparks of dust:
-                    // puffs scaled ~9x, spawned higher as the collapse
-                    // progresses, living ~1.6s (round 8: the 0.14u
-                    // puffs were invisible beyond a few meters).
-                    var puff = WeaponFx.MakeTrailPuff(d.Center + new Vector3(
-                        _fxRng.RandfRange(-3.2f, 3.2f), 0.6f + u * d.Height * 0.55f, _fxRng.RandfRange(-3.2f, 3.2f)));
-                    puff.Scale = Vector3.One * _fxRng.RandfRange(7f, 11f);
-                    AddChild(puff);
-                    _puffs.Add((puff, 1.6f));
-                }
+                // No dust column here anymore (round 20): the
+                // x7-11 trail-puff sprites this block used to spawn
+                // read as giant white plaques in the proof frames.
+                // StartCollapse's real dust particle systems do the
+                // job now.
                 if (d.Timer <= 0f)
                 {
                     d.State = 4;
@@ -3451,12 +3557,11 @@ public partial class MechDuel : Node3D
                     {
                         GD.Print("ENVTEST COLLAPSE-START PASS building gave way under fire");
                         if (_envFxEvents <= _wEnvFx0) { WFail("building collapsed with NO destruction FX"); return; }
-                        int chunks = _envChunks.Count - _wEnvChunks0;
-                        if (chunks < 10) { WFail($"building broke into only {chunks} chunks (want 10)"); return; }
+                        // (the dust rule's proof is the particle count below: fire+smoke+2 dust systems+burn emitter)
                         if (_fxLights <= 0) { WFail("building collapse lit no impact light"); return; }
                         int bp = _fxParticles - _wEnvParticles0;
-                        if (bp < 4) { WFail($"building collapse spawned only {bp} particle systems (want fire+smoke bursts + burning wreck)"); return; }
-                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, {chunks} flying chunks and {bp} particle systems");
+                        if (bp < 6) { WFail($"building collapse spawned only {bp} particle systems (want explosion fire+smoke, 2 dust systems, burning wreck)"); return; }
+                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, a dust cloud and {bp} particle systems; the squashed ruin remains");
                         QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
                         _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
                         _wEnvStep = 2;
