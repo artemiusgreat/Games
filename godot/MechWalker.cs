@@ -372,6 +372,20 @@ public partial class MechWalker : Node3D
         GD.Print($"{_cfg.Label} leg {leg.Name}: L1={leg.L1:F2} L2={leg.L2:F2} pole={leg.PoleSk} homeLocal={leg.HomeLocal} plant={leg.SoleTarget}");
     }
 
+    // Debug: world positions of a leg's joints (gait audits).
+    public (string, Vector3, Vector3, Vector3)[] DebugLegJoints()
+    {
+        var o = new (string, Vector3, Vector3, Vector3)[2];
+        var legs = new[] { _legL, _legR };
+        var gt = _skel.GlobalTransform;
+        for (int i = 0; i < 2; i++)
+            o[i] = (legs[i].Name,
+                gt * _skel.GetBoneGlobalPose(legs[i].Hip).Origin,
+                gt * _skel.GetBoneGlobalPose(legs[i].Knee).Origin,
+                gt * _skel.GetBoneGlobalPose(legs[i].Ankle).Origin);
+        return o;
+    }
+
     public void SetDrive(float legsYaw, float targetSpeed)
     {
         _legsYaw = legsYaw;
@@ -594,9 +608,14 @@ public partial class MechWalker : Node3D
         _groundY = Mathf.Lerp(_groundY, yT, 1f - Mathf.Exp(-8f * h));
         _rootPos.Y = _groundY + _jumpH; // the arc itself is NOT smoothed — full ballistic height
 
+        // Lateral pelvis sway REMOVED (owner, round 22 follow-up):
+        // shifting the pelvis sideways over the stance foot slants
+        // the support leg inward against its planted foot — from
+        // the front the legs must read straight, so the pelvis
+        // stays centered between the feet and only the vertical
+        // bob remains. (GAITDBG audit: sway displaced the hips
+        // 0.23u against ankles planted exactly at home +-1.956.)
         var swayT = Vector3.Zero;
-        if (_legL.StepT >= 0f) swayT = _rootBasis * new Vector3(_legR.HomeLocal.X * _scaleF, 0f, 0f) * 0.22f;
-        else if (_legR.StepT >= 0f) swayT = _rootBasis * new Vector3(_legL.HomeLocal.X * _scaleF, 0f, 0f) * 0.22f;
         _sway = _sway.Lerp(swayT, 1f - Mathf.Exp(-5f * h));
 
         // Up vector: roll from the two feet heights across the lateral axis,

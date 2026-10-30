@@ -1719,6 +1719,23 @@ public partial class MechDuel
     private void UpdateGaitShot(float dt)
     {
         _gaitT += dt;
+        if (_gaitT > 1.9f && !_gaitDumped)
+        {
+            _gaitDumped = true;
+            // Lateral audit: hip/knee/ankle world X relative to the
+            // enemy root, in the enemy's own facing frame.
+            var fwd = new Vector3(_player.RootPos.X - _enemy.RootPos.X, 0f, _player.RootPos.Z - _enemy.RootPos.Z).Normalized();
+            var right = new Vector3(fwd.Z, 0f, -fwd.X);
+            foreach (var (nm, skel) in new[] { ("ENEMY", _enemy) })
+            {
+                var joints = skel.DebugLegJoints();
+                foreach (var (legName, hip, knee, ankle) in joints)
+                {
+                    float Lat(Vector3 p) => (p - skel.RootPos).Dot(right);
+                    GD.Print($"GAITDBG {nm} {legName}: hipLat={Lat(hip):F3} kneeLat={Lat(knee):F3} ankleLat={Lat(ankle):F3} hipY={hip.Y - skel.RootPos.Y:F2} kneeY={knee.Y - skel.RootPos.Y:F2} ankleY={ankle.Y - skel.RootPos.Y:F2}");
+                }
+            }
+        }
         if (_gaitT > 1.9f && _camMode != "enemySide" && _camMode != "enemyFront")
             QueueCapture("res://proof/gait_atlas.png", "gait", "enemySide", () =>
                 QueueCapture("res://proof/gait_atlas_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
