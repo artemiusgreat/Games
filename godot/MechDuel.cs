@@ -1622,14 +1622,41 @@ public partial class MechDuel : Node3D
         if (_cdLaser > 0f) return;
         _cdLaser = _defEnergy.Cooldown;
         var muzzle = PlayerMuzzle(true);
-        var toAim = aimPoint - muzzle;
-        var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
-        // The laser's hit area is wider than its visual beam (owner):
-        // at ranges inside the 40u convergence point the beam still
-        // travels offset from the cursor line by the muzzle parallax,
-        // so a dead-center aim at a narrow trunk could thread past
-        // it. +0.9u on prop cylinders only; mechs stay exact.
-        var hit = _hit.Ray(muzzle, dir, 140f, "TW", 0.9f);
+        // Round 20 (owner, two repros): the hit resolves on the
+        // CAMERA's ray, not on a re-cast from the muzzle. The muzzle
+        // re-cast kept disagreeing with the reticle by parallax —
+        // aiming at sky just over a crest, the lower muzzle line
+        // clipped the hill (a hit the cursor never touched); aiming
+        // just above a building, the beam ran to the muzzle line's
+        // far endpoint, past the cursor. What the reticle rests on
+        // is what the laser hits, first thing on that line, at any
+        // range; a clean sky shot hits nothing and the beam still
+        // ends at the cursor's point. (Test harnesses keep a muzzle
+        // fallback on a camera miss: they aim by explicit points
+        // from posed cameras.)
+        HitModel.Result hit;
+        bool camTruth = _camMode == "chase" && !_labOpen;
+        if (camTruth)
+        {
+            var camDir = -_cam.GlobalTransform.Basis.Z;
+            hit = _hit.Ray(_cam.GlobalPosition, camDir, 220f, "TW", 0.9f);
+            bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
+            if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
+            {
+                // Harness shots aim by explicit point from cameras
+                // that may still be settling between phases — when
+                // the camera's verdict disagrees with the point the
+                // harness asked for, the muzzle cast is the truth
+                // there. Live play never takes this branch.
+                var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+                hit = _hit.Ray(muzzle, fbDir, 140f, "TW", 0.9f);
+            }
+        }
+        else
+        {
+            var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+            hit = _hit.Ray(muzzle, dir, 140f, "TW", 0.9f);
+        }
         bool ppc = _defEnergy.Id == "ppc";
         // The beam ends where the shot ends (owner): on a hit,
         // the hit point; on a miss — the sky — the cursor's own
