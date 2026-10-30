@@ -764,7 +764,8 @@ public partial class MechWalker : Node3D
 
     // ---------- weapon feedback (hit flash / death darkening) ----------
 
-    private readonly System.Collections.Generic.List<(StandardMaterial3D Mat, Color Base)> _mats = new();
+    private readonly System.Collections.Generic.List<(StandardMaterial3D Mat, Color Base, MeshInstance3D Mesh)> _mats = new();
+    private readonly System.Collections.Generic.List<StandardMaterial3D> _flashMats = new();
     private float _flashT;
 
     // Materials are duplicated per walker instance at Init so a flash or
@@ -784,7 +785,7 @@ public partial class MechWalker : Node3D
                 {
                     var dup = (StandardMaterial3D)sm.Duplicate();
                     mi.SetSurfaceOverrideMaterial(i, dup);
-                    _mats.Add((dup, dup.AlbedoColor));
+                    _mats.Add((dup, dup.AlbedoColor, mi));
                 }
             }
         }
@@ -801,17 +802,41 @@ public partial class MechWalker : Node3D
     // a laser sting is cyan and brief-feeling, a cannon hit is a warm
     // white slam, a rocket is deep orange. Before this every hit
     // blinked the same orange (owner's report).
-    public void FlashPulse(Color col, float energy)
+    // Round 20 (owner): the flash is LOCAL to the hit — only meshes
+    // whose bind-pose AABB center sits near the impact point glow.
+    // The whole-mech white-out is gone; a leg hit lights the leg, a
+    // shoulder hit lights the arm/pod area.
+    public void FlashPulse(Color col, float energy) => FlashPulse(col, energy, Vector3.Zero, false);
+
+    public void FlashPulse(Color col, float energy, Vector3 worldPoint) => FlashPulse(col, energy, worldPoint, true);
+
+    private void FlashPulse(Color col, float energy, Vector3 worldPoint, bool local)
     {
         _flashT = 1f;
         _flashEnergy = energy;
         LastFlashColor = col;
         LastFlashEnergy = energy;
-        foreach (var (m, _) in _mats)
+        foreach (var m in _flashMats) m.EmissionEnergyMultiplier = 0f;
+        _flashMats.Clear();
+        Vector3 lp = local ? _inner.ToLocal(worldPoint) : Vector3.Zero;
+        float best = float.MaxValue;
+        StandardMaterial3D bestMat = null;
+        foreach (var (m, _, mesh) in _mats)
         {
+            float d = local ? mesh.GetAabb().GetCenter().DistanceTo(lp) : 0f;
+            if (d < best) { best = d; bestMat = m; }
+            if (local && d > 4.6f) continue;
             m.EmissionEnabled = true;
             m.Emission = col;
             m.EmissionEnergyMultiplier = energy;
+            _flashMats.Add(m);
+        }
+        if (_flashMats.Count == 0 && bestMat != null)
+        {
+            bestMat.EmissionEnabled = true;
+            bestMat.Emission = col;
+            bestMat.EmissionEnergyMultiplier = energy;
+            _flashMats.Add(bestMat);
         }
     }
 
@@ -832,7 +857,7 @@ public partial class MechWalker : Node3D
 
     public void SetDarkened(bool dark)
     {
-        foreach (var (m, b) in _mats)
+        foreach (var (m, b, _) in _mats)
             m.AlbedoColor = dark ? b * 0.5f : b;
     }
 
@@ -840,7 +865,7 @@ public partial class MechWalker : Node3D
     {
         if (_flashT <= 0f) return;
         _flashT = Mathf.Max(_flashT - dt / 0.18f, 0f);
-        foreach (var (m, _) in _mats)
+        foreach (var m in _flashMats)
             m.EmissionEnergyMultiplier = _flashEnergy * _flashT;
     }
 
