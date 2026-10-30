@@ -44,7 +44,16 @@ public partial class MechDuel
 
     private void UpdateCamera(float delta)
     {
-        if (_camMode == "enemySide")
+        if (_camMode == "enemyFront")
+        {
+            // In front of the enemy, on its line of advance: the
+            // frontal view (knee stance reads here, not from the side).
+            var p = _enemy.RootPos;
+            var toPlayer = new Vector3(_player.RootPos.X - p.X, 0f, _player.RootPos.Z - p.Z).Normalized();
+            _cam.GlobalPosition = p + toPlayer * 16f + new Vector3(0f, 5.5f, 0f);
+            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "enemySide")
         {
             var p = _enemy.RootPos;
             _cam.GlobalPosition = p + new Vector3(-17.5f, 5.5f, -3f);

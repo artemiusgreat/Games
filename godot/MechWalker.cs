@@ -295,6 +295,26 @@ public partial class MechWalker : Node3D
         SetupLeg(_legL, "hip_L", "knee_L", "ankle_L", skelG, holderG, groundY);
         SetupLeg(_legR, "hip_R", "knee_R", "ankle_R", skelG, holderG, groundY);
 
+        if (_cfg.FlipKneePole)
+        {
+            // Plantigrade flip (owner round 22): mirror ONLY the
+            // pole's sagittal (forward/back) component across the
+            // frontal plane — the lateral and vertical components
+            // are preserved, so from the front the legs keep their
+            // modeled stance and the bend shows only from the
+            // side. (The first cut reflected across the leg axis,
+            // which also mirrored the lateral component: the
+            // knees bent forward AND toward each other.)
+            var lateral = (_legR.Hrest - _legL.Hrest).Normalized();
+            foreach (var leg in new[] { _legL, _legR })
+            {
+                var up = (leg.Hrest - leg.Arest).Normalized();
+                var sag = up.Cross(lateral).Normalized(); // in the pole's plane, ⊥ leg axis and ⊥ lateral
+                leg.PoleSk = (leg.PoleSk - 2f * leg.PoleSk.Dot(sag) * sag).Normalized();
+                GD.Print($"{_cfg.Label} leg {leg.Name}: flipped pole={leg.PoleSk}");
+            }
+        }
+
         float reachW = 0.5f * ((_legL.L1 + _legL.L2) + (_legR.L1 + _legR.L2)) * skelG.Basis.X.Length();
         float horizHipAnkle = 0f;
         foreach (var leg in new[] { _legL, _legR })
@@ -332,13 +352,8 @@ public partial class MechWalker : Node3D
         var ha = leg.Arest - leg.Hrest;
         var pole = (leg.Krest - leg.Hrest) - ha.Normalized() * (leg.Krest - leg.Hrest).Dot(ha.Normalized());
         leg.PoleSk = pole.Normalized();
-        if (_cfg.FlipKneePole)
-        {
-            // Reflect the pole across the hip->ankle axis: the bend
-            // flips to the other side of the leg line.
-            var ax = ha.Normalized();
-            leg.PoleSk = (2f * leg.PoleSk.Dot(ax) * ax - leg.PoleSk).Normalized();
-        }
+        // The knee-pole flip itself runs in Init, once both legs
+        // are known (it needs the lateral hip axis).
         var ankW = skelG * leg.Arest;
         var soleW = new Vector3(ankW.X, groundY, ankW.Z);
         var soleSk = skelG.AffineInverse() * soleW;

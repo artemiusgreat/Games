@@ -1719,8 +1719,9 @@ public partial class MechDuel
     private void UpdateGaitShot(float dt)
     {
         _gaitT += dt;
-        if (_gaitT > 1.9f && _camMode != "enemySide")
-            QueueCapture("res://proof/gait_atlas.png", "gait", "enemySide", () => GetTree().Quit());
+        if (_gaitT > 1.9f && _camMode != "enemySide" && _camMode != "enemyFront")
+            QueueCapture("res://proof/gait_atlas.png", "gait", "enemySide", () =>
+                QueueCapture("res://proof/gait_atlas_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
     }
 
 }
