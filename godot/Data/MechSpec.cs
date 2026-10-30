@@ -18,6 +18,17 @@ public sealed class MechSpec
     public bool JumpCapable; // chassis can mount jump jets (thrusters)
     public SlotDef[] Slots;
 
+    // Chassis data the duel builds the walker from (round 22: the
+    // lab lets each side pick its mech, so everything model-bound
+    // lives here, not in the duel's construction code).
+    public string ModelPath;
+    public string PartsId;      // breakable-parts layout key
+    public float MaxHp;         // main pool
+    public float Height;        // hit-capsule height
+    public float Radius;        // collision / hit capsule radius
+    public float StepTime, StepThreshold, StepLift, Accel;
+    public bool FlipKneePole;   // plantigrade: knees bend forward
+
     public SlotDef Slot(string id)
     {
         foreach (var s in Slots) if (s.Id == id) return s;
@@ -30,6 +41,9 @@ public static class MechSpecs
     public static readonly MechSpec TimberWolf = new()
     {
         Id = "timberwolf", Name = "TIMBER WOLF", Tonnage = 75f, JumpCapable = true,
+        ModelPath = "res://assets/timberwolf.fbx", PartsId = "timberwolf", MaxHp = 260f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f,
+        FlipKneePole = false,
         Slots = new[]
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
@@ -42,11 +56,17 @@ public static class MechSpecs
     public static readonly MechSpec Atlas = new()
     {
         Id = "atlas", Name = "ATLAS", Tonnage = 100f, JumpCapable = false,
+        ModelPath = "res://assets/atlas.fbx", PartsId = "atlas", MaxHp = 340f,
+        Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f,
+        FlipKneePole = true,
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 18f },
         }
     };
+
+    public static MechSpec ById(string id) =>
+        id == "atlas" ? Atlas : TimberWolf;
 }
 
 // The player's current loadout: slot id -> weapon id (absent = empty).
@@ -104,6 +124,17 @@ public sealed class LoadoutState
             }
             return t;
         }
+    }
+
+    public static LoadoutState DefaultFor(MechSpec spec) =>
+        spec.Id == "atlas" ? DefaultAtlas() : DefaultTimberWolf();
+
+    public static LoadoutState DefaultAtlas()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false; // the chassis cannot mount them
+        l.Equipped["arm_R"] = "ac20";
+        return l;
     }
 
     public static LoadoutState DefaultTimberWolf()

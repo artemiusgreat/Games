@@ -13,6 +13,14 @@ public partial class MechLab : Control
     public LoadoutState Loadout;
     public Action OnStart;
 
+    // Mech selection (round 22): which chassis each side fields.
+    // Changing one reports through OnSelectionChanged; the duel
+    // rebuilds that side and recreates this lab against the new
+    // player spec (slots, tonnage, jump capability all follow).
+    public string PlayerSpecId = "timberwolf";
+    public string EnemySpecId = "atlas";
+    public Action OnSelectionChanged;
+
     private Label _hint;
     private Label _tonnage;
     private Button _jetsBtn;
@@ -291,6 +299,13 @@ public partial class MechLab : Control
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
 
+        // -- Mech selection row --
+        var selBox = new HBoxContainer();
+        selBox.AddThemeConstantOverride("separation", 30);
+        root.AddChild(selBox);
+        selBox.AddChild(MechSelector("PLAYER", true));
+        selBox.AddChild(MechSelector("ENEMY", false));
+
         var mid = new HBoxContainer();
         mid.AddThemeConstantOverride("separation", 28);
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -452,12 +467,35 @@ public partial class MechLab : Control
             Refresh();
         };
         btnRow.AddChild(_jetsBtn);
+        if (!Spec.JumpCapable) _jetsBtn.Visible = false; // this chassis cannot mount thrusters
         var start = new Button { Text = "DEPLOY  ▶" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
         btnRow.AddChild(start);
 
         Refresh();
+    }
+
+    private Control MechSelector(string role, bool playerSide)
+    {
+        var box = new HBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+        var lab = new Label { Text = role + " MECH:", VerticalAlignment = VerticalAlignment.Center };
+        lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+        box.AddChild(lab);
+        foreach (var spec in new[] { MechSpecs.TimberWolf, MechSpecs.Atlas })
+        {
+            var b = new Button { Text = spec.Name, ToggleMode = true };
+            b.ButtonPressed = (playerSide ? PlayerSpecId : EnemySpecId) == spec.Id;
+            var captured = spec;
+            b.Pressed += () =>
+            {
+                if (playerSide) PlayerSpecId = captured.Id; else EnemySpecId = captured.Id;
+                OnSelectionChanged?.Invoke();
+            };
+            box.AddChild(b);
+        }
+        return box;
     }
 
     public void SetHint(string text)

@@ -59,6 +59,7 @@ public static class WeaponCatalog
     public static WeaponDef ById(string id)
     {
         foreach (var w in All) if (w.Id == id) return w;
+        if (id == AtlasAc20.Id) return AtlasAc20; // fixed enemy cannon: resolvable, just not catalog-listed
         return null;
     }
 }
