@@ -1,7 +1,7 @@
 using Godot;
 
 // MechWalker: reusable procedural gait + two-bone IK for a rigged mech FBX,
-// extracted from TimberwolfTest (which keeps its own verified copy) and
+// extracted from the original walker test scene and
 // generalized: any heading (not just -Z), signed speed (reverse stepping),
 // turn-in-place stepping, torso twist/pitch aim on the torso bone, and bone
 // data derived per-model from the rest pose -- the knee pole comes from the
@@ -27,6 +27,7 @@ public partial class MechWalker : Node3D
         public float StepLift;
         public float Accel;
         public float CollisionRadius;
+        public bool FlipKneePole; // plantigrade chassis (Atlas): mirror the rest-pose knee pole so the knee bends FORWARD, human-style (owner round 22)
     }
 
     private sealed class Leg
@@ -92,7 +93,7 @@ public partial class MechWalker : Node3D
     private float _jumpH, _jumpVel;
     private float _groundY; // gait-followed root height; the jump arc rides on top unsmoothed
     public bool JumpJets; // thrusters fitted AND chassis capable (set by the duel from spec+loadout)
-    public float JumpCharge = 1f; // thruster load 0..1: burning drains it (~2.2s of flight), ~5s ground recharge
+    public float JumpCharge = 1f; // thruster load 0..1: burning drains it (~2.2s of flight); recharges whenever not burning (~5s), even mid-air (owner round 22)
     public float JumpHeight => _jumpH;
     public bool Airborne => _jumpH > 0.02f;
 
@@ -331,6 +332,13 @@ public partial class MechWalker : Node3D
         var ha = leg.Arest - leg.Hrest;
         var pole = (leg.Krest - leg.Hrest) - ha.Normalized() * (leg.Krest - leg.Hrest).Dot(ha.Normalized());
         leg.PoleSk = pole.Normalized();
+        if (_cfg.FlipKneePole)
+        {
+            // Reflect the pole across the hip->ankle axis: the bend
+            // flips to the other side of the leg line.
+            var ax = ha.Normalized();
+            leg.PoleSk = (2f * leg.PoleSk.Dot(ax) * ax - leg.PoleSk).Normalized();
+        }
         var ankW = skelG * leg.Arest;
         var soleW = new Vector3(ankW.X, groundY, ankW.Z);
         var soleSk = skelG.AffineInverse() * soleW;
@@ -511,8 +519,8 @@ public partial class MechWalker : Node3D
             _jumpH += _jumpVel * h;
             if (_jumpH <= 0f) { _jumpH = 0f; _jumpVel = 0f; }
         }
-        if (_jumpH <= 0f && JumpCharge < 1f)
-            JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // ~5s auto-recharge, grounded only
+        if (!_thrustHeld && JumpCharge < 1f)
+            JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released — ground or air (owner round 22) — and a held key on empty tanks stays dead instead of sputtering
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
         _prevYaw = _legsYaw;
 
