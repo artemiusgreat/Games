@@ -59,6 +59,7 @@ public partial class MechDuel : Node3D
         public float AngSpeed;
         public float Radius;
         public bool Settled;
+        public float Life = -1f; // >0: seconds until the piece dissolves into dust (buildings); -1 = permanent (tree splinters)
     }
     private readonly System.Collections.Generic.List<EnvChunk> _envChunks = new();
     private int _envFxEvents; // destruction-FX firings (harness-visible)
@@ -68,7 +69,7 @@ public partial class MechDuel : Node3D
     { AlbedoColor = new Color(0.23f, 0.16f, 0.09f), Roughness = 1f };
 
     private void SpawnChunks(Vector3 center, int count, float sizeMin, float sizeMax,
-        Material mat, float upMin, float upMax)
+        Material mat, float upMin, float upMax, float life = -1f)
     {
         for (int i = 0; i < count; i++)
         {
@@ -90,6 +91,7 @@ public partial class MechDuel : Node3D
                 AngAxis = new Vector3(_fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(-1f, 1f)).Normalized(),
                 AngSpeed = _fxRng.RandfRange(2f, 5.5f),
                 Radius = size * 0.55f,
+                Life = life > 0f ? life * _fxRng.RandfRange(0.8f, 1.25f) : -1f,
             });
         }
     }
@@ -97,6 +99,18 @@ public partial class MechDuel : Node3D
     private void StepEnvChunks(float dt)
     {
         if (_envChunks.Count == 0 || dt <= 0f) return;
+        // Timed pieces (building debris) dissolve into dust.
+        for (int i = _envChunks.Count - 1; i >= 0; i--)
+        {
+            var c = _envChunks[i];
+            if (c.Life <= 0f) continue;
+            c.Life -= dt;
+            if (c.Life > 0f) continue;
+            SpawnBurst(c.Node.GlobalPosition, DustParticleMat, 5, 1.5f, 0.6f, 1.8f, new Vector3(0f, 0.8f, 0f), 0.55f, 0.9f, 1.6f);
+            c.Node.QueueFree();
+            _envChunks.RemoveAt(i);
+        }
+        if (_envChunks.Count == 0) return;
         int n = Mathf.Max(1, Mathf.CeilToInt(dt / (1f / 120f)));
         float h = dt / n;
         for (int step = 0; step < n; step++)
@@ -2702,31 +2716,38 @@ public partial class MechDuel : Node3D
     private void StartCollapse(Destructible d)
     {
         d.State = 2;
-        d.Timer = 1.15f;
-        d.PhaseLen = 1.15f;
+        d.Timer = 3.4f; // pieces fly, settle, then dissolve (~3s lives)
+        d.PhaseLen = 3.4f;
         RemovePropColliders(d); // falling masonry no longer blocks or stops mechs
+        // Round 21 (owner): the original building HIDES the moment
+        // it is destroyed — no more sliding/squashing underground.
+        // Only the pieces and the dust animate from here.
+        if (d.Node is Node3D bn) bn.Visible = false;
         // Destruction is an EVENT now (round 7 — it used to sink
         // silently): an explosion burst at the base, a dust flash, and
         // the facade breaks into chunks that fly, tumble and settle
         // as rubble around the footprint.
         _envFxEvents++;
         var mid = d.Center + Vector3.Up * (d.Height * 0.35f);
+        PlaySfx(_sfxExplosion, mid, 2f, 0.95f);
         SpawnExplosionFx(mid);
         SpawnFlash(mid, new Color(1f, 0.8f, 0.5f), 2.6f, 0.5f);
         SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.9f, 0.35f);
         SpawnImpactLight(mid, new Color(1f, 0.6f, 0.25f), 3.2f, 16f, 0.8f);
-        // Round 20 (owner): a destroyed building turns to DUST, not
-        // blocks — no more facade chunks. A two-layer dust cloud
-        // billows out and hangs, and a low rubble mound stays on the
-        // footprint as the ruin.
+        // Round 21 (owner, supersedes round 20's no-blocks rule):
+        // the building explodes into PIECES (its own facade
+        // material), the pieces settle, then each dissolves into
+        // dust; a two-layer dust cloud billows over the whole event.
+        Material facade = null;
+        if (d.Node is MeshInstance3D fmi)
+            facade = fmi.GetSurfaceOverrideMaterial(0) ?? fmi.Mesh?.SurfaceGetMaterial(0);
+        SpawnChunks(mid, 14, 0.7f, 2.2f, facade ?? RubbleMat, 4f, 8.5f, life: 3.0f);
         SpawnBurst(d.Center + Vector3.Up * 1.2f, DustParticleMat, 46, 3.4f, 2.5f, 7f, new Vector3(0f, 0.9f, 0f), 1.1f, 1.6f, 3.2f);
         SpawnBurst(mid, DustParticleMat, 26, 2.6f, 1.5f, 4.5f, new Vector3(0f, 0.6f, 0f), 0.9f, 1.4f, 2.6f);
-        // The ruin itself is the building's own mesh: UpdateDestructibles
-        // squashes it to 12% height and darkens it to rubble colors.
-        SpawnBurst(mid, FireParticleMat, 64, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
+        SpawnBurst(mid, FireParticleMat, 80, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
         SpawnBurst(mid, SmokeParticleMat, 36, 3.4f, 1.6f, 3.4f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.2f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.6f, 7f);
-        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (explosion + dust)");
+        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");
     }
 
     // Owner's current rule: a tree is destroyed by ANY interaction —
@@ -2798,26 +2819,16 @@ public partial class MechDuel : Node3D
                     GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) GONE");
                 }
             }
-            else if (d.State == 2) // building collapsing
+            else if (d.State == 2) // building gone: pieces + dust animate (round 21)
             {
+                // The building node is hidden (StartCollapse); the
+                // pieces fly and dissolve into dust under
+                // StepEnvChunks. Nothing animates on the node itself.
                 d.Timer -= dt;
-                float u = 1f - Mathf.Clamp(d.Timer / d.PhaseLen, 0f, 1f);
-                float sy = 1f - 0.88f * (u * u * (3f - 2f * u));
-                d.Node.Scale = new Vector3(1f, sy, 1f);
-                var np = d.Node.Position;
-                np.Y = d.Center.Y + d.Height * sy / 2f - 0.3f;
-                d.Node.Position = np;
-                // No dust column here anymore (round 20): the
-                // x7-11 trail-puff sprites this block used to spawn
-                // read as giant white plaques in the proof frames.
-                // StartCollapse's real dust particle systems do the
-                // job now.
                 if (d.Timer <= 0f)
                 {
                     d.State = 4;
-                    if (d.Node is MeshInstance3D mi && mi.MaterialOverride is StandardMaterial3D sm)
-                        sm.AlbedoColor = new Color(0.3f, 0.29f, 0.27f); // rubble
-                    GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) RUBBLE");
+                    GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) CLEARED (pieces turned to dust)");
                 }
             }
         }
@@ -3648,7 +3659,7 @@ public partial class MechDuel : Node3D
                         if (_fxLights <= 0) { WFail("building collapse lit no impact light"); return; }
                         int bp = _fxParticles - _wEnvParticles0;
                         if (bp < 6) { WFail($"building collapse spawned only {bp} particle systems (want explosion fire+smoke, 2 dust systems, burning wreck)"); return; }
-                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, a dust cloud and {bp} particle systems; the squashed ruin remains");
+                        GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, a dust cloud and {bp} particle systems; original hidden, pieces flying");
                         QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
                         _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
                         _wEnvStep = 2;
@@ -3700,6 +3711,7 @@ public partial class MechDuel : Node3D
                         if (_aimTarget == "PROP" && conv.DistanceTo(crownCtr) < 3.5f) { onCrown = true; break; }
                     }
                     if (!onCrown) { WFail("no pitch puts the cursor on the crown"); return; }
+                    _wEnvChunks0 = _envChunks.Count; // re-baseline at the shot: building pieces dissolve on their own clock (round 21) and must not pollute the splinter delta
                     FireLaser(conv);
                     if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * 8f;
