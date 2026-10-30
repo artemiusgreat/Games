@@ -1582,7 +1582,7 @@ public partial class MechDuel : Node3D
                 Offsets = new float[] { 0f, 0.30f, 0.62f, 1f },
                 Colors = new Color[] { new Color(1f, 0.80f, 0.35f, 0.95f), new Color(1f, 0.50f, 0.10f, 0.9f),
                                        new Color(0.85f, 0.20f, 0.03f, 0.5f), new Color(0.30f, 0.05f, 0.01f, 0f) } } };
-            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.55f)); sc.AddPoint(new Vector2(0.35f, 1f)); sc.AddPoint(new Vector2(1f, 1.3f));
+            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.5f)); sc.AddPoint(new Vector2(0.35f, 0.9f)); sc.AddPoint(new Vector2(1f, 1.12f));
             pm.ScaleCurve = new CurveTexture { Curve = sc };
         }
         else if (mat == SmokeParticleMat || mat == DustParticleMat)
@@ -1591,15 +1591,17 @@ public partial class MechDuel : Node3D
             pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
                 Offsets = new float[] { 0f, 1f },
                 Colors = new Color[] { new Color(1f, 1f, 1f, a0), new Color(1f, 1f, 1f, 0f) } } };
-            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.75f)); sc.AddPoint(new Vector2(1f, 2.5f));
+            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.7f)); sc.AddPoint(new Vector2(1f, 2.3f));
             pm.ScaleCurve = new CurveTexture { Curve = sc };
         }
         PrimitiveMesh mesh;
         if (mat.BillboardMode == BaseMaterial3D.BillboardModeEnum.Particles)
             // Flames stand taller than wide; puffs stay square.
+            // Round 21 (owner): fire still read as bubbles — the
+            // particles are notably SMALLER now, bursts denser.
             mesh = new QuadMesh { Size = mat == FireParticleMat
-                ? new Vector2(meshRadius * 1.7f, meshRadius * 2.9f)
-                : new Vector2(meshRadius * 2f, meshRadius * 2f) };
+                ? new Vector2(meshRadius * 1.05f, meshRadius * 1.9f)
+                : new Vector2(meshRadius * 1.7f, meshRadius * 1.7f) };
         else
             mesh = new SphereMesh { Radius = meshRadius, Height = meshRadius * 2f, RadialSegments = 6, Rings = 4 };
         mesh.Material = mat;
@@ -2023,7 +2025,7 @@ public partial class MechDuel : Node3D
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
             SpawnFlash(hit.Point, new Color(1f, 0.62f, 0.25f), 1.7f, 0.3f);
             SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), 3.2f, 14f, 0.5f);
-            SpawnBurst(hit.Point, FireParticleMat, 42, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
+            SpawnBurst(hit.Point, FireParticleMat, 54, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
             SpawnBurst(hit.Point, SmokeParticleMat, 22, 2.6f, 1.4f, 3f, new Vector3(0f, 1.3f, 0f), 0.55f, 1.5f, 2.6f);
             ExplodeSplash(hit, p);
             if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
