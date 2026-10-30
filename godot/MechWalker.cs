@@ -297,20 +297,22 @@ public partial class MechWalker : Node3D
 
         if (_cfg.FlipKneePole)
         {
-            // Plantigrade flip (owner round 22): mirror ONLY the
-            // pole's sagittal (forward/back) component across the
-            // frontal plane — the lateral and vertical components
-            // are preserved, so from the front the legs keep their
-            // modeled stance and the bend shows only from the
-            // side. (The first cut reflected across the leg axis,
-            // which also mirrored the lateral component: the
-            // knees bent forward AND toward each other.)
+            // Plantigrade flip (owner round 22, sharpened same
+            // day): the pole becomes the PURE sagittal axis on the
+            // flipped side of the leg — zero lateral component.
+            // From the front or back the hip, knee and ankle then
+            // share one lateral coordinate and the leg reads as a
+            // straight line; the entire bend shows only from the
+            // side. (The sculpt's rest pole carries a +-0.559
+            // lateral part — knees splayed — and an axis
+            // reflection mirrored it inward; both read as offsets
+            // from the front, which the owner ruled out.)
             var lateral = (_legR.Hrest - _legL.Hrest).Normalized();
             foreach (var leg in new[] { _legL, _legR })
             {
                 var up = (leg.Hrest - leg.Arest).Normalized();
                 var sag = up.Cross(lateral).Normalized(); // in the pole's plane, ⊥ leg axis and ⊥ lateral
-                leg.PoleSk = (leg.PoleSk - 2f * leg.PoleSk.Dot(sag) * sag).Normalized();
+                leg.PoleSk = sag * -Mathf.Sign(leg.PoleSk.Dot(sag));
                 GD.Print($"{_cfg.Label} leg {leg.Name}: flipped pole={leg.PoleSk}");
             }
         }
