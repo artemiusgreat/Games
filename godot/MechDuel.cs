@@ -1761,31 +1761,6 @@ public partial class MechDuel : Node3D
             // tests alike.
             var camDir = (_reticlePoint - _cam.GlobalPosition).Normalized();
             hit = _hit.Ray(_cam.GlobalPosition, camDir, 220f, "TW", 0.9f);
-            if (hit.Hit)
-            {
-                // Muzzle obstruction (owner): the camera line can
-                // clear a building the BEAM's own line cannot — the
-                // reticle rests on the hill above the roof, the high
-                // camera sees over it, but the beam drawn from the
-                // arm visibly passed THROUGH the building to reach
-                // the hill. When the cursor has a real target, the
-                // beam must reach it unobstructed: a prop or terrain
-                // crossing the muzzle's segment takes the hit
-                // instead. A camera MISS (clean sky) takes no
-                // obstruction damage — that was the crest repro, and
-                // it stays fixed.
-                var toHit = hit.Point - muzzle;
-                float mLen = toHit.Length();
-                if (mLen > 0.5f)
-                {
-                    var mh = _hit.Ray(muzzle, toHit / mLen, mLen, "TW", 0.9f);
-                    if (mh.Hit && (mh.Target == "PROP" || mh.Target == "TERRAIN"))
-                    {
-                        GD.Print($"WPN LASER obstructed by {mh.Target} at {mh.Point} (cursor target was {hit.Target})");
-                        hit = mh;
-                    }
-                }
-            }
             bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
