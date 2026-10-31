@@ -592,10 +592,14 @@ public sealed class MechParts
         GD.Print($"BRK DMG {_mechId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
-        if (partId == "leg_L" || partId == "leg_R")
+        if (partId == "leg_L" || partId == "leg_R" || partId == "head")
         {
             // Owner's rule: legs NEVER fall off. A destroyed leg stays
             // attached — darkened and deformed — and the mech limps.
+            // The head stays on too (owner, 2026-10-31): a shot-off
+            // head left the torso a hollow shell you could see
+            // through from behind. A wrecked head stays attached,
+            // charred and lolling, like the legs.
             WreckPart(part);
             GD.Print($"BRK WRECK {_mechId} part={partId} '{part.Display}' (stays attached, mech limps)");
         }
