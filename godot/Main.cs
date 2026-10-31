@@ -2,8 +2,16 @@ using Godot;
 
 public partial class Main : Node3D
 {
-    public const int TerrainSize = 170; // world units, square
-    public const int TerrainSegs = 256; // mesh segments per side == heightfield cells
+    public const int TerrainSize = 260; // world units, square (was 170 — bigger map, owner 2026-10-31)
+    public const int TerrainSegs = 384; // mesh segments per side == heightfield cells
+
+    // The three spawn pads, 120° apart at r=80 (pairwise ~139u —
+    // far beyond first-sight range). RawHeight flattens the
+    // ground at each pad. Index 0 is the player's.
+    public static readonly Vector2[] SpawnPads =
+    {
+        new(0f, 80f), new(-69.3f, -40f), new(69.3f, -40f)
+    };
 
     // ---- Heightfield terrain (roadmap step 4) ----
     // The world is ONE heightfield grid, generated once from a seeded
@@ -67,7 +75,45 @@ public partial class Main : Node3D
         return t * t * (3f - 2f * t);
     }
 
+    // The center dome (owner, 2026-10-31): a broad hill in the
+    // middle of the map, ~34u over the arena floor, so the three
+    // spawn pads have no sightline to each other. Measured
+    // geometry: every pad pair's sightline passes r=40 from the
+    // center, where the dome still stands ~23u — above the
+    // highest pad eye line (pads flatten to at most 3u, +~11.5
+    // eye height). Added AFTER the arena modulation so the
+    // center damping cannot flatten it away. The top is a mesa
+    // (flat inside r=14): the old pure Gaussian put the center
+    // test marks on a 2.3u relative slope, which moved shot
+    // attribution from torso to thigh — a fighting plateau is
+    // also simply better ground to duel on.
+    private static float DomeHeight(float x, float z)
+    {
+        float r = Mathf.Sqrt(x * x + z * z);
+        float rr = Mathf.Max(0f, r - 14f);
+        return 34f * Mathf.Exp(-(rr * rr) / (2f * 30f * 30f));
+    }
+
     private static float RawHeight(float x, float z)
+    {
+        float h = BaseHeight(x, z);
+        // Flatten each spawn pad toward its own center height, so
+        // a mech starts on level ground in its hollow.
+        foreach (var pad in SpawnPads)
+        {
+            float d = new Vector2(x, z).DistanceTo(pad);
+            if (d < 18f)
+            {
+                // Pads sit LOW (at most 3u) whatever the local
+                // relief says — the hollows the dome math assumes.
+                float padH = Mathf.Min(BaseHeight(pad.X, pad.Y), 3f);
+                h = Mathf.Lerp(h, padH, Smooth(18f, 8f, d));
+            }
+        }
+        return h;
+    }
+
+    private static float BaseHeight(float x, float z)
     {
         float r = Mathf.Sqrt(x * x + z * z);
         // Rolling hills, the base relief everywhere.
@@ -81,12 +127,12 @@ public partial class Main : Node3D
         float valley = -3.6f * Mathf.Exp(-(dVal * dVal) / (2f * 13f * 13f));
         // Mountain ring bounding the map (square falloff follows the rim).
         float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-        float m = Smooth(56f, 84f, sq);
+        float m = Smooth(88f, 128f, sq);
         float mtn = m * (9f + 7f * (Fbm(x / 37f - 9f, z / 37f + 23f, 4) * 0.5f + 0.5f));
         float full = hills + ridge + valley + mtn;
-        // Arena modulation: 22% amplitude at the center, full by r=62.
-        float t = Smooth(36f, 62f, r);
-        return full * (0.22f + 0.78f * t);
+        // Arena modulation: 22% amplitude at the center, full by r=94.
+        float t = Smooth(54f, 94f, r);
+        return full * (0.22f + 0.78f * t) + DomeHeight(x, z);
     }
 
     private static float[] BuildGrid()
