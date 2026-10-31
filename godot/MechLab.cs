@@ -26,6 +26,22 @@ public partial class MechLab : Control
     private Button _jetsBtn;
     private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
     private string _selectedWeapon; // click-to-assign path
+    // Live slot anchors (owner): viewport position of each
+    // hardpoint's part on the mech, projected from the 3D view
+    // every frame — the paperdoll dots track the real parts at
+    // any window size, instead of fixed fractions that drifted
+    // when the screen was resized.
+    public System.Func<string, Vector2?> AnchorProjector;
+    private PaperdollArea _paperdoll;
+
+    public override void _Process(double delta)
+    {
+        if (_paperdoll != null && AnchorProjector != null)
+        {
+            _paperdoll.Projector = AnchorProjector;
+            _paperdoll.Layout();
+        }
+    }
 
     // The weapon TILE (owner): the small square icon is the drag
     // handle and the click target — the row's text is inert.
@@ -190,6 +206,10 @@ public partial class MechLab : Control
     private sealed partial class PaperdollArea : Control
     {
         private readonly System.Collections.Generic.Dictionary<string, Control> _panels = new();
+        private readonly System.Collections.Generic.Dictionary<string, Vector2> _live = new();
+        // Viewport position of a slot's part on the mech (owner):
+        // set by the duel; null entries fall back to the fractions.
+        public System.Func<string, Vector2?> Projector;
         public void AddPanel(string slotId, Control panel) { _panels[slotId] = panel; AddChild(panel); }
         public override void _Ready() { Resized += Layout; }
         public void Layout()
@@ -201,6 +221,8 @@ public partial class MechLab : Control
                 ["pod_R"] = new Vector2(0.76f, 0.11f),
                 ["arm_L"] = new Vector2(0.15f, 0.60f),
                 ["arm_R"] = new Vector2(0.85f, 0.60f),
+                ["torso"] = new Vector2(0.5f, 0.30f),
+                ["gun"] = new Vector2(0.5f, 0.88f),
             };
             foreach (var (id, panel) in _panels)
             {
@@ -210,6 +232,13 @@ public partial class MechLab : Control
                     Mathf.Clamp(want.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
                     Mathf.Clamp(want.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
             }
+            _live.Clear();
+            if (Projector != null)
+                foreach (var id in _panels.Keys)
+                {
+                    var vp = Projector(id);
+                    if (vp.HasValue) _live[id] = vp.Value - GetGlobalPosition();
+                }
             QueueRedraw();
         }
         // Where each hardpoint lives on the machine, as fractions
@@ -220,6 +249,8 @@ public partial class MechLab : Control
             ["pod_R"] = new Vector2(0.64f, 0.27f),
             ["arm_L"] = new Vector2(0.16f, 0.47f),
             ["arm_R"] = new Vector2(0.76f, 0.45f),
+            ["torso"] = new Vector2(0.47f, 0.38f),
+            ["gun"] = new Vector2(0.44f, 0.55f),
         };
 
         public override void _Draw()
@@ -229,8 +260,10 @@ public partial class MechLab : Control
             var dot = new Color(0.95f, 0.8f, 0.45f, 0.9f);
             foreach (var (id, panel) in _panels)
             {
-                if (!Anchors.TryGetValue(id, out var af)) continue;
-                var anchor = af * Size;
+                Vector2 anchor;
+                if (_live.TryGetValue(id, out var lv)) anchor = lv;
+                else if (Anchors.TryGetValue(id, out var af)) anchor = af * Size;
+                else continue;
                 // The line runs from the panel's EDGE (not its
                 // center, not a shared hub) to the slot's own
                 // place on the mech (owner).
@@ -251,6 +284,7 @@ public partial class MechLab : Control
         public string SlotId;
         public MechLab Lab;
         public Label WeaponLabel;
+        public VBoxContainer ListBox;
         public Control Tile;
         public TextureRect TileTex;
         public Label TileAbbrev;
@@ -363,6 +397,7 @@ public partial class MechLab : Control
 
         // -- Hardpoints (right): MW4-style paperdoll over the mech --
         var paperdoll = new PaperdollArea();
+        _paperdoll = paperdoll;
         paperdoll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         paperdoll.SizeFlagsVertical = SizeFlags.ExpandFill;
         mid.AddChild(paperdoll);
@@ -411,6 +446,9 @@ public partial class MechLab : Control
             panel.WeightLabel.AddThemeFontSizeOverride("font_size", 15);
             panel.WeightLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.8f, 0.86f));
             tileRow.AddChild(panel.WeightLabel);
+            panel.ListBox = new VBoxContainer();
+            panel.ListBox.AddThemeConstantOverride("separation", 2);
+            vb.AddChild(panel.ListBox);
             panel.WeaponLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
             panel.WeaponLabel.AddThemeFontSizeOverride("font_size", 15);
             tileRow.AddChild(panel.WeaponLabel);
@@ -477,6 +515,8 @@ public partial class MechLab : Control
         Refresh();
     }
 
+    // Slideshow selector (owner): chips don't scale to tens of
+    // mechs — arrows cycle through the registry, wrapping around.
     private Control MechSelector(string role, bool playerSide)
     {
         var box = new HBoxContainer();
@@ -484,18 +524,35 @@ public partial class MechLab : Control
         var lab = new Label { Text = role + " MECH:", VerticalAlignment = VerticalAlignment.Center };
         lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         box.AddChild(lab);
-        foreach (var spec in MechSpecs.All)
+        var name = new Label
         {
-            var b = new Button { Text = spec.Name, ToggleMode = true };
-            b.ButtonPressed = (playerSide ? PlayerSpecId : EnemySpecId) == spec.Id;
-            var captured = spec;
-            b.Pressed += () =>
-            {
-                if (playerSide) PlayerSpecId = captured.Id; else EnemySpecId = captured.Id;
-                OnSelectionChanged?.Invoke();
-            };
-            box.AddChild(b);
+            CustomMinimumSize = new Vector2(170, 0),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        name.AddThemeFontSizeOverride("font_size", 16);
+        name.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
+        int Index()
+        {
+            var id = playerSide ? PlayerSpecId : EnemySpecId;
+            for (int i = 0; i < MechSpecs.All.Length; i++) if (MechSpecs.All[i].Id == id) return i;
+            return 0;
         }
+        void Cycle(int d)
+        {
+            var all = MechSpecs.All;
+            int i = (Index() + d + all.Length) % all.Length;
+            if (playerSide) PlayerSpecId = all[i].Id; else EnemySpecId = all[i].Id;
+            OnSelectionChanged?.Invoke();
+        }
+        var prev = new Button { Text = "◀" };
+        prev.Pressed += () => Cycle(-1);
+        var next = new Button { Text = "▶" };
+        next.Pressed += () => Cycle(1);
+        name.Text = MechSpecs.All[Index()].Name;
+        box.AddChild(prev);
+        box.AddChild(name);
+        box.AddChild(next);
         return box;
     }
 
@@ -527,18 +584,35 @@ public partial class MechLab : Control
             }
             panel.WeightLabel.Text = ids.Count > 0
                 ? $"{Loadout.SlotWeight(id):F0}/{Spec.Slot(id)?.MaxWeight:F0}t" : "";
+            // Fitted weapons as a list, catalog-style (owner):
+            // one row per weapon — icon name, full name, tonnage.
+            // Clicking a row removes exactly that weapon.
+            foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
-                panel.WeaponLabel.Text = "— EMPTY —";
-            else
             {
-                var names = new System.Collections.Generic.List<string>();
-                for (int i = 0; i < ids.Count && i < 3; i++)
-                    names.Add(Abbrev(WeaponCatalog.ById(ids[i])));
-                if (ids.Count > 3) names.Add($"+{ids.Count - 3}");
-                panel.WeaponLabel.Text = string.Join(" + ", names);
+                var empty = new Label { Text = "— EMPTY —" };
+                empty.AddThemeFontSizeOverride("font_size", 12);
+                empty.AddThemeColorOverride("font_color", new Color(0.55f, 0.5f, 0.45f));
+                panel.ListBox.AddChild(empty);
             }
-            panel.WeaponLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.5f, 0.45f));
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var def = WeaponCatalog.ById(ids[i]);
+                if (def == null) continue;
+                int idx = i; string sid = id;
+                var row = new Button { Text = $"{Abbrev(def)} · {def.Name} · {def.Weight:F0}t" };
+                row.AddThemeFontSizeOverride("font_size", 12);
+                row.Alignment = HorizontalAlignment.Left;
+                row.Pressed += () =>
+                {
+                    if (Loadout.RemoveAt(sid, idx, out var rid))
+                        SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
+                    Refresh();
+                };
+                panel.ListBox.AddChild(row);
+            }
         }
+        _paperdoll?.Layout();
         if (_tonnage != null)
             _tonnage.Text = $"WEAPONS: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis";
     }

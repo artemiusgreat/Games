@@ -6,6 +6,22 @@ using System.Collections.Generic;
 // stays one partial class — see MechDuel.cs for the field block.
 public partial class MechDuel
 {
+    // Viewport position of a slot's part on the player's mech —
+    // the lab's paperdoll dots are drawn there, so the mapping
+    // survives any window size or aspect (owner). Null when the
+    // chassis lacks the part or it is off-screen: the lab falls
+    // back to its fractional anchors then.
+    private Vector2? ProjectSlotAnchor(string slotId)
+    {
+        if (_partsPlayer == null || _cam == null || !_partsPlayer.Has(slotId)) return null;
+        var w = _partsPlayer.PartCenterWorld(slotId);
+        if (_cam.IsPositionBehind(w)) return null;
+        var sp = _cam.UnprojectPosition(w);
+        var vp = GetViewport().GetVisibleRect().Size;
+        if (sp.X < -40f || sp.Y < -40f || sp.X > vp.X + 40f || sp.Y > vp.Y + 40f) return null;
+        return sp;
+    }
+
     private void OpenLab()
     {
         if (_lab != null) { _lab.QueueFree(); _lab = null; }
@@ -14,7 +30,8 @@ public partial class MechDuel
             Spec = _playerSpec,
             Loadout = _loadout,
             PlayerSpecId = _playerSpec.Id,
-            EnemySpecId = _enemySpec.Id
+            EnemySpecId = _enemySpec.Id,
+            AnchorProjector = ProjectSlotAnchor
         };
         _lab = lab;
         lab.OnStart = () =>
@@ -148,6 +165,7 @@ public partial class MechDuel
         _defPodL = Slowest(_podGunsL);
         _defPodR = Slowest(_podGunsR);
         string eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
+        _enemyBallisticSlot = eb;
         _defEnemyBallistic = eb == null ? null : WeaponCatalog.ById(_enemyLoadout.WeaponIn(eb));
         _wpnShort[0] = "1 " + GroupLabel(_gunsEnergy);
         _wpnShort[1] = "2 " + GroupLabel(_gunsBallistic);
