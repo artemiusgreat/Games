@@ -237,6 +237,9 @@ public partial class MechDuel
         foreach (var (id, cell) in _partCells)
         {
             var part = _partsPlayer.GetPart(id);
+            var cellBox = cell.Lab.GetParent() as Control;
+            if (part == null) { if (cellBox != null) cellBox.Visible = false; continue; } // chassis lacks this part (Atlas: no pods)
+            if (cellBox != null) cellBox.Visible = true;
             float frac = part.MaxHp > 0f ? part.Hp / part.MaxHp : 0f;
             cell.Bar.Value = frac;
             var fg = cell.Bar.GetThemeStylebox("fill") as StyleBoxFlat;
@@ -267,11 +270,11 @@ public partial class MechDuel
         }
 
         var status = new System.Collections.Generic.List<string>();
-        if (lasDead) status.Add("LASER DESTROYED — LEFT ARM LOST");
-        if (acDead) status.Add("AUTOCANNON DESTROYED — RIGHT ARM LOST");
-        if (lrmDead) status.Add("LRM DESTROYED — BOTH PODS LOST");
-        else if (!_partsPlayer.Alive("pod_L")) status.Add("LRM DEGRADED — LEFT POD LOST (4 ROCKETS)");
-        else if (!_partsPlayer.Alive("pod_R")) status.Add("LRM DEGRADED — RIGHT POD LOST (4 ROCKETS)");
+        if (lasDead && _defEnergy != null) status.Add("LASER DESTROYED — LEFT ARM LOST");
+        if (acDead && _defBallistic != null) status.Add("AUTOCANNON DESTROYED — RIGHT ARM LOST");
+        if (lrmDead && _defPodL != null && _defPodR != null) status.Add("LRM DESTROYED — BOTH PODS LOST");
+        else if ((_defPodL != null || _defPodR != null) && !_partsPlayer.Alive("pod_L")) status.Add("LRM DEGRADED — LEFT POD LOST (4 ROCKETS)");
+        else if ((_defPodL != null || _defPodR != null) && !_partsPlayer.Alive("pod_R")) status.Add("LRM DEGRADED — RIGHT POD LOST (4 ROCKETS)");
         if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED — CROSSHAIR SWAY");
         _lblWeaponStatus.Text = string.Join("\n", status);
 

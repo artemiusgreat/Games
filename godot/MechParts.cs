@@ -429,9 +429,15 @@ public sealed class MechParts
 
     // ---------- queries ----------
 
-    public Part GetPart(string id) => _parts[id];
-    public bool Alive(string id) => !_parts[id].Destroyed;
-    public float HpOf(string id) => _parts[id].Hp;
+    public bool Has(string id) => _parts.ContainsKey(id);
+    // Tolerant lookups: a chassis may simply not HAVE a part (the
+    // Atlas has no missile pods). Absent reads as destroyed / 0 HP /
+    // null rather than throwing — a hard dictionary lookup here
+    // crashed every frame for an Atlas player and froze the camera
+    // mid-duel (owner's report, 2026-10-30).
+    public Part GetPart(string id) => _parts.TryGetValue(id, out var p) ? p : null;
+    public bool Alive(string id) => _parts.TryGetValue(id, out var p) && !p.Destroyed;
+    public float HpOf(string id) => _parts.TryGetValue(id, out var p) ? p.Hp : 0f;
     public IEnumerable<Part> AllParts => _parts.Values;
 
     private static float BoxSdf(Vector3 p, Volume v)
