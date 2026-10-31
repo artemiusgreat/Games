@@ -42,6 +42,8 @@ public partial class MechDuel : Node3D
     private bool _atlasCam; // dev flag: swap player to Atlas, force-deploy, capture the chase view
     private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
     private bool _atlasLab; // dev flag: open the lab on the Atlas for the --lab-shot capture
+    private bool _layoutDumped;
+    private int _labShotFrames;
     private bool _atlasCamDone; private float _atlasCamT; private bool _atlasCamFired;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
@@ -568,7 +570,19 @@ public partial class MechDuel : Node3D
             GD.Print($"MULTISHOT fitted arm_L={string.Join(",", _loadout.WeaponsIn("arm_L"))} pod_L={string.Join(",", _loadout.WeaponsIn("pod_L"))} arm_R refused: {err}");
         }
 
-        if (_labShot && Time.GetTicksMsec() > 20000)
+        // The capture waits for BOTH wall time and a frame
+        // count: on a software rasterizer the first frame alone
+        // can take ~19s (shader compilation), so a wall-clock-only
+        // trigger photographed frame 1 — before the recreated
+        // lab's first _Process had run its live layout even once.
+        if (_labShot) _labShotFrames++;
+        if (_labShot && _lab != null && Time.GetTicksMsec() > 19500 && _labShotFrames > 45 && !_layoutDumped)
+        {
+            _layoutDumped = true;
+            GD.Print(_lab.DumpLayout());
+        }
+
+        if (_labShot && Time.GetTicksMsec() > 20000 && _labShotFrames > 50)
         {
             _labShot = false;
             GetViewport().GetTexture().GetImage().SavePng("/tmp/lab_live.png");
