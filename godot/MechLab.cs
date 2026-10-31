@@ -294,7 +294,7 @@ public partial class MechLab : Control
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
-        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint — or click the icon, then click a hardpoint. Type and tonnage must fit. Click an occupied hardpoint with nothing selected to strip just that slot." };
+        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint — or click the icon, then click a hardpoint. A hardpoint fits as many weapons of its type as its tonnage allows. Click an occupied hardpoint with nothing selected to remove its last weapon; right-click empties it." };
         sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
@@ -427,10 +427,11 @@ public partial class MechLab : Control
                 else if (e is InputEventMouseButton mb3 && mb3.Pressed && mb3.ButtonIndex == MouseButton.Left
                          && _selectedWeapon == null && Loadout.WeaponIn(capturedSlot.Id) != null)
                 {
-                    // Strip ONE slot by click (owner): left-click an
-                    // occupied hardpoint with no weapon selected.
-                    Loadout.Clear(capturedSlot.Id);
-                    SetHint($"{capturedSlot.Display} emptied.");
+                    // Peel ONE weapon by click: left-click an occupied
+                    // hardpoint with no weapon selected removes the
+                    // last one fitted (right-click empties the slot).
+                    if (Loadout.RemoveLast(capturedSlot.Id, out var rid))
+                        SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {capturedSlot.Display}.");
                     Refresh();
                 }
                 else if (e is InputEventMouseButton mb2 && mb2.Pressed && mb2.ButtonIndex == MouseButton.Right)
@@ -514,18 +515,28 @@ public partial class MechLab : Control
         }
         foreach (var (id, panel) in _slots)
         {
-            var wid = Loadout.WeaponIn(id);
-            var w = wid != null ? WeaponCatalog.ById(wid) : null;
-            // Occupied slots show the square icon + abbreviation
-            // (owner), not the weapon's full name.
+            var ids = Loadout.WeaponsIn(id);
+            var w = ids.Count > 0 ? WeaponCatalog.ById(ids[0]) : null;
+            // Occupied slots show the first weapon's icon +
+            // abbreviation (owner) and the fitted list beside it.
             panel.Tile.Visible = w != null;
             if (w != null)
             {
                 panel.TileTex.Texture = Icon(w);
                 panel.TileAbbrev.Text = Abbrev(w);
             }
-            panel.WeightLabel.Text = w != null ? $"{w.Weight:F0}t" : "";
-            panel.WeaponLabel.Text = w == null ? "— EMPTY —" : "";
+            panel.WeightLabel.Text = ids.Count > 0
+                ? $"{Loadout.SlotWeight(id):F0}/{Spec.Slot(id)?.MaxWeight:F0}t" : "";
+            if (ids.Count == 0)
+                panel.WeaponLabel.Text = "— EMPTY —";
+            else
+            {
+                var names = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < ids.Count && i < 3; i++)
+                    names.Add(Abbrev(WeaponCatalog.ById(ids[i])));
+                if (ids.Count > 3) names.Add($"+{ids.Count - 3}");
+                panel.WeaponLabel.Text = string.Join(" + ", names);
+            }
             panel.WeaponLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.5f, 0.45f));
         }
         if (_tonnage != null)

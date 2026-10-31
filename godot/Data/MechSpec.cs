@@ -89,14 +89,33 @@ public static class MechSpecs
 // Assignment rules live here so the lab UI and any future UI share them.
 public sealed class LoadoutState
 {
-    public readonly System.Collections.Generic.Dictionary<string, string> Equipped = new();
+    // A hardpoint fits as many weapons of its type as its tonnage
+    // cap allows (owner, 2026-10-31: with one weapon per slot, the
+    // 3-slot Atlas fielded less than the 4-slot Timber Wolf despite
+    // the bigger budget — slot count beat tonnage). The tonnage is
+    // the real limit now, exactly like the MW4 lab.
+    public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> Equipped = new();
 
     // Jump jets (thrusters) fitted. Only meaningful on a JumpCapable
     // chassis; the duel's effective rule is spec.JumpCapable && JumpJets.
     public bool JumpJets;
 
+    public System.Collections.Generic.IReadOnlyList<string> WeaponsIn(string slotId) =>
+        Equipped.TryGetValue(slotId, out var l) ? l : System.Array.Empty<string>();
+
     public string WeaponIn(string slotId) =>
-        Equipped.TryGetValue(slotId, out var w) ? w : null;
+        Equipped.TryGetValue(slotId, out var l) && l.Count > 0 ? l[0] : null;
+
+    public float SlotWeight(string slotId)
+    {
+        float t = 0f;
+        foreach (var id in WeaponsIn(slotId))
+        {
+            var w = WeaponCatalog.ById(id);
+            if (w != null) t += w.Weight;
+        }
+        return t;
+    }
 
     // Pure rule check (used live during drag hover): null = the weapon
     // fits, else the reason it does not.
@@ -107,18 +126,33 @@ public sealed class LoadoutState
         if (weapon == null) return "no weapon";
         if (weapon.Type != slot.Type)
             return $"{weapon.Name} is {weapon.Type} — the {slot.Display} hardpoint takes {slot.Type} only";
-        if (weapon.Weight > slot.MaxWeight)
-            return $"{weapon.Name} weighs {weapon.Weight:F0}t — the {slot.Display} hardpoint holds {slot.MaxWeight:F0}t max";
+        float left = slot.MaxWeight - SlotWeight(slotId);
+        if (weapon.Weight > left)
+            return $"{weapon.Name} weighs {weapon.Weight:F0}t — only {left:F0}t left in the {slot.Display} hardpoint ({slot.MaxWeight:F0}t max)";
         return null;
     }
 
-    // Returns null on success, else the reason the drop is refused.
+    // Adds the weapon to the hardpoint (multi-fit). Returns null on
+    // success, else the reason the drop is refused.
     public string TryAssign(MechSpec spec, string slotId, WeaponDef weapon)
     {
         var err = Check(spec, slotId, weapon);
         if (err != null) return err;
-        Equipped[slotId] = weapon.Id;
+        if (!Equipped.TryGetValue(slotId, out var l))
+            Equipped[slotId] = l = new System.Collections.Generic.List<string>();
+        l.Add(weapon.Id);
         return null;
+    }
+
+    // Removes the most recently added weapon from the hardpoint.
+    public bool RemoveLast(string slotId, out string removedId)
+    {
+        removedId = null;
+        if (!Equipped.TryGetValue(slotId, out var l) || l.Count == 0) return false;
+        removedId = l[l.Count - 1];
+        l.RemoveAt(l.Count - 1);
+        if (l.Count == 0) Equipped.Remove(slotId);
+        return true;
     }
 
     public void Clear(string slotId) => Equipped.Remove(slotId);
@@ -133,11 +167,12 @@ public sealed class LoadoutState
         get
         {
             float t = 0f;
-            foreach (var id in Equipped.Values)
-            {
-                var w = WeaponCatalog.ById(id);
-                if (w != null) t += w.Weight;
-            }
+            foreach (var l in Equipped.Values)
+                foreach (var id in l)
+                {
+                    var w = WeaponCatalog.ById(id);
+                    if (w != null) t += w.Weight;
+                }
             return t;
         }
     }
@@ -149,9 +184,9 @@ public sealed class LoadoutState
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
-        l.Equipped["arm_L"] = "large_laser";
-        l.Equipped["arm_R"] = "ac20";
-        l.Equipped["pod_L"] = "srm";
+        l.TryAssign(MechSpecs.Atlas, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(MechSpecs.Atlas, "arm_R", WeaponCatalog.ById("ac20"));
+        l.TryAssign(MechSpecs.Atlas, "pod_L", WeaponCatalog.Srm);
         return l;
     }
 
@@ -159,10 +194,10 @@ public sealed class LoadoutState
     {
         var l = new LoadoutState();
         l.JumpJets = true; // default fit: thrusters loaded
-        l.Equipped["arm_L"] = "large_laser";
-        l.Equipped["arm_R"] = "autocannon";
-        l.Equipped["pod_L"] = "lrm";
-        l.Equipped["pod_R"] = "lrm";
+        l.TryAssign(MechSpecs.TimberWolf, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(MechSpecs.TimberWolf, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(MechSpecs.TimberWolf, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(MechSpecs.TimberWolf, "pod_R", WeaponCatalog.Lrm);
         return l;
     }
 }
