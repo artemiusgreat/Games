@@ -153,7 +153,7 @@ public partial class RiderDuel
         var (target, vel, tag) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, 0f);
         if (target == null) return;
         UpdateFoeGunnery(_foe1.Walker, _foe1.Parts, _foe1.DefBallistic, _foe1.BallisticSlot,
-            "FOE1", tag, target, vel, () => { _foe1.Cd = _foe1.DefBallistic?.Cooldown ?? 0.85f; });
+            "FOE1", tag, target, vel, () => { _foe1.Cd = _foe1.DefBallistic?.Cooldown ?? 0.85f; _foe1Shots++; });
     }
 
     // Cannon gunnery, shared: range + line-of-sight gated, leads

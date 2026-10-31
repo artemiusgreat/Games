@@ -132,6 +132,8 @@ public partial class RiderDuel : Node3D
     }
     private Foe _foe1;
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
+    private bool _ffaTest; // --ffa-test: staged three-way AI probe
+    private int _foe1Shots;
     private Vector3 _enemyVel;
     private Vector3 _prevEnemyRoot;
     private RiderWalker _foe0TargetW; // foe 0's current AI target (re-picked on a think timer)
@@ -251,6 +253,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--enyo-cam") _enyoCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
             if (arg == "--enyo-lab") _enyoLab = true;
+            if (arg == "--ffa-test") _ffaTest = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -342,7 +345,7 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
-        if (!PrecisionTest) BuildFoe1();
+        if (!PrecisionTest || _ffaTest) BuildFoe1();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
@@ -370,7 +373,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -754,7 +757,8 @@ public partial class RiderDuel : Node3D
         if (!_frozen)
         {
             _simT += delta;
-            if (_breakTest) UpdateBreakTest(dt);
+            if (_ffaTest) UpdateFfaTest(dt);
+            else if (_breakTest) UpdateBreakTest(dt);
             else if (_weaponsTest) UpdateWeaponsTest(dt);
             else if (_terrainTest) UpdateTerrainTest(dt);
             else if (_photoTest) UpdatePhotoTest(dt);

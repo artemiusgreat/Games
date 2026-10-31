@@ -522,6 +522,61 @@ public partial class RiderDuel
 
     private Vector3 EnemyAim() => _enemy.RootPos + Vector3.Up * 8.2f;
 
+    // ---------- free-for-all probe ----------
+    // Stages all three riders 45u apart on the mesa and lets the
+    // two AIs play: PASS requires both foes to have closed with
+    // someone, both to have fired, and real damage somewhere.
+    private double _ffaT;
+    private bool _ffaStaged;
+    private Vector3 _ffaHome0, _ffaHome1;
+
+    private void UpdateFfaTest(float dt)
+    {
+        _ffaT += dt;
+        if (!_ffaStaged)
+        {
+            _ffaStaged = true;
+            var c = new Vector3(0f, 0f, 0f);
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f),
+                RiderWalker.YawOf((c - _player.RootPos).Normalized()));
+            _enemy.Teleport(new Vector3(26f, Main.HeightAt(26f, -15f), -15f),
+                RiderWalker.YawOf((c - _enemy.RootPos).Normalized()));
+            _foe1.Walker.Teleport(new Vector3(-26f, Main.HeightAt(-26f, -15f), -15f),
+                RiderWalker.YawOf((c - _foe1.Walker.RootPos).Normalized()));
+            _ffaHome0 = _enemy.RootPos;
+            _ffaHome1 = _foe1.Walker.RootPos;
+            GD.Print("FFATEST staged: three riders, 45u triangle on the mesa");
+            return;
+        }
+        UpdateEnemyAI(dt);
+        UpdateFoe1AI(dt);
+        if (_ffaT > 25f)
+        {
+            float moved0 = new Vector2(_enemy.RootPos.X - _ffaHome0.X, _enemy.RootPos.Z - _ffaHome0.Z).Length();
+            float moved1 = new Vector2(_foe1.Walker.RootPos.X - _ffaHome1.X, _foe1.Walker.RootPos.Z - _ffaHome1.Z).Length();
+            bool dmg = _hpPlayer < _playerSpec.MaxHp || _hpEnemy < _enemySpec.MaxHp || _foe1.Hp < _foe1.Spec.MaxHp
+                || AnyPartDamaged(_partsPlayer) || AnyPartDamaged(_partsEnemy) || AnyPartDamaged(_foe1.Parts);
+            GD.Print($"FFATEST moved foe0={moved0:F1} foe1={moved1:F1} shots foe0={_enemyShots} foe1={_foe1Shots} anyDamage={dmg} hp P={_hpPlayer:F0} E={_hpEnemy:F0} F1={_foe1.Hp:F0}");
+            if (moved0 > 8f && moved1 > 8f && _enemyShots > 0 && _foe1Shots > 0 && dmg)
+            {
+                GD.Print("FFATEST PASS both opponents closed, fired, and drew blood in the free-for-all");
+                GetTree().Quit(0);
+            }
+            else
+            {
+                GD.PrintErr("FFATEST FAIL: the free-for-all did not develop as required");
+                GetTree().Quit(1);
+            }
+        }
+    }
+
+    private static bool AnyPartDamaged(RiderParts parts)
+    {
+        foreach (var id in new[] { "head", "torso", "arm_L", "arm_R", "gun", "pod_L", "pod_R", "leg_L", "leg_R" })
+            if (parts.Has(id) && parts.HpOf(id) < parts.GetPart(id).MaxHp - 0.01f) return true;
+        return false;
+    }
+
     // The firing suites fire ONE weapon per group: their exact
     // expectations (3x12 laser, 2x26 cannon, 8-rocket salvo, 4
     // rockets from one pod) were calibrated on single fits, and
