@@ -65,6 +65,12 @@ public partial class MechDuel
                     if (!multi.RemoveLast("pod_L", out var peeled) || peeled != "srm" || multi.WeaponIn("pod_L") != "lrm")
                     { GD.PrintErr("DUEL FAIL: multi-fit peel wrong"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST MULTIFIT PASS hardpoints fit multiple weapons up to their tonnage cap; peel removes the last one");
+                    // Distribution (owner): heavier mechs carry MORE
+                    // hardpoints, so their firepower survives losing
+                    // a single mount.
+                    if (MechSpecs.Atlas.Slots.Length <= MechSpecs.TimberWolf.Slots.Length)
+                    { GD.PrintErr("DUEL FAIL: the 100t Atlas must have more hardpoints than the 75t Timber Wolf"); GetTree().Quit(1); return; }
+                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: TimberWolf {MechSpecs.TimberWolf.Slots.Length}, Atlas {MechSpecs.Atlas.Slots.Length} (heavier = more mounts)");
                     // Mech selection (round 22): swap both chassis and
                     // verify the duel follows — parts layout, pools
                     // and equipped defs all follow the spec.
