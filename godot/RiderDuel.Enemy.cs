@@ -1,9 +1,9 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: the opponent brains: movement AI, torso tracking,
+// RiderDuel module: the opponent brains: movement AI, torso tracking,
 // gunnery. Split from the single-file build (round 22 cleanup); the
-// class stays one partial class — see MechDuel.cs for the field
+// class stays one partial class — see RiderDuel.cs for the field
 // block.
 //
 // Free-for-all (owner, 2026-10-31): two AI opponents share this
@@ -11,17 +11,17 @@ using System.Collections.Generic;
 // the other AI — and plays the same range game against it. No
 // teams, no collaboration: a foe will happily finish off the
 // other foe while the player watches.
-public partial class MechDuel
+public partial class RiderDuel
 {
     // The foe's current victim: nearest living opponent, re-picked
-    // on a think timer so equidistant mechs don't flip-flop.
-    private (MechWalker W, Vector3 Vel, string Tag) PickTarget(
-        MechWalker self, MechWalker cur, ref float thinkT, float dt)
+    // on a think timer so equidistant riders don't flip-flop.
+    private (RiderWalker W, Vector3 Vel, string Tag) PickTarget(
+        RiderWalker self, RiderWalker cur, ref float thinkT, float dt)
     {
         thinkT -= dt;
         if (cur != null && thinkT > 0f && !IsDead(cur)) return (cur, VelOf(cur), TagOf(cur));
         thinkT = 0.75f;
-        MechWalker best = null;
+        RiderWalker best = null;
         float bd = float.MaxValue;
         foreach (var cand in new[] { _player, _enemy, _foe1?.Walker })
         {
@@ -32,27 +32,27 @@ public partial class MechDuel
         return best == null ? (null, Vector3.Zero, "") : (best, VelOf(best), TagOf(best));
     }
 
-    private bool IsDead(MechWalker w) =>
+    private bool IsDead(RiderWalker w) =>
         w == _player ? _playerDead
         : _foe1 != null && w == _foe1.Walker ? _foe1.Dead
         : _enemyDead;
 
-    private Vector3 VelOf(MechWalker w) =>
+    private Vector3 VelOf(RiderWalker w) =>
         w == _player ? _playerVel
         : _foe1 != null && w == _foe1.Walker ? _foe1.Vel
         : _enemyVel;
 
-    private string TagOf(MechWalker w) =>
+    private string TagOf(RiderWalker w) =>
         w == _player ? "PLAYER"
         : _foe1 != null && w == _foe1.Walker ? "FOE1"
         : "ENEMY";
 
-    private MechWalker WalkerOf(MechParts parts) =>
+    private RiderWalker WalkerOf(RiderParts parts) =>
         parts == _partsPlayer ? _player
         : _foe1 != null && parts == _foe1.Parts ? _foe1.Walker
         : _enemy;
 
-    private MechParts PartsOf(MechWalker w) =>
+    private RiderParts PartsOf(RiderWalker w) =>
         w == _player ? _partsPlayer
         : _foe1 != null && w == _foe1.Walker ? _foe1.Parts
         : _partsEnemy;
@@ -75,7 +75,7 @@ public partial class MechDuel
             ref _foe1.Yaw, ref _foe1.OrbitDir, ref _foe1.OrbitTimer, target, delta);
     }
 
-    private MechWalker _foe1TargetW;
+    private RiderWalker _foe1TargetW;
 
     // The range game, shared by both foes: advance beyond 38u,
     // back off inside 26u, orbit in the band; the torso tracks the
@@ -83,14 +83,14 @@ public partial class MechDuel
     // once it is gone). A downed foe has a leg gone, so it limps —
     // the walker's SpeedFactor throttles its drive — and keeps
     // playing.
-    private void UpdateFoeMovement(MechWalker w, MechParts parts, float pace,
+    private void UpdateFoeMovement(RiderWalker w, RiderParts parts, float pace,
         ref float yaw, ref float orbitDir, ref float orbitTimer,
-        MechWalker target, float delta)
+        RiderWalker target, float delta)
     {
         if (target == null) { w.SetDrive(yaw, 0f); return; }
         var toT = target.RootPos - w.RootPos;
         float dist = new Vector2(toT.X, toT.Z).Length();
-        float yawTo = MechWalker.YawOf(toT.Normalized());
+        float yawTo = RiderWalker.YawOf(toT.Normalized());
         float desiredYaw, spd;
         if (dist > 38f) { desiredYaw = yawTo; spd = pace; }
         else if (dist < 26f) { desiredYaw = yawTo; spd = -pace * 0.5f; }
@@ -101,7 +101,7 @@ public partial class MechDuel
             desiredYaw = yawTo + orbitDir * Mathf.Pi / 2f;
             spd = pace * 0.7f;
         }
-        float dy = MechWalker.WrapAngle(desiredYaw - yaw);
+        float dy = RiderWalker.WrapAngle(desiredYaw - yaw);
         float maxTurn = 0.7f * delta;
         yaw += Mathf.Clamp(dy, -maxTurn, maxTurn);
         w.SetDrive(yaw, spd);
@@ -112,9 +112,9 @@ public partial class MechDuel
     // Torso tracking: snaps to the target bearing while the head
     // (sensor suite) lives; head destroyed, the twist closes at
     // 0.6 rad/s — a visible, measurable lag.
-    private void TrackTorso(MechWalker w, MechParts parts, float yaw, float yawTo, float dt)
+    private void TrackTorso(RiderWalker w, RiderParts parts, float yaw, float yawTo, float dt)
     {
-        float desiredTwist = MechWalker.WrapAngle(yawTo - yaw);
+        float desiredTwist = RiderWalker.WrapAngle(yawTo - yaw);
         if (parts.Alive("head"))
         {
             w.TorsoTwist = desiredTwist;
@@ -122,7 +122,7 @@ public partial class MechDuel
         else
         {
             float cur = w.TorsoTwist;
-            float step = Mathf.Clamp(MechWalker.WrapAngle(desiredTwist - cur),
+            float step = Mathf.Clamp(RiderWalker.WrapAngle(desiredTwist - cur),
                 -0.6f * dt, 0.6f * dt);
             w.TorsoTwist = cur + step;
         }
@@ -159,10 +159,10 @@ public partial class MechDuel
     // Cannon gunnery, shared: range + line-of-sight gated, leads
     // the target's velocity at time-of-flight, seeded inaccuracy
     // cone (1.2° with sensors, 3.6° once the head is gone). Shell
-    // speed follows the weapon, as the player's does — the Atlas's
+    // speed follows the weapon, as the player's does — the Enyo's
     // AC/20 flies at 150 (50 x3, owner 2026-10-29).
-    private void UpdateFoeGunnery(MechWalker w, MechParts parts, WeaponDef def, string slot,
-        string tag, string targetTag, MechWalker target, Vector3 targetVel,
+    private void UpdateFoeGunnery(RiderWalker w, RiderParts parts, WeaponDef def, string slot,
+        string tag, string targetTag, RiderWalker target, Vector3 targetVel,
         System.Action onFired)
     {
         if (parts == null || !parts.Alive(slot ?? "arm_R")) return; // the mount is gone with its part

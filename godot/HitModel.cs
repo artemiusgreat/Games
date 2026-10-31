@@ -4,7 +4,7 @@ using System.Collections.Generic;
 // Shared hit model for every weapon in the duel (hitscan and projectiles
 // alike), so a laser, an autocannon shell and a rocket all agree on what
 // they hit:
-//   - mechs   = vertical cylinders (duel collision radius, full height
+//   - riders   = vertical cylinders (duel collision radius, full height
 //               standing on the terrain under the root) with legs/torso/
 //               head zones by height fraction -- the zone is what the
 //               breakable-parts step will consume later.
@@ -22,19 +22,19 @@ public sealed class HitModel
         public bool Hit;
         public float T;
         public Vector3 Point;
-        public string Target;   // mech id ("PLAYER"/"ENEMY"), "PROP", "TERRAIN", "" = nothing
-        public string Zone;     // mech hits only: "legs" / "torso" / "head"
-        public float ZoneFrac;  // mech hits only: 0 at the sole, 1 at the top
-        public string Part;     // mech hits only: breakable part id (via PartResolver), "" if unset
+        public string Target;   // rider id ("PLAYER"/"ENEMY"), "PROP", "TERRAIN", "" = nothing
+        public string Zone;     // rider hits only: "legs" / "torso" / "head"
+        public float ZoneFrac;  // rider hits only: 0 at the sole, 1 at the top
+        public string Part;     // rider hits only: breakable part id (via PartResolver), "" if unset
     }
 
-    // Optional breakable-parts hook: (mech id, world hit point) -> part id.
+    // Optional breakable-parts hook: (rider id, world hit point) -> part id.
     // Set by the duel once the part registries exist; null in other scenes.
     public System.Func<string, Vector3, string> PartResolver;
 
-    // Optional breakable-parts ray hook: (mech id, origin, unit dir,
+    // Optional breakable-parts ray hook: (rider id, origin, unit dir,
     // maxDist) -> (t, partId) of the nearest part-volume box hit along
-    // the ray, t < 0 when none. Parts protrude outside the mech capsule
+    // the ray, t < 0 when none. Parts protrude outside the rider capsule
     // (arms, LRM pods), so aimed fire at them can only register through
     // the boxes; the capsule alone would sail past. Null in other scenes.
     public System.Func<string, Vector3, Vector3, float, (float T, string Part)> PartRayCast;
@@ -47,7 +47,7 @@ public sealed class HitModel
         public float Height;
     }
 
-    public sealed class MechCap
+    public sealed class RiderCap
     {
         public string Id;
         public System.Func<Vector3> Root; // live root position provider
@@ -56,7 +56,7 @@ public sealed class HitModel
     }
 
     public readonly List<PropCyl> Props = new();
-    public readonly List<MechCap> Mechs = new();
+    public readonly List<RiderCap> Riders = new();
 
     // inflateProps widens PROP cylinders for this cast only (the
     // laser's hit thickness — the beam visual stays hair-thin).
@@ -71,7 +71,7 @@ public sealed class HitModel
             float t = RayCylinder(from, dir, p.P, p.R + inflateProps, p.BaseY, p.Height, best.T);
             if (t >= 0f) { best.Hit = true; best.T = t; best.Target = "PROP"; }
         }
-        foreach (var m in Mechs)
+        foreach (var m in Riders)
         {
             if (m.Id == ignoreId) continue;
             var root = m.Root();
@@ -160,11 +160,11 @@ public sealed class HitModel
         return -1f;
     }
 
-    // Distance from a point to a mech's capsule surface (0 when touching):
+    // Distance from a point to a rider's capsule surface (0 when touching):
     // point-to-axis-segment distance minus the radius. Used for splash.
-    public float DistanceToMechSurface(Vector3 point, string id)
+    public float DistanceToRiderSurface(Vector3 point, string id)
     {
-        foreach (var m in Mechs)
+        foreach (var m in Riders)
         {
             if (m.Id != id) continue;
             var root = m.Root();

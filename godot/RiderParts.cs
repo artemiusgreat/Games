@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechParts: per-mech breakable-part registry for the duel. Owns the part
+// RiderParts: per-rider breakable-part registry for the duel. Owns the part
 // model (which meshes belong to which part, per-part HP), per-mesh hit
 // volumes anchored to skeleton bones, and hit attribution.
 //
@@ -15,7 +15,7 @@ using System.Collections.Generic;
 //         arm_L/R = UpperArm + ShoulderPad + Elbow + Forearm + HandGun
 //           (+ WeaponERPPC), all shoulder/elbow-bound
 //         leg_L/R = Thigh + Shin + FootHub + all Toe meshes
-//   ATLAS torso = Torso core + Pelvis + AC20 + SRM6 (per spec the guns
+//   ENYO torso = Torso core + Pelvis + AC20 + SRM6 (per spec the guns
 //           ride with the torso part)
 //         head  = skull cap region split out of Torso
 //         arm_L/R = Shoulder + UpperArm + Elbow + Forearm
@@ -27,7 +27,7 @@ using System.Collections.Generic;
 // volumes follow articulation (leg bends, torso twist) exactly. Attribution
 // always returns the nearest part (torso included), destroyed parts are
 // skipped once they break off.
-public sealed class MechParts
+public sealed class RiderParts
 {
     public sealed class Volume
     {
@@ -79,24 +79,24 @@ public sealed class MechParts
         public readonly List<Volume> Volumes = new();
     }
 
-    private readonly MechWalker _walker;
+    private readonly RiderWalker _walker;
     private readonly Skeleton3D _skel;
-    private readonly string _mechId;
+    private readonly string _riderId;
     private readonly Dictionary<string, Part> _parts = new();
 
-    public string MechId => _mechId;
+    public string RiderId => _riderId;
     public System.Action<string, Vector3> OnBreak; // (partId, worldCenter)
 
-    public MechParts(MechWalker walker, string mechId)
+    public RiderParts(RiderWalker walker, string riderId)
     {
         _walker = walker;
-        _mechId = mechId;
+        _riderId = riderId;
         _skel = walker.Skeleton;
 
         var byName = new Dictionary<string, MeshInstance3D>();
         CollectMeshes(walker.ModelRoot, byName);
 
-        if (mechId == "timberwolf")
+        if (riderId == "hector")
         {
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
@@ -117,7 +117,7 @@ public sealed class MechParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
-        else if (mechId == "atlas")
+        else if (riderId == "enyo")
         {
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
@@ -137,8 +137,8 @@ public sealed class MechParts
             // Unknown chassis: no hand-authored layout. Fail LOUD
             // and fall back to a single torso part (the whole
             // model) so the duel still runs — author a real
-            // layout here before shipping the mech.
-            GD.PrintErr($"PARTS: no layout for '{mechId}' — torso-only fallback; author a layout in MechParts.cs");
+            // layout here before shipping the rider.
+            GD.PrintErr($"PARTS: no layout for '{riderId}' — torso-only fallback; author a layout in RiderParts.cs");
             var all = new string[byName.Count];
             byName.Keys.CopyTo(all, 0);
             AddPart("torso", "TORSO", 0f, byName, all);
@@ -146,7 +146,7 @@ public sealed class MechParts
 
         foreach (var part in _parts.Values)
         {
-            string line = $"{_mechId} PART {part.Id} hp={(part.MaxHp > 0 ? part.MaxHp.ToString("F0") : "pool")} meshes=[";
+            string line = $"{_riderId} PART {part.Id} hp={(part.MaxHp > 0 ? part.MaxHp.ToString("F0") : "pool")} meshes=[";
             foreach (var rec in part.Meshes)
             {
                 line += $"{rec.Mi.Name}:{rec.BoneName} ";
@@ -154,7 +154,7 @@ public sealed class MechParts
             }
             GD.Print(line + "]");
         }
-        string centers = $"{_mechId} PARTCENTERS root={_walker.RootPos}";
+        string centers = $"{_riderId} PARTCENTERS root={_walker.RootPos}";
         foreach (var part in _parts.Values)
             centers += $" {part.Id}={PartCenterWorld(part.Id)}";
         GD.Print(centers);
@@ -176,7 +176,7 @@ public sealed class MechParts
         {
             if (!byName.TryGetValue(name, out var mi))
             {
-                GD.PrintErr($"{_mechId} PARTS: mesh '{name}' not found for part {id}");
+                GD.PrintErr($"{_riderId} PARTS: mesh '{name}' not found for part {id}");
                 continue;
             }
             int bone = DominantBone(mi, out string boneName, out int bindIndex);
@@ -353,7 +353,7 @@ public sealed class MechParts
             parent.AddChild(kv.Value);
             parent.MoveChild(kv.Value, insertAt++);
             byName[kv.Value.Name] = kv.Value;
-            GD.Print($"{_mechId} SPLIT {kv.Value.Name} tris={triCounts[kv.Key]}");
+            GD.Print($"{_riderId} SPLIT {kv.Value.Name} tris={triCounts[kv.Key]}");
         }
         byName.Remove(baseName);
         parent.RemoveChild(orig);
@@ -444,9 +444,9 @@ public sealed class MechParts
 
     public bool Has(string id) => _parts.ContainsKey(id);
     // Tolerant lookups: a chassis may simply not HAVE a part (the
-    // Atlas has no missile pods). Absent reads as destroyed / 0 HP /
+    // Enyo has no missile pods). Absent reads as destroyed / 0 HP /
     // null rather than throwing — a hard dictionary lookup here
-    // crashed every frame for an Atlas player and froze the camera
+    // crashed every frame for an Enyo player and froze the camera
     // mid-duel (owner's report, 2026-10-30).
     public Part GetPart(string id) => _parts.TryGetValue(id, out var p) ? p : null;
     public bool Alive(string id) => _parts.TryGetValue(id, out var p) && !p.Destroyed;
@@ -463,7 +463,7 @@ public sealed class MechParts
     }
 
     // Nearest part (by per-mesh bone-space box SDF) to a world point.
-    // Destroyed parts no longer exist on the mech and are skipped.
+    // Destroyed parts no longer exist on the rider and are skipped.
     public string AttributePoint(Vector3 world)
     {
         string best = "torso";
@@ -491,7 +491,7 @@ public sealed class MechParts
     // Ray vs the per-part bone-space boxes (slab test in each bone's
     // frame; the affine map preserves the ray parameter). Returns the
     // nearest (t, partId) or t < 0. Destroyed parts are gone and skipped.
-    // The TORSO is excluded on purpose: the mech capsule is its hit
+    // The TORSO is excluded on purpose: the rider capsule is its hit
     // volume, and its core AABB is a wide slab that would otherwise
     // shadow the shoulder/arm boxes behind its corners.
     public (float T, string Part) RaycastParts(Vector3 origin, Vector3 dir, float maxDist)
@@ -589,24 +589,24 @@ public sealed class MechParts
         var part = _parts[partId];
         if (part.Destroyed || part.MaxHp <= 0f) return false;
         part.Hp = Mathf.Max(part.Hp - dmg, 0f);
-        GD.Print($"BRK DMG {_mechId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
+        GD.Print($"BRK DMG {_riderId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
         if (partId == "leg_L" || partId == "leg_R" || partId == "head")
         {
             // Owner's rule: legs NEVER fall off. A destroyed leg stays
-            // attached — darkened and deformed — and the mech limps.
+            // attached — darkened and deformed — and the rider limps.
             // The head stays on too (owner, 2026-10-31): a shot-off
             // head left the torso a hollow shell you could see
             // through from behind. A wrecked head stays attached,
             // charred and lolling, like the legs.
             WreckPart(part);
-            GD.Print($"BRK WRECK {_mechId} part={partId} '{part.Display}' (stays attached, mech limps)");
+            GD.Print($"BRK WRECK {_riderId} part={partId} '{part.Display}' (stays attached, rider limps)");
         }
         else
         {
             BreakPart(part, center);
-            GD.Print($"BRK BREAK {_mechId} part={partId} '{part.Display}' at {center}");
+            GD.Print($"BRK BREAK {_riderId} part={partId} '{part.Display}' at {center}");
         }
         OnBreak?.Invoke(partId, center);
         return true;
@@ -654,7 +654,7 @@ public sealed class MechParts
     // including the torso core, which normal damage can never break
     // (its MaxHp 0 marks it as the pool itself). OnBreak still fires
     // per part; the owner suppresses the usual consequences while a
-    // whole mech is coming apart.
+    // whole rider is coming apart.
     public void ExplodeAll()
     {
         foreach (var part in _parts.Values)
@@ -676,7 +676,7 @@ public sealed class MechParts
     private void BreakPart(Part part, Vector3 center)
     {
         part.Destroyed = true;
-        var container = new Node3D { Name = $"{_mechId}_Debris_{part.Id}" };
+        var container = new Node3D { Name = $"{_riderId}_Debris_{part.Id}" };
         _walker.GetParent().AddChild(container);
         container.GlobalTransform = new Transform3D(Basis.Identity, center);
         foreach (var rec in part.Meshes)
@@ -695,7 +695,7 @@ public sealed class MechParts
         }
         var away = center - _walker.RootPos;
         away.Y = 0f;
-        if (away.LengthSquared() < 0.25f) away = MechWalker.HeadingVec(_walker.TorsoYawWorld);
+        if (away.LengthSquared() < 0.25f) away = RiderWalker.HeadingVec(_walker.TorsoYawWorld);
         away = away.Normalized();
         var d = new Debris
         {
@@ -759,7 +759,7 @@ public sealed class MechParts
                     d.Settled = true;
                     d.Vel = Vector3.Zero;
                     d.AngSpeed = 0f;
-                    GD.Print($"BRK DEBRIS {_mechId} {d.Part.Id} settled pos={d.Node.GlobalPosition} minY={d.RestMinY:F3} groundAtCenter={d.RestGroundY:F3}");
+                    GD.Print($"BRK DEBRIS {_riderId} {d.Part.Id} settled pos={d.Node.GlobalPosition} minY={d.RestMinY:F3} groundAtCenter={d.RestGroundY:F3}");
                 }
             }
         }

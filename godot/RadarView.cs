@@ -8,16 +8,16 @@ using System.Collections.Generic;
 // and owns no game state.
 public partial class RadarView : Control
 {
-    public MechWalker Player;
-    public MechWalker Enemy;
+    public RiderWalker Player;
+    public RiderWalker Enemy;
     public bool EnemyDown;
-    public MechWalker Enemy2;
+    public RiderWalker Enemy2;
     public bool Enemy2Down;
     public readonly List<Vector2> Buildings = new();
 
     private const float Range = 90f;
 
-    private void DrawContact(MechWalker w, bool down, Vector2 c, float px)
+    private void DrawContact(RiderWalker w, bool down, Vector2 c, float px)
     {
         if (w == null || down || Player == null) return;
         var p = Player.RootPos;
@@ -56,7 +56,7 @@ public partial class RadarView : Control
         DrawContact(Enemy, EnemyDown, c, px);
         DrawContact(Enemy2, Enemy2Down, c, px);
         // Player heading triangle (legs facing).
-        var fwd = MechWalker.HeadingVec(Player.LegsYaw);
+        var fwd = RiderWalker.HeadingVec(Player.LegsYaw);
         var f2 = new Vector2(fwd.X, fwd.Z);
         var r2 = new Vector2(-f2.Y, f2.X);
         var pts = new[]

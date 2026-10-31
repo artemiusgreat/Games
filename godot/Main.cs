@@ -98,7 +98,7 @@ public partial class Main : Node3D
     {
         float h = BaseHeight(x, z);
         // Flatten each spawn pad toward its own center height, so
-        // a mech starts on level ground in its hollow.
+        // a rider starts on level ground in its hollow.
         foreach (var pad in SpawnPads)
         {
             float d = new Vector2(x, z).DistanceTo(pad);

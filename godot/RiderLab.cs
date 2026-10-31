@@ -1,24 +1,24 @@
 using Godot;
 using System;
 
-// Pre-game MechLab (owner's ask, after the MW4/MW5 labs in his
-// screenshots): drag weapons from the catalog onto the mech's
+// Pre-game RiderLab (owner's ask, after the MW4/MW5 labs in his
+// screenshots): drag weapons from the catalog onto the rider's
 // hardpoints. Slot type and slot weight capacity rule what fits — a
-// light mech cannot carry a heavy mech's gun. Click-to-select +
+// light rider cannot carry a heavy rider's gun. Click-to-select +
 // click-to-assign works alongside drag-and-drop. The screen owns no
 // game state: it edits the shared LoadoutState and reports START.
-public partial class MechLab : Control
+public partial class RiderLab : Control
 {
-    public MechSpec Spec;
+    public RiderSpec Spec;
     public LoadoutState Loadout;
     public Action OnStart;
 
-    // Mech selection (round 22): which chassis each side fields.
+    // Rider selection (round 22): which chassis each side fields.
     // Changing one reports through OnSelectionChanged; the duel
     // rebuilds that side and recreates this lab against the new
     // player spec (slots, tonnage, jump capability all follow).
-    public string PlayerSpecId = "timberwolf";
-    public string EnemySpecId = "atlas";
+    public string PlayerSpecId = "hector";
+    public string EnemySpecId = "enyo";
     public Action OnSelectionChanged;
 
     private Label _hint;
@@ -27,7 +27,7 @@ public partial class MechLab : Control
     private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
     private string _selectedWeapon; // click-to-assign path
     // Live slot anchors (owner): viewport position of each
-    // hardpoint's part on the mech, projected from the 3D view
+    // hardpoint's part on the rider, projected from the 3D view
     // every frame — the paperdoll dots track the real parts at
     // any window size, instead of fixed fractions that drifted
     // when the screen was resized.
@@ -48,7 +48,7 @@ public partial class MechLab : Control
     private sealed partial class DragTile : Control
     {
         public string WeaponId;
-        public MechLab Lab;
+        public RiderLab Lab;
         public override Variant _GetDragData(Vector2 atPosition)
         {
             var w = WeaponCatalog.ById(WeaponId);
@@ -89,7 +89,7 @@ public partial class MechLab : Control
         "heavy_cannon" => "HC",
         "srm" => "SRM",
         "lrm" => "LRM",
-        "atlas_ac20" => "AC20",
+        "enyo_ac20" => "AC20",
         _ => w.Name.Length >= 2 ? w.Name.Substring(0, 2).ToUpperInvariant() : w.Name,
     };
 
@@ -199,15 +199,15 @@ public partial class MechLab : Control
     }
 
     // MW4-style paperdoll (owner): the hardpoint panels float at
-    // mech-schematic positions — missile pods up at the shoulders,
+    // rider-schematic positions — missile pods up at the shoulders,
     // arms out at the sides — with connector lines to a center
-    // node, over the orbiting mech behind the lab. Panels are
+    // node, over the orbiting rider behind the lab. Panels are
     // positioned by slot id whenever the area resizes.
     private sealed partial class PaperdollArea : Control
     {
         private readonly System.Collections.Generic.Dictionary<string, Control> _panels = new();
         private readonly System.Collections.Generic.Dictionary<string, Vector2> _live = new();
-        // Viewport position of a slot's part on the mech (owner):
+        // Viewport position of a slot's part on the rider (owner):
         // set by the duel; null entries fall back to the fractions.
         public System.Func<string, Vector2?> Projector;
 
@@ -264,23 +264,23 @@ public partial class MechLab : Control
             // Panels WITH a live anchor (owner, the flip fix):
             // the panel sits in a column on the SAME side of the
             // area as its dot — the showroom camera faces the
-            // mech, so its left side appears on the viewer's
+            // rider, so its left side appears on the viewer's
             // right, and the old fixed anatomical layout put
             // every panel opposite its dot, crossing all the
             // lines. Within a column, panels stack in dot-Y
             // order, so lines from one column cannot cross.
             if (_live.Count > 0)
             {
-                float mechCx = 0f;
-                foreach (var v in _live.Values) mechCx += v.X;
-                mechCx /= _live.Count;
+                float riderCx = 0f;
+                foreach (var v in _live.Values) riderCx += v.X;
+                riderCx /= _live.Count;
                 var cols = new System.Collections.Generic.List<(string Id, Control Panel, Vector2 Anchor)>[2]
                 {
                     new(), new()
                 };
                 foreach (var (id, panel) in _panels)
                     if (_live.TryGetValue(id, out var an))
-                        cols[an.X < mechCx ? 0 : 1].Add((id, panel, an));
+                        cols[an.X < riderCx ? 0 : 1].Add((id, panel, an));
                 for (int side = 0; side < 2; side++)
                 {
                     var col = cols[side];
@@ -293,15 +293,15 @@ public partial class MechLab : Control
                     float y = col.Count > 0 ? Mathf.Clamp(cy / col.Count - total * 0.5f, 0f, Mathf.Max(0f, Size.Y - total)) : 0f;
                     foreach (var e in col)
                     {
-                        // Columns hug the mech: just outside its
+                        // Columns hug the rider: just outside its
                         // anchor centroid on the dot's own side,
                         // clamped into the area. (At the area's
-                        // edges the panels sat far from a mech
+                        // edges the panels sat far from a rider
                         // framed off-center, and the lines still
                         // fanned across it — measured in the frame.)
                         float x = side == 0
-                            ? mechCx - e.Panel.Size.X - 46f
-                            : mechCx + 46f;
+                            ? riderCx - e.Panel.Size.X - 46f
+                            : riderCx + 46f;
                         x = Mathf.Clamp(x, 0f, Mathf.Max(0f, Size.X - e.Panel.Size.X));
                         e.Panel.Position = new Vector2(x, y);
                         y += e.Panel.Size.Y + 8f;
@@ -324,7 +324,7 @@ public partial class MechLab : Control
                 else continue;
                 // The line runs from the panel's EDGE (not its
                 // center, not a shared hub) to the slot's own
-                // place on the mech (owner).
+                // place on the rider (owner).
                 var rect = new Rect2(panel.Position, panel.Size);
                 var c = rect.GetCenter();
                 var dir = anchor - c;
@@ -340,7 +340,7 @@ public partial class MechLab : Control
     private sealed partial class SlotPanel : PanelContainer
     {
         public string SlotId;
-        public MechLab Lab;
+        public RiderLab Lab;
         public Label HeadLabel;
         public VBoxContainer ListBox;
         public Control Tile;
@@ -369,7 +369,7 @@ public partial class MechLab : Control
         // to nothing while the containers overflowed visibly — the
         // lab's text sat directly on the bright scene.
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.55f) }; // light dim (owner): the mech is the lab's centerpiece and must read clearly through it; panels and rows carry their own opaque backgrounds
+        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.55f) }; // light dim (owner): the rider is the lab's centerpiece and must read clearly through it; panels and rows carry their own opaque backgrounds
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
@@ -379,7 +379,7 @@ public partial class MechLab : Control
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
-        var title = new Label { Text = $"MECH LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS" };
+        var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS" };
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
@@ -388,14 +388,14 @@ public partial class MechLab : Control
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
 
-        // -- Mech selection row --
+        // -- Rider selection row --
         var selBox = new VBoxContainer();
         selBox.AddThemeConstantOverride("separation", 6);
         root.AddChild(selBox);
         // One selector only (owner, 2026-10-31): yours. The two
-        // opponents are fixed — a Timber Wolf and an Atlas field
+        // opponents are fixed — a Hector and an Enyo field
         // against you (and each other) on every map.
-        selBox.AddChild(MechSelector("RIDER", true));
+        selBox.AddChild(RiderSelector("RIDER", true));
 
         var mid = new HBoxContainer();
         mid.AddThemeConstantOverride("separation", 28);
@@ -452,7 +452,7 @@ public partial class MechLab : Control
             rowsBox.AddChild(rowPanel);
         }
 
-        // -- Hardpoints (right): MW4-style paperdoll over the mech --
+        // -- Hardpoints (right): MW4-style paperdoll over the rider --
         var paperdoll = new PaperdollArea();
         _paperdoll = paperdoll;
         paperdoll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -463,7 +463,7 @@ public partial class MechLab : Control
             var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(215, 64) };
             var sb = new StyleBoxFlat
             {
-                BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), // translucent (owner): the mech shows through the slot backdrops
+                BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), // translucent (owner): the rider shows through the slot backdrops
                 BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f),
                 ContentMarginLeft = 12, ContentMarginRight = 12,
                 ContentMarginTop = 10, ContentMarginBottom = 10
@@ -531,7 +531,7 @@ public partial class MechLab : Control
         _jetsBtn.Pressed += () =>
         {
             Loadout.JumpJets = !Loadout.JumpJets;
-            SetHint(Loadout.JumpJets ? "Jump jets fitted — hold SPACE in the duel to fly." : "Jump jets removed — this mech stays grounded.");
+            SetHint(Loadout.JumpJets ? "Jump jets fitted — hold SPACE in the duel to fly." : "Jump jets removed — this rider stays grounded.");
             Refresh();
         };
         btnRow.AddChild(_jetsBtn);
@@ -545,8 +545,8 @@ public partial class MechLab : Control
     }
 
     // Slideshow selector (owner): chips don't scale to tens of
-    // mechs — arrows cycle through the registry, wrapping around.
-    private Control MechSelector(string role, bool playerSide)
+    // riders — arrows cycle through the registry, wrapping around.
+    private Control RiderSelector(string role, bool playerSide)
     {
         var box = new HBoxContainer();
         box.AddThemeConstantOverride("separation", 8);
@@ -564,12 +564,12 @@ public partial class MechLab : Control
         int Index()
         {
             var id = playerSide ? PlayerSpecId : EnemySpecId;
-            for (int i = 0; i < MechSpecs.All.Length; i++) if (MechSpecs.All[i].Id == id) return i;
+            for (int i = 0; i < RiderSpecs.All.Length; i++) if (RiderSpecs.All[i].Id == id) return i;
             return 0;
         }
         void Cycle(int d)
         {
-            var all = MechSpecs.All;
+            var all = RiderSpecs.All;
             int i = (Index() + d + all.Length) % all.Length;
             if (playerSide) PlayerSpecId = all[i].Id; else EnemySpecId = all[i].Id;
             OnSelectionChanged?.Invoke();
@@ -578,7 +578,7 @@ public partial class MechLab : Control
         prev.Pressed += () => Cycle(-1);
         var next = new Button { Text = "▶" };
         next.Pressed += () => Cycle(1);
-        name.Text = MechSpecs.All[Index()].Name;
+        name.Text = RiderSpecs.All[Index()].Name;
         box.AddChild(prev);
         box.AddChild(name);
         box.AddChild(next);

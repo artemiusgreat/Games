@@ -1,7 +1,7 @@
 // Pure game data — no engine references, so the catalog, the loadout
 // rules and the knockdown math can move to another engine as-is.
-// Weapon weights drive two things: the MechLab slot capacities and the
-// knockdown rule (cumulative impact weight vs mech tonnage).
+// Weapon weights drive two things: the RiderLab slot capacities and the
+// knockdown rule (cumulative impact weight vs rider tonnage).
 
 public enum WeaponSlotType { Energy, Ballistic, Missile }
 
@@ -44,9 +44,9 @@ public static class WeaponCatalog
     public static readonly WeaponDef Lrm = new()
     { Id = "lrm", Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f };
 
-    // The Atlas's fixed cannon (not player-mountable in the lab list,
+    // The Enyo's fixed cannon (not player-mountable in the lab list,
     // but its weight still counts for knockdown).
-    public static readonly WeaponDef AtlasAc20 = new()
+    public static readonly WeaponDef EnyoAc20 = new()
     { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f };
 
     public static readonly WeaponDef[] All =
@@ -59,7 +59,7 @@ public static class WeaponCatalog
     public static WeaponDef ById(string id)
     {
         foreach (var w in All) if (w.Id == id) return w;
-        if (id == AtlasAc20.Id) return AtlasAc20; // fixed enemy cannon: resolvable, just not catalog-listed
+        if (id == EnyoAc20.Id) return EnyoAc20; // fixed enemy cannon: resolvable, just not catalog-listed
         return null;
     }
 }

@@ -1,16 +1,16 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: player input: throttle/turn, torso bearing, thruster key.
+// RiderDuel module: player input: throttle/turn, torso bearing, thruster key.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     // ---------- input ----------
 
     public override void _Input(InputEvent e)
     {
-        // While the MechLab is open the mouse belongs to the GUI: the
+        // While the RiderLab is open the mouse belongs to the GUI: the
         // click-to-capture below would hide the cursor the moment a
         // drag starts and kill drag-and-drop (owner's bug report).
         if (_labOpen) return;
@@ -69,7 +69,7 @@ public partial class MechDuel
     // the stop.
     private void MaintainTorsoWorldYaw()
     {
-        _player.TorsoTwist = MechWalker.WrapAngle(_torsoWorldYaw - _playerYaw);
+        _player.TorsoTwist = RiderWalker.WrapAngle(_torsoWorldYaw - _playerYaw);
         _torsoWorldYaw = _playerYaw + _player.TorsoTwist;
     }
 
@@ -79,7 +79,7 @@ public partial class MechDuel
             Input.IsPhysicalKeyPressed(Key.W), Input.IsPhysicalKeyPressed(Key.S),
             Input.IsPhysicalKeyPressed(Key.A), Input.IsPhysicalKeyPressed(Key.D),
             Input.IsPhysicalKeyPressed(Key.Shift));
-        _player.SetThrust(Input.IsPhysicalKeyPressed(Key.Space)); // thrusters: hold SPACE to fly (fitted mechs only)
+        _player.SetThrust(Input.IsPhysicalKeyPressed(Key.Space)); // thrusters: hold SPACE to fly (fitted riders only)
     }
 
     // The player's drive, with the keys passed in so the duel harness
@@ -99,7 +99,7 @@ public partial class MechDuel
         _running = shift && w;
         float spd = 0f;
         if (w) spd = _playerSpec.MaxSpeed * (_running ? RunFactor : 1f);
-        if (w && _player.Thrusting) spd += 3.0f; // jets burning + forward key: the thrusters push the mech forward too (owner)
+        if (w && _player.Thrusting) spd += 3.0f; // jets burning + forward key: the thrusters push the rider forward too (owner)
         else if (s) spd = -_playerSpec.MaxSpeed * 0.55f;
         _player.SetDrive(_playerYaw, spd);
     }

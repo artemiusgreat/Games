@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: test choreography: duel/weapons/breakable/terrain/photo drivers.
+// RiderDuel module: test choreography: duel/weapons/breakable/terrain/photo drivers.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     // ---------- test choreography ----------
 
@@ -27,10 +27,10 @@ public partial class MechDuel
                 if (!_labChecked)
                 {
                     _labChecked = true;
-                    // MechLab rules, exercised on the pure data layer:
+                    // RiderLab rules, exercised on the pure data layer:
                     // weight cap and slot type must both refuse.
                     var lab = new LoadoutState();
-                    var spec = MechSpecs.TimberWolf;
+                    var spec = RiderSpecs.Hector;
                     var cap = lab.Check(spec, "arm_L", WeaponCatalog.Ppc);
                     if (cap == null || !cap.Contains("weighs"))
                     { GD.PrintErr($"DUEL FAIL: lab weight cap not enforced ({cap})"); GetTree().Quit(1); return; }
@@ -39,18 +39,18 @@ public partial class MechDuel
                     if (lab.TryAssign(spec, "arm_R", WeaponCatalog.Autocannon) != null
                         || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
                     { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
-                    if (Mathf.Abs(LoadoutState.DefaultTimberWolf().TotalWeaponWeight - 64f) > 0.01f)
+                    if (Mathf.Abs(LoadoutState.DefaultHector().TotalWeaponWeight - 64f) > 0.01f)
                     { GD.PrintErr("DUEL FAIL: default fit tonnage != 64t"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 64t (every slot filled)");
                     // Capacity rule (owner, MW4 model): every chassis'
                     // slot caps sum to exactly its tonnage.
-                    foreach (var sp in MechSpecs.All)
+                    foreach (var sp in RiderSpecs.All)
                     {
                         float sum = 0f; foreach (var sl in sp.Slots) sum += sl.MaxWeight;
                         if (Mathf.Abs(sum - sp.Tonnage) > 0.01f)
                         { GD.PrintErr($"DUEL FAIL: {sp.Id} slot caps sum {sum:F0}t != tonnage {sp.Tonnage:F0}t"); GetTree().Quit(1); return; }
                     }
-                    GD.Print("LABTEST CAPACITY PASS slot caps sum to chassis tonnage for every mech");
+                    GD.Print("LABTEST CAPACITY PASS slot caps sum to chassis tonnage for every rider");
                     // Multi-fit (owner): a hardpoint fits several
                     // weapons up to its cap — cumulative tonnage is
                     // the limit, not one weapon per slot.
@@ -65,28 +65,28 @@ public partial class MechDuel
                     if (!multi.RemoveLast("pod_L", out var peeled) || peeled != "srm" || multi.WeaponIn("pod_L") != "lrm")
                     { GD.PrintErr("DUEL FAIL: multi-fit peel wrong"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST MULTIFIT PASS hardpoints fit multiple weapons up to their tonnage cap; peel removes the last one");
-                    // Distribution (owner): heavier mechs carry MORE
+                    // Distribution (owner): heavier riders carry MORE
                     // hardpoints, so their firepower survives losing
                     // a single mount.
-                    if (MechSpecs.Atlas.Slots.Length <= MechSpecs.TimberWolf.Slots.Length)
-                    { GD.PrintErr("DUEL FAIL: the 100t Atlas must have more hardpoints than the 75t Timber Wolf"); GetTree().Quit(1); return; }
-                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: TimberWolf {MechSpecs.TimberWolf.Slots.Length}, Atlas {MechSpecs.Atlas.Slots.Length} (heavier = more mounts)");
-                    // Mech selection (round 22): swap both chassis and
+                    if (RiderSpecs.Enyo.Slots.Length <= RiderSpecs.Hector.Slots.Length)
+                    { GD.PrintErr("DUEL FAIL: the 100t Enyo must have more hardpoints than the 75t Hector"); GetTree().Quit(1); return; }
+                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: Hector {RiderSpecs.Hector.Slots.Length}, Enyo {RiderSpecs.Enyo.Slots.Length} (heavier = more mounts)");
+                    // Rider selection (round 22): swap both chassis and
                     // verify the duel follows — parts layout, pools
                     // and equipped defs all follow the spec.
-                    SetMechSelection("atlas", "timberwolf");
-                    if (_playerSpec.Id != "atlas" || _enemySpec.Id != "timberwolf"
+                    SetRiderSelection("enyo", "hector");
+                    if (_playerSpec.Id != "enyo" || _enemySpec.Id != "hector"
                         || _hpPlayer != 340f || _hpEnemy != 260f
                         || _defBallistic?.Id != "ac20"
                         || !_partsEnemy.Alive("pod_L"))
-                    { GD.PrintErr($"DUEL FAIL: mech selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
+                    { GD.PrintErr($"DUEL FAIL: rider selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
                     _selStage = 1; _selHoldT = 0f;
-                    GD.Print("LABTEST SELECTION swapped to Atlas player; holding across live frames (HUD must survive a pod-less chassis)");
+                    GD.Print("LABTEST SELECTION swapped to Enyo player; holding across live frames (HUD must survive a pod-less chassis)");
                 }
                 // Keep the swapped chassis deployed across many real
                 // frames before restoring: swapping forth and back
                 // inside one call never lets UpdateHud run against
-                // the Atlas parts — which is exactly how the pod_L
+                // the Enyo parts — which is exactly how the pod_L
                 // KeyNotFound crash shipped (it froze the player's
                 // camera in the live game while this test stayed
                 // green). If UpdateHud throws now, the frame aborts
@@ -96,17 +96,17 @@ public partial class MechDuel
                     _selHoldT += delta;
                     if (_selHoldT > 1.2f)
                     {
-                        SetMechSelection("timberwolf", "atlas");
-                        if (_playerSpec.Id != "timberwolf" || _enemySpec.Id != "atlas"
+                        SetRiderSelection("hector", "enyo");
+                        if (_playerSpec.Id != "hector" || _enemySpec.Id != "enyo"
                             || _hpPlayer != 260f || _hpEnemy != 340f || _defEnergy?.Id != "large_laser")
-                        { GD.PrintErr("DUEL FAIL: mech selection restore wrong"); GetTree().Quit(1); return; }
+                        { GD.PrintErr("DUEL FAIL: rider selection restore wrong"); GetTree().Quit(1); return; }
                         _selStage = 2;
-                        GD.Print("LABTEST SELECTION PASS chassis swap rebuilds walkers, parts, pools and defs; Atlas player survived 1.2s of live HUD frames; defaults restored");
+                        GD.Print("LABTEST SELECTION PASS chassis swap rebuilds walkers, parts, pools and defs; Enyo player survived 1.2s of live HUD frames; defaults restored");
                     }
                 }
                 if (_phaseT > 1.6 && _selStage != 1) SetPhase(1);
                 break;
-            case 1: // Atlas walks at the player; grab stride + wide frames
+            case 1: // Enyo walks at the player; grab stride + wide frames
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 1.8f);
                 if (_enemy.ConsumeStepMidCross() && _phaseT > 0.6)
@@ -114,9 +114,9 @@ public partial class MechDuel
                     _strideShots++;
                     if (_strideShots == 1)
                     {
-                        GD.Print($"DUEL ATLAS CONTACT analytic {_enemy.FootReport(false)}");
-                        GD.Print($"DUEL ATLAS CONTACT engine   {_enemy.FootReport(true)}");
-                        QueueCapture("res://proof/duel_atlas_stride.png", "stride", "enemySide");
+                        GD.Print($"DUEL ENYO CONTACT analytic {_enemy.FootReport(false)}");
+                        GD.Print($"DUEL ENYO CONTACT engine   {_enemy.FootReport(true)}");
+                        QueueCapture("res://proof/duel_enyo_stride.png", "stride", "enemySide");
                     }
                     else if (_strideShots == 2)
                     {
@@ -128,7 +128,7 @@ public partial class MechDuel
                         });
                     }
                 }
-                if (_phaseT > 12) { GD.PrintErr("DUEL FAIL: atlas stride shots missing"); GetTree().Quit(1); }
+                if (_phaseT > 12) { GD.PrintErr("DUEL FAIL: enyo stride shots missing"); GetTree().Quit(1); }
                 break;
             case 2: // torso twist: legs walk -Z, torso twisted +66 deg
                 _player.SetDrive(0f, 1.8f);
@@ -138,7 +138,7 @@ public partial class MechDuel
                     _twistLogged = true;
                     float legs = _player.LegsYaw;
                     float torso = _player.EngineTorsoYaw();
-                    float rel = Mathf.RadToDeg(MechWalker.WrapAngle(torso - legs));
+                    float rel = Mathf.RadToDeg(RiderWalker.WrapAngle(torso - legs));
                     GD.Print($"DUEL TWIST legsYaw={Mathf.RadToDeg(legs):F1}deg torsoWorldYaw(engine)={Mathf.RadToDeg(torso):F1}deg relative={rel:F1}deg twistCmd={Mathf.RadToDeg(_player.TorsoTwist):F1}deg");
                     QueueCapture("res://proof/duel_torso_twist.png", "twist", "twist", () =>
                     {
@@ -150,7 +150,7 @@ public partial class MechDuel
                     });
                 }
                 break;
-            case 3: // STOMP: drive straight at the tree at (6,16) — it must NOT stop the mech; the mech crushes it and walks through
+            case 3: // STOMP: drive straight at the tree at (6,16) — it must NOT stop the rider; the rider crushes it and walks through
                 _player.SetDrive(0f, 2.6f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 {
@@ -162,13 +162,13 @@ public partial class MechDuel
                             treeD = d;
                     if (treeD != null && treeD.State != 0 && _minTreeSep < 2.6f)
                     {
-                        GD.Print($"DUEL STOMP PASS tree crushed underfoot (minSep={_minTreeSep:F2}), mech walks through");
+                        GD.Print($"DUEL STOMP PASS tree crushed underfoot (minSep={_minTreeSep:F2}), rider walks through");
                         QueueCapture("res://proof/duel_collision_prop.png", "prop", "prop", () =>
                         {
                             SetPhase(4);
                             _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
                             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -2f), -2f), Mathf.Pi);
-                            _minMechSep = 1e9f;
+                            _minRiderSep = 1e9f;
                         });
                     }
                     if (_player.RootPos.Z < 12.5f && (treeD == null || treeD.State == 0))
@@ -176,26 +176,26 @@ public partial class MechDuel
                     if (_phaseT > 14) { GD.PrintErr("DUEL FAIL: stomp phase timeout"); GetTree().Quit(1); }
                 }
                 break;
-            case 4: // mechs driven at each other
+            case 4: // riders driven at each other
                 _player.SetDrive(0f, 2.2f);
                 _enemy.SetDrive(Mathf.Pi, 1.8f);
                 {
                     float dist = new Vector2(_player.RootPos.X - _enemy.RootPos.X,
                                              _player.RootPos.Z - _enemy.RootPos.Z).Length();
-                    _minMechSep = Mathf.Min(_minMechSep, dist);
+                    _minRiderSep = Mathf.Min(_minRiderSep, dist);
                     if (_phaseT > 2.2f)
                     {
-                        if (Mathf.Abs(dist - _minMechSep) < 0.001f && dist <= _player.CollisionRadius + _enemy.CollisionRadius + 0.05f)
+                        if (Mathf.Abs(dist - _minRiderSep) < 0.001f && dist <= _player.CollisionRadius + _enemy.CollisionRadius + 0.05f)
                             _stallTimer += delta;
                         else _stallTimer = 0f;
                         if (_stallTimer > 0.5f)
                         {
-                            GD.Print($"DUEL MECH minSep={_minMechSep:F3} finalSep={dist:F3} sumRadii={_player.CollisionRadius + _enemy.CollisionRadius:F2}");
-                            QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
+                            GD.Print($"DUEL RIDER minSep={_minRiderSep:F3} finalSep={dist:F3} sumRadii={_player.CollisionRadius + _enemy.CollisionRadius:F2}");
+                            QueueCapture("res://proof/duel_collision_rider.png", "rider", "riderSide");
                             SetPhase(5);
                         }
                     }
-                    if (_phaseT > 16) { GD.PrintErr("DUEL FAIL: mech stall never detected"); GetTree().Quit(1); }
+                    if (_phaseT > 16) { GD.PrintErr("DUEL FAIL: rider stall never detected"); GetTree().Quit(1); }
                 }
                 break;
             case 5: // PLAYERLIMP: wreck the PLAYER's leg_L, then drive
@@ -319,7 +319,7 @@ public partial class MechDuel
                     _player.AimPitchWide = float.NaN;
                     GD.Print($"DUEL WIDEAIM PASS free mouse pitch reaches the ground in front of the feet (dist {aimWide.DistanceTo(_player.RootPos):F1}u, screen y {scrW.Y:F0}/{vpW.Y:F0}); torso pitch stays clamped");
                     // Reticle TRUTH (round 8): sweep the pitch across
-                    // the Atlas; at every step the reticle must sit
+                    // the Enyo; at every step the reticle must sit
                     // exactly on the projection of the true aim point
                     // (the spot weapons converge on) — no parallax
                     // fiction between cursor and impact.
@@ -345,7 +345,7 @@ public partial class MechDuel
                     if (lastRy > firstRy - 8f)
                     { GD.PrintErr($"DUEL FAIL: reticle barely rides the pitch sweep (first={firstRy:F0} last={lastRy:F0})"); GetTree().Quit(1); break; }
                     // The synthesis contract, tested through the REAL
-                    // weapon: cursor low on the Atlas => the laser
+                    // weapon: cursor low on the Enyo => the laser
                     // HITS him; cursor raised above him => it MISSES
                     // (round 9: the weapons converge on the cursor's
                     // own point, so the pointer and the shots agree).
@@ -356,12 +356,12 @@ public partial class MechDuel
                     _aimPoint = TorsoAimPoint();
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents < 1)
-                    { GD.PrintErr("DUEL FAIL: cursor low on the Atlas but the laser missed him"); GetTree().Quit(1); break; }
+                    { GD.PrintErr("DUEL FAIL: cursor low on the Enyo but the laser missed him"); GetTree().Quit(1); break; }
                     // Regression guard scoped to THIS shot: a stable
                     // chase shot that HITS must come from the camera
                     // path unaided. (The raised shot below may
                     // legitimately rescue: its aim point is a
-                    // synthetic free point over the Atlas, and the
+                    // synthetic free point over the Enyo, and the
                     // camera's far-terrain verdict disagrees on the
                     // endpoint while agreeing on the miss.)
                     if (_laserRescues != rescues0)
@@ -370,7 +370,7 @@ public partial class MechDuel
                     _cdLaser = 0f;
                     // 1.0 rad, not the old 0.30: on the domed map
                     // (round 25) the test pair stands on the center
-                    // hill, and the crest behind the Atlas is higher
+                    // hill, and the crest behind the Enyo is higher
                     // than his head — a 0.30 line to the crest point
                     // legitimately clips his torso box on the way.
                     // The phase's contract is "cursor clearly above
@@ -380,7 +380,7 @@ public partial class MechDuel
                     _aimPoint = TorsoAimPoint();
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents > evAfterHit)
-                    { GD.PrintErr("DUEL FAIL: cursor above the Atlas but a shot still hit him"); GetTree().Quit(1); break; }
+                    { GD.PrintErr("DUEL FAIL: cursor above the Enyo but a shot still hit him"); GetTree().Quit(1); break; }
                     // Beam length on a miss (owner): the ray stops
                     // at the cursor's point — it must NOT run to
                     // the raycast's 140u no-hit endpoint.
@@ -427,7 +427,7 @@ public partial class MechDuel
                     { GD.PrintErr($"DUEL FAIL: rendered torso does not pitch DOWN with -pitch (facingY={fDn.Y:F3})"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL AIM RENDER PASS rendered torso follows the pitch: up facingY={_aimUpY:F3}, down facingY={fDn.Y:F3}");
                     // Rocket-lob check (round 7): pitch up at the sky
-                    // over the Atlas and loose a salvo — the first
+                    // over the Enyo and loose a salvo — the first
                     // rocket's launch elevation must track the
                     // pointer (bounded lob), not mortar vertically.
                     _player.TorsoTwist = 0f;
@@ -473,7 +473,7 @@ public partial class MechDuel
                     if (_phaseT - _aimT0 > 1.0)
                     {
                         float legsTurned = _playerYaw - _aimLegs0;
-                        float torsoDrift = Mathf.Abs(MechWalker.WrapAngle(_player.TorsoYawWorld - _aimWorld0));
+                        float torsoDrift = Mathf.Abs(RiderWalker.WrapAngle(_player.TorsoYawWorld - _aimWorld0));
                         if (legsTurned < 0.6f)
                         { GD.PrintErr($"DUEL FAIL: torso-indep setup only turned the legs {legsTurned:F2} rad"); GetTree().Quit(1); break; }
                         if (torsoDrift > 0.05f)
@@ -484,7 +484,7 @@ public partial class MechDuel
                         _playerYaw = _aimLegs0;
                         _player.SetDrive(_playerYaw, 0f);
                         // Proof frame: torso pitched up — the reticle
-                        // sits on the true aim point above the Atlas.
+                        // sits on the true aim point above the Enyo.
                         _player.TorsoTwist = 0f;
                         _player.TorsoPitch = 0.18f;
                         _aimPoint = TorsoAimPoint();
@@ -492,7 +492,7 @@ public partial class MechDuel
                         _aimStep = 5;
                         QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
                         {
-                            QueueCapture("res://proof/duel_collision_mech.png", "mech", "mechSide");
+                            QueueCapture("res://proof/duel_collision_rider.png", "rider", "riderSide");
                             SetPhase(7);
                         });
                     }
@@ -522,7 +522,7 @@ public partial class MechDuel
 
     private Vector3 EnemyAim() => _enemy.RootPos + Vector3.Up * 8.2f;
 
-    // The mechanics suites fire ONE weapon per group: their exact
+    // The firing suites fire ONE weapon per group: their exact
     // expectations (3x12 laser, 2x26 cannon, 8-rocket salvo, 4
     // rockets from one pod) were calibrated on single fits, and
     // the filled default loadouts (owner, 2026-10-31) would move
@@ -556,11 +556,11 @@ public partial class MechDuel
     private void UpdateWeaponsTest(float dt)
     {
         _wPhaseT += dt;
-        // Atlas torso tracks the player in every phase (gunnery muzzle and
+        // Enyo torso tracks the player in every phase (gunnery muzzle and
         // visuals stay honest); both walkers otherwise hold position.
         var toP = _player.RootPos - _enemy.RootPos;
         if (toP.LengthSquared() > 0.01f)
-            _enemy.TorsoTwist = MechWalker.WrapAngle(MechWalker.YawOf(toP.Normalized()) - _enemyYaw);
+            _enemy.TorsoTwist = RiderWalker.WrapAngle(RiderWalker.YawOf(toP.Normalized()) - _enemyYaw);
         if (_wPhaseT > 40) { WFail($"phase {_wPhase} timeout"); return; }
 
         if (_wPhase == 2 && _enemyDmgEvents > 0)
@@ -574,13 +574,13 @@ public partial class MechDuel
         }
         switch (_wPhase)
         {
-            case 0: // settle at the open lane: TW (0,18) vs Atlas (0,-12), 30u
+            case 0: // settle at the open lane: TW (0,18) vs Enyo (0,-12), 30u
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_wPhaseT > 1.2) SetWPhase(1);
                 break;
 
-            case 1: // laser x3 at a stationary Atlas: 3 x 12 = 36 exactly
+            case 1: // laser x3 at a stationary Enyo: 3 x 12 = 36 exactly
                 if (_wShotsFired == 0 && _wPhaseT > 0.1)
                 {
                     FireLaser(EnemyAim());
@@ -593,13 +593,13 @@ public partial class MechDuel
                 {
                     if (_enemyDmgEvents != 3 || Mathf.Abs(_enemyDmgTotal - 36f) > 0.01f)
                         WFail($"laser events={_enemyDmgEvents} dmg={_enemyDmgTotal:F1} (want 3 / 36)");
-                    if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"laser atlasHp={_hpEnemy:F1} (want 304)");
+                    if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"laser enyoHp={_hpEnemy:F1} (want 304)");
                     // Round 8: the reaction must carry the weapon —
                     // a laser hit flashes CYAN and lights the impact.
                     var lfc = _enemy.LastFlashColor;
                     if (!(lfc.B > lfc.R + 0.2f)) { WFail($"laser hit flashed {lfc} — want cyan"); return; }
                     if (_fxLights <= 0) { WFail("laser hit lit no impact light"); return; }
-                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 atlasHp={_hpEnemy:F0} (hit reaction: cyan flash + impact light)");
+                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 enyoHp={_hpEnemy:F0} (hit reaction: cyan flash + impact light)");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     _wJoltSeen = 0f;
                     SetWPhase(2);
@@ -621,19 +621,19 @@ public partial class MechDuel
                 {
                     if (_enemyDmgEvents != 2 || Mathf.Abs(_enemyDmgTotal - 52f) > 0.01f)
                         WFail($"ac events={_enemyDmgEvents} dmg={_enemyDmgTotal:F1} (want 2 / 52)");
-                    if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac atlasHp={_hpEnemy:F1} (want 252 pool under terrain-step routing)");
+                    if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac enyoHp={_hpEnemy:F1} (want 252 pool under terrain-step routing)");
                     if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f)
                         WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 90 = untouched, shells routed to torso)");
                     var cfc = _enemy.LastFlashColor;
                     if (!(cfc.R > cfc.B + 0.3f && cfc.G > cfc.B + 0.2f)) { WFail($"cannon hit flashed {cfc} — want warm white"); return; }
-                    if (_wJoltSeen < 0.3f) { WFail($"cannon hits barely rocked the Atlas (jolt env peak {_wJoltSeen:F2})"); return; }
-                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 atlasHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: warm flash + jolt {_wJoltSeen:F2})");
+                    if (_wJoltSeen < 0.3f) { WFail($"cannon hits barely rocked the Enyo (jolt env peak {_wJoltSeen:F2})"); return; }
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 enyoHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: warm flash + jolt {_wJoltSeen:F2})");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     SetWPhase(3);
                 }
                 break;
 
-            case 3: // LRM salvo: count rockets that damage the Atlas (of 8)
+            case 3: // LRM salvo: count rockets that damage the Enyo (of 8)
                 if (_wShotsFired == 0 && _wPhaseT > 0.1) { FireLrmSalvo(EnemyAim()); _wShotsFired++; }
                 if (!_wCaptured && _wPhaseT > 0.55)
                 {
@@ -645,7 +645,7 @@ public partial class MechDuel
                     if (_enemyDmgEvents < 5) WFail($"lrm damaging rockets={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1}");
                     var rfc = _enemy.LastFlashColor;
                     if (!(rfc.R > 0.9f && rfc.B < 0.3f)) { WFail($"rocket hit flashed {rfc} — want deep orange"); return; }
-                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1} atlasHp={_hpEnemy:F1} (reaction: orange flash)");
+                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1} enyoHp={_hpEnemy:F1} (reaction: orange flash)");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     WSetup(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f));
                     _wHpSnapshot = _hpEnemy;
@@ -664,7 +664,7 @@ public partial class MechDuel
                 {
                     if (_enemyDmgTotal > 0.01f || Mathf.Abs(_hpEnemy - _wHpSnapshot) > 0.01f)
                         WFail($"blocked laser leaked dmg={_enemyDmgTotal:F1} hp {_wHpSnapshot:F1}->{_hpEnemy:F1}");
-                    GD.Print("WPNTEST BLOCKED PASS building stopped the beam, atlasHp unchanged");
+                    GD.Print("WPNTEST BLOCKED PASS building stopped the beam, enyoHp unchanged");
                     // Phase 5 engages at 45u, not 30u: at 30u the shell
                     // TOF (0.6s) is shorter than the strafe reversal and
                     // the lead error stays inside the part-box volume
@@ -681,16 +681,16 @@ public partial class MechDuel
                 }
                 break;
 
-            case 5: // Atlas return fire vs a strafing player.
+            case 5: // Enyo return fire vs a strafing player.
                     // The player reverses every 0.9s at full speed. At the
                     // original 50 u/s shell the 0.9s flight let a reversal
                     // land inside the lead window — strafing genuinely
                     // dodged. Since 2026-10-29 the AC/20 flies at 150
-                    // (owner: Atlas matches the player's cannon changes,
+                    // (owner: Enyo matches the player's cannon changes,
                     // symmetric rules), flight is ~0.3s, the strafe
                     // displaces ~1.2u — inside the target's own radius —
                     // so return fire is RELIABLE now, by design. The
-                    // owner flagged this as provisional: if Atlas feels
+                    // owner flagged this as provisional: if Enyo feels
                     // unfair in his visual test, the speed reverts.
                 _wStrafeT += dt;
                 if (_player.IsKnockedDown) _wKnocked = true;
@@ -704,7 +704,7 @@ public partial class MechDuel
                 {
                     int hits = _playerDmgEvents;
                     int misses = _enemyShots - hits;
-                    if (hits < 1) WFail($"atlas return fire: 0 hits in {_enemyShots} shots");
+                    if (hits < 1) WFail($"enyo return fire: 0 hits in {_enemyShots} shots");
                     // Pass band at 150 u/s: 5..6 hits of 6. The one
                     // allowed miss is the seeded ±1.2° cone at long
                     // range plus pacing luck in the reversal cycle;
@@ -713,20 +713,20 @@ public partial class MechDuel
                     // died with the dodge window itself. The sharp
                     // assertion stays the exact damage total below
                     // (hits x 18, no tolerance games there).
-                    if (hits < 5) WFail($"atlas return fire unreliable at matched speed: {hits} hits in {_enemyShots} shots");
+                    if (hits < 5) WFail($"enyo return fire unreliable at matched speed: {hits} hits in {_enemyShots} shots");
                     if (Mathf.Abs(_playerDmgTotal - hits * 18f) > 0.01f)
-                        WFail($"atlas dmg total={_playerDmgTotal:F1} != hits*18 ({hits * 18})");
-                    GD.Print($"WPNTEST ATLASFIRE PASS shots={_enemyShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
+                        WFail($"enyo dmg total={_playerDmgTotal:F1} != hits*18 ({hits * 18})");
+                    GD.Print($"WPNTEST ENYOFIRE PASS shots={_enemyShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
                     _enemyMayFire = false;
                     _player.TorsoTwist = 0f;
                     ResetDuel();
                     WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
                     SetWPhase(6);
                 }
-                if (_wPhaseT > 35) WFail($"atlas return fire timeout shots={_enemyShots}");
+                if (_wPhaseT > 35) WFail($"enyo return fire timeout shots={_enemyShots}");
                 break;
 
-            case 6: // sustained fire -> Atlas destroyed, banner, slump frame
+            case 6: // sustained fire -> Enyo destroyed, banner, slump frame
                 if (!_enemyDead)
                 {
                     FireLaser(EnemyAim());
@@ -741,21 +741,21 @@ public partial class MechDuel
                 {
                     _wDeathLogged = true;
                     _wDeathT = _wPhaseT;
-                    GD.Print($"WPNTEST KILL atlas destroyed at phaseT={_wPhaseT:F2}");
+                    GD.Print($"WPNTEST KILL enyo destroyed at phaseT={_wPhaseT:F2}");
                 }
                 if (_enemyDead && _wPhaseT > _wDeathT + 1.8 && !_wDeadShotQueued)
                 {
                     // Death comes only from the HP pool now (owner):
                     // wrecked legs limp, they never kill — so a dead
-                    // Atlas must show hp == 0 exactly.
+                    // Enyo must show hp == 0 exactly.
                     if (_hpEnemy != 0f)
-                        WFail($"dead atlas hp={_hpEnemy:F1} (want pool kill, hp 0)");
-                    if (!_enemy.Halted) WFail("dead atlas walker not halted");
-                    if (!_banner.Visible || _banner.Text != "ATLAS DESTROYED")
+                        WFail($"dead enyo hp={_hpEnemy:F1} (want pool kill, hp 0)");
+                    if (!_enemy.Halted) WFail("dead enyo walker not halted");
+                    if (!_banner.Visible || _banner.Text != "ENYO DESTROYED")
                         WFail($"kill banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
-                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, banner 'ATLAS DESTROYED'");
+                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, banner 'ENYO DESTROYED'");
                     _wDeadShotQueued = true;
-                    QueueCapture("res://proof/weapons_atlas_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
+                    QueueCapture("res://proof/weapons_enyo_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
                 }
                 if (_wPhaseT > 30) WFail("kill sequence timeout");
                 break;
@@ -773,9 +773,9 @@ public partial class MechDuel
                     };
                     ApplyDamage(_player, 9999f, dummy, "ENEMY");
                     if (!_playerDead) WFail("player death flag not set");
-                    if (!_banner.Visible || _banner.Text != "MECH DESTROYED — press R to reset")
+                    if (!_banner.Visible || _banner.Text != "RIDER DESTROYED — press R to reset")
                         WFail($"player banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
-                    GD.Print("WPNTEST PLAYERDEATH PASS banner 'MECH DESTROYED — press R to reset'");
+                    GD.Print("WPNTEST PLAYERDEATH PASS banner 'RIDER DESTROYED — press R to reset'");
                 }
                 if (_wShotsFired == 1 && _wPhaseT > 0.9)
                 {
@@ -804,7 +804,7 @@ public partial class MechDuel
                     var toC = (Vector3.Zero - bc); toC.Y = 0f;
                     var fp = bc + toC.Normalized() * 16f;
                     fp.Y = Main.HeightAt(fp.X, fp.Z);
-                    _player.Teleport(fp, MechWalker.YawOf((bc - fp).Normalized()));
+                    _player.Teleport(fp, RiderWalker.YawOf((bc - fp).Normalized()));
                     _playerYaw = _player.LegsYaw;
                     _wEnvStep = 1;
                 }
@@ -845,7 +845,7 @@ public partial class MechDuel
                     var toC2 = (Vector3.Zero - tc); toC2.Y = 0f;
                     var fp2 = tc + toC2.Normalized() * 12f;
                     fp2.Y = Main.HeightAt(fp2.X, fp2.Z);
-                    _player.Teleport(fp2, MechWalker.YawOf((tc - fp2).Normalized()));
+                    _player.Teleport(fp2, RiderWalker.YawOf((tc - fp2).Normalized()));
                     _playerYaw = _player.LegsYaw;
                     // The owner's live scenario, scripted — twice
                     // over. He aims at the tree's VISIBLE center: the
@@ -912,14 +912,14 @@ public partial class MechDuel
                     // a proof pose, which disables TorsoAimPoint's
                     // camera-ray branch — every ENV hunt before this
                     // line silently ran on the chest fallback (the
-                    // far Atlas passed through it, masking the fact).
+                    // far Enyo passed through it, masking the fact).
                     // Live play is always chase; restore it here.
                     _camMode = "chase";
                     // FAR TARGET (owner, round 13): at 85u the old
                     // 60u convergence cap rejected the cursor's hit
                     // and shots fell back to the free point — in the
                     // sky. Hunt the pitch until the cursor sits on
-                    // the Atlas, then require exact laser damage.
+                    // the Enyo, then require exact laser damage.
                     _hpEnemy = _enemySpec.MaxHp;
                     _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 45f), 45f), 0f);
                     _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -40f), -40f), Mathf.Pi);
@@ -935,15 +935,15 @@ public partial class MechDuel
                         convF = TorsoAimPoint();
                         if (_aimTarget == "ENEMY") { onFar = true; break; }
                     }
-                    if (!onFar) { WFail("no pitch puts the cursor on the far Atlas"); return; }
+                    if (!onFar) { WFail("no pitch puts the cursor on the far Enyo"); return; }
                     _cdLaser = 0f;
                     FireLaser(convF);
-                    if (340f - _hpEnemy < 11.9f) { WFail($"far cursor shot did not damage the Atlas (hp={_hpEnemy:F0})"); return; }
-                    GD.Print($"ENVTEST FAR-TARGET PASS cursor convergence at 85u: laser hit the Atlas for {340f - _hpEnemy:F0}");
+                    if (340f - _hpEnemy < 11.9f) { WFail($"far cursor shot did not damage the Enyo (hp={_hpEnemy:F0})"); return; }
+                    GD.Print($"ENVTEST FAR-TARGET PASS cursor convergence at 85u: laser hit the Enyo for {340f - _hpEnemy:F0}");
                     // FAR HILL (owner, round 13): the cursor on a
                     // distant hillside with a clear line must
                     // converge on the hill itself, not the sky. The
-                    // Atlas steps aside. Staging is searched, not
+                    // Enyo steps aside. Staging is searched, not
                     // assumed: a continuous rise is met at its
                     // nearest point (~44u) and a low rim is overflown
                     // (both measured), so the harness tries pads x
@@ -1036,7 +1036,7 @@ public partial class MechDuel
     // on the part's own largest-volume center — a point guaranteed to
     // sit inside the part). Same precedent as the weapons test's crafted
     // player-death hit.
-    private void CraftHit(MechWalker target, string partId, float dmg, float weaponWeight = 0f)
+    private void CraftHit(RiderWalker target, string partId, float dmg, float weaponWeight = 0f)
     {
         var parts = target == _player ? _partsPlayer : _partsEnemy;
         var hit = new HitModel.Result
@@ -1057,14 +1057,14 @@ public partial class MechDuel
     // disc in the same column (sub-decimeter, decided by the root tilt
     // the terrain happens to give), while the angled ray meets the
     // head box where it protrudes past the capsule, like a real shot.
-    private void CraftRayHit(MechWalker target, string partId, float dmg)
+    private void CraftRayHit(RiderWalker target, string partId, float dmg)
     {
         var parts = target == _player ? _partsPlayer : _partsEnemy;
         var aim = parts.PartAimPoint(partId);
         Vector3 from;
         if (partId == "head")
         {
-            var fwd = MechWalker.HeadingVec(target.TorsoYawWorld);
+            var fwd = RiderWalker.HeadingVec(target.TorsoYawWorld);
             from = aim + Vector3.Up * 5f + fwd * 7f;
         }
         else from = aim + Vector3.Up * 15f;
@@ -1085,14 +1085,14 @@ public partial class MechDuel
 
         switch (_bPhase)
         {
-            case 0: // settle on the lane: TW (0,18) vs Atlas (0,-12)
+            case 0: // settle on the lane: TW (0,18) vs Enyo (0,-12)
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bPhaseT > 1.0) SetBPhase(1);
                 break;
 
             case 1: // POD: part HP depletes per hit, breaks at <= 0, debris
-                    // settles, then stays behind while the mech walks away
+                    // settles, then stays behind while the rider walks away
                 _player.SetDrive(0f, _bStep >= 3 ? 2.4f : 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0 && _bPhaseT > 0.2)
@@ -1140,9 +1140,9 @@ public partial class MechDuel
                     var d = _partsPlayer.DebrisOf("pod_L");
                     float drift = d.Node.GlobalPosition.DistanceTo(_bVec1);
                     float away = _player.RootPos.DistanceTo(d.Node.GlobalPosition) - _bV1;
-                    if (drift > 0.05f) BFail($"debris moved with the mech: drift={drift:F3}");
-                    if (away < 3f) BFail($"mech did not walk away from debris: delta={away:F2}");
-                    GD.Print($"BRKTEST DETACH PASS debris static (drift={drift:F3}) while mech walked {away:F1}u away");
+                    if (drift > 0.05f) BFail($"debris moved with the rider: drift={drift:F3}");
+                    if (away < 3f) BFail($"rider did not walk away from debris: delta={away:F2}");
+                    GD.Print($"BRKTEST DETACH PASS debris static (drift={drift:F3}) while rider walked {away:F1}u away");
                     QueueCapture("res://proof/break_debris_rest.png", "bdebris", "brkDebris");
                     SetBPhase(2);
                 }
@@ -1181,14 +1181,14 @@ public partial class MechDuel
                 }
                 break;
 
-            case 3: // ARM (Atlas): real AC fire breaks arm_R; its AC/20 stops
+            case 3: // ARM (Enyo): real AC fire breaks arm_R; its AC/20 stops
                 _player.SetDrive(0f, 0f);
                 if (_bStep == 0)
                 {
                     _enemyMayFire = true;
                     _enemy.SetDrive(Mathf.Pi, 0f);
                     if (_enemyShots >= 2) BStep(1);
-                    else if (_bPhaseT > 20) BFail($"atlas fired only {_enemyShots} shots pre-break");
+                    else if (_bPhaseT > 20) BFail($"enyo fired only {_enemyShots} shots pre-break");
                 }
                 else if (_bStep == 1)
                 {
@@ -1196,11 +1196,11 @@ public partial class MechDuel
                     if (_cdAc <= 0f) FireAutocannon(_partsEnemy.PartAimPoint("arm_R"));
                     if (!_partsEnemy.Alive("arm_R"))
                     {
-                        GD.Print($"BRKTEST ARMBREAK PASS atlas arm_R destroyed by real AC fire (partHp logs above), atlasShots so far={_enemyShots}");
+                        GD.Print($"BRKTEST ARMBREAK PASS enyo arm_R destroyed by real AC fire (partHp logs above), enyoShots so far={_enemyShots}");
                         BStep(2);
                         _bCount1 = _enemyShots;
                     }
-                    else if (BStepT > 15) BFail("atlas arm_R never broke under AC fire");
+                    else if (BStepT > 15) BFail("enyo arm_R never broke under AC fire");
                 }
                 else if (_bStep == 2)
                 {
@@ -1208,13 +1208,13 @@ public partial class MechDuel
                     if (BStepT > 1.2 && !_bFlag1)
                     {
                         _bFlag1 = true;
-                        QueueCapture("res://proof/break_atlas_noarm.png", "bnoarm", "brkAtlas");
+                        QueueCapture("res://proof/break_enyo_noarm.png", "bnoarm", "brkEnyo");
                     }
                     if (BStepT > 5.5)
                     {
                         if (_enemyShots != _bCount1)
-                            BFail($"atlas AC/20 fired after arm_R loss: {_bCount1} -> {_enemyShots}");
-                        GD.Print($"BRKTEST ARMGUN PASS atlas AC/20 silent for 5.5s after arm_R loss (shots flat at {_enemyShots})");
+                            BFail($"enyo AC/20 fired after arm_R loss: {_bCount1} -> {_enemyShots}");
+                        GD.Print($"BRKTEST ARMGUN PASS enyo AC/20 silent for 5.5s after arm_R loss (shots flat at {_enemyShots})");
                         _enemyMayFire = false;
                         ResetDuel();
                         BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
@@ -1250,8 +1250,8 @@ public partial class MechDuel
                 }
                 break;
 
-            case 5: // LEG (Atlas): baseline speed, break leg_L, then the
-                    // mech limps at the 0.55 factor with the wrecked leg
+            case 5: // LEG (Enyo): baseline speed, break leg_L, then the
+                    // rider limps at the 0.55 factor with the wrecked leg
                     // still stepping (round 7: no rigid drag)
                 _player.SetDrive(0f, 0f);
                 if (_bStep == 0)
@@ -1272,7 +1272,7 @@ public partial class MechDuel
                     {
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         _bV1 = d / BStepT;
-                        GD.Print($"BRKTEST BASESPEED atlas baseline={_bV1:F2} u/s (cmd 2.2; unified clock — the walker now covers the full commanded speed)");
+                        GD.Print($"BRKTEST BASESPEED enyo baseline={_bV1:F2} u/s (cmd 2.2; unified clock — the walker now covers the full commanded speed)");
                         if (_bV1 < 1.2f) BFail($"baseline speed implausible: {_bV1:F2}");
                         BStep(2);
                     }
@@ -1285,22 +1285,22 @@ public partial class MechDuel
                         CraftHit(_enemy, "leg_L", 30f);
                         CraftHit(_enemy, "leg_L", 30f);
                         CraftHit(_enemy, "leg_L", 30f);
-                        if (_partsEnemy.Alive("leg_L")) BFail("atlas leg_L alive after 90 damage");
+                        if (_partsEnemy.Alive("leg_L")) BFail("enyo leg_L alive after 90 damage");
                         if (!_enemy.LegDisabled(true)) BFail("walker leg_L not disabled");
                         var legPart = _partsEnemy.GetPart("leg_L");
                         if (!legPart.Wrecked) BFail("leg_L not in wrecked state");
                         foreach (var rec in legPart.Meshes)
                             if (rec.Detached) BFail("leg_L mesh DETACHED — legs must never fall off");
-                        if (_enemy.IsKnockedDown) BFail("leg wreck felled the mech (retired fall rule)");
+                        if (_enemy.IsKnockedDown) BFail("leg wreck felled the rider (retired fall rule)");
                         if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f) BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 (limp)");
-                        GD.Print("BRKTEST LEGWRECK PASS leg_L destroyed but ATTACHED (wrecked), mech upright, limp factor 0.55");
+                        GD.Print("BRKTEST LEGWRECK PASS leg_L destroyed but ATTACHED (wrecked), rider upright, limp factor 0.55");
                         _bSawWreckSwing = false;
                         BStep(3);
                     }
                 }
                 else if (_bStep == 3)
                 {
-                    // Full drive on the wrecked leg: the mech must MOVE
+                    // Full drive on the wrecked leg: the rider must MOVE
                     // (it limps, it is not immobile) at roughly the 0.55
                     // limp factor of its measured baseline speed.
                     _enemy.SetDrive(Mathf.Pi, 2.2f);
@@ -1313,7 +1313,7 @@ public partial class MechDuel
                     }
                     else if (_bCount1 == 1 && BStepT > 2.0)
                     {
-                        QueueCapture("res://proof/break_immobile.png", "blimp", "brkAtlas");
+                        QueueCapture("res://proof/break_immobile.png", "blimp", "brkEnyo");
                         _bCount1 = 2;
                     }
                     else if (_bCount1 == 2 && BStepT > 3.0)
@@ -1321,10 +1321,10 @@ public partial class MechDuel
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         float v2 = d / BStepT;
                         float ratio = _bV1 > 0.1f ? v2 / _bV1 : 0f;
-                        GD.Print($"BRKTEST LIMP atlas limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F2}");
+                        GD.Print($"BRKTEST LIMP enyo limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F2}");
                         if (ratio < 0.35f || ratio > 0.78f) { BFail($"limp speed ratio {ratio:F2} (want ~0.55 of baseline)"); return; }
                         if (!_bSawWreckSwing) { BFail("wrecked leg never left the ground while limping — it must keep stepping, not drag"); return; }
-                        GD.Print("BRKTEST LIMP PASS wrecked leg -> mech keeps walking at ~55% speed, leg attached AND still stepping");
+                        GD.Print("BRKTEST LIMP PASS wrecked leg -> rider keeps walking at ~55% speed, leg attached AND still stepping");
                         SetBPhase(6);
                     }
                 }
@@ -1338,10 +1338,10 @@ public partial class MechDuel
                     CraftHit(_enemy, "leg_R", 30f);
                     CraftHit(_enemy, "leg_R", 30f);
                     CraftHit(_enemy, "leg_R", 30f);
-                    if (_enemyDead) BFail("atlas DIED from leg damage — legs never kill (owner)");
-                    if (_enemy.Halted) BFail("atlas walker halted by leg damage");
-                    if (_banner.Visible) BFail($"banner shown for a leg-wrecked mech: '{_banner.Text}'");
-                    if (_enemy.IsKnockedDown) BFail("both-legs wreck felled the mech");
+                    if (_enemyDead) BFail("enyo DIED from leg damage — legs never kill (owner)");
+                    if (_enemy.Halted) BFail("enyo walker halted by leg damage");
+                    if (_banner.Visible) BFail($"banner shown for a leg-wrecked rider: '{_banner.Text}'");
+                    if (_enemy.IsKnockedDown) BFail("both-legs wreck felled the rider");
                     var lr = _partsEnemy.GetPart("leg_R");
                     if (!lr.Wrecked) BFail("leg_R not wrecked");
                     foreach (var rec in lr.Meshes)
@@ -1349,12 +1349,12 @@ public partial class MechDuel
                     if (Mathf.Abs(_enemy.SpeedFactor - 0.25f) > 0.01f)
                         BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.25 (crawl)");
                     if (_hpEnemy <= 0f) BFail("pool hp drained by leg hits");
-                    GD.Print($"BRKTEST BOTHLEGS PASS both legs wrecked -> CRAWL 0.25x, mech alive (pool hp={_hpEnemy:F0}), upright, legs attached");
+                    GD.Print($"BRKTEST BOTHLEGS PASS both legs wrecked -> CRAWL 0.25x, rider alive (pool hp={_hpEnemy:F0}), upright, legs attached");
                     BStep(1);
                 }
                 else if (_bStep == 1 && BStepT > 2.0)
                 {
-                    QueueCapture("res://proof/break_atlas_disabled.png", "bdisabled", "brkAtlas");
+                    QueueCapture("res://proof/break_enyo_disabled.png", "bdisabled", "brkEnyo");
                     BStep(2);
                 }
                 else if (_bStep == 2 && _pendingPath == null && !_capturing)
@@ -1365,27 +1365,27 @@ public partial class MechDuel
                 }
                 break;
 
-            case 7: // HEAD (Atlas): pool rule + tracking lag; player sway
+            case 7: // HEAD (Enyo): pool rule + tracking lag; player sway
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
                 {
                     CraftHit(_enemy, "head", 25f);
                     CraftHit(_enemy, "head", 25f);
-                    if (_partsEnemy.Alive("head")) BFail("atlas head alive after 50 damage");
+                    if (_partsEnemy.Alive("head")) BFail("enyo head alive after 50 damage");
                     if (Mathf.Abs(_hpEnemy - 290f) > 0.01f)
-                        BFail($"head->pool rule: atlasHp={_hpEnemy:F1} (want 290 = 340 - 50)");
+                        BFail($"head->pool rule: enyoHp={_hpEnemy:F1} (want 290 = 340 - 50)");
                     GD.Print("BRKTEST HEADPOOL PASS head hits burned head HP and pool (340 -> 290)");
-                    // Move the player to the Atlas's flank: desired twist ~1 rad.
+                    // Move the player to the Enyo's flank: desired twist ~1 rad.
                     _player.Teleport(new Vector3(20f, Main.HeightAt(20f, 2f), 2f), 0f);
                     BStep(1);
                 }
                 else if (_bStep == 1)
                 {
                     var toP = _player.RootPos - _enemy.RootPos;
-                    float yawTo = MechWalker.YawOf(toP.Normalized());
+                    float yawTo = RiderWalker.YawOf(toP.Normalized());
                     TrackEnemyTorso(dt, yawTo);
-                    float desired = Mathf.Abs(MechWalker.WrapAngle(yawTo - _enemyYaw));
+                    float desired = Mathf.Abs(RiderWalker.WrapAngle(yawTo - _enemyYaw));
                     if (BStepT > 0.5)
                     {
                         float twist = Mathf.Abs(_enemy.TorsoTwist);
@@ -1398,12 +1398,12 @@ public partial class MechDuel
                 else if (_bStep == 2)
                 {
                     var toP = _player.RootPos - _enemy.RootPos;
-                    float yawTo = MechWalker.YawOf(toP.Normalized());
+                    float yawTo = RiderWalker.YawOf(toP.Normalized());
                     TrackEnemyTorso(dt, yawTo);
                     if (BStepT > 2.2)
                     {
-                        float err = Mathf.Abs(MechWalker.WrapAngle(
-                            MechWalker.WrapAngle(yawTo - _enemyYaw) - _enemy.TorsoTwist));
+                        float err = Mathf.Abs(RiderWalker.WrapAngle(
+                            RiderWalker.WrapAngle(yawTo - _enemyYaw) - _enemy.TorsoTwist));
                         if (err > 0.08f) BFail($"headless tracking never caught up: err {err:F2}");
                         GD.Print($"BRKTEST HEADLAG PASS lag proven at 0.5s, caught up by 2.2s (err {err:F3})");
                         CraftRayHit(_player, "head", 25f);
@@ -1436,7 +1436,7 @@ public partial class MechDuel
                     foreach (var p in _partsPlayer.AllParts)
                         if (p.Destroyed) BFail($"player part {p.Id} still destroyed after reset");
                     foreach (var p in _partsEnemy.AllParts)
-                        if (p.Destroyed) BFail($"atlas part {p.Id} still destroyed after reset");
+                        if (p.Destroyed) BFail($"enyo part {p.Id} still destroyed after reset");
                     if (_partsPlayer.DebrisList.Count != 0 || _partsEnemy.DebrisList.Count != 0)
                         BFail("debris remains after reset");
                     if (Mathf.Abs(_partsPlayer.HpOf("pod_L") - 45f) > 0.01f ||
@@ -1476,23 +1476,23 @@ public partial class MechDuel
                 }
                 else if (_bStep == 1 && BStepT > 0.6f)
                 {
-                    if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a mech (retired knockdown)");
-                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts — the Atlas stands (no knockdown rule remains)");
+                    if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a rider (retired knockdown)");
+                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts — the Enyo stands (no knockdown rule remains)");
                     _partsEnemy.DamagePart("leg_R", 999f);
                     BStep(2);
                 }
                 else if (_bStep == 2 && BStepT > 0.8f)
                 {
                     if (_enemy.IsKnockedDown || _enemy.FallAmount > 0.01f)
-                    { BFail("leg wreck felled the mech (retired fall rule)"); return; }
+                    { BFail("leg wreck felled the rider (retired fall rule)"); return; }
                     var lr = _partsEnemy.GetPart("leg_R");
                     if (!lr.Wrecked) { BFail("leg_R not wrecked"); return; }
                     foreach (var rec in lr.Meshes)
                         if (rec.Detached) { BFail("leg_R mesh DETACHED — legs never fall off"); return; }
                     if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f)
                     { BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 after leg wreck"); return; }
-                    GD.Print("LEGRULE PASS leg wrecked: attached + darkened, mech upright, limping at 0.55x");
-                    QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkAtlas");
+                    GD.Print("LEGRULE PASS leg wrecked: attached + darkened, rider upright, limping at 0.55x");
+                    QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkEnyo");
                     ResetDuel();
                     if (_partsEnemy.GetPart("leg_R").Wrecked || !_partsEnemy.Alive("leg_R"))
                     { BFail("reset did not un-wreck leg_R"); return; }
@@ -1567,7 +1567,7 @@ public partial class MechDuel
             const float e = 0.7f;
             float gx = (Main.HeightAt(p.X + e, p.Y) - Main.HeightAt(p.X - e, p.Y)) / (2f * e);
             float gz = (Main.HeightAt(p.X, p.Y + e) - Main.HeightAt(p.X, p.Y - e)) / (2f * e);
-            uphillYaw = MechWalker.YawOf(new Vector3(gx, 0f, gz).Normalized());
+            uphillYaw = RiderWalker.YawOf(new Vector3(gx, 0f, gz).Normalized());
             spot = new Vector3(p.X, Main.HeightAt(p.X, p.Y), p.Y);
             bestG = g;
             found = true;
@@ -1617,13 +1617,13 @@ public partial class MechDuel
                         float md = _player.MaxPlantedDiff();
                         GD.Print($"TERRAIN STRIDE maxPlantedDiff={md:F3}");
                         if (md > 0.08f) { TFail($"planted diff {md:F3} > 0.08 on arena slope"); return; }
-                        // Ground-level duel shot: Atlas 30u ahead of the player.
-                        var fwd = MechWalker.HeadingVec(_player.LegsYaw);
+                        // Ground-level duel shot: Enyo 30u ahead of the player.
+                        var fwd = RiderWalker.HeadingVec(_player.LegsYaw);
                         var epos = _player.RootPos + fwd * 30f;
                         epos.X = Mathf.Clamp(epos.X, -60f, 60f);
                         epos.Z = Mathf.Clamp(epos.Z, -60f, 60f);
                         epos.Y = Main.HeightAt(epos.X, epos.Z);
-                        _enemy.Teleport(epos, MechWalker.YawOf(-fwd));
+                        _enemy.Teleport(epos, RiderWalker.YawOf(-fwd));
                         _player.SetDrive(_player.LegsYaw, 0f);
                         _tPhase = 2; _tPhaseT = 0;
                     });
@@ -1696,11 +1696,11 @@ public partial class MechDuel
                 if (_tPhaseT > 26.0) { TFail($"FLYTEST timeout in stage {_tJumpStage} (charge {_player.JumpCharge:F2}, h {_player.JumpHeight:F1})"); return; }
                 switch (_tJumpStage)
                 {
-                    case 0: // settle; the unfitted Atlas must not lift even with thrust commanded
+                    case 0: // settle; the unfitted Enyo must not lift even with thrust commanded
                         _enemy.SetThrust(true);
                         if (_tPhaseT > 0.6)
                         {
-                            if (_enemy.JumpHeight > 0.05f) { TFail("Atlas lifted without jets"); return; }
+                            if (_enemy.JumpHeight > 0.05f) { TFail("Enyo lifted without jets"); return; }
                             _enemy.SetThrust(false);
                             _tJumpGround = _player.RootPos.Y;
                             _tFlyStart = new Vector2(_player.RootPos.X, _player.RootPos.Z);
@@ -1718,8 +1718,8 @@ public partial class MechDuel
                         if (_tParked && _tPhaseT > _tJumpMarkT + 0.3 && _enemy.RootPos.X > -50f)
                         {
                             var nowXZ = new Vector2(_player.RootPos.X, _player.RootPos.Z);
-                            // forward flight moves the mech; the flyover check is LATERAL push only
-                            if (Mathf.Abs(nowXZ.X - _tJumpXZ.X) > 0.05f) { TFail("flyover pushed the flying mech sideways"); return; }
+                            // forward flight moves the rider; the flyover check is LATERAL push only
+                            if (Mathf.Abs(nowXZ.X - _tJumpXZ.X) > 0.05f) { TFail("flyover pushed the flying rider sideways"); return; }
                             _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), 0f);
                         }
                         if (_player.JumpCharge <= 0f)
@@ -1739,7 +1739,7 @@ public partial class MechDuel
                             // walk alone caps at 4.2; jets+W must read
                             // ~7.2 (the accel ramp eats the distance
                             // signal: 9.1u with push vs ~7.1 without).
-                            if (_tBurnSpeed < 6.5f) { TFail($"burn-end speed {_tBurnSpeed:F1} < 6.5 - thrusters did not push the mech forward"); return; }
+                            if (_tBurnSpeed < 6.5f) { TFail($"burn-end speed {_tBurnSpeed:F1} < 6.5 - thrusters did not push the rider forward"); return; }
                             if (_tBurnDist < 8.5f) { TFail($"burn travel {_tBurnDist:F1} < 8.5"); return; }
                             _tJumpStage = 3;
                         }
@@ -1818,8 +1818,8 @@ public partial class MechDuel
             }
         }
         if (_gaitT > 1.9f && _camMode != "enemySide" && _camMode != "enemyFront")
-            QueueCapture("res://proof/gait_atlas.png", "gait", "enemySide", () =>
-                QueueCapture("res://proof/gait_atlas_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
+            QueueCapture("res://proof/gait_enyo.png", "gait", "enemySide", () =>
+                QueueCapture("res://proof/gait_enyo_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
     }
 
 }

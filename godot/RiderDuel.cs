@@ -1,9 +1,9 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel: two-mech duel — a PLAYER mech vs an ENEMY mech, each
-// fielding a chassis chosen in the MechLab (Timber Wolf / Atlas
-// are the two chassis in Data/MechSpec.cs; code names the ROLES,
+// RiderDuel: two-rider duel — a PLAYER rider vs an ENEMY rider, each
+// fielding a chassis chosen in the RiderLab (Hector / Enyo
+// are the two chassis in Data/RiderSpec.cs; code names the ROLES,
 // the specs name the machines). W/S throttle along the legs
 // heading, A/D turn the legs, mouse twists/pitches the torso
 // (full 360), chase camera on the torso facing, crosshair.
@@ -13,38 +13,38 @@ using System.Collections.Generic;
 // bodies); terrain height stays with Main.HeightAt.
 //
 // This class is split into partial modules (round 22):
-//   MechDuel.cs            fields, _Ready, _Process, combat stepper, reset
-//   MechDuel.Player.cs     input            MechDuel.Enemy.cs    AI + gunnery
-//   MechDuel.Weapons.cs    aim/fire/damage  MechDuel.Fx.cs       particles/feedback
-//   MechDuel.Audio.cs      sound            MechDuel.Environment.cs world + props
-//   MechDuel.Lab.cs        lab/construction MechDuel.Hud.cs      cockpit panel
-//   MechDuel.Camera.cs     captures/camera  MechDuel.Harness.cs  test drivers
+//   RiderDuel.cs            fields, _Ready, _Process, combat stepper, reset
+//   RiderDuel.Player.cs     input            RiderDuel.Enemy.cs    AI + gunnery
+//   RiderDuel.Weapons.cs    aim/fire/damage  RiderDuel.Fx.cs       particles/feedback
+//   RiderDuel.Audio.cs      sound            RiderDuel.Environment.cs world + props
+//   RiderDuel.Lab.cs        lab/construction RiderDuel.Hud.cs      cockpit panel
+//   RiderDuel.Camera.cs     captures/camera  RiderDuel.Harness.cs  test drivers
 // The photoreal scene (photo/PhotoDuel.tscn, the project's main
 // scene) runs this same class with the photo dressing on.
 // Verification: --duel-test / --weapons-test / --breakable-test /
 // --terrain-test / --photo-test run scripted choreographies and
 // capture proof frames.
 
-public partial class MechDuel : Node3D
+public partial class RiderDuel : Node3D
 {
-    private const float EnemyMaxSpeed = 2.2f; // AI tactical pace cap; the chassis cap is MechSpec.MaxSpeed
+    private const float EnemyMaxSpeed = 2.2f; // AI tactical pace cap; the chassis cap is RiderSpec.MaxSpeed
     private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 0.85f;
     private const float WorldBound = 115f; // heightfield world is 260 wide
 
-    private MechWalker _player;
-    private MechWalker _enemy;
+    private RiderWalker _player;
+    private RiderWalker _enemy;
     private Camera3D _cam;
-    private DirectionalLight3D _labLight; // lab-only fill: the mech must read as the centerpiece, not a silhouette
+    private DirectionalLight3D _labLight; // lab-only fill: the rider must read as the centerpiece, not a silhouette
     private bool _test;
-    private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
-    private bool _atlasCam; // dev flag: swap player to Atlas, force-deploy, capture the chase view
+    private bool _labShot; // dev flag: capture the live RiderLab to /tmp/lab_live.png and quit
+    private bool _enyoCam; // dev flag: swap player to Enyo, force-deploy, capture the chase view
     private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
-    private bool _atlasLab; // dev flag: open the lab on the Atlas for the --lab-shot capture
+    private bool _enyoLab; // dev flag: open the lab on the Enyo for the --lab-shot capture
     private bool _layoutDumped;
     private int _labShotFrames;
-    private bool _atlasCamDone; private float _atlasCamT; private bool _atlasCamFired;
+    private bool _enyoCamDone; private float _enyoCamT; private bool _enyoCamFired;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
@@ -75,7 +75,7 @@ public partial class MechDuel : Node3D
     private int _phase;
     private double _phaseT;
     private int _strideShots;
-    private float _minTreeSep, _minMechSep;
+    private float _minTreeSep, _minRiderSep;
     private int _pLimpStep;
     private int _aimStep;
     private double _aimT0;
@@ -91,31 +91,31 @@ public partial class MechDuel : Node3D
 
     // ---------- combat ----------
     private HitModel _hit;
-    private MechParts _partsPlayer, _partsEnemy;
+    private RiderParts _partsPlayer, _partsEnemy;
     private readonly System.Collections.Generic.List<Projectile> _shots = new();
     private readonly System.Collections.Generic.List<(Node3D Node, float Life, int Frames)> _fx = new();
     private float _hpPlayer = 260f, _hpEnemy = 340f;
     private bool _playerDead, _enemyDead;
     private float _cdLaser, _cdAc, _cdLrm, _cdEnemy;
     private int _weaponSel; // selected weapon: 0 laser, 1 autocannon, 2 LRM
-    // MechLab loadout (owner): the equipped weapon defs drive damage,
+    // RiderLab loadout (owner): the equipped weapon defs drive damage,
     // cooldowns, salvo composition and knockdown weight. Defaults equal
     // the original fixed fit, so every harness number is unchanged.
-    private LoadoutState _loadout = LoadoutState.DefaultTimberWolf();
-    private LoadoutState _enemyLoadout = LoadoutState.DefaultAtlas();
+    private LoadoutState _loadout = LoadoutState.DefaultHector();
+    private LoadoutState _enemyLoadout = LoadoutState.DefaultEnyo();
 
     // Free-for-all (owner, 2026-10-31): the match fields TWO AI
-    // opponents — a Timber Wolf and an Atlas — and every mech
+    // opponents — a Hector and an Enyo — and every rider
     // fights every other; there are no teams. The legacy enemy
     // (foe 0) keeps its fields above; foe 1 is this record. Foe 1
     // is not built in the precision test modes (duel / weapons /
     // breakable / terrain), whose choreographies assume exactly
-    // two mechs on the field.
+    // two riders on the field.
     private sealed class Foe
     {
-        public MechWalker Walker;
-        public MechParts Parts;
-        public MechSpec Spec;
+        public RiderWalker Walker;
+        public RiderParts Parts;
+        public RiderSpec Spec;
         public LoadoutState Loadout;
         public float Hp;
         public bool Dead;
@@ -134,17 +134,17 @@ public partial class MechDuel : Node3D
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private Vector3 _enemyVel;
     private Vector3 _prevEnemyRoot;
-    private MechWalker _foe0TargetW; // foe 0's current AI target (re-picked on a think timer)
+    private RiderWalker _foe0TargetW; // foe 0's current AI target (re-picked on a think timer)
     private float _foe0ThinkT;
-    // Which mech each side fields (round 22: chosen in the lab).
-    private MechSpec _playerSpec = MechSpecs.TimberWolf;
-    private MechSpec _enemySpec = MechSpecs.Atlas;
+    // Which rider each side fields (round 22: chosen in the lab).
+    private RiderSpec _playerSpec = RiderSpecs.Hector;
+    private RiderSpec _enemySpec = RiderSpecs.Enyo;
     private WeaponDef _defEnergy, _defBallistic, _defPodL, _defPodR, _defEnemyBallistic;
     private string _enemyBallisticSlot;
     private readonly System.Collections.Generic.List<(string Slot, WeaponDef Def)> _gunsEnergy = new(), _gunsBallistic = new(), _podGunsL = new(), _podGunsR = new();
     private readonly string[] _wpnShort = { "1 LAS", "2 AC", "3 LRM" };
     private bool _labOpen;
-    private MechLab _lab;
+    private RiderLab _lab;
     private CanvasLayer _uiLayer;
     private bool _labChecked;
     private int _selStage; private float _selHoldT;
@@ -154,7 +154,7 @@ public partial class MechDuel : Node3D
     private Vector3 _playerVel;
     private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, WeaponDef Def)> _lrmQueue = new();
     // Knockdown by weight (owner): impact weight accumulates over a
-    // short window; past 20% of the mech's tonnage it topples.
+    // short window; past 20% of the rider's tonnage it topples.
     private float _combatClock;
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     // Per-weapon hit effects: spark bursts (laser), explosion bundles
@@ -248,9 +248,9 @@ public partial class MechDuel : Node3D
             if (arg == "--photo") _photo = true;
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--gait-shot") _gaitShot = true;
-            if (arg == "--atlas-cam") _atlasCam = true;
+            if (arg == "--enyo-cam") _enyoCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
-            if (arg == "--atlas-lab") _atlasLab = true;
+            if (arg == "--enyo-lab") _enyoLab = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -289,7 +289,7 @@ public partial class MechDuel : Node3D
                 Sky = new Sky { SkyMaterial = skyMat },
                 AmbientLightSource = Environment.AmbientSource.Sky,
                 // 0.62 washed the baked panel/normal detail out to flat
-                // color (owner: 'mechs look like solid default material').
+                // color (owner: 'riders look like solid default material').
                 // Lower ambient + stronger sun lets the texture and normal
                 // maps model the surface again; fog thinned to match.
                 AmbientLightEnergy = 0.34f,
@@ -330,16 +330,16 @@ public partial class MechDuel : Node3D
         // teleport to their own marks immediately after.
         var padP = Main.SpawnPads[0];
         var padE = Main.SpawnPads[1];
-        _player = BuildMech(_playerSpec, "Player", PadPos(padP), SpawnYaw(padP));
-        _enemy = BuildMech(_enemySpec, "Enemy", PadPos(padE), SpawnYaw(padE));
+        _player = BuildRider(_playerSpec, "Player", PadPos(padP), SpawnYaw(padP));
+        _enemy = BuildRider(_enemySpec, "Enemy", PadPos(padE), SpawnYaw(padE));
         _playerYaw = SpawnYaw(padP);
         _enemyYaw = SpawnYaw(padE);
 
         // Breakable-parts registries (may split the merged Torso meshes);
         // refresh walker materials afterwards so hit flashes cover the
         // replacement pieces too.
-        _partsPlayer = new MechParts(_player, _playerSpec.PartsId);
-        _partsEnemy = new MechParts(_enemy, _enemySpec.PartsId);
+        _partsPlayer = new RiderParts(_player, _playerSpec.PartsId);
+        _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         if (!PrecisionTest) BuildFoe1();
@@ -372,7 +372,7 @@ public partial class MechDuel : Node3D
         ApplyLoadout();
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot)
         {
-            // Pre-game MechLab (owner): the duel waits behind the lab
+            // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
             _labOpen = true;
             Input.MouseMode = Input.MouseModeEnum.Visible;
@@ -479,7 +479,7 @@ public partial class MechDuel : Node3D
         _playerVel = Vector3.Zero;
         _banner.Visible = false;
         _bannerSub.Visible = false;
-        GD.Print("WPN RESET both mechs restored to spawn, HP full");
+        GD.Print("WPN RESET both riders restored to spawn, HP full");
     }
 
     private static ProgressBar MakeBar(Color fill, Vector2 minSize)
@@ -599,7 +599,7 @@ public partial class MechDuel : Node3D
         if (_foe1 != null && !_test && !_terrainTest && !_photoTest && !_weaponsTest && !_breakTest) UpdateFoe1Gunnery(dt);
     }
 
-    private static void StepWalker(MechWalker w, double delta)
+    private static void StepWalker(RiderWalker w, double delta)
     {
         int n = Mathf.Max(1, Mathf.CeilToInt((float)delta / 0.09f));
         double h = delta / n;
@@ -608,42 +608,42 @@ public partial class MechDuel : Node3D
 
     public override void _Process(double delta)
     {
-        if (_atlasCam && !_atlasCamDone && _player != null && _player.IsReady)
+        if (_enyoCam && !_enyoCamDone && _player != null && _player.IsReady)
         {
-            _atlasCamDone = true;
-            SetMechSelection("atlas", "timberwolf");
+            _enyoCamDone = true;
+            SetRiderSelection("enyo", "hector");
             ApplyLoadout();
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
             _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
-            GD.Print("ATLASCAM swapped player to Atlas and deployed");
+            GD.Print("ENYOCAM swapped player to Enyo and deployed");
         }
-        if (_atlasCam && _atlasCamDone && !_labOpen)
+        if (_enyoCam && _enyoCamDone && !_labOpen)
         {
-            _atlasCamT += (float)delta;
-            if (!_atlasCamFired && _atlasCamT > 1.2f)
+            _enyoCamT += (float)delta;
+            if (!_enyoCamFired && _enyoCamT > 1.2f)
             {
-                _atlasCamFired = true;
-                GD.Print($"ATLASCAM defs energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"}");
+                _enyoCamFired = true;
+                GD.Print($"ENYOCAM defs energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"}");
                 FireLaser(_enemy.RootPos + Vector3.Up * 6f);
                 FireLrmSalvo(_enemy.RootPos);
             }
-            if (_atlasCamT > 2.5f && _camMode == "chase")
+            if (_enyoCamT > 2.5f && _camMode == "chase")
             {
-                var back = -MechWalker.HeadingVec(_player.TorsoYawWorld);
+                var back = -RiderWalker.HeadingVec(_player.TorsoYawWorld);
                 var camRel = _cam.GlobalPosition - _player.RootPos;
-                GD.Print($"ATLASCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
-                QueueCapture("res://proof/atlas_player_chase.png", "atlasP", "chase", () => GetTree().Quit());
-                _atlasCamT = -999f;
+                GD.Print($"ENYOCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
+                QueueCapture("res://proof/enyo_player_chase.png", "enyoP", "chase", () => GetTree().Quit());
+                _enyoCamT = -999f;
             }
         }
 
-        if (_atlasLab && _labOpen && _lab != null)
+        if (_enyoLab && _labOpen && _lab != null)
         {
-            _atlasLab = false;
-            SetMechSelection("atlas", _enemySpec.Id);
-            GD.Print("ATLASLAB lab reopened on the Atlas");
+            _enyoLab = false;
+            SetRiderSelection("enyo", _enemySpec.Id);
+            GD.Print("ENYOLAB lab reopened on the Enyo");
         }
 
         if (_multiShot && _labOpen && _lab != null)
@@ -683,8 +683,8 @@ public partial class MechDuel : Node3D
 
         if (_labOpen)
         {
-            // The duel waits behind the MechLab: a showroom view
-            // (owner, MW4-style) — the mech stands front three-
+            // The duel waits behind the RiderLab: a showroom view
+            // (owner, MW4-style) — the rider stands front three-
             // quarter in the paperdoll area, lit by a lab fill, so
             // the slot panels sit ON the machine. A fixed angle
             // (plus a barely-there sway) replaces the orbit: the
@@ -743,10 +743,10 @@ public partial class MechDuel : Node3D
             float labK = _playerSpec.Height / 13f; // showroom framing scales with the chassis, like the chase cam
             var center = _player.RootPos + Vector3.Up * (5.6f * labK);
             var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
-            var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the mech, slightly to its side
+            var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the rider, slightly to its side
             _cam.GlobalPosition = center + viewDir * (14.5f * labK) + Vector3.Up * (3.4f * labK);
             _cam.LookAt(center, Vector3.Up);
-            _cam.RotateY(0.46f); // pan in camera space: mech right, centered under its slot panels (owner, adjusted twice at his word)
+            _cam.RotateY(0.46f); // pan in camera space: rider right, centered under its slot panels (owner, adjusted twice at his word)
             _labLight.GlobalRotation = _cam.GlobalRotation;
             return;
         }

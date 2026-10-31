@@ -1,6 +1,6 @@
-// Pure game data — no engine references. A mech spec is its tonnage
-// plus the weapon slots the MechLab can fill. Slot weight capacity is
-// the rule that keeps a light mech from carrying a heavy mech's gun.
+// Pure game data — no engine references. A rider spec is its tonnage
+// plus the weapon slots the RiderLab can fill. Slot weight capacity is
+// the rule that keeps a light rider from carrying a heavy rider's gun.
 
 public sealed class SlotDef
 {
@@ -10,7 +10,7 @@ public sealed class SlotDef
     public float MaxWeight;     // tons
 }
 
-public sealed class MechSpec
+public sealed class RiderSpec
 {
     public string Id;
     public string Name;
@@ -19,7 +19,7 @@ public sealed class MechSpec
     public SlotDef[] Slots;
 
     // Chassis data the duel builds the walker from (round 22: the
-    // lab lets each side pick its mech, so everything model-bound
+    // lab lets each side pick its rider, so everything model-bound
     // lives here, not in the duel's construction code).
     public string ModelPath;
     public string PartsId;      // breakable-parts layout key
@@ -37,18 +37,18 @@ public sealed class MechSpec
     }
 }
 
-public static class MechSpecs
+public static class RiderSpecs
 {
-    // Weapon capacity rule (owner, 2026-10-31, MW4 MechLab
+    // Weapon capacity rule (owner, 2026-10-31, MW4 RiderLab
     // model): the chassis tonnage IS the weapon budget — the
-    // slot caps sum to exactly the tonnage (75t mech -> 75t of
+    // slot caps sum to exactly the tonnage (75t rider -> 75t of
     // mounts, 100t -> 100t). Per-slot caps still gate what a
     // single mount can hold.
 
-    public static readonly MechSpec TimberWolf = new()
+    public static readonly RiderSpec Hector = new()
     {
-        Id = "timberwolf", Name = "TIMBER WOLF", Tonnage = 75f, JumpCapable = true,
-        ModelPath = "res://assets/timberwolf.fbx", PartsId = "timberwolf", MaxHp = 260f,
+        Id = "hector", Name = "HECTOR", Tonnage = 75f, JumpCapable = true,
+        ModelPath = "res://assets/timberwolf.fbx", PartsId = "hector", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
@@ -60,16 +60,16 @@ public static class MechSpecs
         }
     };
 
-    public static readonly MechSpec Atlas = new()
+    public static readonly RiderSpec Enyo = new()
     {
-        Id = "atlas", Name = "ATLAS", Tonnage = 100f, JumpCapable = false,
-        ModelPath = "res://assets/atlas.fbx", PartsId = "atlas", MaxHp = 340f,
+        Id = "enyo", Name = "ENYO", Tonnage = 100f, JumpCapable = false,
+        ModelPath = "res://assets/atlas.fbx", PartsId = "enyo", MaxHp = 340f,
         Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
-        // heavier mechs get MORE hardpoints, not just fatter ones —
+        // heavier riders get MORE hardpoints, not just fatter ones —
         // with everything on one arm, losing the arm disarms the
-        // mech. Five mounts: both arms, the waist gun, a chest
+        // rider. Five mounts: both arms, the waist gun, a chest
         // mount, and the SRM rack. Caps sum to the 100t budget.
         Slots = new[]
         {
@@ -81,14 +81,14 @@ public static class MechSpecs
         }
     };
 
-    // Every chassis the lab can offer. Adding a mech = one new
-    // MechSpec + one entry here (+ its MechParts layout and model).
-    public static readonly MechSpec[] All = { TimberWolf, Atlas };
+    // Every chassis the lab can offer. Adding a rider = one new
+    // RiderSpec + one entry here (+ its RiderParts layout and model).
+    public static readonly RiderSpec[] All = { Hector, Enyo };
 
-    public static MechSpec ById(string id)
+    public static RiderSpec ById(string id)
     {
         foreach (var s in All) if (s.Id == id) return s;
-        return TimberWolf;
+        return Hector;
     }
 }
 
@@ -98,7 +98,7 @@ public sealed class LoadoutState
 {
     // A hardpoint fits as many weapons of its type as its tonnage
     // cap allows (owner, 2026-10-31: with one weapon per slot, the
-    // 3-slot Atlas fielded less than the 4-slot Timber Wolf despite
+    // 3-slot Enyo fielded less than the 4-slot Hector despite
     // the bigger budget — slot count beat tonnage). The tonnage is
     // the real limit now, exactly like the MW4 lab.
     public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> Equipped = new();
@@ -126,7 +126,7 @@ public sealed class LoadoutState
 
     // Pure rule check (used live during drag hover): null = the weapon
     // fits, else the reason it does not.
-    public string Check(MechSpec spec, string slotId, WeaponDef weapon)
+    public string Check(RiderSpec spec, string slotId, WeaponDef weapon)
     {
         var slot = spec.Slot(slotId);
         if (slot == null) return "no such slot";
@@ -141,7 +141,7 @@ public sealed class LoadoutState
 
     // Adds the weapon to the hardpoint (multi-fit). Returns null on
     // success, else the reason the drop is refused.
-    public string TryAssign(MechSpec spec, string slotId, WeaponDef weapon)
+    public string TryAssign(RiderSpec spec, string slotId, WeaponDef weapon)
     {
         var err = Check(spec, slotId, weapon);
         if (err != null) return err;
@@ -195,15 +195,15 @@ public sealed class LoadoutState
         }
     }
 
-    public static LoadoutState DefaultFor(MechSpec spec) =>
-        spec.Id == "atlas" ? DefaultAtlas() : DefaultTimberWolf();
+    public static LoadoutState DefaultFor(RiderSpec spec) =>
+        spec.Id == "enyo" ? DefaultEnyo() : DefaultHector();
 
-    public static LoadoutState DefaultAtlas()
+    public static LoadoutState DefaultEnyo()
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         // Every slot filled (owner, 2026-10-31): 95t of 100t.
-        var at = MechSpecs.Atlas;
+        var at = RiderSpecs.Enyo;
         l.TryAssign(at, "arm_L", WeaponCatalog.Ppc);
         l.TryAssign(at, "arm_L", WeaponCatalog.LargeLaser);
         l.TryAssign(at, "arm_L", WeaponCatalog.MediumLaser);       // 17/18t
@@ -220,12 +220,12 @@ public sealed class LoadoutState
         return l;
     }
 
-    public static LoadoutState DefaultTimberWolf()
+    public static LoadoutState DefaultHector()
     {
         var l = new LoadoutState();
         l.JumpJets = true; // default fit: thrusters loaded
         // Every slot filled (owner, 2026-10-31): 64t of 75t.
-        var tw = MechSpecs.TimberWolf;
+        var tw = RiderSpecs.Hector;
         l.TryAssign(tw, "arm_L", WeaponCatalog.LargeLaser);
         l.TryAssign(tw, "arm_L", WeaponCatalog.MediumLaser);       // 8/8t
         l.TryAssign(tw, "arm_R", WeaponCatalog.Autocannon);

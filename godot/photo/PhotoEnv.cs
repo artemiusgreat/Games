@@ -7,7 +7,7 @@ using System.Collections.Generic;
 // at the SAME prop positions, an instanced grass field, and a
 // mountain backdrop. Everything here is visual only: HeightAt,
 // colliders, hit cylinders and destructible registration in
-// MechDuel are untouched, so the duel plays identically. Assets
+// RiderDuel are untouched, so the duel plays identically. Assets
 // live in res://photo/ (see fetch_photo_assets.py and
 // decimate_models.py there; Poly Haven content is CC0).
 public static class PhotoEnv

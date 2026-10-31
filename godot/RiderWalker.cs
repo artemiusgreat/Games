@@ -1,11 +1,11 @@
 using Godot;
 
-// MechWalker: reusable procedural gait + two-bone IK for a rigged mech FBX,
+// RiderWalker: reusable procedural gait + two-bone IK for a rigged rider FBX,
 // extracted from the original walker test scene and
 // generalized: any heading (not just -Z), signed speed (reverse stepping),
 // turn-in-place stepping, torso twist/pitch aim on the torso bone, and bone
 // data derived per-model from the rest pose -- the knee pole comes from the
-// rest pose, so digitigrade (Timber Wolf) and plantigrade (Atlas) legs both
+// rest pose, so digitigrade (Hector) and plantigrade (Enyo) legs both
 // work with no hardcoded bend direction.
 //
 // Drive model: every frame the owner calls SetDrive(legsYaw, targetSpeed)
@@ -15,7 +15,7 @@ using Godot;
 // skeleton global pose overrides, and sets the root height/tilt from the
 // feet. Collisions are the owner's job: after stepping, the owner may call
 // ApplyRootXZ to push the root out of an obstacle; planted feet stay put.
-public partial class MechWalker : Node3D
+public partial class RiderWalker : Node3D
 {
     public struct Config
     {
@@ -27,7 +27,7 @@ public partial class MechWalker : Node3D
         public float StepLift;
         public float Accel;
         public float CollisionRadius;
-        public bool FlipKneePole; // plantigrade chassis (Atlas): mirror the rest-pose knee pole so the knee bends FORWARD, human-style (owner round 22)
+        public bool FlipKneePole; // plantigrade chassis (Enyo): mirror the rest-pose knee pole so the knee bends FORWARD, human-style (owner round 22)
     }
 
     private sealed class Leg
@@ -106,7 +106,7 @@ public partial class MechWalker : Node3D
     // charge remaining the jets climb (capped ~10.5 u/s) and drain
     // the full charge in ~2.2s of burn — enough to rise well above
     // a 14u enemy. Release the key or empty the tanks and gravity
-    // (24 u/s^2, terminal -18) brings the mech down. A partial
+    // (24 u/s^2, terminal -18) brings the rider down. A partial
     // charge flies proportionally lower. The charge auto-refills
     // on the ground in ~5s.
     public void SetThrust(bool on) => _thrustHeld = on;
@@ -154,10 +154,10 @@ public partial class MechWalker : Node3D
         set => _torsoPitch = Mathf.Clamp(value, -0.32f, 0.48f);
     }
     // The AIM pitch (owner, round 13): the mouse target is NOT bound
-    // by the torso's mechanical clamp — the reticle must reach the
+    // by the torso's clamp — the reticle must reach the
     // ground in front of the feet and the sky above. The torso mesh
     // follows TorsoPitch to its stops; the aim direction uses this
-    // wider range (MechDuel owns the live value; NaN there means
+    // wider range (RiderDuel owns the live value; NaN there means
     // "follow TorsoPitch", which is what every harness phase sets).
     public float AimPitchWide = float.NaN;
     public float TorsoYawWorld => _legsYaw + _torsoTwist;
@@ -168,7 +168,7 @@ public partial class MechWalker : Node3D
     public float Droop { get; set; }
 
     // Breakable-parts state (owner-driven): a wrecked (disabled) leg
-    // keeps stepping with the gait — the whole mech is slower via
+    // keeps stepping with the gait — the whole rider is slower via
     // SpeedFactor, and the wrecked leg moves at that same reduced
     // pace (owner's round-7 call; the earlier rigid drag read as the
     // leg floating). LimpRoll leans the body (toward the model's left
@@ -176,7 +176,7 @@ public partial class MechWalker : Node3D
     public float SpeedFactor = 1f;
     public float LimpRoll;
 
-    // Fallen state (owner's rule, third iteration): a mech falls ONLY
+    // Fallen state (owner's rule, third iteration): a rider falls ONLY
     // when it loses a leg, and it never gets back up. The fall tips the
     // root toward _fallDirW by up to ~76 degrees over 0.5s and drops the
     // hips to rest height — then it stays there until reset. While down
@@ -508,7 +508,7 @@ public partial class MechWalker : Node3D
         leg.StepTo = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
         // Swing endpoints in the FACING frame (owner: leg motion
         // must read in the sagittal plane from the front — a
-        // world-space lerp cuts across the body whenever the mech
+        // world-space lerp cuts across the body whenever the rider
         // turns mid-step, the 'needs to pee' scissor). AdvanceLeg
         // re-projects both endpoints through the CURRENT yaw every
         // substep, so the foot travels a clean in-frame line while
@@ -539,7 +539,7 @@ public partial class MechWalker : Node3D
         // (The first cut re-projected ALL axes through the frame:
         // the forward prediction offset baked into the local
         // target kept advancing with the root, doubling the
-        // stride at run speed \u2014 the Timber Wolf's legs spread
+        // stride at run speed \u2014 the Hector's legs spread
         // enormously in run mode. Forward must stay world-anchored.)
         var pos = leg.StepFrom.Lerp(leg.StepTo, e);
         pos.Y += Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;
@@ -614,7 +614,7 @@ public partial class MechWalker : Node3D
         AdvanceLeg(_legR, h);
         // A wrecked leg steps like any other (see the state comment
         // above): no drag override — its stride shortens naturally
-        // with the mech's throttled speed.
+        // with the rider's throttled speed.
 
         UpdateRoot(h);
         SolveAll();
@@ -727,7 +727,7 @@ public partial class MechWalker : Node3D
         // Pitch sign: the trailing Yaw(Pi) rest-flip conjugates the
         // X rotation, so feeding +pitch here rendered the torso nose-
         // DOWN while the aim model treats +pitch as up — mouse up
-        // visibly dipped the mech (owner's report). Feed (Droop -
+        // visibly dipped the rider (owner's report). Feed (Droop -
         // pitch): rendered pitch = pitch - Droop, so +pitch points
         // the torso UP (-18/+27 deg working range) and the death
         // droop still slumps it nose-down, up to ~49 deg.
@@ -848,7 +848,7 @@ public partial class MechWalker : Node3D
     private float _flashT;
 
     // Materials are duplicated per walker instance at Init so a flash or
-    // darkening on one mech never leaks into the other (the FBX mesh
+    // darkening on one rider never leaks into the other (the FBX mesh
     // resources themselves are shared).
     private void CollectMaterials() => CollectMats(_inner);
 
@@ -883,7 +883,7 @@ public partial class MechWalker : Node3D
     // blinked the same orange (owner's report).
     // Round 20 (owner): the flash is LOCAL to the hit — only meshes
     // whose bind-pose AABB center sits near the impact point glow.
-    // The whole-mech white-out is gone; a leg hit lights the leg, a
+    // The whole-rider white-out is gone; a leg hit lights the leg, a
     // shoulder hit lights the arm/pod area.
     public void FlashPulse(Color col, float energy) => FlashPulse(col, energy, Vector3.Zero, false);
 

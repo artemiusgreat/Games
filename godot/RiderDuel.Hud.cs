@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: cockpit panel, radar readouts, cooldown rows, droop.
+// RiderDuel module: cockpit panel, radar readouts, cooldown rows, droop.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     private static Label MakeLabel(int fontSize, Color col)
     {
@@ -17,7 +17,7 @@ public partial class MechDuel
     private void BuildHud(CanvasLayer layer)
     {
         // ---- Cockpit control panel: one console strip along the bottom
-        // holding mech integrity, per-part status, weapon charge with the
+        // holding rider integrity, per-part status, weapon charge with the
         // selected weapon marked, and target/system readouts.
         _panel = new PanelContainer();
         _panel.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
@@ -62,7 +62,7 @@ public partial class MechDuel
             return l;
         }
 
-        // -- Left: own mech integrity + per-part status grid.
+        // -- Left: own rider integrity + per-part status grid.
         var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(372, 0) };
         leftBox.AddThemeConstantOverride("separation", 4);
         hbox.AddChild(leftBox);
@@ -250,12 +250,12 @@ public partial class MechDuel
         SetSelLabel(_lblCdAc, _wpnShort[1], _weaponSel == 1, acDead);
         SetSelLabel(_lblCdLrm, _wpnShort[2], _weaponSel == 2, lrmDead);
 
-        // Per-part status cells (player mech).
+        // Per-part status cells (player rider).
         foreach (var (id, cell) in _partCells)
         {
             var part = _partsPlayer.GetPart(id);
             var cellBox = cell.Lab.GetParent() as Control;
-            if (part == null) { if (cellBox != null) cellBox.Visible = false; continue; } // chassis lacks this part (Atlas: no pods)
+            if (part == null) { if (cellBox != null) cellBox.Visible = false; continue; } // chassis lacks this part (Enyo: no pods)
             if (cellBox != null) cellBox.Visible = true;
             float frac = part.MaxHp > 0f ? part.Hp / part.MaxHp : 0f;
             cell.Bar.Value = frac;
@@ -296,7 +296,7 @@ public partial class MechDuel
         if (lasDead && _defEnergy != null) status.Add("ENERGY WEAPONS DESTROYED — ALL MOUNTS LOST");
         if (acDead && _defBallistic != null) status.Add("BALLISTIC WEAPONS DESTROYED — ALL MOUNTS LOST");
         // Pod status: only for pods the chassis actually HAS (the
-        // Atlas carries a single rack — an absent right pod is not
+        // Enyo carries a single rack — an absent right pod is not
         // a "lost" one). Wording follows the equipped pod weapon.
         string podName = (_defPodL ?? _defPodR)?.Short ?? "LRM";
         bool hasPodL = _partsPlayer.Has("pod_L"), hasPodR = _partsPlayer.Has("pod_R");
@@ -348,6 +348,6 @@ public partial class MechDuel
         }
     }
 
-    // Atlas AC/20 gunnery: range + line-of-sight gated, leads the player's
+    // Enyo AC/20 gunnery: range + line-of-sight gated, leads the player's
     // velocity at time-of-flight, seeded ±1.2° inaccuracy cone.
 }

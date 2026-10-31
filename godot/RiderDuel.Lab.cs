@@ -1,12 +1,12 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: MechLab glue: construction from specs, selection, loadout application.
+// RiderDuel module: RiderLab glue: construction from specs, selection, loadout application.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
-    // Viewport position of a slot's part on the player's mech —
+    // Viewport position of a slot's part on the player's rider —
     // the lab's paperdoll dots are drawn there, so the mapping
     // survives any window size or aspect (owner). Null when the
     // chassis lacks the part or it is off-screen: the lab falls
@@ -25,7 +25,7 @@ public partial class MechDuel
     private void OpenLab()
     {
         if (_lab != null) { _lab.QueueFree(); _lab = null; }
-        var lab = new MechLab
+        var lab = new RiderLab
         {
             Spec = _playerSpec,
             Loadout = _loadout,
@@ -48,19 +48,19 @@ public partial class MechDuel
             Input.MouseMode = Input.MouseModeEnum.Captured;
             GD.Print("LAB deploy: duel started with the lab loadout");
         };
-        lab.OnSelectionChanged = () => SetMechSelection(lab.PlayerSpecId, lab.EnemySpecId);
+        lab.OnSelectionChanged = () => SetRiderSelection(lab.PlayerSpecId, lab.EnemySpecId);
         _cross.Visible = false; // no target cursor in the lab view (owner)
         _uiLayer.AddChild(lab);
     }
 
-    // ---- mech construction from specs (round 22) ----
-    // Everything model-bound comes from the MechSpec, so the lab
+    // ---- rider construction from specs (round 22) ----
+    // Everything model-bound comes from the RiderSpec, so the lab
     // can field either chassis on either side.
-    private MechWalker BuildMech(MechSpec spec, string nodeName, Vector3 pos, float yaw)
+    private RiderWalker BuildRider(RiderSpec spec, string nodeName, Vector3 pos, float yaw)
     {
-        var w = new MechWalker { Name = nodeName };
+        var w = new RiderWalker { Name = nodeName };
         AddChild(w);
-        w.Init(new MechWalker.Config
+        w.Init(new RiderWalker.Config
         {
             Label = nodeName.ToUpperInvariant(),
             ModelPath = spec.ModelPath,
@@ -77,24 +77,24 @@ public partial class MechDuel
 
     private void RefreshHitCaps()
     {
-        _hit.Mechs.RemoveAll(m => m.Id == "PLAYER" || m.Id == "ENEMY" || m.Id == "FOE1");
-        _hit.Mechs.Add(new HitModel.MechCap { Id = "PLAYER", Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
-        _hit.Mechs.Add(new HitModel.MechCap { Id = "ENEMY", Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
+        _hit.Riders.RemoveAll(m => m.Id == "PLAYER" || m.Id == "ENEMY" || m.Id == "FOE1");
+        _hit.Riders.Add(new HitModel.RiderCap { Id = "PLAYER", Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
+        _hit.Riders.Add(new HitModel.RiderCap { Id = "ENEMY", Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
         if (_foe1?.Walker != null)
-            _hit.Mechs.Add(new HitModel.MechCap { Id = "FOE1", Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
+            _hit.Riders.Add(new HitModel.RiderCap { Id = "FOE1", Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
     }
 
     // Foe 1 (free-for-all): always the chassis foe 0 is NOT — the
-    // match fields a Timber Wolf and an Atlas as opponents,
+    // match fields a Hector and an Enyo as opponents,
     // whichever one the legacy enemy slot holds.
     private void BuildFoe1()
     {
-        var spec = _enemySpec.Id == "atlas" ? MechSpecs.TimberWolf : MechSpecs.Atlas;
+        var spec = _enemySpec.Id == "enyo" ? RiderSpecs.Hector : RiderSpecs.Enyo;
         _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
         var pad = Main.SpawnPads[2];
-        _foe1.Walker = BuildMech(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
+        _foe1.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
         _foe1.Yaw = SpawnYaw(pad);
-        _foe1.Parts = new MechParts(_foe1.Walker, spec.PartsId);
+        _foe1.Parts = new RiderParts(_foe1.Walker, spec.PartsId);
         _foe1.Parts.OnBreak = (id, c) => OnPartBroken(_foe1.Parts, id, c);
         _foe1.Walker.RefreshMaterials();
         _foe1.Hp = spec.MaxHp;
@@ -107,16 +107,16 @@ public partial class MechDuel
 
     private void RebuildFoe1()
     {
-        var want = _enemySpec.Id == "atlas" ? MechSpecs.TimberWolf : MechSpecs.Atlas;
+        var want = _enemySpec.Id == "enyo" ? RiderSpecs.Hector : RiderSpecs.Enyo;
         if (_foe1 != null && _foe1.Spec.Id == want.Id) return;
         var pos = _foe1?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
         float yaw = _foe1?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
         _foe1?.Walker.QueueFree();
         var spec = want;
         _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
-        _foe1.Walker = BuildMech(spec, "Enemy2", pos, yaw);
+        _foe1.Walker = BuildRider(spec, "Enemy2", pos, yaw);
         _foe1.Yaw = yaw;
-        _foe1.Parts = new MechParts(_foe1.Walker, spec.PartsId);
+        _foe1.Parts = new RiderParts(_foe1.Walker, spec.PartsId);
         _foe1.Parts.OnBreak = (id, c) => OnPartBroken(_foe1.Parts, id, c);
         _foe1.Walker.RefreshMaterials();
         _foe1.Hp = spec.MaxHp;
@@ -127,14 +127,14 @@ public partial class MechDuel
         RefreshHitCaps();
     }
 
-    private void RebuildMech(bool playerSide)
+    private void RebuildRider(bool playerSide)
     {
         if (playerSide)
         {
             var pos = _player.RootPos; float yaw = _player.LegsYaw;
             _player.QueueFree();
-            _player = BuildMech(_playerSpec, "Player", pos, yaw);
-            _partsPlayer = new MechParts(_player, _playerSpec.PartsId);
+            _player = BuildRider(_playerSpec, "Player", pos, yaw);
+            _partsPlayer = new RiderParts(_player, _playerSpec.PartsId);
             _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
             _player.RefreshMaterials();
             _hpPlayer = _playerSpec.MaxHp; _playerDead = false;
@@ -144,8 +144,8 @@ public partial class MechDuel
         {
             var pos = _enemy.RootPos; float yaw = _enemy.LegsYaw;
             _enemy.QueueFree();
-            _enemy = BuildMech(_enemySpec, "Enemy", pos, yaw);
-            _partsEnemy = new MechParts(_enemy, _enemySpec.PartsId);
+            _enemy = BuildRider(_enemySpec, "Enemy", pos, yaw);
+            _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
             _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
             _enemy.RefreshMaterials();
             _hpEnemy = _enemySpec.MaxHp; _enemyDead = false;
@@ -154,32 +154,32 @@ public partial class MechDuel
         ApplyLoadout();
     }
 
-    // Lab mech selection (round 22): swap either side's chassis.
+    // Lab rider selection (round 22): swap either side's chassis.
     // The loadout resets to the new chassis's default fit; the lab
     // UI is recreated against the new spec.
-    public void SetMechSelection(string playerSpecId, string enemySpecId)
+    public void SetRiderSelection(string playerSpecId, string enemySpecId)
     {
         bool pChanged = playerSpecId != _playerSpec.Id;
         bool eChanged = enemySpecId != _enemySpec.Id;
         if (!pChanged && !eChanged) return;
         if (pChanged)
         {
-            _playerSpec = MechSpecs.ById(playerSpecId);
+            _playerSpec = RiderSpecs.ById(playerSpecId);
             _loadout = LoadoutState.DefaultFor(_playerSpec);
-            RebuildMech(true);
+            RebuildRider(true);
         }
         if (eChanged)
         {
-            _enemySpec = MechSpecs.ById(enemySpecId);
+            _enemySpec = RiderSpecs.ById(enemySpecId);
             _enemyLoadout = LoadoutState.DefaultFor(_enemySpec);
-            RebuildMech(false);
-            if (_foe1 != null) RebuildFoe1(); // the roster stays Timber Wolf + Atlas
+            RebuildRider(false);
+            if (_foe1 != null) RebuildFoe1(); // the roster stays Hector + Enyo
         }
         GD.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();
     }
 
-    private static string SlotOf(MechSpec spec, WeaponSlotType type, int n = 0)
+    private static string SlotOf(RiderSpec spec, WeaponSlotType type, int n = 0)
     {
         foreach (var s in spec.Slots) if (s.Type == type && n-- == 0) return s.Id;
         return null;

@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: particles, lights, flashes, scorch, damage numbers, death feedback.
+// RiderDuel module: particles, lights, flashes, scorch, damage numbers, death feedback.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     // ---------- GPU particles (round 9) ----------
     // The mesh-box puffs and short flashes did not read at cockpit
@@ -301,7 +301,7 @@ public partial class MechDuel
     }
 
     // Cannon scorch: a dark burn decal pasted on the struck surface. On
-    // a mech it parents to the walker so it rides the hull; on terrain
+    // a rider it parents to the walker so it rides the hull; on terrain
     // or a prop it stays in the world. Fades out over ~7 seconds.
     private void SpawnScorch(Vector3 point, Vector3 normal, Node3D parent)
     {
@@ -342,11 +342,11 @@ public partial class MechDuel
         else if (weapon == "lrm") _denyLrmT = 0.5f;
     }
 
-    // Creates (or recreates, after a mech-selection change) the
-    // MechLab against the current player spec + selections.
+    // Creates (or recreates, after a rider-selection change) the
+    // RiderLab against the current player spec + selections.
     // ---------- damage feedback / death / HUD ----------
 
-    private void OnDamaged(MechWalker target, float dmg, Vector3 point, string source, string kind = "")
+    private void OnDamaged(RiderWalker target, float dmg, Vector3 point, string source, string kind = "")
     {
         // Round 8: the reaction carries the weapon. Color + jolt per
         // kind — before this, every hit blinked the same orange and
@@ -363,7 +363,7 @@ public partial class MechDuel
         if (_simT - _lastHitSfxT > 0.06) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); }
         if (jolt > 0f)
         {
-            MechWalker shooter = source == "PLAYER" ? _player : source == "ENEMY" ? _enemy : null;
+            RiderWalker shooter = source == "PLAYER" ? _player : source == "ENEMY" ? _enemy : null;
             if (shooter != null && shooter != target)
             {
                 var push = target.RootPos - shooter.RootPos;
@@ -377,10 +377,10 @@ public partial class MechDuel
         if (!onEnemy) _shake = Mathf.Min(_shake + 0.22f, 0.5f);
     }
 
-    private void OnDeath(MechWalker w)
+    private void OnDeath(RiderWalker w)
     {
         // Death is an explosion now, not a gray-out (owner): a flash
-        // sequence at the torso, camera shake, and the whole mech comes
+        // sequence at the torso, camera shake, and the whole rider comes
         // apart — every part, torso core included, becomes debris that
         // rains down and settles on the terrain.
         var parts = PartsOf(w);
@@ -402,7 +402,7 @@ public partial class MechDuel
         w.SetDarkened(true);
         if (w == _player)
         {
-            _banner.Text = "MECH DESTROYED — press R to reset";
+            _banner.Text = "RIDER DESTROYED — press R to reset";
             _banner.Modulate = new Color(1f, 0.35f, 0.28f);
             _bannerSub.Visible = false;
         }

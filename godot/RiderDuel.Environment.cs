@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: terrain, props, destructibles, debris chunks, collisions.
+// RiderDuel module: terrain, props, destructibles, debris chunks, collisions.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     private struct Circle { public Vector2 P; public float R; }
 
@@ -252,7 +252,7 @@ public partial class MechDuel
         }
         AddChild(tree);
         float r = 0.7f * scale;
-        // Owner's rule: trees do NOT block movement — a mech that walks
+        // Owner's rule: trees do NOT block movement — a rider that walks
         // into one stomps it flat (see StompCheck). Only buildings (and
         // rocks) keep movement circles. The hit cylinder stays, so
         // trees still block shots and can be shot/burned.
@@ -705,15 +705,15 @@ public partial class MechDuel
         }
     }
 
-    // mech vs mech: split the overlap
-    private static void ResolvePair(MechWalker wa, MechWalker wb)
+    // rider vs rider: split the overlap
+    private static void ResolvePair(RiderWalker wa, RiderWalker wb)
     {
         var a = new Vector2(wa.RootPos.X, wa.RootPos.Z);
         var b = new Vector2(wb.RootPos.X, wb.RootPos.Z);
         var d = b - a;
         float dist = d.Length();
         float min = wa.CollisionRadius + wb.CollisionRadius;
-        // Flyover (owner): a jumping mech passes OVER the other —
+        // Flyover (owner): a jumping rider passes OVER the other —
         // no separation push while either is high above the ground.
         if (dist < min && wa.JumpHeight < 12f && wb.JumpHeight < 12f)
         {
@@ -727,13 +727,13 @@ public partial class MechDuel
         }
     }
 
-    // Any mech whose footprint reaches a standing tree crushes it:
+    // Any rider whose footprint reaches a standing tree crushes it:
     // the tree drops into the fast evaporation path (0.8s shrink with
     // dust), its shot-blocking cylinder is removed at once, and the
-    // mech walks on. Buildings are never stompable.
+    // rider walks on. Buildings are never stompable.
     private void StompCheck()
     {
-        var walkers = new System.Collections.Generic.List<MechWalker> { _player, _enemy };
+        var walkers = new System.Collections.Generic.List<RiderWalker> { _player, _enemy };
         if (_foe1 != null) walkers.Add(_foe1.Walker);
         foreach (var w in walkers)
         {
@@ -752,7 +752,7 @@ public partial class MechDuel
         }
     }
 
-    private void ResolveOne(MechWalker w)
+    private void ResolveOne(RiderWalker w)
     {
         var p = new Vector2(w.RootPos.X, w.RootPos.Z);
         for (int iter = 0; iter < 2; iter++)
@@ -816,7 +816,7 @@ public partial class MechDuel
         d.State = 2;
         d.Timer = 3.4f; // pieces fly, settle, then dissolve (~3s lives)
         d.PhaseLen = 3.4f;
-        RemovePropColliders(d); // falling masonry no longer blocks or stops mechs
+        RemovePropColliders(d); // falling masonry no longer blocks or stops riders
         // Round 21 (owner): the original building HIDES the moment
         // it is destroyed — no more sliding/squashing underground.
         // Only the pieces and the dust animate from here.
@@ -850,7 +850,7 @@ public partial class MechDuel
 
     // Owner's current rule: a tree is destroyed by ANY interaction —
     // a single weapon hit of any kind, or a stomp. Its colliders come
-    // off immediately (shots and mechs pass from that frame) and the
+    // off immediately (shots and riders pass from that frame) and the
     // mesh smokes out over ~1s. This supersedes the round-2 spec
     // (ignite, burn 3s, then evaporate), under which a hit tree kept
     // standing and blocking shots for up to ~6 seconds.

@@ -3,7 +3,7 @@ using System;
 
 // Weapon core: projectiles stepped with swept segment tests against the
 // shared HitModel, plus cheap one-node FX factories (beams, flashes,
-// tracers, rockets, trail puffs). MechDuel owns the instances and their
+// tracers, rockets, trail puffs). RiderDuel owns the instances and their
 // lifetimes; this file only knows how a single shot moves and looks.
 
 // A ballistic projectile (autocannon shell or rocket). The owner sets

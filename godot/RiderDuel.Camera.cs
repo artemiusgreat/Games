@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: capture pipeline and the proof/live camera modes.
+// RiderDuel module: capture pipeline and the proof/live camera modes.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
     {
@@ -29,9 +29,9 @@ public partial class MechDuel
         var after = _afterCapture;
         _afterCapture = null;
         after?.Invoke();
-        if (_phase == 7 && tag == "mech")
+        if (_phase == 7 && tag == "rider")
         {
-            GD.Print($"DUEL DONE playerSteps={_player.Steps} atlasSteps={_enemy.Steps} atlasMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
+            GD.Print($"DUEL DONE playerSteps={_player.Steps} enyoSteps={_enemy.Steps} enyoMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
             // actual view) before quitting — framing proof for cam changes.
             QueueCapture("res://proof/duel_chase.png", "chase", "chase");
@@ -98,14 +98,14 @@ public partial class MechDuel
         }
         else if (_camMode == "wpnHud")
         {
-            // Rear three-quarter: player mech in frame, Atlas visible past it.
+            // Rear three-quarter: player rider in frame, Enyo visible past it.
             var torsoYaw = _player.TorsoYawWorld;
-            var fwd = MechWalker.HeadingVec(torsoYaw);
+            var fwd = RiderWalker.HeadingVec(torsoYaw);
             var right = new Vector3(-fwd.Z, 0f, fwd.X);
             _cam.GlobalPosition = _player.RootPos - fwd * 27f + right * 8.5f + Vector3.Up * 11f;
             _cam.LookAt(_player.RootPos + Vector3.Up * 6f + fwd * 9f, Vector3.Up);
         }
-        else if (_camMode == "mechSide")
+        else if (_camMode == "riderSide")
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
             _cam.GlobalPosition = mid + new Vector3(-18f, 6.5f, 0f);
@@ -117,7 +117,7 @@ public partial class MechDuel
             _cam.GlobalPosition = p + new Vector3(-15f, 5.5f, 5f);
             _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
         }
-        else if (_camMode == "brkAtlas")
+        else if (_camMode == "brkEnyo")
         {
             var p = _enemy.RootPos;
             _cam.GlobalPosition = p + new Vector3(14.5f, 6.5f, -5f);
@@ -150,7 +150,7 @@ public partial class MechDuel
         else if (_camMode == "photoOver")
         {
             // Photoreal probe money shot: elevated over the arena,
-            // both mechs in frame, mountains behind.
+            // both riders in frame, mountains behind.
             _cam.GlobalPosition = new Vector3(58f, 34f, 64f);
             _cam.LookAt(new Vector3(-6f, 0f, -6f), Vector3.Up);
         }
@@ -163,7 +163,7 @@ public partial class MechDuel
         else if (_camMode == "photoGround")
         {
             // Ground level by the hand-placed trees, looking across
-            // the road at the Timber Wolf.
+            // the road at the Hector.
             var tp = new Vector3(-21f, Main.HeightAt(-21f, 0f) + 2.1f, -1f);
             _cam.GlobalPosition = tp;
             _cam.LookAt(_player.RootPos + Vector3.Up * 5.5f, Vector3.Up);
@@ -171,7 +171,7 @@ public partial class MechDuel
         else if (_camMode == "slopeSide")
         {
             var p = _player.RootPos;
-            var fwd = MechWalker.HeadingVec(_player.LegsYaw);
+            var fwd = RiderWalker.HeadingVec(_player.LegsYaw);
             var right = new Vector3(-fwd.Z, 0f, fwd.X);
             _cam.GlobalPosition = p - right * 15f + Vector3.Up * 4.2f;
             _cam.LookAt(p + Vector3.Up * 5.5f, Vector3.Up);
@@ -179,20 +179,20 @@ public partial class MechDuel
         else if (_camMode == "groundDuel")
         {
             var p = _player.RootPos;
-            var fwd = MechWalker.HeadingVec(_player.LegsYaw);
+            var fwd = RiderWalker.HeadingVec(_player.LegsYaw);
             _cam.GlobalPosition = p - fwd * 11f + Vector3.Up * 3.4f;
             _cam.LookAt(_enemy.RootPos + Vector3.Up * 6.5f, Vector3.Up);
         }
         else // chase (interactive)
         {
             var torsoYaw = _player.TorsoYawWorld;
-            var back = -MechWalker.HeadingVec(torsoYaw);
+            var back = -RiderWalker.HeadingVec(torsoYaw);
             // Centered and HIGH (owner, round 12): no sideways
             // offset — the camera sits on the torso axis, lifted
-            // well above the mech so the field in front of it is
+            // well above the rider so the field in front of it is
             // visible over the hull. Distances scale with the
-            // chassis height (reference: the 13u Timber Wolf this
-            // framing was tuned on), so a taller or shorter mech
+            // chassis height (reference: the 13u Hector this
+            // framing was tuned on), so a taller or shorter rider
             // is framed the same way.
             float k = _playerSpec.Height / 13f;
             var target = _player.RootPos + back * (16.0f * k) + Vector3.Up * (23.0f * k);
@@ -200,7 +200,7 @@ public partial class MechDuel
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
                 _cam.GlobalPosition = target;
-            var look = _player.RootPos + Vector3.Up * (4.5f * k) + MechWalker.HeadingVec(torsoYaw) * (14f * k);
+            var look = _player.RootPos + Vector3.Up * (4.5f * k) + RiderWalker.HeadingVec(torsoYaw) * (14f * k);
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)

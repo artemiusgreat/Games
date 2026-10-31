@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: aim, firing, projectiles, damage and part consequences.
+// RiderDuel module: aim, firing, projectiles, damage and part consequences.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     // ---------- weapons ----------
 
@@ -23,7 +23,7 @@ public partial class MechDuel
         // taken it past the torso clamp, else the torso's own pitch
         // (every harness phase drives TorsoPitch directly).
         float p = float.IsNaN(_player.AimPitchWide) ? _player.TorsoPitch : _player.AimPitchWide;
-        var h = MechWalker.HeadingVec(yaw);
+        var h = RiderWalker.HeadingVec(yaw);
         var dir = new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
         var from = _player.BoneWorldPos("torso") + dir * 3.2f;
         _aimFrom = from;
@@ -34,7 +34,7 @@ public partial class MechDuel
         // the chest-ray convergence: the view line and the torso
         // line now diverge steeply, so shots converging on the chest
         // ray's hit landed visibly BELOW the cursor (reticle on the
-        // Atlas's chest, beam in its legs — the owner's screenshot).
+        // Enyo's chest, beam in its legs — the owner's screenshot).
         // The camera ray defines what the player is pointing at, at
         // any camera height: its first hit within 60u of the player
         // is where every weapon goes. Live play always runs the
@@ -43,7 +43,7 @@ public partial class MechDuel
         {
             var camPos = _cam.GlobalPosition;
             var viewHit = _hit.Ray(camPos, (_reticlePoint - camPos).Normalized(), 220f, "PLAYER");
-            // MECH and PROP hits converge at ANY range (owner,
+            // RIDER and PROP hits converge at ANY range (owner,
             // round 13): a 60u cap from the chest-ray era silently
             // rejected the cursor's hit on far targets and the shot
             // fell back to the free point — in the sky. TERRAIN
@@ -51,10 +51,10 @@ public partial class MechDuel
             // feet, a near slope). Beyond 60u the hillside is a real
             // target too (owner: shooting at the hill shot the sky)
             // — but only when the chest's own line to that point is
-            // clear of mechs and props. If a mech stands in front of
+            // clear of riders and props. If a rider stands in front of
             // the backdrop, the hillside stays backdrop: converging
             // on it would drag the muzzle's line down through the
-            // mech (the AIM sweep's raised-cursor case), so the shot
+            // rider (the AIM sweep's raised-cursor case), so the shot
             // follows the aim line over him instead.
             if (viewHit.Hit)
             {
@@ -71,10 +71,10 @@ public partial class MechDuel
                     _aimTarget = "TERRAIN";
                     return viewHit.Point;
                 }
-                // Blocked by a mech/prop: backdrop — fall through.
+                // Blocked by a rider/prop: backdrop — fall through.
             }
         }
-        // Fallback (round 11): the chest ray's MECH/PROP hit within
+        // Fallback (round 11): the chest ray's RIDER/PROP hit within
         // weapon reach, else the free 40u point.
         var hit = _hit.Ray(from, dir, 200f, "PLAYER");
         _aimTarget = hit.Hit ? hit.Target : "";
@@ -115,10 +115,10 @@ public partial class MechDuel
     // Muzzle hardpoints: forearm weapons sit on the elbow bones
     // (the Hand_* parts are bound there), pushed forward along
     // the torso facing so the shot clears the arm.
-    private Vector3 ElbowMuzzle(MechWalker w, bool left)
+    private Vector3 ElbowMuzzle(RiderWalker w, bool left)
     {
         var bone = w.BoneWorldPos(left ? "elbow_L" : "elbow_R");
-        return bone + MechWalker.HeadingVec(w.TorsoYawWorld) * 2.8f;
+        return bone + RiderWalker.HeadingVec(w.TorsoYawWorld) * 2.8f;
     }
 
     private Vector3 PlayerMuzzle(bool left) => ElbowMuzzle(_player, left);
@@ -126,25 +126,25 @@ public partial class MechDuel
     // Where a fitted weapon fires from, by hardpoint: the waist
     // gun slot shoots from the waist gun, a chest mount from the
     // upper torso, arm slots from their elbows.
-    private Vector3 MuzzleFor(MechWalker w, string slot)
+    private Vector3 MuzzleFor(RiderWalker w, string slot)
     {
         if (slot == "gun") return TorsoGunMuzzle(w);
         if (slot == "torso")
         {
             var t = w.BoneWorldPos("torso");
-            return t + Vector3.Up * 2.0f + MechWalker.HeadingVec(w.TorsoYawWorld) * 1.6f;
+            return t + Vector3.Up * 2.0f + RiderWalker.HeadingVec(w.TorsoYawWorld) * 1.6f;
         }
         return ElbowMuzzle(w, slot != "arm_R");
     }
 
-    // Torso gun (the Atlas's waist AC/20): torso bone origin plus a
+    // Torso gun (the Enyo's waist AC/20): torso bone origin plus a
     // right/up/forward offset in the torso frame. Used by whichever
-    // seat pilots an Atlas — its shells leave from the waist gun,
+    // seat pilots an Enyo — its shells leave from the waist gun,
     // not the fist.
-    private Vector3 TorsoGunMuzzle(MechWalker w)
+    private Vector3 TorsoGunMuzzle(RiderWalker w)
     {
         var torso = w.BoneWorldPos("torso");
-        var fwd = MechWalker.HeadingVec(w.TorsoYawWorld);
+        var fwd = RiderWalker.HeadingVec(w.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
         return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
     }
@@ -190,7 +190,7 @@ public partial class MechDuel
             // aim's 40u point) — the SAME line TorsoAimPoint casts.
             // Round 20's first cut used the camera's raw forward
             // (-Basis.Z) instead: from the high chase rig that ray
-            // always lands on the ground in front of the mech, so
+            // always lands on the ground in front of the rider, so
             // every live shot hit the dirt at its feet no matter
             // where the cursor was (owner's screenshot; the suites
             // passed only because the test fallback below rescued
@@ -208,13 +208,13 @@ public partial class MechDuel
                 // the camera's verdict disagrees with the point the
                 // harness asked for, the muzzle cast is the truth
                 // there. Live play never takes this branch.
-                var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+                var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
                 hit = _hit.Ray(muzzle, fbDir, 140f, "PLAYER", 0.9f);
             }
         }
         else
         {
-            var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+            var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             hit = _hit.Ray(muzzle, dir, 140f, "PLAYER", 0.9f);
         }
         // The beams end where the shot ends (owner): on a hit,
@@ -271,7 +271,7 @@ public partial class MechDuel
         {
             var muzzle = MuzzleForSlot(slot, true);
             var toAim = aimPoint - muzzle;
-            var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+            var dir = toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             (float spd, float grav) = def.Id switch
             {
                 "machine_gun" => (85f, 3f),
@@ -326,7 +326,7 @@ public partial class MechDuel
         if (_partsPlayer != null && _partsPlayer.Has(id))
             return _partsPlayer.PartCenterWorld(id) + Vector3.Up * 0.3f;
         var torso = _player.BoneWorldPos("torso");
-        var fwd = MechWalker.HeadingVec(_player.TorsoYawWorld);
+        var fwd = RiderWalker.HeadingVec(_player.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
         return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
     }
@@ -360,16 +360,16 @@ public partial class MechDuel
 
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
-        MechWalker direct = hit.Target == "PLAYER" ? _player
+        RiderWalker direct = hit.Target == "PLAYER" ? _player
             : hit.Target == "FOE1" && _foe1 != null ? _foe1.Walker
             : hit.Target == "ENEMY" ? _enemy : null;
         if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
-        var roster = new System.Collections.Generic.List<(MechWalker, string)> { (_player, "PLAYER"), (_enemy, "ENEMY") };
+        var roster = new System.Collections.Generic.List<(RiderWalker, string)> { (_player, "PLAYER"), (_enemy, "ENEMY") };
         if (_foe1 != null) roster.Add((_foe1.Walker, "FOE1"));
         foreach (var (w, id) in roster)
         {
             if (w == direct) continue;
-            float d = _hit.DistanceToMechSurface(hit.Point, id);
+            float d = _hit.DistanceToRiderSurface(hit.Point, id);
             if (d < p.SplashRadius)
             {
                 var splashHit = hit;
@@ -437,7 +437,7 @@ public partial class MechDuel
         else if (hit.Target == "FOE1" && _foe1 != null) ApplyDamage(_foe1.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
     }
 
-    private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
+    private void ApplyDamage(RiderWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
     {
         bool isPlayer = target == _player;
         bool isFoe1 = _foe1 != null && target == _foe1.Walker;
@@ -471,14 +471,14 @@ public partial class MechDuel
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
-        // a mech, however heavy. A mech falls only when it loses a leg
+        // a rider, however heavy. A rider falls only when it loses a leg
         // (see SyncLegConsequences), and then it stays down.
     }
 
-    // A part just broke off (fired from MechParts.DamagePart): spark burst
+    // A part just broke off (fired from RiderParts.DamagePart): spark burst
     // at the separation point, HUD feed message, then the functional
     // consequences.
-    private void OnPartBroken(MechParts parts, string partId, Vector3 center)
+    private void OnPartBroken(RiderParts parts, string partId, Vector3 center)
     {
         // During a death explosion every part breaks at once: no feed
         // spam, no per-part consequences (leg loss would re-enter Die).
@@ -500,12 +500,12 @@ public partial class MechDuel
     }
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
-    // the fire/gunnery checks (arm_L -> laser, arm_R -> AC and the Atlas's
-    // AC/20, pods -> salvo size, Atlas head -> spread + tracking lag), so
+    // the fire/gunnery checks (arm_L -> laser, arm_R -> AC and the Enyo's
+    // AC/20, pods -> salvo size, Enyo head -> spread + tracking lag), so
     // the stateful consequences latched here are the legs and the player's
     // head (HUD disturbance timer; the sway itself is applied in the HUD
     // step from part state).
-    private void ApplyPartConsequences(MechParts parts, string partId)
+    private void ApplyPartConsequences(RiderParts parts, string partId)
     {
         if (partId == "leg_L" || partId == "leg_R")
             SyncLegConsequences(WalkerOf(parts), parts);
@@ -542,12 +542,12 @@ public partial class MechDuel
 
     // Recompute a walker's leg state from its parts. Owner's rule
     // (current): a destroyed leg never falls off and never fells or
-    // kills the mech — it stays attached, darkened and deformed, and
-    // the mech LIMPS: one wrecked leg = 55% speed with a lean and the
+    // kills the rider — it stays attached, darkened and deformed, and
+    // the rider LIMPS: one wrecked leg = 55% speed with a lean and the
     // wrecked leg keeps stepping at the throttled pace; both legs
     // wrecked = a 25% crawl.
     // Death comes only from the HP pool reaching zero.
-    private void SyncLegConsequences(MechWalker w, MechParts parts)
+    private void SyncLegConsequences(RiderWalker w, RiderParts parts)
     {
         bool lDead = !parts.Alive("leg_L");
         bool rDead = !parts.Alive("leg_R");
@@ -572,7 +572,7 @@ public partial class MechDuel
         }
     }
 
-    private void Die(MechWalker w)
+    private void Die(RiderWalker w)
     {
         PlaySfx(_sfxExplosion, w.RootPos + Vector3.Up * 4f, 3f, 0.8f);
         w.Halted = true;

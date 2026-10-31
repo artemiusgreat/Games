@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: procedural sound: loading, the player pool, footsteps.
+// RiderDuel module: procedural sound: loading, the player pool, footsteps.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
-public partial class MechDuel
+// stays one partial class — see RiderDuel.cs for the field block.
+public partial class RiderDuel
 {
     // ---- sound (round 21, owner): fully procedural WAVs in
     // assets/sfx (make_sfx.py — no external samples), played
