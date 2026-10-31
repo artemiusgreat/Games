@@ -522,6 +522,87 @@ public partial class RiderDuel
 
     private Vector3 EnemyAim() => _enemy.RootPos + Vector3.Up * 8.2f;
 
+    // ---------- LRM impact probe ----------
+    // Owner report (2026-10-31): LRM rockets land LOWER than the
+    // cursor when shooting from the hill. The salvo solve is
+    // exact on paper, so measure the real impacts: four staged
+    // geometries, full salvos at a stationary target's chest,
+    // every impact logged against the aim point. Cases: flat
+    // control, mesa edge, mesa setback, and a >75u long shot
+    // (past the ConvergeMax solve cap).
+    private int _lrmCase = -1;
+    private bool _lrmFired;
+    private int _lrmImpactBase;
+    private double _lrmT;
+    private int _lrmLaunched0;
+    private Vector3 _lrmAim;
+
+    private void UpdateLrmProbe(float dt)
+    {
+        _lrmT += dt;
+        if (_lrmCase < 0)
+        {
+            _lrmCase = 0;
+            LrmStage(0);
+            return;
+        }
+        if (_lrmT < 0.6) return; // settle after teleport
+        if (!_lrmFired)
+        {
+            _lrmFired = true;
+            _lrmImpactBase = _lrmImpacts.Count; // return-fire impacts don't count
+            _lrmAim = EnemyAim();
+            _cdLrm = 0f;
+            FireLrmSalvo(_lrmAim);
+            return;
+        }
+        int launched = _rocketsLaunched - _lrmLaunched0;
+        int mine = _lrmImpacts.Count - _lrmImpactBase;
+        if ((mine >= launched && launched > 0) || _lrmT > 14f)
+        {
+            int onTarget = 0, onTerrain = 0, other = 0;
+            float horiz = 0f, vert = 0f;
+            for (int ix = _lrmImpactBase; ix < _lrmImpacts.Count; ix++)
+            {
+                var (target, point) = _lrmImpacts[ix];
+                if (target == "ENEMY") onTarget++;
+                else if (target == "TERRAIN")
+                {
+                    onTerrain++;
+                    horiz += new Vector2(point.X - _lrmAim.X, point.Z - _lrmAim.Z).Length();
+                    vert += _lrmAim.Y - point.Y;
+                }
+                else other++;
+            }
+            GD.Print($"LRMPROBE case={_lrmCase} launched={launched} impacts={mine} enemy={onTarget} terrain={onTerrain} other={other}" +
+                (onTerrain > 0 ? $" terrainHitsMeanShort={horiz / onTerrain:F1}u meanBelowAim={vert / onTerrain:F1}u" : "") +
+                $" aim={_lrmAim} playerPos={_player.RootPos} enemyPos={_enemy.RootPos}");
+            _lrmCase++;
+            if (_lrmCase > 3) { GD.Print("LRMPROBE DONE"); GetTree().Quit(0); return; }
+            LrmStage(_lrmCase);
+        }
+    }
+
+    private void LrmStage(int c)
+    {
+        _lrmT = 0f;
+        _lrmFired = false;
+        _lrmImpacts.Clear();
+        _lrmLaunched0 = _rocketsLaunched;
+        (Vector3 pp, Vector3 ep) = c switch
+        {
+            0 => (new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f)),   // flat control, 40u
+            1 => (new Vector3(0f, Main.HeightAt(0f, 10f), 10f), new Vector3(0f, Main.HeightAt(0f, -58f), -58f)),      // mesa edge -> foot, 68u
+            2 => (new Vector3(0f, Main.HeightAt(0f, 2f), 2f), new Vector3(0f, Main.HeightAt(0f, -46f), -46f)),        // mesa setback -> slope foot, 48u
+            _ => (new Vector3(0f, Main.HeightAt(0f, 10f), 10f), new Vector3(0f, Main.HeightAt(0f, -100f), -100f)),    // long, 110u (past the 75u solve cap)
+        };
+        _player.Teleport(pp, Mathf.Pi);
+        _enemy.Teleport(ep, 0f);
+        _hpPlayer = 100000f; // the target shoots back (shared combat step) — keep the shooter whole
+        _partsPlayer.RestoreAll(); // and the pods intact, so every case fires a full salvo
+        GD.Print($"LRMPROBE stage case={c} player={pp} enemy={ep}");
+    }
+
     // ---------- free-for-all probe ----------
     // Stages all three riders 45u apart on the mesa and lets the
     // two AIs play: PASS requires both foes to have closed with

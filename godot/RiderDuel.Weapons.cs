@@ -407,6 +407,7 @@ public partial class RiderDuel
     private void OnProjectileHit(HitModel.Result hit, Projectile p)
     {
         GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} part={hit.Part} t={hit.T:F1} point={hit.Point}");
+        if (_lrmProbe) _lrmImpacts.Add((hit.Target, hit.Point));
         if (p.SplashRadius > 0f)
         {
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion

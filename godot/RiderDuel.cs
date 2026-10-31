@@ -134,6 +134,8 @@ public partial class RiderDuel : Node3D
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private bool _ffaTest; // --ffa-test: staged three-way AI probe
     private int _foe1Shots;
+    private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
+    private readonly System.Collections.Generic.List<(string Target, Vector3 Point)> _lrmImpacts = new();
     private Vector3 _enemyVel;
     private Vector3 _prevEnemyRoot;
     private RiderWalker _foe0TargetW; // foe 0's current AI target (re-picked on a think timer)
@@ -254,6 +256,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--multifit-shot") _multiShot = true;
             if (arg == "--hector-lab") _hectorLab = true;
             if (arg == "--ffa-test") _ffaTest = true;
+            if (arg == "--lrm-probe") _lrmProbe = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -345,7 +348,7 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
-        if (!PrecisionTest || _ffaTest) BuildFoe1();
+        if ((!PrecisionTest && !_lrmProbe) || _ffaTest) BuildFoe1();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
@@ -373,7 +376,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -757,7 +760,8 @@ public partial class RiderDuel : Node3D
         if (!_frozen)
         {
             _simT += delta;
-            if (_ffaTest) UpdateFfaTest(dt);
+            if (_lrmProbe) UpdateLrmProbe(dt);
+            else if (_ffaTest) UpdateFfaTest(dt);
             else if (_breakTest) UpdateBreakTest(dt);
             else if (_weaponsTest) UpdateWeaponsTest(dt);
             else if (_terrainTest) UpdateTerrainTest(dt);
