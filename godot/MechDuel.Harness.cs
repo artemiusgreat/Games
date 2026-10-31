@@ -51,13 +51,31 @@ public partial class MechDuel
                         || _defBallistic?.Id != "ac20"
                         || !_partsEnemy.Alive("pod_L"))
                     { GD.PrintErr($"DUEL FAIL: mech selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
-                    SetMechSelection("timberwolf", "atlas");
-                    if (_playerSpec.Id != "timberwolf" || _enemySpec.Id != "atlas"
-                        || _hpPlayer != 260f || _hpEnemy != 340f || _defEnergy?.Id != "large_laser")
-                    { GD.PrintErr("DUEL FAIL: mech selection restore wrong"); GetTree().Quit(1); return; }
-                    GD.Print("LABTEST SELECTION PASS chassis swap rebuilds walkers, parts, pools and defs; defaults restored");
+                    _selStage = 1; _selHoldT = 0f;
+                    GD.Print("LABTEST SELECTION swapped to Atlas player; holding across live frames (HUD must survive a pod-less chassis)");
                 }
-                if (_phaseT > 1.6) SetPhase(1);
+                // Keep the swapped chassis deployed across many real
+                // frames before restoring: swapping forth and back
+                // inside one call never lets UpdateHud run against
+                // the Atlas parts — which is exactly how the pod_L
+                // KeyNotFound crash shipped (it froze the player's
+                // camera in the live game while this test stayed
+                // green). If UpdateHud throws now, the frame aborts
+                // before UpdateTest and this hold never completes.
+                if (_selStage == 1)
+                {
+                    _selHoldT += delta;
+                    if (_selHoldT > 1.2f)
+                    {
+                        SetMechSelection("timberwolf", "atlas");
+                        if (_playerSpec.Id != "timberwolf" || _enemySpec.Id != "atlas"
+                            || _hpPlayer != 260f || _hpEnemy != 340f || _defEnergy?.Id != "large_laser")
+                        { GD.PrintErr("DUEL FAIL: mech selection restore wrong"); GetTree().Quit(1); return; }
+                        _selStage = 2;
+                        GD.Print("LABTEST SELECTION PASS chassis swap rebuilds walkers, parts, pools and defs; Atlas player survived 1.2s of live HUD frames; defaults restored");
+                    }
+                }
+                if (_phaseT > 1.6 && _selStage != 1) SetPhase(1);
                 break;
             case 1: // Atlas walks at the player; grab stride + wide frames
                 _player.SetDrive(0f, 0f);

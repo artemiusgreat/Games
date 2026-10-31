@@ -39,6 +39,8 @@ public partial class MechDuel : Node3D
     private DirectionalLight3D _labLight; // lab-only fill: the mech must read as the centerpiece, not a silhouette
     private bool _test;
     private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
+    private bool _atlasCam; // dev flag: swap player to Atlas, force-deploy, capture the chase view
+    private bool _atlasCamDone; private float _atlasCamT;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
@@ -106,6 +108,7 @@ public partial class MechDuel : Node3D
     private MechLab _lab;
     private CanvasLayer _uiLayer;
     private bool _labChecked;
+    private int _selStage; private float _selHoldT;
     private bool _running; // SHIFT held with W this frame (panel readout)
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
@@ -205,6 +208,7 @@ public partial class MechDuel : Node3D
             if (arg == "--photo") _photo = true;
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--gait-shot") _gaitShot = true;
+            if (arg == "--atlas-cam") _atlasCam = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -509,6 +513,30 @@ public partial class MechDuel : Node3D
 
     public override void _Process(double delta)
     {
+        if (_atlasCam && !_atlasCamDone && _player != null && _player.IsReady)
+        {
+            _atlasCamDone = true;
+            SetMechSelection("atlas", "timberwolf");
+            ApplyLoadout();
+            if (_lab != null) { _lab.QueueFree(); _lab = null; }
+            _labOpen = false;
+            if (_labLight != null) _labLight.Visible = false;
+            _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
+            GD.Print("ATLASCAM swapped player to Atlas and deployed");
+        }
+        if (_atlasCam && _atlasCamDone && !_labOpen)
+        {
+            _atlasCamT += (float)delta;
+            if (_atlasCamT > 2.5f && _camMode == "chase")
+            {
+                var back = -MechWalker.HeadingVec(_player.TorsoYawWorld);
+                var camRel = _cam.GlobalPosition - _player.RootPos;
+                GD.Print($"ATLASCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
+                QueueCapture("res://proof/atlas_player_chase.png", "atlasP", "chase", () => GetTree().Quit());
+                _atlasCamT = -999f;
+            }
+        }
+
         if (_labShot && Time.GetTicksMsec() > 20000)
         {
             _labShot = false;
