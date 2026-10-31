@@ -190,13 +190,17 @@ public partial class MechDuel
             // Centered and HIGH (owner, round 12): no sideways
             // offset — the camera sits on the torso axis, lifted
             // well above the mech so the field in front of it is
-            // visible over the hull.
-            var target = _player.RootPos + back * 16.0f + Vector3.Up * 23.0f;
+            // visible over the hull. Distances scale with the
+            // chassis height (reference: the 13u Timber Wolf this
+            // framing was tuned on), so a taller or shorter mech
+            // is framed the same way.
+            float k = _playerSpec.Height / 13f;
+            var target = _player.RootPos + back * (16.0f * k) + Vector3.Up * (23.0f * k);
             if (delta > 0f)
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
                 _cam.GlobalPosition = target;
-            var look = _player.RootPos + Vector3.Up * 4.5f + MechWalker.HeadingVec(torsoYaw) * 14f;
+            var look = _player.RootPos + Vector3.Up * (4.5f * k) + MechWalker.HeadingVec(torsoYaw) * (14f * k);
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)
