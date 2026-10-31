@@ -167,6 +167,7 @@ public partial class MechDuel : Node3D
     private bool _tStrideLogged;
     private Vector3 _tRunFrom;
     private float _tRunMark = -1f;
+    private float _tRunMaxSplit, _tRunMaxLat;
     private float _tJumpApex, _tJumpGround;
     private bool _tJumpTried;
     private int _tJumpStage;

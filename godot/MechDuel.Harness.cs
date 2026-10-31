@@ -1579,11 +1579,21 @@ public partial class MechDuel
                 _player.SetDrive(0f, PlayerMaxSpeed * RunFactor);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
                 if (_tRunMark < 0f && _tPhaseT > 2.0) { _tRunFrom = _player.RootPos; _tRunMark = (float)_tPhaseT; }
+                if (_tRunMark >= 0f) // stance audit: how far apart do the feet get at run speed?
+                {
+                    var j = _player.DebugLegJoints();
+                    var fwdR = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
+                    var rgtR = new Vector3(fwdR.Z, 0f, -fwdR.X);
+                    var rel = j[1].Item4 - j[0].Item4;
+                    _tRunMaxSplit = Mathf.Max(_tRunMaxSplit, Mathf.Abs(rel.Dot(fwdR)));
+                    _tRunMaxLat = Mathf.Max(_tRunMaxLat, Mathf.Abs(rel.Dot(rgtR)));
+                }
                 if (_tPhaseT > 4.2)
                 {
                     var d = new Vector2(_player.RootPos.X - _tRunFrom.X, _player.RootPos.Z - _tRunFrom.Z).Length();
                     float avg = d / ((float)_tPhaseT - _tRunMark);
-                    GD.Print($"RUNTEST steadySpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) segDist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3}");
+                    GD.Print($"RUNTEST steadySpeed={avg:F2} (cmd {PlayerMaxSpeed * RunFactor:F1}) segDist={d:F1} maxSlide={_player.MaxSlide:F4} maxPlantedDiff={_player.MaxPlantedDiff():F3} maxAnkleSplit={_tRunMaxSplit:F2} maxAnkleLat={_tRunMaxLat:F2}");
+                    if (_tRunMaxSplit > 10f) { TFail($"run ankle split {_tRunMaxSplit:F2} > 10 (legs spread)"); return; }
                     if (avg < 11.4f) { TFail($"run steady speed {avg:F2} < 11.4"); return; }
                     if (_player.MaxPlantedDiff() > 0.08f) { TFail($"run planted diff {_player.MaxPlantedDiff():F3} > 0.08"); return; }
                     GD.Print("RUNTEST PASS run-mode speed reached, gait contact holds");

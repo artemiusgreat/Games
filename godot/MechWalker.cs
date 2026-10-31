@@ -529,18 +529,26 @@ public partial class MechWalker : Node3D
         leg.StepT += h / _cfg.StepTime;
         float t = Mathf.Clamp(leg.StepT, 0f, 1f);
         float e = t * t * (3f - 2f * t);
-        // Re-project the swing through the CURRENT facing frame:
-        // the in-frame path is a straight sagittal line (lateral
-        // component constant by construction), however much the
-        // mech turned during the step. The target's local height
-        // tracks the real ground under its moving world position.
-        var yawB = YawBasis();
-        var toW = _rootPos + yawB * leg.StepToLocal;
-        leg.StepToLocal.Y = Main.HeightAt(toW.X, toW.Z) - _rootPos.Y;
-        var pos = _rootPos + yawB * leg.StepFromLocal.Lerp(leg.StepToLocal, e);
+        // Swing path: forward and vertical ride the original
+        // WORLD-space lerp (stride length exactly as tuned), but
+        // the LATERAL coordinate is re-anchored to the CURRENT
+        // facing frame \u2014 in-frame it lerps straight from the old
+        // plant's lateral to the target's, so a mid-step turn
+        // can't drag the foot across the body (the scissor), and
+        // the target can't run away from the body either.
+        // (The first cut re-projected ALL axes through the frame:
+        // the forward prediction offset baked into the local
+        // target kept advancing with the root, doubling the
+        // stride at run speed \u2014 the Timber Wolf's legs spread
+        // enormously in run mode. Forward must stay world-anchored.)
+        var pos = leg.StepFrom.Lerp(leg.StepTo, e);
         pos.Y += Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;
-        leg.StepTo = new Vector3(toW.X, _rootPos.Y + leg.StepToLocal.Y, toW.Z);
+        var yawB = YawBasis();
+        var rel = yawB.Inverse() * (pos - _rootPos);
+        rel.X = leg.StepFromLocal.X + (leg.StepToLocal.X - leg.StepFromLocal.X) * e;
+        pos = _rootPos + yawB * rel;
         leg.SoleTarget = pos;
+        if (t >= 1f) leg.StepTo = pos; // plant at the corrected spot
         var qa = leg.StepBasisFrom.GetRotationQuaternion();
         var qb = leg.StepBasisTo.GetRotationQuaternion();
         leg.CurBasisW = new Basis(qa.Slerp(qb, e));
