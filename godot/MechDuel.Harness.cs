@@ -39,9 +39,9 @@ public partial class MechDuel
                     if (lab.TryAssign(spec, "arm_R", WeaponCatalog.Autocannon) != null
                         || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
                     { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
-                    if (Mathf.Abs(LoadoutState.DefaultTimberWolf().TotalWeaponWeight - 37f) > 0.01f)
-                    { GD.PrintErr("DUEL FAIL: default fit tonnage != 37t"); GetTree().Quit(1); return; }
-                    GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 37t");
+                    if (Mathf.Abs(LoadoutState.DefaultTimberWolf().TotalWeaponWeight - 64f) > 0.01f)
+                    { GD.PrintErr("DUEL FAIL: default fit tonnage != 64t"); GetTree().Quit(1); return; }
+                    GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 64t (every slot filled)");
                     // Capacity rule (owner, MW4 model): every chassis'
                     // slot caps sum to exactly its tonnage.
                     foreach (var sp in MechSpecs.All)
@@ -366,11 +366,20 @@ public partial class MechDuel
                     // endpoint while agreeing on the miss.)
                     if (_laserRescues != rescues0)
                     { GD.PrintErr("DUEL FAIL: the laser needed the harness fallback for a stable hitting shot — the live camera path is broken (round 20 regression guard)"); GetTree().Quit(1); break; }
+                    int evAfterHit = _enemyDmgEvents;
                     _cdLaser = 0f;
-                    _player.TorsoPitch = 0.30f;
+                    // 1.0 rad, not the old 0.30: on the domed map
+                    // (round 25) the test pair stands on the center
+                    // hill, and the crest behind the Atlas is higher
+                    // than his head — a 0.30 line to the crest point
+                    // legitimately clips his torso box on the way.
+                    // The phase's contract is "cursor clearly above
+                    // him => a miss", so the fixture aims clearly
+                    // above: sky, not crest.
+                    _player.TorsoPitch = 1.0f;
                     _aimPoint = TorsoAimPoint();
                     FireLaser(_aimPoint);
-                    if (_enemyDmgEvents > 1)
+                    if (_enemyDmgEvents > evAfterHit)
                     { GD.PrintErr("DUEL FAIL: cursor above the Atlas but a shot still hit him"); GetTree().Quit(1); break; }
                     // Beam length on a miss (owner): the ray stops
                     // at the cursor's point — it must NOT run to
@@ -512,6 +521,23 @@ public partial class MechDuel
     }
 
     private Vector3 EnemyAim() => _enemy.RootPos + Vector3.Up * 8.2f;
+
+    // The mechanics suites fire ONE weapon per group: their exact
+    // expectations (3x12 laser, 2x26 cannon, 8-rocket salvo, 4
+    // rockets from one pod) were calibrated on single fits, and
+    // the filled default loadouts (owner, 2026-10-31) would move
+    // every number without testing anything more. The weapons and
+    // break suites therefore start from this range fit; the duel
+    // suite and the live game use the real defaults.
+    private void ApplyRangeFit()
+    {
+        _loadout = new LoadoutState { JumpJets = true };
+        _loadout.TryAssign(_playerSpec, "arm_L", WeaponCatalog.LargeLaser);
+        _loadout.TryAssign(_playerSpec, "arm_R", WeaponCatalog.Autocannon);
+        _loadout.TryAssign(_playerSpec, "pod_L", WeaponCatalog.Lrm);
+        _loadout.TryAssign(_playerSpec, "pod_R", WeaponCatalog.Lrm);
+        ApplyLoadout();
+    }
 
     private void WSetup(Vector3 pPos, Vector3 ePos)
     {

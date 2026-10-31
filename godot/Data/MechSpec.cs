@@ -202,9 +202,21 @@ public sealed class LoadoutState
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
-        l.TryAssign(MechSpecs.Atlas, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(MechSpecs.Atlas, "gun", WeaponCatalog.ById("ac20"));
-        l.TryAssign(MechSpecs.Atlas, "pod_L", WeaponCatalog.Srm);
+        // Every slot filled (owner, 2026-10-31): 95t of 100t.
+        var at = MechSpecs.Atlas;
+        l.TryAssign(at, "arm_L", WeaponCatalog.Ppc);
+        l.TryAssign(at, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(at, "arm_L", WeaponCatalog.MediumLaser);       // 17/18t
+        l.TryAssign(at, "gun", WeaponCatalog.ById("ac20"));
+        l.TryAssign(at, "gun", WeaponCatalog.Autocannon);          // 28/30t
+        l.TryAssign(at, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(at, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(at, "arm_R", WeaponCatalog.MediumLaser);       // 13/14t
+        l.TryAssign(at, "torso", WeaponCatalog.Ppc);               // 9/10t
+        l.TryAssign(at, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(at, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(at, "pod_L", WeaponCatalog.Srm);
+        l.TryAssign(at, "pod_L", WeaponCatalog.Srm);               // 28/28t
         return l;
     }
 
@@ -212,10 +224,17 @@ public sealed class LoadoutState
     {
         var l = new LoadoutState();
         l.JumpJets = true; // default fit: thrusters loaded
-        l.TryAssign(MechSpecs.TimberWolf, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(MechSpecs.TimberWolf, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(MechSpecs.TimberWolf, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(MechSpecs.TimberWolf, "pod_R", WeaponCatalog.Lrm);
+        // Every slot filled (owner, 2026-10-31): 64t of 75t.
+        var tw = MechSpecs.TimberWolf;
+        l.TryAssign(tw, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(tw, "arm_L", WeaponCatalog.MediumLaser);       // 8/8t
+        l.TryAssign(tw, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(tw, "arm_R", WeaponCatalog.MachineGun);
+        l.TryAssign(tw, "arm_R", WeaponCatalog.MachineGun);        // 16/25t
+        l.TryAssign(tw, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(tw, "pod_L", WeaponCatalog.Lrm);               // 20/21t
+        l.TryAssign(tw, "pod_R", WeaponCatalog.Lrm);
+        l.TryAssign(tw, "pod_R", WeaponCatalog.Lrm);               // 20/21t
         return l;
     }
 }
