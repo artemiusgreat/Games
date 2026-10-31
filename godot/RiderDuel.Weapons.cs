@@ -336,14 +336,24 @@ public partial class RiderDuel
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
         var toAim = aimPoint - muzzle;
-        // The lob is solved for the CAPPED range (see ConvergeMax):
-        // direction AND time-of-flight use the same clamped point,
-        // so the launch elevation tracks the pointer instead of the
-        // hillside behind the target.
-        float dist = Mathf.Min(Mathf.Max(toAim.Length(), 1f), ConvergeMax);
+        // The lob is solved for the TRUE aim point at any range —
+        // what is capped now is the TIME OF FLIGHT, not the range.
+        // History: round 7 capped the solved range at 75u because
+        // solving for a 200u hillside point mortared the rockets
+        // vertically (the up-compensation grows with the solved
+        // tof). But the range cap silently broke every longer
+        // shot: measured by --lrm-probe (2026-10-31), a 110u shot
+        // from the mesa landed 16/16 rockets on terrain, on
+        // average 12u short and 9u BELOW the aim point — the
+        // owner's "rockets land lower than the cursor from the
+        // hill". Capping tof bounds the lob AND the flight time
+        // (long shots simply fly faster past ~79u), and the solve
+        // stays exact: the rocket passes through the aim point.
+        float dist = Mathf.Max(toAim.Length(), 1f);
         var dir = ApplyInaccuracy(toAim.Normalized(), 1.1f);
-        (float speed, float grav) = def.Id == "srm" ? (46f, 9f) : (36f, 11f);
-        float tof = dist / speed;
+        (float baseSpeed, float grav, float tofMax) = def.Id == "srm" ? (46f, 9f, 1.6f) : (36f, 11f, 2.2f);
+        float tof = Mathf.Min(dist / baseSpeed, tofMax);
+        float speed = dist / tof;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
         SpawnProjectile(muzzle, vel, grav, def.Damage, def.Splash, "PLAYER", rocket: true, weaponWeight: def.PerRocketWeight);
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
