@@ -40,6 +40,7 @@ public partial class MechDuel
             lab.QueueFree();
             if (_lab == lab) _lab = null;
             _labOpen = false;
+            _cross.Visible = true; // the target cursor returns on deploy (owner: it must not show in the lab)
             if (_labLight != null) _labLight.Visible = false;
             _panel.Visible = true;
             _radar.Visible = true;
@@ -48,6 +49,7 @@ public partial class MechDuel
             GD.Print("LAB deploy: duel started with the lab loadout");
         };
         lab.OnSelectionChanged = () => SetMechSelection(lab.PlayerSpecId, lab.EnemySpecId);
+        _cross.Visible = false; // no target cursor in the lab view (owner)
         _uiLayer.AddChild(lab);
     }
 

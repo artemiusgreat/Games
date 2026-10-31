@@ -210,11 +210,38 @@ public partial class MechLab : Control
         // Viewport position of a slot's part on the mech (owner):
         // set by the duel; null entries fall back to the fractions.
         public System.Func<string, Vector2?> Projector;
+
+        public Vector2? LiveAnchor(string id) =>
+            _live.TryGetValue(id, out var v) ? v + GetGlobalPosition() : null;
+
+        public int LiveCount => _live.Count;
         public void AddPanel(string slotId, Control panel) { _panels[slotId] = panel; AddChild(panel); }
         public override void _Ready() { Resized += Layout; }
+        // Fractional dot positions, used only when a slot has
+        // no live projected anchor (off-screen / missing part).
+        private static readonly System.Collections.Generic.Dictionary<string, Vector2> Anchors = new()
+        {
+            ["pod_L"] = new Vector2(0.30f, 0.27f),
+            ["pod_R"] = new Vector2(0.64f, 0.27f),
+            ["arm_L"] = new Vector2(0.16f, 0.47f),
+            ["arm_R"] = new Vector2(0.76f, 0.45f),
+            ["torso"] = new Vector2(0.47f, 0.38f),
+            ["gun"] = new Vector2(0.44f, 0.55f),
+        };
+
         public void Layout()
         {
-            // Panel centers as fractions of the area, by slot id.
+            // Live anchors first: panel placement follows them.
+            _live.Clear();
+            if (Projector != null)
+                foreach (var id in _panels.Keys)
+                {
+                    var vp = Projector(id);
+                    if (vp.HasValue) _live[id] = vp.Value - GetGlobalPosition();
+                }
+
+            // Panels WITHOUT a live anchor keep the fractional
+            // layout (fallback for off-screen or missing parts).
             var centers = new System.Collections.Generic.Dictionary<string, Vector2>
             {
                 ["pod_L"] = new Vector2(0.24f, 0.11f),
@@ -226,32 +253,63 @@ public partial class MechLab : Control
             };
             foreach (var (id, panel) in _panels)
             {
+                if (_live.ContainsKey(id)) continue;
                 if (!centers.TryGetValue(id, out var c)) c = new Vector2(0.5f, 0.5f);
                 var want = c * Size - panel.Size * 0.5f;
                 panel.Position = new Vector2(
                     Mathf.Clamp(want.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
                     Mathf.Clamp(want.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
             }
-            _live.Clear();
-            if (Projector != null)
-                foreach (var id in _panels.Keys)
+
+            // Panels WITH a live anchor (owner, the flip fix):
+            // the panel sits in a column on the SAME side of the
+            // area as its dot — the showroom camera faces the
+            // mech, so its left side appears on the viewer's
+            // right, and the old fixed anatomical layout put
+            // every panel opposite its dot, crossing all the
+            // lines. Within a column, panels stack in dot-Y
+            // order, so lines from one column cannot cross.
+            if (_live.Count > 0)
+            {
+                float mechCx = 0f;
+                foreach (var v in _live.Values) mechCx += v.X;
+                mechCx /= _live.Count;
+                var cols = new System.Collections.Generic.List<(string Id, Control Panel, Vector2 Anchor)>[2]
                 {
-                    var vp = Projector(id);
-                    if (vp.HasValue) _live[id] = vp.Value - GetGlobalPosition();
+                    new(), new()
+                };
+                foreach (var (id, panel) in _panels)
+                    if (_live.TryGetValue(id, out var an))
+                        cols[an.X < mechCx ? 0 : 1].Add((id, panel, an));
+                for (int side = 0; side < 2; side++)
+                {
+                    var col = cols[side];
+                    col.Sort((x, y) => x.Anchor.Y.CompareTo(y.Anchor.Y));
+                    float total = 0f;
+                    foreach (var e in col) total += e.Panel.Size.Y + 8f;
+                    total -= 8f;
+                    float cy = 0f;
+                    foreach (var e in col) cy += e.Anchor.Y;
+                    float y = col.Count > 0 ? Mathf.Clamp(cy / col.Count - total * 0.5f, 0f, Mathf.Max(0f, Size.Y - total)) : 0f;
+                    foreach (var e in col)
+                    {
+                        // Columns hug the mech: just outside its
+                        // anchor centroid on the dot's own side,
+                        // clamped into the area. (At the area's
+                        // edges the panels sat far from a mech
+                        // framed off-center, and the lines still
+                        // fanned across it — measured in the frame.)
+                        float x = side == 0
+                            ? mechCx - e.Panel.Size.X - 46f
+                            : mechCx + 46f;
+                        x = Mathf.Clamp(x, 0f, Mathf.Max(0f, Size.X - e.Panel.Size.X));
+                        e.Panel.Position = new Vector2(x, y);
+                        y += e.Panel.Size.Y + 8f;
+                    }
                 }
+            }
             QueueRedraw();
         }
-        // Where each hardpoint lives on the machine, as fractions
-        // of the paperdoll area (tuned to the showroom framing).
-        private static readonly System.Collections.Generic.Dictionary<string, Vector2> Anchors = new()
-        {
-            ["pod_L"] = new Vector2(0.30f, 0.27f),
-            ["pod_R"] = new Vector2(0.64f, 0.27f),
-            ["arm_L"] = new Vector2(0.16f, 0.47f),
-            ["arm_R"] = new Vector2(0.76f, 0.45f),
-            ["torso"] = new Vector2(0.47f, 0.38f),
-            ["gun"] = new Vector2(0.44f, 0.55f),
-        };
 
         public override void _Draw()
         {
@@ -283,12 +341,9 @@ public partial class MechLab : Control
     {
         public string SlotId;
         public MechLab Lab;
-        public Label WeaponLabel;
+        public Label HeadLabel;
         public VBoxContainer ListBox;
         public Control Tile;
-        public TextureRect TileTex;
-        public Label TileAbbrev;
-        public Label WeightLabel;
         public override bool _CanDropData(Vector2 atPosition, Variant data)
         {
             var wid = data.AsString();
@@ -334,8 +389,8 @@ public partial class MechLab : Control
         root.AddChild(sub);
 
         // -- Mech selection row --
-        var selBox = new HBoxContainer();
-        selBox.AddThemeConstantOverride("separation", 30);
+        var selBox = new VBoxContainer();
+        selBox.AddThemeConstantOverride("separation", 6);
         root.AddChild(selBox);
         selBox.AddChild(MechSelector("PLAYER", true));
         selBox.AddChild(MechSelector("ENEMY", false));
@@ -403,7 +458,7 @@ public partial class MechLab : Control
         mid.AddChild(paperdoll);
         foreach (var slot in Spec.Slots)
         {
-            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(190, 92) };
+            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(215, 64) };
             var sb = new StyleBoxFlat
             {
                 BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), // translucent (owner): the mech shows through the slot backdrops
@@ -417,41 +472,13 @@ public partial class MechLab : Control
             var vb = new VBoxContainer();
             panel.AddChild(vb);
             var head = new Label { Text = $"{slot.Type} · max {slot.MaxWeight:F0}t" }; // slot names removed (owner): type + capacity only
+            panel.HeadLabel = head;
             head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
-            var tileRow = new HBoxContainer();
-            tileRow.AddThemeConstantOverride("separation", 10);
-            vb.AddChild(tileRow);
-            panel.Tile = new Control { CustomMinimumSize = new Vector2(40, 40), MouseFilter = MouseFilterEnum.Ignore }; // input falls through to the panel: right-click on the tile still strips the slot
-            panel.TileTex = new TextureRect { StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = MouseFilterEnum.Ignore };
-            panel.TileTex.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-            panel.Tile.AddChild(panel.TileTex);
-            var slotStrip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
-            slotStrip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-            slotStrip.OffsetLeft = 2; slotStrip.OffsetRight = -2;
-            slotStrip.OffsetTop = -18;
-            slotStrip.OffsetBottom = -2;
-            panel.Tile.AddChild(slotStrip);
-            panel.TileAbbrev = new Label { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
-            panel.TileAbbrev.AddThemeFontSizeOverride("font_size", 12);
-            panel.TileAbbrev.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
-            panel.TileAbbrev.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
-            panel.TileAbbrev.AddThemeConstantOverride("shadow_offset_x", 1);
-            panel.TileAbbrev.AddThemeConstantOverride("shadow_offset_y", 1);
-            panel.TileAbbrev.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-            panel.Tile.AddChild(panel.TileAbbrev);
-            tileRow.AddChild(panel.Tile);
-            panel.WeightLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
-            panel.WeightLabel.AddThemeFontSizeOverride("font_size", 15);
-            panel.WeightLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.8f, 0.86f));
-            tileRow.AddChild(panel.WeightLabel);
             panel.ListBox = new VBoxContainer();
-            panel.ListBox.AddThemeConstantOverride("separation", 2);
+            panel.ListBox.AddThemeConstantOverride("separation", 3);
             vb.AddChild(panel.ListBox);
-            panel.WeaponLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
-            panel.WeaponLabel.AddThemeFontSizeOverride("font_size", 15);
-            tileRow.AddChild(panel.WeaponLabel);
             var capturedSlot = slot;
             panel.GuiInput += (InputEvent e) =>
             {
@@ -556,6 +583,25 @@ public partial class MechLab : Control
         return box;
     }
 
+    private static string Metrics(WeaponDef d) => d.Type == WeaponSlotType.Missile
+        ? $"{d.Weight:F0}t / {d.Damage} dmg ×{d.Rockets} / {d.Cooldown:0.00}s cd"
+        : $"{d.Weight:F0}t / {d.Damage} dmg / {d.Cooldown:0.00}s cd";
+
+    // Dev measurement: panel centers vs live projected anchors,
+    // in viewport pixels — the slot-flip investigation record.
+    public string DumpLayout()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"LABLAYOUT live={_paperdoll?.LiveCount} areaPos={_paperdoll?.GetGlobalPosition()} areaSize={_paperdoll?.Size}");
+        foreach (var (id, panel) in _slots)
+        {
+            var c = panel.GetGlobalRect().GetCenter();
+            var a = _paperdoll?.LiveAnchor(id);
+            sb.AppendLine($"LABLAYOUT {id} panel=({c.X:F0},{c.Y:F0}) anchor={(a.HasValue ? $"({a.Value.X:F0},{a.Value.Y:F0})" : "none")}");
+        }
+        return sb.ToString();
+    }
+
     public void SetHint(string text)
     {
         if (_hint != null) _hint.Text = text;
@@ -573,20 +619,13 @@ public partial class MechLab : Control
         foreach (var (id, panel) in _slots)
         {
             var ids = Loadout.WeaponsIn(id);
-            var w = ids.Count > 0 ? WeaponCatalog.ById(ids[0]) : null;
-            // Occupied slots show the first weapon's icon +
-            // abbreviation (owner) and the fitted list beside it.
-            panel.Tile.Visible = w != null;
-            if (w != null)
-            {
-                panel.TileTex.Texture = Icon(w);
-                panel.TileAbbrev.Text = Abbrev(w);
-            }
-            panel.WeightLabel.Text = ids.Count > 0
-                ? $"{Loadout.SlotWeight(id):F0}/{Spec.Slot(id)?.MaxWeight:F0}t" : "";
-            // Fitted weapons as a list, catalog-style (owner):
-            // one row per weapon — icon name, full name, tonnage.
-            // Clicking a row removes exactly that weapon.
+            var slotDef = Spec.Slot(id);
+            panel.HeadLabel.Text = $"{slotDef?.Type} · {Loadout.SlotWeight(id):F0}/{slotDef?.MaxWeight:F0}t";
+            // Fitted weapons as a list (owner): each row carries
+            // the weapon's icon tile with its abbreviation, the
+            // name, and slash-separated metrics — the same visual
+            // language as the catalog. Clicking a row removes
+            // exactly that weapon.
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
             {
@@ -600,16 +639,38 @@ public partial class MechLab : Control
                 var def = WeaponCatalog.ById(ids[i]);
                 if (def == null) continue;
                 int idx = i; string sid = id;
-                var row = new Button { Text = $"{Abbrev(def)} · {def.Name} · {def.Weight:F0}t" };
-                row.AddThemeFontSizeOverride("font_size", 12);
-                row.Alignment = HorizontalAlignment.Left;
-                row.Pressed += () =>
+                var rowPanel = new PanelContainer();
+                var rsb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.15f, 0.55f) };
+                rsb.SetCornerRadiusAll(4);
+                rsb.ContentMarginLeft = 5; rsb.ContentMarginRight = 5;
+                rsb.ContentMarginTop = 3; rsb.ContentMarginBottom = 3;
+                rowPanel.AddThemeStyleboxOverride("panel", rsb);
+                var rhb = new HBoxContainer();
+                rhb.AddThemeConstantOverride("separation", 7);
+                rowPanel.AddChild(rhb);
+                var tile = TileVisual(def, 34);
+                tile.MouseFilter = MouseFilterEnum.Ignore;
+                rhb.AddChild(tile);
+                var texts = new VBoxContainer();
+                var nm = new Label { Text = def.Name };
+                nm.AddThemeFontSizeOverride("font_size", 13);
+                nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+                texts.AddChild(nm);
+                var mt = new Label { Text = Metrics(def) };
+                mt.AddThemeFontSizeOverride("font_size", 11);
+                mt.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
+                texts.AddChild(mt);
+                rhb.AddChild(texts);
+                rowPanel.GuiInput += (InputEvent e) =>
                 {
-                    if (Loadout.RemoveAt(sid, idx, out var rid))
-                        SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
-                    Refresh();
+                    if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+                    {
+                        if (Loadout.RemoveAt(sid, idx, out var rid))
+                            SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
+                        Refresh();
+                    }
                 };
-                panel.ListBox.AddChild(row);
+                panel.ListBox.AddChild(rowPanel);
             }
         }
         _paperdoll?.Layout();
