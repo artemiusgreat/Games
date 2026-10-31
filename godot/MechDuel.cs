@@ -27,8 +27,8 @@ using System.Collections.Generic;
 
 public partial class MechDuel : Node3D
 {
-    private const float PlayerMaxSpeed = 4.2f;
-    private const float EnemyMaxSpeed = 2.2f;
+    private const float EnemyMaxSpeed = 2.2f; // AI tactical pace cap; the chassis cap is MechSpec.MaxSpeed
+    private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 0.85f;
     private const float WorldBound = 80f; // heightfield world is 170 wide
@@ -608,10 +608,11 @@ public partial class MechDuel : Node3D
                 return;
             }
             float sway = Mathf.Sin((float)Time.GetTicksMsec() / 1000f * 0.15f) * 0.045f;
-            var center = _player.RootPos + Vector3.Up * 5.6f;
+            float labK = _playerSpec.Height / 13f; // showroom framing scales with the chassis, like the chase cam
+            var center = _player.RootPos + Vector3.Up * (5.6f * labK);
             var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
             var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the mech, slightly to its side
-            _cam.GlobalPosition = center + viewDir * 14.5f + Vector3.Up * 3.4f;
+            _cam.GlobalPosition = center + viewDir * (14.5f * labK) + Vector3.Up * (3.4f * labK);
             _cam.LookAt(center, Vector3.Up);
             _cam.RotateY(0.46f); // pan in camera space: mech right, centered under its slot panels (owner, adjusted twice at his word)
             _labLight.GlobalRotation = _cam.GlobalRotation;

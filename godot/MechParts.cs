@@ -117,7 +117,7 @@ public sealed class MechParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
-        else
+        else if (mechId == "atlas")
         {
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
@@ -129,6 +129,17 @@ public sealed class MechParts
             AddPart("arm_R", "RIGHT ARM", 65f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
             AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+        }
+        else
+        {
+            // Unknown chassis: no hand-authored layout. Fail LOUD
+            // and fall back to a single torso part (the whole
+            // model) so the duel still runs — author a real
+            // layout here before shipping the mech.
+            GD.PrintErr($"PARTS: no layout for '{mechId}' — torso-only fallback; author a layout in MechParts.cs");
+            var all = new string[byName.Count];
+            byName.Keys.CopyTo(all, 0);
+            AddPart("torso", "TORSO", 0f, byName, all);
         }
 
         foreach (var part in _parts.Values)

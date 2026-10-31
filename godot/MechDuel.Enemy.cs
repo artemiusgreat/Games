@@ -17,14 +17,14 @@ public partial class MechDuel
         // the walker's SpeedFactor throttles its drive — and keeps
         // playing its range game below.)
         float desiredYaw, spd;
-        if (dist > 38f) { desiredYaw = yawTo; spd = EnemyMaxSpeed; }
-        else if (dist < 26f) { desiredYaw = yawTo; spd = -EnemyMaxSpeed * 0.5f; }
+        if (dist > 38f) { desiredYaw = yawTo; spd = EnemyPace; }
+        else if (dist < 26f) { desiredYaw = yawTo; spd = -EnemyPace * 0.5f; }
         else
         {
             _orbitTimer += delta;
             if (_orbitTimer > 6f) { _orbitTimer = 0f; _orbitDir = -_orbitDir; }
             desiredYaw = yawTo + _orbitDir * Mathf.Pi / 2f;
-            spd = EnemyMaxSpeed * 0.7f;
+            spd = EnemyPace * 0.7f;
         }
         float dy = MechWalker.WrapAngle(desiredYaw - _enemyYaw);
         float maxTurn = 0.7f * delta;

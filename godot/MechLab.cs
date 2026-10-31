@@ -483,7 +483,7 @@ public partial class MechLab : Control
         var lab = new Label { Text = role + " MECH:", VerticalAlignment = VerticalAlignment.Center };
         lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         box.AddChild(lab);
-        foreach (var spec in new[] { MechSpecs.TimberWolf, MechSpecs.Atlas })
+        foreach (var spec in MechSpecs.All)
         {
             var b = new Button { Text = spec.Name, ToggleMode = true };
             b.ButtonPressed = (playerSide ? PlayerSpecId : EnemySpecId) == spec.Id;

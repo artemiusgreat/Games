@@ -98,9 +98,9 @@ public partial class MechDuel
         // SHIFT + W = run mode (RunFactor x walk speed); reverse stays at walk pace.
         _running = shift && w;
         float spd = 0f;
-        if (w) spd = PlayerMaxSpeed * (_running ? RunFactor : 1f);
+        if (w) spd = _playerSpec.MaxSpeed * (_running ? RunFactor : 1f);
         if (w && _player.Thrusting) spd += 3.0f; // jets burning + forward key: the thrusters push the mech forward too (owner)
-        else if (s) spd = -PlayerMaxSpeed * 0.55f;
+        else if (s) spd = -_playerSpec.MaxSpeed * 0.55f;
         _player.SetDrive(_playerYaw, spd);
     }
 

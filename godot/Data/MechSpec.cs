@@ -27,6 +27,7 @@ public sealed class MechSpec
     public float Height;        // hit-capsule height
     public float Radius;        // collision / hit capsule radius
     public float StepTime, StepThreshold, StepLift, Accel;
+    public float MaxSpeed;      // chassis top speed (walk) in either seat
     public bool FlipKneePole;   // plantigrade: knees bend forward
 
     public SlotDef Slot(string id)
@@ -42,7 +43,7 @@ public static class MechSpecs
     {
         Id = "timberwolf", Name = "TIMBER WOLF", Tonnage = 75f, JumpCapable = true,
         ModelPath = "res://assets/timberwolf.fbx", PartsId = "timberwolf", MaxHp = 260f,
-        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -57,7 +58,7 @@ public static class MechSpecs
     {
         Id = "atlas", Name = "ATLAS", Tonnage = 100f, JumpCapable = false,
         ModelPath = "res://assets/atlas.fbx", PartsId = "atlas", MaxHp = 340f,
-        Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f,
+        Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         Slots = new[]
         {
@@ -65,8 +66,15 @@ public static class MechSpecs
         }
     };
 
-    public static MechSpec ById(string id) =>
-        id == "atlas" ? Atlas : TimberWolf;
+    // Every chassis the lab can offer. Adding a mech = one new
+    // MechSpec + one entry here (+ its MechParts layout and model).
+    public static readonly MechSpec[] All = { TimberWolf, Atlas };
+
+    public static MechSpec ById(string id)
+    {
+        foreach (var s in All) if (s.Id == id) return s;
+        return TimberWolf;
+    }
 }
 
 // The player's current loadout: slot id -> weapon id (absent = empty).
