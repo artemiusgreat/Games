@@ -76,7 +76,7 @@ uniform sampler2D asph_arm : repeat_enable;
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-    vec4 sp = texture(splat, wpos.xz / 170.0 + 0.5);
+    vec4 sp = texture(splat, wpos.xz / 260.0 + 0.5);
     float tot = max(sp.r + sp.g + sp.b + sp.a, 0.001);
     float wr = sp.r / tot, wg = sp.g / tot, wb = sp.b / tot, wa = sp.a / tot;
     vec2 uv1 = wpos.xz * 0.055;
@@ -130,8 +130,8 @@ void fragment() {
         {
             for (int i = 0; i < N; i++)
             {
-                float x = (i / (float)(N - 1) - 0.5f) * 170f;
-                float z = (j / (float)(N - 1) - 0.5f) * 170f;
+                float x = (i / (float)(N - 1) - 0.5f) * Main.TerrainSize;
+                float z = (j / (float)(N - 1) - 0.5f) * Main.TerrainSize;
                 float h = Main.HeightAt(x, z);
                 float e = 0.35f;
                 float slope = Mathf.Max(
@@ -230,22 +230,25 @@ void fragment() {
     public static void AddGrassField(Node3D parent, List<Vector2> buildingPts,
         List<(Vector2 P, float R)> props)
     {
-        // Two layers. (1) Blade cards: crossed quads textured with
-        // the scanned grass photo — 6 triangles each, so 60k tufts
-        // cost less than 0.4M triangles. (2) Hero clumps: the full
-        // scanned patch (24.7k tris) used SPARINGLY — 320 instances
-        // ≈ 8M tris. The naive version (42k scanned patches) was
-        // 1.04 BILLION triangles/frame: that is the single most
-        // important budget fact this probe produced.
+        // Scanned hero clumps ONLY (the full grass patch, 24.7k
+        // tris, used sparingly — 320 instances ≈ 8M tris). The
+        // blade-card layer (60k crossed-quad tufts) was REMOVED
+        // at the owner's word (2026-10-31): the crossed quads
+        // read as intersecting flat planes, worst of all where
+        // they stood in the water. The naive all-scanned version
+        // (42k patches) was 1.04 BILLION triangles/frame: that is
+        // the single most important budget fact this probe
+        // produced.
         var spots = new List<(Vector3 Pos, float Yaw, float S)>();
         var rng = new RandomNumberGenerator { Seed = 424242 };
         int attempts = 0;
-        while (spots.Count < 60000 && attempts++ < 400000)
+        while (spots.Count < 6000 && attempts++ < 120000)
         {
             float x = rng.RandfRange(-84f, 84f), z = rng.RandfRange(-84f, 84f);
             if (Main.RoadDistance(x, z) < 2.9f) continue;
             float h = Main.HeightAt(x, z);
             if (h > 10f) continue;
+            if (h < 0.3f) continue; // dry land only: scatter stood in the sea/lake shallows (owner)
             float e = 0.4f;
             float slope = Mathf.Max(
                 Mathf.Abs(Main.HeightAt(x + e, z) - h),
@@ -261,72 +264,6 @@ void fragment() {
             spots.Add((new Vector3(x, h - 0.04f, z),
                 rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(0.75f, 1.5f)));
         }
-
-        // Crossed-quad tuft mesh (3 quads, base at origin).
-        var verts = new List<Vector3>();
-        var uvs = new List<Vector2>();
-        var nrms = new List<Vector3>();
-        var idx = new List<int>();
-        for (int q = 0; q < 3; q++)
-        {
-            float a = q * Mathf.Pi / 3f;
-            var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.45f;
-            int b0 = verts.Count;
-            verts.Add(-dir); uvs.Add(new Vector2(0f, 1f));
-            verts.Add(dir); uvs.Add(new Vector2(1f, 1f));
-            verts.Add(dir + Vector3.Up * 0.62f); uvs.Add(new Vector2(1f, 0f));
-            verts.Add(-dir + Vector3.Up * 0.62f); uvs.Add(new Vector2(0f, 0f));
-            // All normals point UP (probe run 3 lesson: the first
-            // version shipped no normals at all and the cards lit
-            // black). Up-normals are also the classic grass trick —
-            // cards shade like the ground they grow from.
-            for (int k = 0; k < 4; k++) nrms.Add(Vector3.Up);
-            idx.AddRange(new[] { b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3 });
-        }
-        var arrays = new Godot.Collections.Array();
-        arrays.Resize((int)Mesh.ArrayType.Max);
-        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-        arrays[(int)Mesh.ArrayType.Normal] = nrms.ToArray();
-        arrays[(int)Mesh.ArrayType.TexUV] = uvs.ToArray();
-        arrays[(int)Mesh.ArrayType.Index] = idx.ToArray();
-        var tuft = new ArrayMesh();
-        tuft.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-        var tuftMat = new StandardMaterial3D
-        {
-            // The blade texture drawn for the purpose (the scanned
-            // patch's diffuse is a JPG with no alpha — its silhouette
-            // is real geometry, so it cannot drive cards).
-            AlbedoTexture = BladeTexture(),
-            // CRITICAL: the scissor only engages when the material's
-            // transparency MODE is AlphaScissor. Setting the
-            // threshold alone leaves the mode Disabled, the shader
-            // ignores alpha, and the texture's transparent pixels
-            // render as their raw RGB — black slabs (probe runs 2-4,
-            // root-caused by a pink-debug bisection).
-            Transparency = BaseMaterial3D.TransparencyEnum.AlphaScissor,
-            AlphaScissorThreshold = 0.45f,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            Roughness = 1f
-        };
-        tuft.SurfaceSetMaterial(0, tuftMat);
-
-        var mm = new MultiMesh
-        {
-            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-            Mesh = tuft,
-            InstanceCount = spots.Count
-        };
-        for (int i = 0; i < spots.Count; i++)
-        {
-            var (pos, yaw, sc) = spots[i];
-            mm.SetInstanceTransform(i, new Transform3D(
-                new Basis(Vector3.Up, yaw).Scaled(new Vector3(sc, sc, sc)), pos));
-        }
-        parent.AddChild(new MultiMeshInstance3D
-        {
-            Multimesh = mm,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        });
 
         // Hero clumps from the scanned patch.
         var probe = Scene("grass_medium_01").Instantiate<Node3D>();
@@ -361,13 +298,10 @@ void fragment() {
                 Multimesh = hmm,
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             });
-            GD.Print($"PHOTO grass: {spots.Count} blade-card tufts + {heroes} scanned hero clumps");
+            GD.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed — owner)");
         }
     }
 
-    // Grass-blade card texture, drawn blade by blade: tapered,
-    // curved strokes, dark roots to yellow-green tips, alpha
-    // everywhere else. 256px, generated once.
     private static Texture2D BladeTexture()
     {
         const int N = 256;
