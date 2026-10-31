@@ -500,8 +500,9 @@ public partial class RiderDuel
     }
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
-    // the fire/gunnery checks (arm_L -> laser, arm_R -> AC and the Enyo's
-    // AC/20, pods -> salvo size, Enyo head -> spread + tracking lag), so
+    // the fire/gunnery checks — every mount answers to its own part
+    // (arm_L -> lasers, the waist gun -> the Enyo's AC/20, pods -> salvo
+    // size, Enyo head -> spread + tracking lag), so
     // the stateful consequences latched here are the legs and the player's
     // head (HUD disturbance timer; the sway itself is applied in the HUD
     // step from part state).

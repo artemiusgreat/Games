@@ -1236,7 +1236,7 @@ public partial class RiderDuel
                 }
                 break;
 
-            case 3: // ARM (Enyo): real AC fire breaks arm_R; its AC/20 stops
+            case 3: // GUN (Enyo): real AC fire breaks the waist gun; its AC/20 stops
                 _player.SetDrive(0f, 0f);
                 if (_bStep == 0)
                 {
@@ -1248,14 +1248,14 @@ public partial class RiderDuel
                 else if (_bStep == 1)
                 {
                     _enemy.SetDrive(Mathf.Pi, 0f);
-                    if (_cdAc <= 0f) FireAutocannon(_partsEnemy.PartAimPoint("arm_R"));
-                    if (!_partsEnemy.Alive("arm_R"))
+                    if (_cdAc <= 0f) FireAutocannon(_partsEnemy.PartAimPoint("gun"));
+                    if (!_partsEnemy.Alive("gun"))
                     {
-                        GD.Print($"BRKTEST ARMBREAK PASS enyo arm_R destroyed by real AC fire (partHp logs above), enyoShots so far={_enemyShots}");
+                        GD.Print($"BRKTEST GUNBREAK PASS enyo waist gun destroyed by real AC fire (partHp logs above), enyoShots so far={_enemyShots}");
                         BStep(2);
                         _bCount1 = _enemyShots;
                     }
-                    else if (BStepT > 15) BFail("enyo arm_R never broke under AC fire");
+                    else if (BStepT > 15) BFail("enyo waist gun never broke under AC fire");
                 }
                 else if (_bStep == 2)
                 {
@@ -1263,13 +1263,13 @@ public partial class RiderDuel
                     if (BStepT > 1.2 && !_bFlag1)
                     {
                         _bFlag1 = true;
-                        QueueCapture("res://proof/break_enyo_noarm.png", "bnoarm", "brkEnyo");
+                        QueueCapture("res://proof/break_enyo_nogun.png", "bnogun", "brkEnyo");
                     }
                     if (BStepT > 5.5)
                     {
                         if (_enemyShots != _bCount1)
-                            BFail($"enyo AC/20 fired after arm_R loss: {_bCount1} -> {_enemyShots}");
-                        GD.Print($"BRKTEST ARMGUN PASS enyo AC/20 silent for 5.5s after arm_R loss (shots flat at {_enemyShots})");
+                            BFail($"enyo AC/20 fired after waist-gun loss: {_bCount1} -> {_enemyShots}");
+                        GD.Print($"BRKTEST GUNPASS PASS enyo AC/20 silent for 5.5s after waist-gun loss (shots flat at {_enemyShots})");
                         _enemyMayFire = false;
                         ResetDuel();
                         BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
