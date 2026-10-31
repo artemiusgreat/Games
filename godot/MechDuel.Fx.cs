@@ -383,7 +383,7 @@ public partial class MechDuel
         // sequence at the torso, camera shake, and the whole mech comes
         // apart — every part, torso core included, becomes debris that
         // rains down and settles on the terrain.
-        var parts = w == _player ? _partsPlayer : _partsEnemy;
+        var parts = PartsOf(w);
         var center = w.RootPos + Vector3.Up * 6.5f;
         SpawnFlash(center, new Color(1f, 0.72f, 0.3f), 2.8f, 0.4f);
         SpawnFlash(center, new Color(1f, 0.95f, 0.72f), 1.5f, 0.25f);
@@ -398,19 +398,27 @@ public partial class MechDuel
         _exploding = false;
         float distToPlayer = w.RootPos.DistanceTo(_player.RootPos);
         if (w == _player || distToPlayer < 45f) _shake = 1.0f;
-        GD.Print($"DEATHBLOW {(w == _player ? "PLAYER" : "ENEMY")} exploded into debris");
+        GD.Print($"DEATHBLOW {TagOf(w)} exploded into debris");
         w.SetDarkened(true);
-        if (w == _enemy)
-        {
-            _banner.Text = "ATLAS DESTROYED";
-            _banner.Modulate = new Color(1f, 0.85f, 0.35f);
-            _bannerSub.Visible = true;
-        }
-        else
+        if (w == _player)
         {
             _banner.Text = "MECH DESTROYED — press R to reset";
             _banner.Modulate = new Color(1f, 0.35f, 0.28f);
             _bannerSub.Visible = false;
+        }
+        else if (_foe1 != null && _enemyDead && _foe1.Dead)
+        {
+            // Free-for-all won: both opponents are down.
+            _banner.Text = "VICTORY";
+            _banner.Modulate = new Color(0.55f, 1f, 0.6f);
+            _bannerSub.Visible = true;
+        }
+        else
+        {
+            var spec = _foe1 != null && w == _foe1.Walker ? _foe1.Spec : _enemySpec;
+            _banner.Text = $"{spec.Name} DESTROYED";
+            _banner.Modulate = new Color(1f, 0.85f, 0.35f);
+            _bannerSub.Visible = true;
         }
         _banner.Visible = true;
     }

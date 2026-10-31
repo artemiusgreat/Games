@@ -78,7 +78,7 @@ public partial class MechDuel
         // weapon reach, else the free 40u point.
         var hit = _hit.Ray(from, dir, 200f, "PLAYER");
         _aimTarget = hit.Hit ? hit.Target : "";
-        if (hit.Hit && hit.T <= 140f && (hit.Target == "ENEMY" || hit.Target == "PROP"))
+        if (hit.Hit && hit.T <= 140f && (hit.Target == "ENEMY" || hit.Target == "FOE1" || hit.Target == "PROP"))
             return hit.Point;
         return _reticlePoint;
     }
@@ -239,6 +239,7 @@ public partial class MechDuel
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == "ENEMY") foreach (var g in fired) ApplyDamage(_enemy, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser");
+            else if (hit.Target == "FOE1" && _foe1 != null) foreach (var g in fired) ApplyDamage(_foe1.Walker, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser");
             else if (hit.Target == "PROP") foreach (var g in fired) DamageProp(hit.Point, g.Def.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
@@ -359,9 +360,13 @@ public partial class MechDuel
 
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
-        MechWalker direct = hit.Target == "PLAYER" ? _player : hit.Target == "ENEMY" ? _enemy : null;
+        MechWalker direct = hit.Target == "PLAYER" ? _player
+            : hit.Target == "FOE1" && _foe1 != null ? _foe1.Walker
+            : hit.Target == "ENEMY" ? _enemy : null;
         if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
-        foreach (var (w, id) in new[] { (_player, "PLAYER"), (_enemy, "ENEMY") })
+        var roster = new System.Collections.Generic.List<(MechWalker, string)> { (_player, "PLAYER"), (_enemy, "ENEMY") };
+        if (_foe1 != null) roster.Add((_foe1.Walker, "FOE1"));
+        foreach (var (w, id) in roster)
         {
             if (w == direct) continue;
             float d = _hit.DistanceToMechSurface(hit.Point, id);
@@ -424,17 +429,20 @@ public partial class MechDuel
         var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
         if (hit.Target == "PLAYER") SpawnScorch(hit.Point, nrm, _player);
         else if (hit.Target == "ENEMY") SpawnScorch(hit.Point, nrm, _enemy);
+        else if (hit.Target == "FOE1" && _foe1 != null) SpawnScorch(hit.Point, nrm, _foe1.Walker);
         else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
         string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
         if (hit.Target == "PLAYER") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == "ENEMY") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        else if (hit.Target == "FOE1" && _foe1 != null) ApplyDamage(_foe1.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
     }
 
     private void ApplyDamage(MechWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
     {
         bool isPlayer = target == _player;
-        if (isPlayer ? _playerDead : _enemyDead) return;
-        var parts = isPlayer ? _partsPlayer : _partsEnemy;
+        bool isFoe1 = _foe1 != null && target == _foe1.Walker;
+        if (isPlayer ? _playerDead : isFoe1 ? _foe1.Dead : _enemyDead) return;
+        var parts = isPlayer ? _partsPlayer : isFoe1 ? _foe1.Parts : _partsEnemy;
         // Local damage routing: torso hits burn the main pool; head hits
         // burn the head part AND the pool; every other part absorbs its
         // own hits. Counters still record the nominal damage once per
@@ -447,7 +455,7 @@ public partial class MechDuel
             ? hit.Part
             : parts.AttributePoint(hit.Point);
         if (isPlayer) { _playerDmgEvents++; _playerDmgTotal += dmg; }
-        else { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
+        else if (!isFoe1) { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
         float poolDmg = 0f;
         if (partId == "torso") poolDmg = dmg;
         else if (partId == "head") { poolDmg = dmg; parts.DamagePart("head", dmg); }
@@ -455,10 +463,11 @@ public partial class MechDuel
         if (poolDmg > 0f)
         {
             if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - poolDmg, 0f);
+            else if (isFoe1) _foe1.Hp = Mathf.Max(_foe1.Hp - poolDmg, 0f);
             else _hpEnemy = Mathf.Max(_hpEnemy - poolDmg, 0f);
         }
-        float hp = isPlayer ? _hpPlayer : _hpEnemy;
-        GD.Print($"WPN DMG target={(isPlayer ? "PLAYER" : "ENEMY")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
+        float hp = isPlayer ? _hpPlayer : isFoe1 ? _foe1.Hp : _hpEnemy;
+        GD.Print($"WPN DMG target={(isPlayer ? "PLAYER" : isFoe1 ? "FOE1" : "ENEMY")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
@@ -478,7 +487,8 @@ public partial class MechDuel
         SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
         var part = parts.GetPart(partId);
         if (parts == _partsPlayer) AddFeed($"WARNING: {part.Display} DESTROYED");
-        else AddFeed($"ATLAS: {part.Display} DESTROYED");
+        else if (_foe1 != null && parts == _foe1.Parts) AddFeed($"{_foe1.Spec.Name}: {part.Display} DESTROYED");
+        else AddFeed($"{_enemySpec.Name}: {part.Display} DESTROYED");
         ApplyPartConsequences(parts, partId);
     }
 
@@ -498,7 +508,7 @@ public partial class MechDuel
     private void ApplyPartConsequences(MechParts parts, string partId)
     {
         if (partId == "leg_L" || partId == "leg_R")
-            SyncLegConsequences(parts == _partsPlayer ? _player : _enemy, parts);
+            SyncLegConsequences(WalkerOf(parts), parts);
         else if (partId == "head" && parts == _partsPlayer)
             _hudFlickerT = 1.2f;
         if (parts == _partsPlayer) AutoSwitchWeapon();
@@ -568,6 +578,7 @@ public partial class MechDuel
         w.Halted = true;
         w.SetDrive(w.LegsYaw, 0f);
         if (w == _player) { _playerDead = true; GD.Print("WPN DEATH PLAYER"); }
+        else if (_foe1 != null && w == _foe1.Walker) { _foe1.Dead = true; GD.Print("WPN DEATH FOE1"); }
         else { _enemyDead = true; GD.Print("WPN DEATH ENEMY"); }
         OnDeath(w);
     }

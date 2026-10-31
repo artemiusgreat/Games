@@ -77,9 +77,54 @@ public partial class MechDuel
 
     private void RefreshHitCaps()
     {
-        _hit.Mechs.RemoveAll(m => m.Id == "PLAYER" || m.Id == "ENEMY");
+        _hit.Mechs.RemoveAll(m => m.Id == "PLAYER" || m.Id == "ENEMY" || m.Id == "FOE1");
         _hit.Mechs.Add(new HitModel.MechCap { Id = "PLAYER", Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
         _hit.Mechs.Add(new HitModel.MechCap { Id = "ENEMY", Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
+        if (_foe1?.Walker != null)
+            _hit.Mechs.Add(new HitModel.MechCap { Id = "FOE1", Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
+    }
+
+    // Foe 1 (free-for-all): always the chassis foe 0 is NOT — the
+    // match fields a Timber Wolf and an Atlas as opponents,
+    // whichever one the legacy enemy slot holds.
+    private void BuildFoe1()
+    {
+        var spec = _enemySpec.Id == "atlas" ? MechSpecs.TimberWolf : MechSpecs.Atlas;
+        _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
+        var pad = Main.SpawnPads[2];
+        _foe1.Walker = BuildMech(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
+        _foe1.Yaw = SpawnYaw(pad);
+        _foe1.Parts = new MechParts(_foe1.Walker, spec.PartsId);
+        _foe1.Parts.OnBreak = (id, c) => OnPartBroken(_foe1.Parts, id, c);
+        _foe1.Walker.RefreshMaterials();
+        _foe1.Hp = spec.MaxHp;
+        _foe1.PrevRoot = _foe1.Walker.RootPos;
+        string eb = SlotOf(spec, WeaponSlotType.Ballistic);
+        _foe1.BallisticSlot = eb;
+        _foe1.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe1.Loadout.WeaponIn(eb));
+        GD.Print($"FFA foe1 built: {spec.Id} at pad 2, ballistic={_foe1.DefBallistic?.Id ?? "none"}");
+    }
+
+    private void RebuildFoe1()
+    {
+        var want = _enemySpec.Id == "atlas" ? MechSpecs.TimberWolf : MechSpecs.Atlas;
+        if (_foe1 != null && _foe1.Spec.Id == want.Id) return;
+        var pos = _foe1?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
+        float yaw = _foe1?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
+        _foe1?.Walker.QueueFree();
+        var spec = want;
+        _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
+        _foe1.Walker = BuildMech(spec, "Enemy2", pos, yaw);
+        _foe1.Yaw = yaw;
+        _foe1.Parts = new MechParts(_foe1.Walker, spec.PartsId);
+        _foe1.Parts.OnBreak = (id, c) => OnPartBroken(_foe1.Parts, id, c);
+        _foe1.Walker.RefreshMaterials();
+        _foe1.Hp = spec.MaxHp;
+        _foe1.PrevRoot = _foe1.Walker.RootPos;
+        string eb = SlotOf(spec, WeaponSlotType.Ballistic);
+        _foe1.BallisticSlot = eb;
+        _foe1.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe1.Loadout.WeaponIn(eb));
+        RefreshHitCaps();
     }
 
     private void RebuildMech(bool playerSide)
@@ -128,6 +173,7 @@ public partial class MechDuel
             _enemySpec = MechSpecs.ById(enemySpecId);
             _enemyLoadout = LoadoutState.DefaultFor(_enemySpec);
             RebuildMech(false);
+            if (_foe1 != null) RebuildFoe1(); // the roster stays Timber Wolf + Atlas
         }
         GD.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();

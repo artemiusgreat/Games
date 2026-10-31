@@ -392,8 +392,10 @@ public partial class MechLab : Control
         var selBox = new VBoxContainer();
         selBox.AddThemeConstantOverride("separation", 6);
         root.AddChild(selBox);
-        selBox.AddChild(MechSelector("PLAYER", true));
-        selBox.AddChild(MechSelector("ENEMY", false));
+        // One selector only (owner, 2026-10-31): yours. The two
+        // opponents are fixed — a Timber Wolf and an Atlas field
+        // against you (and each other) on every map.
+        selBox.AddChild(MechSelector("RIDER", true));
 
         var mid = new HBoxContainer();
         mid.AddThemeConstantOverride("separation", 28);
@@ -548,7 +550,7 @@ public partial class MechLab : Control
     {
         var box = new HBoxContainer();
         box.AddThemeConstantOverride("separation", 8);
-        var lab = new Label { Text = role + " MECH:", VerticalAlignment = VerticalAlignment.Center };
+        var lab = new Label { Text = role + ":", VerticalAlignment = VerticalAlignment.Center };
         lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         box.AddChild(lab);
         var name = new Label

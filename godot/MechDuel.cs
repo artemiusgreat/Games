@@ -31,7 +31,7 @@ public partial class MechDuel : Node3D
     private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 0.85f;
-    private const float WorldBound = 80f; // heightfield world is 170 wide
+    private const float WorldBound = 115f; // heightfield world is 260 wide
 
     private MechWalker _player;
     private MechWalker _enemy;
@@ -103,6 +103,39 @@ public partial class MechDuel : Node3D
     // the original fixed fit, so every harness number is unchanged.
     private LoadoutState _loadout = LoadoutState.DefaultTimberWolf();
     private LoadoutState _enemyLoadout = LoadoutState.DefaultAtlas();
+
+    // Free-for-all (owner, 2026-10-31): the match fields TWO AI
+    // opponents — a Timber Wolf and an Atlas — and every mech
+    // fights every other; there are no teams. The legacy enemy
+    // (foe 0) keeps its fields above; foe 1 is this record. Foe 1
+    // is not built in the precision test modes (duel / weapons /
+    // breakable / terrain), whose choreographies assume exactly
+    // two mechs on the field.
+    private sealed class Foe
+    {
+        public MechWalker Walker;
+        public MechParts Parts;
+        public MechSpec Spec;
+        public LoadoutState Loadout;
+        public float Hp;
+        public bool Dead;
+        public WeaponDef DefBallistic;
+        public string BallisticSlot;
+        public float Cd;
+        public float Yaw = Mathf.Pi;
+        public float OrbitDir = 1f;
+        public float OrbitTimer;
+        public float ThinkT;
+        public float DroopT;
+        public Vector3 PrevRoot;
+        public Vector3 Vel;
+    }
+    private Foe _foe1;
+    private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
+    private Vector3 _enemyVel;
+    private Vector3 _prevEnemyRoot;
+    private MechWalker _foe0TargetW; // foe 0's current AI target (re-picked on a think timer)
+    private float _foe0ThinkT;
     // Which mech each side fields (round 22: chosen in the lab).
     private MechSpec _playerSpec = MechSpecs.TimberWolf;
     private MechSpec _enemySpec = MechSpecs.Atlas;
@@ -187,7 +220,8 @@ public partial class MechDuel : Node3D
     private bool _tParked;
 
     private Crosshair _cross;
-    private ProgressBar _barPlayer, _barEnemy, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
+    private ProgressBar _barPlayer, _barEnemy, _barFoe1, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
+    private Label _lblFoe1Hp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
     private PanelContainer _panel;
@@ -291,8 +325,15 @@ public partial class MechDuel : Node3D
             PhotoEnv.AddBackdrop(this);
         }
 
-        _player = BuildMech(_playerSpec, "Player", new Vector3(0f, Main.HeightAt(0f, 30f), 30f), 0f);
-        _enemy = BuildMech(_enemySpec, "Enemy", new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+        // Spawns: the three pads (owner: a bigger map, a hill in
+        // the middle, no sightlines at load). Test choreographies
+        // teleport to their own marks immediately after.
+        var padP = Main.SpawnPads[0];
+        var padE = Main.SpawnPads[1];
+        _player = BuildMech(_playerSpec, "Player", PadPos(padP), SpawnYaw(padP));
+        _enemy = BuildMech(_enemySpec, "Enemy", PadPos(padE), SpawnYaw(padE));
+        _playerYaw = SpawnYaw(padP);
+        _enemyYaw = SpawnYaw(padE);
 
         // Breakable-parts registries (may split the merged Torso meshes);
         // refresh walker materials afterwards so hit flashes cover the
@@ -301,13 +342,17 @@ public partial class MechDuel : Node3D
         _partsEnemy = new MechParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
+        if (!PrecisionTest) BuildFoe1();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
+        _prevEnemyRoot = _enemy.RootPos;
         _hit.PartResolver = (id, pt) => id == "PLAYER"
             ? _partsPlayer.AttributePoint(pt)
+            : id == "FOE1" && _foe1 != null ? _foe1.Parts.AttributePoint(pt)
             : _partsEnemy.AttributePoint(pt);
         _hit.PartRayCast = (id, from, dir, maxDist) => id == "PLAYER"
             ? _partsPlayer.RaycastParts(from, dir, maxDist)
+            : id == "FOE1" && _foe1 != null ? _foe1.Parts.RaycastParts(from, dir, maxDist)
             : _partsEnemy.RaycastParts(from, dir, maxDist);
         _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
         _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
@@ -344,14 +389,23 @@ public partial class MechDuel : Node3D
         if (_weaponsTest)
         {
             WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+            ApplyRangeFit();
             SetWPhase(0);
         }
         if (_breakTest)
         {
             BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+            ApplyRangeFit();
             SetBPhase(0);
         }
     }
+
+    private static Vector3 PadPos(Vector2 pad) =>
+        new(pad.X, Main.HeightAt(pad.X, pad.Y), pad.Y);
+
+    // Yaw that faces a pad spawn toward the map center (matches
+    // the legacy marks: (0,30) -> 0, (0,-16) -> PI).
+    private static float SpawnYaw(Vector2 pad) => Mathf.Atan2(pad.X, pad.Y);
 
     private void ResetDuel()
     {
@@ -362,6 +416,18 @@ public partial class MechDuel : Node3D
         _partsEnemy.RestoreAll();
         SyncLegConsequences(_player, _partsPlayer);
         SyncLegConsequences(_enemy, _partsEnemy);
+        if (_foe1 != null)
+        {
+            _foe1.Hp = _foe1.Spec.MaxHp;
+            _foe1.Dead = false;
+            _foe1.Cd = 0f;
+            _foe1.DroopT = 0f;
+            _foe1.Parts.RestoreAll();
+            SyncLegConsequences(_foe1.Walker, _foe1.Parts);
+            _foe1.Walker.Halted = false;
+            _foe1.Walker.Droop = 0f;
+            _foe1.Walker.SetDarkened(false);
+        }
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
         _lastDenied = "";
         _feed.Clear();
@@ -381,11 +447,30 @@ public partial class MechDuel : Node3D
         _enemyDroopT = 0f;
         _player.SetDarkened(false);
         _enemy.SetDarkened(false);
-        _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 30f), 30f), 0f);
-        _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+        // Live resets return to the pads; the test suites keep
+        // their calibrated center marks.
+        bool live = !_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest;
+        if (live)
+        {
+            _player.Teleport(PadPos(Main.SpawnPads[0]), SpawnYaw(Main.SpawnPads[0]));
+            _enemy.Teleport(PadPos(Main.SpawnPads[1]), SpawnYaw(Main.SpawnPads[1]));
+            _playerYaw = SpawnYaw(Main.SpawnPads[0]);
+            _enemyYaw = SpawnYaw(Main.SpawnPads[1]);
+            if (_foe1 != null)
+            {
+                _foe1.Walker.Teleport(PadPos(Main.SpawnPads[2]), SpawnYaw(Main.SpawnPads[2]));
+                _foe1.Yaw = SpawnYaw(Main.SpawnPads[2]);
+                _foe1.Walker.TorsoTwist = 0f;
+            }
+        }
+        else
+        {
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 30f), 30f), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -16f), -16f), Mathf.Pi);
+            _playerYaw = 0f;
+            _enemyYaw = Mathf.Pi;
+        }
         _player.AimPitchWide = float.NaN;
-        _playerYaw = 0f;
-        _enemyYaw = Mathf.Pi;
         _player.TorsoTwist = 0f;
         _player.TorsoPitch = 0f;
         _torsoWorldYaw = 0f;
@@ -427,6 +512,7 @@ public partial class MechDuel : Node3D
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdEnemy = Mathf.Max(_cdEnemy - dt, 0f);
+        if (_foe1 != null) _foe1.Cd = Mathf.Max(_foe1.Cd - dt, 0f);
         _denyLaserT = Mathf.Max(_denyLaserT - dt, 0f);
         _denyAcT = Mathf.Max(_denyAcT - dt, 0f);
         _denyLrmT = Mathf.Max(_denyLrmT - dt, 0f);
@@ -510,6 +596,7 @@ public partial class MechDuel : Node3D
             else _fx[i] = (_fx[i].Node, life, frames);
         }
         if (!_test && !_terrainTest && !_photoTest && ((!_weaponsTest && !_breakTest) || _enemyMayFire)) UpdateEnemyGunnery(dt);
+        if (_foe1 != null && !_test && !_terrainTest && !_photoTest && !_weaponsTest && !_breakTest) UpdateFoe1Gunnery(dt);
     }
 
     private static void StepWalker(MechWalker w, double delta)
@@ -678,6 +765,7 @@ public partial class MechDuel : Node3D
                 UpdatePlayerInput(dt);
                 MaintainTorsoWorldYaw();
                 UpdateEnemyAI(dt);
+                if (_foe1 != null) UpdateFoe1AI(dt);
                 _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
@@ -694,6 +782,7 @@ public partial class MechDuel : Node3D
             }
             StepWalker(_player, delta);
             StepWalker(_enemy, delta);
+            if (_foe1 != null && _foe1.Walker.IsReady) StepWalker(_foe1.Walker, delta);
             StepSounds();
             ResolveCollisions();
             StompCheck();
@@ -704,10 +793,25 @@ public partial class MechDuel : Node3D
                 _playerVel = _playerVel.Lerp(v, 0.5f);
                 _prevPlayerRoot = _player.RootPos;
             }
+            if (dt > 0f)
+            {
+                var ev = (_enemy.RootPos - _prevEnemyRoot) / dt;
+                if (ev.Length() > 8f) ev = ev.Normalized() * 8f;
+                _enemyVel = _enemyVel.Lerp(ev, 0.5f);
+                _prevEnemyRoot = _enemy.RootPos;
+                if (_foe1 != null)
+                {
+                    var fv = (_foe1.Walker.RootPos - _foe1.PrevRoot) / dt;
+                    if (fv.Length() > 8f) fv = fv.Normalized() * 8f;
+                    _foe1.Vel = _foe1.Vel.Lerp(fv, 0.5f);
+                    _foe1.PrevRoot = _foe1.Walker.RootPos;
+                }
+            }
             UpdateCombat(dt);
             UpdateDroop(dt);
             _partsPlayer.StepDebris(dt);
             _partsEnemy.StepDebris(dt);
+            if (_foe1 != null) _foe1.Parts.StepDebris(dt);
         }
         UpdateHud();
         // Player head destroyed: the reticle wanders (sensor loss).

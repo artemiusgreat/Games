@@ -138,6 +138,13 @@ public partial class MechDuel
         rightBox.AddChild(_lblEnemyHp);
         _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
         rightBox.AddChild(_barEnemy);
+        // Second opponent (free-for-all): a compact readout under
+        // the primary target's. Hidden when foe 1 is not fielded
+        // (the precision test modes).
+        _lblFoe1Hp = MakeLabel(13, new Color(0.98f, 0.85f, 0.8f));
+        rightBox.AddChild(_lblFoe1Hp);
+        _barFoe1 = MakeBar(new Color(0.88f, 0.45f, 0.24f), new Vector2(300, 12));
+        rightBox.AddChild(_barFoe1);
         _lblRange = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
         rightBox.AddChild(_lblRange);
         _lblSpeed = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
@@ -208,6 +215,16 @@ public partial class MechDuel
         _lblEnemyHp.Visible = !_enemyDead;
         _barEnemy.Value = _hpEnemy / _enemySpec.MaxHp;
         _lblEnemyHp.Text = $"{_enemySpec.Name} — {_hpEnemy:F0} HP";
+        bool foe1Shown = _foe1 != null && !_foe1.Dead;
+        _barFoe1.Visible = foe1Shown;
+        _lblFoe1Hp.Visible = foe1Shown;
+        if (foe1Shown)
+        {
+            _barFoe1.Value = _foe1.Hp / _foe1.Spec.MaxHp;
+            float r1 = new Vector2(_foe1.Walker.RootPos.X - _player.RootPos.X,
+                                   _foe1.Walker.RootPos.Z - _player.RootPos.Z).Length();
+            _lblFoe1Hp.Text = $"{_foe1.Spec.Name} — {_foe1.Hp:F0} HP · {r1:F0} u";
+        }
 
         bool lasDead = !WeaponAlive(0);
         bool acDead = !WeaponAlive(1);
@@ -262,7 +279,13 @@ public partial class MechDuel
             : lLeg ? "LEGS: RIGHT WRECKED — LIMPING" : "LEGS: LEFT WRECKED — LIMPING";
         _lblLegs.AddThemeColorOverride("font_color",
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
-        if (_radar != null) { _radar.EnemyDown = _enemyDead; _radar.QueueRedraw(); }
+        if (_radar != null)
+        {
+            _radar.EnemyDown = _enemyDead;
+            _radar.Enemy2 = _foe1?.Walker;
+            _radar.Enemy2Down = _foe1?.Dead ?? true;
+            _radar.QueueRedraw();
+        }
         if (_player.IsKnockedDown)
         {
             _lblLegs.Text = "STATUS: DOWN — LEG LOST";
@@ -305,6 +328,12 @@ public partial class MechDuel
 
     private void UpdateDroop(float dt)
     {
+        if (_foe1 != null && _foe1.Dead && _foe1.DroopT < 1f)
+        {
+            _foe1.DroopT = Mathf.Min(_foe1.DroopT + dt / 1.5f, 1f);
+            float t1 = _foe1.DroopT;
+            _foe1.Walker.Droop = t1 * t1 * (3f - 2f * t1) * 0.5f;
+        }
         if (_enemyDead && _enemyDroopT < 1f)
         {
             _enemyDroopT = Mathf.Min(_enemyDroopT + dt / 1.5f, 1f);

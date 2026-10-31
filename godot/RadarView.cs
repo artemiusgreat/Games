@@ -11,9 +11,22 @@ public partial class RadarView : Control
     public MechWalker Player;
     public MechWalker Enemy;
     public bool EnemyDown;
+    public MechWalker Enemy2;
+    public bool Enemy2Down;
     public readonly List<Vector2> Buildings = new();
 
     private const float Range = 90f;
+
+    private void DrawContact(MechWalker w, bool down, Vector2 c, float px)
+    {
+        if (w == null || down || Player == null) return;
+        var p = Player.RootPos;
+        var e = w.RootPos;
+        var d = new Vector2(e.X - p.X, e.Z - p.Z) * px;
+        float maxR = c.X - 6f;
+        if (d.Length() > maxR) d = d.Normalized() * maxR;
+        DrawCircle(c + d, 4.5f, new Color(1f, 0.3f, 0.22f, 0.95f));
+    }
 
     public override void _Draw()
     {
@@ -39,15 +52,9 @@ public partial class RadarView : Control
             DrawRect(new Rect2(c + d - new Vector2(3f, 3f), new Vector2(6f, 6f)),
                 new Color(0.62f, 0.65f, 0.68f, 0.8f));
         }
-        // Enemy contact, clamped to the rim when out of range.
-        if (Enemy != null && !EnemyDown)
-        {
-            var e = Enemy.RootPos;
-            var d = new Vector2(e.X - p.X, e.Z - p.Z) * px;
-            float maxR = c.X - 6f;
-            if (d.Length() > maxR) d = d.Normalized() * maxR;
-            DrawCircle(c + d, 4.5f, new Color(1f, 0.3f, 0.22f, 0.95f));
-        }
+        // Enemy contacts, clamped to the rim when out of range.
+        DrawContact(Enemy, EnemyDown, c, px);
+        DrawContact(Enemy2, Enemy2Down, c, px);
         // Player heading triangle (legs facing).
         var fwd = MechWalker.HeadingVec(Player.LegsYaw);
         var f2 = new Vector2(fwd.X, fwd.Z);

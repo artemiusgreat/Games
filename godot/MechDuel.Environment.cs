@@ -696,23 +696,34 @@ public partial class MechDuel
     {
         ResolveOne(_player);
         ResolveOne(_enemy);
-        // mech vs mech: split the overlap
-        var a = new Vector2(_player.RootPos.X, _player.RootPos.Z);
-        var b = new Vector2(_enemy.RootPos.X, _enemy.RootPos.Z);
+        if (_foe1 != null) ResolveOne(_foe1.Walker);
+        ResolvePair(_player, _enemy);
+        if (_foe1 != null)
+        {
+            ResolvePair(_player, _foe1.Walker);
+            ResolvePair(_enemy, _foe1.Walker);
+        }
+    }
+
+    // mech vs mech: split the overlap
+    private static void ResolvePair(MechWalker wa, MechWalker wb)
+    {
+        var a = new Vector2(wa.RootPos.X, wa.RootPos.Z);
+        var b = new Vector2(wb.RootPos.X, wb.RootPos.Z);
         var d = b - a;
         float dist = d.Length();
-        float min = _player.CollisionRadius + _enemy.CollisionRadius;
+        float min = wa.CollisionRadius + wb.CollisionRadius;
         // Flyover (owner): a jumping mech passes OVER the other —
         // no separation push while either is high above the ground.
-        if (dist < min && _player.JumpHeight < 12f && _enemy.JumpHeight < 12f)
+        if (dist < min && wa.JumpHeight < 12f && wb.JumpHeight < 12f)
         {
             if (dist < 1e-4f) d = new Vector2(0f, 1f);
             else d /= dist;
             float push = (min - dist) / 2f;
             a -= d * push;
             b += d * push;
-            _player.ApplyRootXZ(a);
-            _enemy.ApplyRootXZ(b);
+            wa.ApplyRootXZ(a);
+            wb.ApplyRootXZ(b);
         }
     }
 
@@ -722,9 +733,11 @@ public partial class MechDuel
     // mech walks on. Buildings are never stompable.
     private void StompCheck()
     {
-        foreach (var w in new[] { _player, _enemy })
+        var walkers = new System.Collections.Generic.List<MechWalker> { _player, _enemy };
+        if (_foe1 != null) walkers.Add(_foe1.Walker);
+        foreach (var w in walkers)
         {
-            if (w == _player ? _playerDead : _enemyDead) continue;
+            if (IsDead(w)) continue;
             if (w.JumpHeight > 3f) continue; // flying over the canopy is not a stomp
             var wp = new Vector2(w.RootPos.X, w.RootPos.Z);
             foreach (var d in _destructibles)
@@ -734,7 +747,7 @@ public partial class MechDuel
                 if (wp.DistanceTo(tp) > w.CollisionRadius + 0.35f) continue;
                 DestroyTree(d, 0.8f);
                 if (w == _player) _shake = Mathf.Max(_shake, 0.18f);
-                GD.Print($"DUEL STOMP {(w == _player ? "PLAYER" : "ENEMY")} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
+                GD.Print($"DUEL STOMP {TagOf(w)} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
             }
         }
     }

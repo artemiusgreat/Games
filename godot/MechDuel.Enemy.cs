@@ -1,80 +1,189 @@
 using Godot;
 using System.Collections.Generic;
 
-// MechDuel module: the enemy brain: movement AI, torso tracking, gunnery.
-// Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see MechDuel.cs for the field block.
+// MechDuel module: the opponent brains: movement AI, torso tracking,
+// gunnery. Split from the single-file build (round 22 cleanup); the
+// class stays one partial class — see MechDuel.cs for the field
+// block.
+//
+// Free-for-all (owner, 2026-10-31): two AI opponents share this
+// brain. Each picks the nearest living opponent — the player or
+// the other AI — and plays the same range game against it. No
+// teams, no collaboration: a foe will happily finish off the
+// other foe while the player watches.
 public partial class MechDuel
 {
-    private void UpdateEnemyAI(float delta)
+    // The foe's current victim: nearest living opponent, re-picked
+    // on a think timer so equidistant mechs don't flip-flop.
+    private (MechWalker W, Vector3 Vel, string Tag) PickTarget(
+        MechWalker self, MechWalker cur, ref float thinkT, float dt)
     {
-        var toP = _player.RootPos - _enemy.RootPos;
-        float dist = new Vector2(toP.X, toP.Z).Length();
-        float yawTo = MechWalker.YawOf(toP.Normalized());
-        // (A downed Atlas has a leg gone, so the immobile branch below
-        // handles it: no drive, but the torso still tracks and fires.)
-        // (No immobile branch anymore: a leg-wrecked Atlas limps —
-        // the walker's SpeedFactor throttles its drive — and keeps
-        // playing its range game below.)
-        float desiredYaw, spd;
-        if (dist > 38f) { desiredYaw = yawTo; spd = EnemyPace; }
-        else if (dist < 26f) { desiredYaw = yawTo; spd = -EnemyPace * 0.5f; }
-        else
+        thinkT -= dt;
+        if (cur != null && thinkT > 0f && !IsDead(cur)) return (cur, VelOf(cur), TagOf(cur));
+        thinkT = 0.75f;
+        MechWalker best = null;
+        float bd = float.MaxValue;
+        foreach (var cand in new[] { _player, _enemy, _foe1?.Walker })
         {
-            _orbitTimer += delta;
-            if (_orbitTimer > 6f) { _orbitTimer = 0f; _orbitDir = -_orbitDir; }
-            desiredYaw = yawTo + _orbitDir * Mathf.Pi / 2f;
-            spd = EnemyPace * 0.7f;
+            if (cand == null || cand == self || IsDead(cand)) continue;
+            float d = self.RootPos.DistanceSquaredTo(cand.RootPos);
+            if (d < bd) { bd = d; best = cand; }
         }
-        float dy = MechWalker.WrapAngle(desiredYaw - _enemyYaw);
-        float maxTurn = 0.7f * delta;
-        _enemyYaw += Mathf.Clamp(dy, -maxTurn, maxTurn);
-        _enemy.SetDrive(_enemyYaw, spd);
-        TrackEnemyTorso(delta, yawTo);
-        _enemy.TorsoPitch = 0f;
+        return best == null ? (null, Vector3.Zero, "") : (best, VelOf(best), TagOf(best));
     }
 
-    // Atlas torso tracking: snaps to the target bearing while the head
-    // (sensor suite) lives; with the head destroyed the twist closes at
-    // 0.6 rad/s -- a visible, measurable lag.
-    private void TrackEnemyTorso(float dt, float yawTo)
+    private bool IsDead(MechWalker w) =>
+        w == _player ? _playerDead
+        : _foe1 != null && w == _foe1.Walker ? _foe1.Dead
+        : _enemyDead;
+
+    private Vector3 VelOf(MechWalker w) =>
+        w == _player ? _playerVel
+        : _foe1 != null && w == _foe1.Walker ? _foe1.Vel
+        : _enemyVel;
+
+    private string TagOf(MechWalker w) =>
+        w == _player ? "PLAYER"
+        : _foe1 != null && w == _foe1.Walker ? "FOE1"
+        : "ENEMY";
+
+    private MechWalker WalkerOf(MechParts parts) =>
+        parts == _partsPlayer ? _player
+        : _foe1 != null && parts == _foe1.Parts ? _foe1.Walker
+        : _enemy;
+
+    private MechParts PartsOf(MechWalker w) =>
+        w == _player ? _partsPlayer
+        : _foe1 != null && w == _foe1.Walker ? _foe1.Parts
+        : _partsEnemy;
+
+    private void UpdateEnemyAI(float delta)
     {
-        float desiredTwist = MechWalker.WrapAngle(yawTo - _enemyYaw);
-        if (_partsEnemy.Alive("head"))
+        var (target, _, _) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, delta);
+        _foe0TargetW = target;
+        UpdateFoeMovement(_enemy, _partsEnemy, EnemyPace,
+            ref _enemyYaw, ref _orbitDir, ref _orbitTimer, target, delta);
+    }
+
+    private void UpdateFoe1AI(float delta)
+    {
+        if (_foe1.Dead) { _foe1.Walker.SetDrive(_foe1.Yaw, 0f); return; }
+        var (target, _, _) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, delta);
+        _foe1TargetW = target;
+        float pace = Mathf.Min(_foe1.Spec.MaxSpeed, EnemyMaxSpeed);
+        UpdateFoeMovement(_foe1.Walker, _foe1.Parts, pace,
+            ref _foe1.Yaw, ref _foe1.OrbitDir, ref _foe1.OrbitTimer, target, delta);
+    }
+
+    private MechWalker _foe1TargetW;
+
+    // The range game, shared by both foes: advance beyond 38u,
+    // back off inside 26u, orbit in the band; the torso tracks the
+    // target (snapping while the head lives, lagging at 0.6 rad/s
+    // once it is gone). A downed foe has a leg gone, so it limps —
+    // the walker's SpeedFactor throttles its drive — and keeps
+    // playing.
+    private void UpdateFoeMovement(MechWalker w, MechParts parts, float pace,
+        ref float yaw, ref float orbitDir, ref float orbitTimer,
+        MechWalker target, float delta)
+    {
+        if (target == null) { w.SetDrive(yaw, 0f); return; }
+        var toT = target.RootPos - w.RootPos;
+        float dist = new Vector2(toT.X, toT.Z).Length();
+        float yawTo = MechWalker.YawOf(toT.Normalized());
+        float desiredYaw, spd;
+        if (dist > 38f) { desiredYaw = yawTo; spd = pace; }
+        else if (dist < 26f) { desiredYaw = yawTo; spd = -pace * 0.5f; }
+        else
         {
-            _enemy.TorsoTwist = desiredTwist;
+            orbitTimer += delta;
+            if (orbitTimer > 6f) { orbitTimer = 0f; orbitDir = -orbitDir; }
+            desiredYaw = yawTo + orbitDir * Mathf.Pi / 2f;
+            spd = pace * 0.7f;
+        }
+        float dy = MechWalker.WrapAngle(desiredYaw - yaw);
+        float maxTurn = 0.7f * delta;
+        yaw += Mathf.Clamp(dy, -maxTurn, maxTurn);
+        w.SetDrive(yaw, spd);
+        TrackTorso(w, parts, yaw, yawTo, delta);
+        w.TorsoPitch = 0f;
+    }
+
+    // Torso tracking: snaps to the target bearing while the head
+    // (sensor suite) lives; head destroyed, the twist closes at
+    // 0.6 rad/s — a visible, measurable lag.
+    private void TrackTorso(MechWalker w, MechParts parts, float yaw, float yawTo, float dt)
+    {
+        float desiredTwist = MechWalker.WrapAngle(yawTo - yaw);
+        if (parts.Alive("head"))
+        {
+            w.TorsoTwist = desiredTwist;
         }
         else
         {
-            float cur = _enemy.TorsoTwist;
+            float cur = w.TorsoTwist;
             float step = Mathf.Clamp(MechWalker.WrapAngle(desiredTwist - cur),
                 -0.6f * dt, 0.6f * dt);
-            _enemy.TorsoTwist = cur + step;
+            w.TorsoTwist = cur + step;
         }
     }
+
+    // Legacy entry for the break suite, which drives foe 0's
+    // tracking directly to measure the head-loss lag.
+    private void TrackEnemyTorso(float dt, float yawTo) =>
+        TrackTorso(_enemy, _partsEnemy, _enemyYaw, yawTo, dt);
 
     private void UpdateEnemyGunnery(float dt)
     {
-        if (_enemyDead || _playerDead) return;
+        if (_enemyDead) return;
         if (_cdEnemy > 0f) return;
-        if (!_partsEnemy.Alive("arm_R")) return; // AC/20 mount lost with the right arm
-        var muzzle = EnemyMuzzle();
-        var target = _player.RootPos + Vector3.Up * 7.6f;
-        float dist = muzzle.DistanceTo(target);
+        var (target, vel, tag) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, 0f);
+        if (target == null) return;
+        UpdateFoeGunnery(_enemy, _partsEnemy, _defEnemyBallistic, _enemyBallisticSlot,
+            "ENEMY", tag, target, vel, () =>
+            {
+                _cdEnemy = _defEnemyBallistic?.Cooldown ?? 2.4f;
+                _enemyShots++;
+            });
+    }
+
+    private void UpdateFoe1Gunnery(float dt)
+    {
+        if (_foe1.Dead || _foe1.Cd > 0f) return;
+        var (target, vel, tag) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, 0f);
+        if (target == null) return;
+        UpdateFoeGunnery(_foe1.Walker, _foe1.Parts, _foe1.DefBallistic, _foe1.BallisticSlot,
+            "FOE1", tag, target, vel, () => { _foe1.Cd = _foe1.DefBallistic?.Cooldown ?? 0.85f; });
+    }
+
+    // Cannon gunnery, shared: range + line-of-sight gated, leads
+    // the target's velocity at time-of-flight, seeded inaccuracy
+    // cone (1.2° with sensors, 3.6° once the head is gone). Shell
+    // speed follows the weapon, as the player's does — the Atlas's
+    // AC/20 flies at 150 (50 x3, owner 2026-10-29).
+    private void UpdateFoeGunnery(MechWalker w, MechParts parts, WeaponDef def, string slot,
+        string tag, string targetTag, MechWalker target, Vector3 targetVel,
+        System.Action onFired)
+    {
+        if (parts == null || !parts.Alive(slot ?? "arm_R")) return; // the mount is gone with its part
+        var muzzle = MuzzleFor(w, slot ?? "arm_R");
+        var tp = target.RootPos + Vector3.Up * 7.6f;
+        float dist = muzzle.DistanceTo(tp);
         if (dist > 75f) return;
-        var los = _hit.Ray(muzzle, (target - muzzle).Normalized(), dist, "ENEMY");
-        if (los.Hit && los.Target != "PLAYER") return; // blocked: building/terrain
-        float tof = dist / 150f; // matches the shell speed below (50 x3, owner 2026-10-29) — lead and flight must use the same number
-        var aim = target + _playerVel * tof;
-        // Head destroyed: sensors gone, aim spread triples (1.2 -> 3.6 deg).
+        var los = _hit.Ray(muzzle, (tp - muzzle).Normalized(), dist, tag);
+        if (los.Hit && los.Target != targetTag) return; // blocked: building/terrain
+        float speed = def?.Id == "ac20" ? 150f
+            : def?.Id == "machine_gun" ? 85f
+            : def?.Id == "heavy_cannon" ? 138f : 420f;
+        float tof = dist / speed;
+        var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
-            _partsEnemy.Alive("head") ? 1.2f : 3.6f);
-        SpawnProjectile(muzzle, dir * 150f, 5f, _defEnemyBallistic?.Damage ?? 18f, 0f, "ENEMY", rocket: false, weaponWeight: _defEnemyBallistic?.Weight ?? 16f); // 50 x3 (owner: every cannon bullet 3x — the dodge window narrows with it)
+            parts.Alive("head") ? 1.2f : 3.6f);
+        SpawnProjectile(muzzle, dir * speed, 5f, def?.Damage ?? 18f, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? 16f);
         PlaySfx(_sfxCannon, muzzle, 0f, 0.78f);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
-        _cdEnemy = _defEnemyBallistic?.Cooldown ?? 2.4f;
-        _enemyShots++;
-        GD.Print($"WPN ATLASFIRE dist={dist:F1} tof={tof:F2} playerVel={_playerVel.Length():F1}");
+        onFired?.Invoke();
+        GD.Print($"WPN FOEFIRE {tag} dist={dist:F1} tof={tof:F2} targetVel={targetVel.Length():F1}");
     }
 
     private Vector3 ApplyInaccuracy(Vector3 dir, float maxDeg)
