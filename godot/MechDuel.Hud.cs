@@ -272,9 +272,15 @@ public partial class MechDuel
         var status = new System.Collections.Generic.List<string>();
         if (lasDead && _defEnergy != null) status.Add("LASER DESTROYED — LEFT ARM LOST");
         if (acDead && _defBallistic != null) status.Add("AUTOCANNON DESTROYED — RIGHT ARM LOST");
-        if (lrmDead && _defPodL != null && _defPodR != null) status.Add("LRM DESTROYED — BOTH PODS LOST");
-        else if ((_defPodL != null || _defPodR != null) && !_partsPlayer.Alive("pod_L")) status.Add("LRM DEGRADED — LEFT POD LOST (4 ROCKETS)");
-        else if ((_defPodL != null || _defPodR != null) && !_partsPlayer.Alive("pod_R")) status.Add("LRM DEGRADED — RIGHT POD LOST (4 ROCKETS)");
+        // Pod status: only for pods the chassis actually HAS (the
+        // Atlas carries a single rack — an absent right pod is not
+        // a "lost" one). Wording follows the equipped pod weapon.
+        string podName = (_defPodL ?? _defPodR)?.Short ?? "LRM";
+        bool hasPodL = _partsPlayer.Has("pod_L"), hasPodR = _partsPlayer.Has("pod_R");
+        if (lrmDead && (_defPodL != null || _defPodR != null))
+            status.Add(hasPodL && hasPodR ? $"{podName} DESTROYED — BOTH PODS LOST" : $"{podName} DESTROYED — POD LOST");
+        else if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L")) status.Add($"{podName} DEGRADED — LEFT POD LOST ({_defPodL.Rockets} ROCKETS)");
+        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R")) status.Add($"{podName} DEGRADED — RIGHT POD LOST ({_defPodR.Rockets} ROCKETS)");
         if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED — CROSSHAIR SWAY");
         _lblWeaponStatus.Text = string.Join("\n", status);
 

@@ -40,7 +40,7 @@ public partial class MechDuel : Node3D
     private bool _test;
     private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
     private bool _atlasCam; // dev flag: swap player to Atlas, force-deploy, capture the chase view
-    private bool _atlasCamDone; private float _atlasCamT;
+    private bool _atlasCamDone; private float _atlasCamT; private bool _atlasCamFired;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
@@ -527,6 +527,13 @@ public partial class MechDuel : Node3D
         if (_atlasCam && _atlasCamDone && !_labOpen)
         {
             _atlasCamT += (float)delta;
+            if (!_atlasCamFired && _atlasCamT > 1.2f)
+            {
+                _atlasCamFired = true;
+                GD.Print($"ATLASCAM defs energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"}");
+                FireLaser(_enemy.RootPos + Vector3.Up * 6f);
+                FireLrmSalvo(_enemy.RootPos);
+            }
             if (_atlasCamT > 2.5f && _camMode == "chase")
             {
                 var back = -MechWalker.HeadingVec(_player.TorsoYawWorld);

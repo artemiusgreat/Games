@@ -121,15 +121,19 @@ public partial class MechDuel
         return bone + MechWalker.HeadingVec(_player.TorsoYawWorld) * 2.8f;
     }
 
-    // Atlas AC/20: right-torso gun — torso bone origin plus a right/up/
-    // forward offset in the torso frame.
-    private Vector3 EnemyMuzzle()
+    // Torso gun (the Atlas's waist AC/20): torso bone origin plus a
+    // right/up/forward offset in the torso frame. Used by whichever
+    // seat pilots an Atlas — its shells leave from the waist gun,
+    // not the fist.
+    private Vector3 TorsoGunMuzzle(MechWalker w)
     {
-        var torso = _enemy.BoneWorldPos("torso");
-        var fwd = MechWalker.HeadingVec(_enemy.TorsoYawWorld);
+        var torso = w.BoneWorldPos("torso");
+        var fwd = MechWalker.HeadingVec(w.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
         return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
     }
+
+    private Vector3 EnemyMuzzle() => TorsoGunMuzzle(_enemy);
 
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
@@ -233,7 +237,7 @@ public partial class MechDuel
         if (!_partsPlayer.Alive("arm_R") || _defBallistic == null) { DenyWeapon("ac"); return; }
         if (_cdAc > 0f) return;
         _cdAc = _defBallistic.Cooldown;
-        var muzzle = PlayerMuzzle(false);
+        var muzzle = _playerSpec.Id == "atlas" ? TorsoGunMuzzle(_player) : PlayerMuzzle(false);
         var toAim = aimPoint - muzzle;
         // No clamp needed here: the cannon fires the pointer line
         // directly with no range compensation, so a far aim point
@@ -286,6 +290,11 @@ public partial class MechDuel
 
     private Vector3 PodMuzzle(bool left)
     {
+        // Rig-true: rockets leave from the pod part's actual center —
+        // a chassis may carry a single rack, on either shoulder.
+        string id = left ? "pod_L" : "pod_R";
+        if (_partsPlayer != null && _partsPlayer.Has(id))
+            return _partsPlayer.PartCenterWorld(id) + Vector3.Up * 0.3f;
         var torso = _player.BoneWorldPos("torso");
         var fwd = MechWalker.HeadingVec(_player.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
