@@ -185,15 +185,4 @@ public partial class RiderDuel
         onFired?.Invoke();
         GD.Print($"WPN FOEFIRE {tag} dist={dist:F1} tof={tof:F2} targetVel={targetVel.Length():F1}");
     }
-
-    private Vector3 ApplyInaccuracy(Vector3 dir, float maxDeg)
-    {
-        float theta = Mathf.DegToRad(maxDeg) * Mathf.Sqrt((float)_rng.NextDouble());
-        float phi = (float)(_rng.NextDouble() * Mathf.Tau);
-        var side = dir.Cross(Mathf.Abs(dir.Y) < 0.9f ? Vector3.Up : Vector3.Right).Normalized();
-        var up2 = side.Cross(dir).Normalized();
-        var axis = (side * Mathf.Cos(phi) + up2 * Mathf.Sin(phi)).Normalized();
-        return dir.Rotated(axis, theta).Normalized();
-    }
-
 }

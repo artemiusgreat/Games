@@ -156,7 +156,6 @@ public partial class RiderDuel : Node3D
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
     private Vector3 _playerVel;
-    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, WeaponDef Def)> _lrmQueue = new();
     // Knockdown by weight (owner): impact weight accumulates over a
     // short window; past 20% of the rider's tonnage it topples.
     private float _combatClock;
@@ -529,13 +528,7 @@ public partial class RiderDuel : Node3D
             if (life <= 0f) _feed.RemoveAt(i);
             else _feed[i] = (_feed[i].Text, life);
         }
-        for (int i = _lrmQueue.Count - 1; i >= 0; i--)
-        {
-            var q = _lrmQueue[i];
-            q.Delay -= dt;
-            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left, q.Def); }
-            else _lrmQueue[i] = q;
-        }
+        ProcessLrmQueue(dt);
         for (int i = _shots.Count - 1; i >= 0; i--)
         {
             var p = _shots[i];
