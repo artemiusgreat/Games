@@ -39,6 +39,11 @@ public sealed class MechSpec
 
 public static class MechSpecs
 {
+    // Weapon capacity rule (owner, 2026-10-31): the sum of a
+    // chassis' slot caps is proportional to its tonnage — about
+    // two thirds (75t -> 50t of mounts, 100t -> 66t). A heavier
+    // mech must never carry less weapon than a lighter one.
+
     public static readonly MechSpec TimberWolf = new()
     {
         Id = "timberwolf", Name = "TIMBER WOLF", Tonnage = 75f, JumpCapable = true,
@@ -49,8 +54,8 @@ public static class MechSpecs
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 16f },
-            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 12f },
-            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 12f },
+            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 13f },
+            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 13f },
         }
     };
 
@@ -62,7 +67,9 @@ public static class MechSpecs
         FlipKneePole = true,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 18f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
     };
 
@@ -141,7 +148,9 @@ public sealed class LoadoutState
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
+        l.Equipped["arm_L"] = "large_laser";
         l.Equipped["arm_R"] = "ac20";
+        l.Equipped["pod_L"] = "srm";
         return l;
     }
 
