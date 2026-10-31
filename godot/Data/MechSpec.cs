@@ -39,10 +39,11 @@ public sealed class MechSpec
 
 public static class MechSpecs
 {
-    // Weapon capacity rule (owner, 2026-10-31): the sum of a
-    // chassis' slot caps is proportional to its tonnage — about
-    // two thirds (75t -> 50t of mounts, 100t -> 66t). A heavier
-    // mech must never carry less weapon than a lighter one.
+    // Weapon capacity rule (owner, 2026-10-31, MW4 MechLab
+    // model): the chassis tonnage IS the weapon budget — the
+    // slot caps sum to exactly the tonnage (75t mech -> 75t of
+    // mounts, 100t -> 100t). Per-slot caps still gate what a
+    // single mount can hold.
 
     public static readonly MechSpec TimberWolf = new()
     {
@@ -53,9 +54,9 @@ public static class MechSpecs
         Slots = new[]
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 16f },
-            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 13f },
-            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 13f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 25f },
+            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
     };
 
@@ -67,9 +68,9 @@ public static class MechSpecs
         FlipKneePole = true,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
-            new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 30f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 40f },
+            new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 30f },
         }
     };
 

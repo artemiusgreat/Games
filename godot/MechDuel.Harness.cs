@@ -42,6 +42,15 @@ public partial class MechDuel
                     if (Mathf.Abs(LoadoutState.DefaultTimberWolf().TotalWeaponWeight - 37f) > 0.01f)
                     { GD.PrintErr("DUEL FAIL: default fit tonnage != 37t"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 37t");
+                    // Capacity rule (owner, MW4 model): every chassis'
+                    // slot caps sum to exactly its tonnage.
+                    foreach (var sp in MechSpecs.All)
+                    {
+                        float sum = 0f; foreach (var sl in sp.Slots) sum += sl.MaxWeight;
+                        if (Mathf.Abs(sum - sp.Tonnage) > 0.01f)
+                        { GD.PrintErr($"DUEL FAIL: {sp.Id} slot caps sum {sum:F0}t != tonnage {sp.Tonnage:F0}t"); GetTree().Quit(1); return; }
+                    }
+                    GD.Print("LABTEST CAPACITY PASS slot caps sum to chassis tonnage for every mech");
                     // Mech selection (round 22): swap both chassis and
                     // verify the duel follows — parts layout, pools
                     // and equipped defs all follow the spec.
