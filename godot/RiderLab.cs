@@ -32,6 +32,7 @@ public partial class RiderLab : Control
     // any window size, instead of fixed fractions that drifted
     // when the screen was resized.
     public System.Func<string, Vector2?> AnchorProjector;
+    public System.Func<Vector2?> CenterProjector;
     private PaperdollArea _paperdoll;
 
     public override void _Process(double delta)
@@ -39,6 +40,7 @@ public partial class RiderLab : Control
         if (_paperdoll != null && AnchorProjector != null)
         {
             _paperdoll.Projector = AnchorProjector;
+            _paperdoll.CenterProj = CenterProjector;
             _paperdoll.Layout();
         }
     }
@@ -210,6 +212,7 @@ public partial class RiderLab : Control
         // Viewport position of a slot's part on the rider (owner):
         // set by the duel; null entries fall back to the fractions.
         public System.Func<string, Vector2?> Projector;
+        public System.Func<Vector2?> CenterProj;
 
         public Vector2? LiveAnchor(string id) =>
             _live.TryGetValue(id, out var v) ? v + GetGlobalPosition() : null;
@@ -275,8 +278,21 @@ public partial class RiderLab : Control
             // vertically. Lines stay short and uncrossed.
             if (_live.Count > 0)
             {
+                // Pin every live panel to its content size
+                // first: measured in the lab, a slot panel's
+                // Size drifts well past its combined minimum
+                // (227-321px tall against 133-180 minimums),
+                // which silently broke every packing computation
+                // below — the math packed phantom panels while
+                // the real ones overlapped. Layout runs every
+                // frame, so the pin holds.
+                foreach (var (id, panel) in _panels)
+                    if (_live.ContainsKey(id))
+                        panel.Size = panel.GetCombinedMinimumSize();
                 Vector2 center;
-                if (_live.TryGetValue("torso", out var tc)) center = tc;
+                var bc = CenterProj?.Invoke();
+                if (bc.HasValue) center = bc.Value - GetGlobalPosition();
+                else if (_live.TryGetValue("torso", out var tc)) center = tc;
                 else
                 {
                     center = Vector2.Zero;
@@ -308,47 +324,49 @@ public partial class RiderLab : Control
                         Mathf.Clamp(c.Y, panel.Size.Y * 0.5f, Mathf.Max(panel.Size.Y * 0.5f, Size.Y - panel.Size.Y * 0.5f)));
                     panel.Position = c - panel.Size * 0.5f;
                 }
-                // Overlap relaxation: push overlapping pairs
-                // apart along whichever axis penetrates less
-                // (diagonal neighbors separate diagonally that
-                // way), six passes, re-clamped each pass. In a
-                // short area five tall panels cannot all fit —
-                // the passes at least order them cleanly.
+                // Overlap resolution: per side (by panel
+                // center), sort by height along the body and
+                // sweep apart — top-down, then bottom-up if the
+                // stack runs past the area's foot. The pairwise
+                // relaxation this replaces oscillated at the
+                // clamps when a side's panels exactly filled
+                // the area (measured on Hector: pod + arm
+                // panels share the rider's upper body, 330px of
+                // panel in a 340px area — the sweeps find the
+                // one packing that fits, the pushes never did).
+                // X stays wherever the radial placement put it:
+                // panels keep hugging their own side of the
+                // silhouette, only their heights de-overlap.
                 var placed = new System.Collections.Generic.List<Control>();
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id)) placed.Add(panel);
-                for (int pass = 0; pass < 10; pass++)
+                foreach (var side in new[] { 0, 1 })
                 {
-                    for (int i = 0; i < placed.Count; i++)
-                    for (int j = i + 1; j < placed.Count; j++)
-                    {
-                        var A = placed[i]; var B = placed[j];
-                        float ox = Mathf.Min(A.Position.X + A.Size.X, B.Position.X + B.Size.X)
-                                 - Mathf.Max(A.Position.X, B.Position.X);
-                        float oy = Mathf.Min(A.Position.Y + A.Size.Y, B.Position.Y + B.Size.Y)
-                                 - Mathf.Max(A.Position.Y, B.Position.Y);
-                        if (ox <= 0f || oy <= 0f) continue;
-                        var ca = A.Position + A.Size * 0.5f;
-                        var cb = B.Position + B.Size * 0.5f;
-                        if (ox < oy)
-                        {
-                            float push = ox * 0.5f + 1f;
-                            float s = ca.X <= cb.X ? -1f : 1f;
-                            A.Position = new Vector2(A.Position.X + s * push, A.Position.Y);
-                            B.Position = new Vector2(B.Position.X - s * push, B.Position.Y);
-                        }
-                        else
-                        {
-                            float push = oy * 0.5f + 1f;
-                            float s = ca.Y <= cb.Y ? -1f : 1f;
-                            A.Position = new Vector2(A.Position.X, A.Position.Y + s * push);
-                            B.Position = new Vector2(B.Position.X, B.Position.Y - s * push);
-                        }
-                    }
+                    var group = new System.Collections.Generic.List<Control>();
                     foreach (var p in placed)
-                        p.Position = new Vector2(
-                            Mathf.Clamp(p.Position.X, 0f, Mathf.Max(0f, Size.X - p.Size.X)),
-                            Mathf.Clamp(p.Position.Y, 0f, Mathf.Max(0f, Size.Y - p.Size.Y)));
+                        if ((p.Position.X + p.Size.X * 0.5f < Size.X * 0.5f ? 0 : 1) == side)
+                            group.Add(p);
+                    group.Sort((a, b) => (a.Position.Y + a.Size.Y * 0.5f).CompareTo(b.Position.Y + b.Size.Y * 0.5f));
+                    float cursor = 0f;
+                    foreach (var p in group)
+                    {
+                        float y = Mathf.Max(p.Position.Y, cursor);
+                        p.Position = new Vector2(p.Position.X, y);
+                        cursor = y + p.Size.Y + 4f;
+                    }
+                    // A side whose panels total more than the
+                    // area is tall cannot fit without overlap —
+                    // separation wins over containment: the
+                    // stack may spill up to 90px past the foot
+                    // rather than crush back into its neighbor.
+                    cursor = Size.Y + 90f;
+                    for (int i = group.Count - 1; i >= 0; i--)
+                    {
+                        var p = group[i];
+                        float y = Mathf.Min(p.Position.Y, cursor - p.Size.Y);
+                        p.Position = new Vector2(p.Position.X, Mathf.Max(0f, y));
+                        cursor = p.Position.Y - 4f;
+                    }
                 }
             }
             QueueRedraw();

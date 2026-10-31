@@ -22,6 +22,22 @@ public partial class RiderDuel
         return sp;
     }
 
+    // Viewport position of the rider's pelvis — the paperdoll's
+    // radial center for panel placement. The slot anchors all
+    // sit in the upper body, so their own centroid rides too
+    // high and the panels bunch at the top; the pelvis is the
+    // body's real middle.
+    private Vector2? ProjectBodyCenter()
+    {
+        if (_player == null || _cam == null) return null;
+        var w = _player.RootPos + Vector3.Up * (_playerSpec.Height * 0.45f);
+        if (_cam.IsPositionBehind(w)) return null;
+        var sp = _cam.UnprojectPosition(w);
+        var vp = GetViewport().GetVisibleRect().Size;
+        if (sp.X < -40f || sp.Y < -40f || sp.X > vp.X + 40f || sp.Y > vp.Y + 40f) return null;
+        return sp;
+    }
+
     private void OpenLab()
     {
         if (_lab != null) { _lab.QueueFree(); _lab = null; }
@@ -31,7 +47,8 @@ public partial class RiderDuel
             Loadout = _loadout,
             PlayerSpecId = _playerSpec.Id,
             EnemySpecId = _enemySpec.Id,
-            AnchorProjector = ProjectSlotAnchor
+            AnchorProjector = ProjectSlotAnchor,
+            CenterProjector = ProjectBodyCenter
         };
         _lab = lab;
         lab.OnStart = () =>
