@@ -17,8 +17,8 @@ public partial class RiderLab : Control
     // Changing one reports through OnSelectionChanged; the duel
     // rebuilds that side and recreates this lab against the new
     // player spec (slots, tonnage, jump capability all follow).
-    public string PlayerSpecId = "hector";
-    public string EnemySpecId = "enyo";
+    public string PlayerSpecId = "enyo";
+    public string EnemySpecId = "hector";
     public Action OnSelectionChanged;
 
     private Label _hint;
@@ -91,7 +91,7 @@ public partial class RiderLab : Control
         "heavy_cannon" => "HC",
         "srm" => "SRM",
         "lrm" => "LRM",
-        "enyo_ac20" => "AC20",
+        "hector_ac20" => "AC20",
         _ => w.Name.Length >= 2 ? w.Name.Substring(0, 2).ToUpperInvariant() : w.Name,
     };
 
@@ -330,7 +330,7 @@ public partial class RiderLab : Control
                 // stack runs past the area's foot. The pairwise
                 // relaxation this replaces oscillated at the
                 // clamps when a side's panels exactly filled
-                // the area (measured on Hector: pod + arm
+                // the area (measured on Enyo: pod + arm
                 // panels share the rider's upper body, 330px of
                 // panel in a 340px area — the sweeps find the
                 // one packing that fits, the pushes never did).
@@ -454,7 +454,7 @@ public partial class RiderLab : Control
         selBox.AddThemeConstantOverride("separation", 6);
         root.AddChild(selBox);
         // One selector only (owner, 2026-10-31): yours. The two
-        // opponents are fixed — a Hector and an Enyo field
+        // opponents are fixed — a Enyo and an Hector field
         // against you (and each other) on every map.
         selBox.AddChild(RiderSelector("RIDER", true));
 

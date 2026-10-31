@@ -5,7 +5,7 @@ using Godot;
 // generalized: any heading (not just -Z), signed speed (reverse stepping),
 // turn-in-place stepping, torso twist/pitch aim on the torso bone, and bone
 // data derived per-model from the rest pose -- the knee pole comes from the
-// rest pose, so digitigrade (Hector) and plantigrade (Enyo) legs both
+// rest pose, so digitigrade (Enyo) and plantigrade (Hector) legs both
 // work with no hardcoded bend direction.
 //
 // Drive model: every frame the owner calls SetDrive(legsYaw, targetSpeed)
@@ -27,7 +27,7 @@ public partial class RiderWalker : Node3D
         public float StepLift;
         public float Accel;
         public float CollisionRadius;
-        public bool FlipKneePole; // plantigrade chassis (Enyo): mirror the rest-pose knee pole so the knee bends FORWARD, human-style (owner round 22)
+        public bool FlipKneePole; // plantigrade chassis (Hector): mirror the rest-pose knee pole so the knee bends FORWARD, human-style (owner round 22)
     }
 
     private sealed class Leg
@@ -539,7 +539,7 @@ public partial class RiderWalker : Node3D
         // (The first cut re-projected ALL axes through the frame:
         // the forward prediction offset baked into the local
         // target kept advancing with the root, doubling the
-        // stride at run speed \u2014 the Hector's legs spread
+        // stride at run speed \u2014 the Enyo's legs spread
         // enormously in run mode. Forward must stay world-anchored.)
         var pos = leg.StepFrom.Lerp(leg.StepTo, e);
         pos.Y += Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;

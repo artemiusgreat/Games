@@ -31,7 +31,7 @@ public partial class RiderDuel
         after?.Invoke();
         if (_phase == 7 && tag == "rider")
         {
-            GD.Print($"DUEL DONE playerSteps={_player.Steps} enyoSteps={_enemy.Steps} enyoMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
+            GD.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
             // actual view) before quitting — framing proof for cam changes.
             QueueCapture("res://proof/duel_chase.png", "chase", "chase");
@@ -98,7 +98,7 @@ public partial class RiderDuel
         }
         else if (_camMode == "wpnHud")
         {
-            // Rear three-quarter: player rider in frame, Enyo visible past it.
+            // Rear three-quarter: player rider in frame, Hector visible past it.
             var torsoYaw = _player.TorsoYawWorld;
             var fwd = RiderWalker.HeadingVec(torsoYaw);
             var right = new Vector3(-fwd.Z, 0f, fwd.X);
@@ -117,7 +117,7 @@ public partial class RiderDuel
             _cam.GlobalPosition = p + new Vector3(-15f, 5.5f, 5f);
             _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
         }
-        else if (_camMode == "brkEnyo")
+        else if (_camMode == "brkHector")
         {
             var p = _enemy.RootPos;
             _cam.GlobalPosition = p + new Vector3(14.5f, 6.5f, -5f);
@@ -163,7 +163,7 @@ public partial class RiderDuel
         else if (_camMode == "photoGround")
         {
             // Ground level by the hand-placed trees, looking across
-            // the road at the Hector.
+            // the road at the Enyo.
             var tp = new Vector3(-21f, Main.HeightAt(-21f, 0f) + 2.1f, -1f);
             _cam.GlobalPosition = tp;
             _cam.LookAt(_player.RootPos + Vector3.Up * 5.5f, Vector3.Up);
@@ -191,7 +191,7 @@ public partial class RiderDuel
             // offset — the camera sits on the torso axis, lifted
             // well above the rider so the field in front of it is
             // visible over the hull. Distances scale with the
-            // chassis height (reference: the 13u Hector this
+            // chassis height (reference: the 13u Enyo this
             // framing was tuned on), so a taller or shorter rider
             // is framed the same way.
             float k = _playerSpec.Height / 13f;

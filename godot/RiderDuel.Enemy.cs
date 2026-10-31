@@ -159,7 +159,7 @@ public partial class RiderDuel
     // Cannon gunnery, shared: range + line-of-sight gated, leads
     // the target's velocity at time-of-flight, seeded inaccuracy
     // cone (1.2° with sensors, 3.6° once the head is gone). Shell
-    // speed follows the weapon, as the player's does — the Enyo's
+    // speed follows the weapon, as the player's does — the Hector's
     // AC/20 flies at 150 (50 x3, owner 2026-10-29).
     private void UpdateFoeGunnery(RiderWalker w, RiderParts parts, WeaponDef def, string slot,
         string tag, string targetTag, RiderWalker target, Vector3 targetVel,

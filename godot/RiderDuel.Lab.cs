@@ -102,11 +102,11 @@ public partial class RiderDuel
     }
 
     // Foe 1 (free-for-all): always the chassis foe 0 is NOT — the
-    // match fields a Hector and an Enyo as opponents,
+    // match fields a Enyo and an Hector as opponents,
     // whichever one the legacy enemy slot holds.
     private void BuildFoe1()
     {
-        var spec = _enemySpec.Id == "enyo" ? RiderSpecs.Hector : RiderSpecs.Enyo;
+        var spec = _enemySpec.Id == "hector" ? RiderSpecs.Enyo : RiderSpecs.Hector;
         _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
         var pad = Main.SpawnPads[2];
         _foe1.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
@@ -124,7 +124,7 @@ public partial class RiderDuel
 
     private void RebuildFoe1()
     {
-        var want = _enemySpec.Id == "enyo" ? RiderSpecs.Hector : RiderSpecs.Enyo;
+        var want = _enemySpec.Id == "hector" ? RiderSpecs.Enyo : RiderSpecs.Hector;
         if (_foe1 != null && _foe1.Spec.Id == want.Id) return;
         var pos = _foe1?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
         float yaw = _foe1?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
@@ -190,7 +190,7 @@ public partial class RiderDuel
             _enemySpec = RiderSpecs.ById(enemySpecId);
             _enemyLoadout = LoadoutState.DefaultFor(_enemySpec);
             RebuildRider(false);
-            if (_foe1 != null) RebuildFoe1(); // the roster stays Hector + Enyo
+            if (_foe1 != null) RebuildFoe1(); // the roster stays Enyo + Hector
         }
         GD.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();

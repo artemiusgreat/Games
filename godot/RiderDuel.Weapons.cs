@@ -34,7 +34,7 @@ public partial class RiderDuel
         // the chest-ray convergence: the view line and the torso
         // line now diverge steeply, so shots converging on the chest
         // ray's hit landed visibly BELOW the cursor (reticle on the
-        // Enyo's chest, beam in its legs — the owner's screenshot).
+        // Hector's chest, beam in its legs — the owner's screenshot).
         // The camera ray defines what the player is pointing at, at
         // any camera height: its first hit within 60u of the player
         // is where every weapon goes. Live play always runs the
@@ -137,9 +137,9 @@ public partial class RiderDuel
         return ElbowMuzzle(w, slot != "arm_R");
     }
 
-    // Torso gun (the Enyo's waist AC/20): torso bone origin plus a
+    // Torso gun (the Hector's waist AC/20): torso bone origin plus a
     // right/up/forward offset in the torso frame. Used by whichever
-    // seat pilots an Enyo — its shells leave from the waist gun,
+    // seat pilots an Hector — its shells leave from the waist gun,
     // not the fist.
     private Vector3 TorsoGunMuzzle(RiderWalker w)
     {
@@ -501,8 +501,8 @@ public partial class RiderDuel
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
     // the fire/gunnery checks — every mount answers to its own part
-    // (arm_L -> lasers, the waist gun -> the Enyo's AC/20, pods -> salvo
-    // size, Enyo head -> spread + tracking lag), so
+    // (arm_L -> lasers, the waist gun -> the Hector's AC/20, pods -> salvo
+    // size, Hector head -> spread + tracking lag), so
     // the stateful consequences latched here are the legs and the player's
     // head (HUD disturbance timer; the sway itself is applied in the HUD
     // step from part state).

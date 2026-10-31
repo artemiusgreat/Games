@@ -255,7 +255,7 @@ public partial class RiderDuel
         {
             var part = _partsPlayer.GetPart(id);
             var cellBox = cell.Lab.GetParent() as Control;
-            if (part == null) { if (cellBox != null) cellBox.Visible = false; continue; } // chassis lacks this part (Enyo: no pods)
+            if (part == null) { if (cellBox != null) cellBox.Visible = false; continue; } // chassis lacks this part (Hector: no pods)
             if (cellBox != null) cellBox.Visible = true;
             float frac = part.MaxHp > 0f ? part.Hp / part.MaxHp : 0f;
             cell.Bar.Value = frac;
@@ -296,7 +296,7 @@ public partial class RiderDuel
         if (lasDead && _defEnergy != null) status.Add("ENERGY WEAPONS DESTROYED — ALL MOUNTS LOST");
         if (acDead && _defBallistic != null) status.Add("BALLISTIC WEAPONS DESTROYED — ALL MOUNTS LOST");
         // Pod status: only for pods the chassis actually HAS (the
-        // Enyo carries a single rack — an absent right pod is not
+        // Hector carries a single rack — an absent right pod is not
         // a "lost" one). Wording follows the equipped pod weapon.
         string podName = (_defPodL ?? _defPodR)?.Short ?? "LRM";
         bool hasPodL = _partsPlayer.Has("pod_L"), hasPodR = _partsPlayer.Has("pod_R");
@@ -348,6 +348,6 @@ public partial class RiderDuel
         }
     }
 
-    // Enyo AC/20 gunnery: range + line-of-sight gated, leads the player's
+    // Hector AC/20 gunnery: range + line-of-sight gated, leads the player's
     // velocity at time-of-flight, seeded ±1.2° inaccuracy cone.
 }

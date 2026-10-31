@@ -45,10 +45,10 @@ public static class RiderSpecs
     // mounts, 100t -> 100t). Per-slot caps still gate what a
     // single mount can hold.
 
-    public static readonly RiderSpec Hector = new()
+    public static readonly RiderSpec Enyo = new()
     {
-        Id = "hector", Name = "HECTOR", Tonnage = 75f, JumpCapable = true,
-        ModelPath = "res://assets/timberwolf.fbx", PartsId = "hector", MaxHp = 260f,
+        Id = "enyo", Name = "ENYO", Tonnage = 75f, JumpCapable = true,
+        ModelPath = "res://assets/timberwolf.fbx", PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
@@ -60,10 +60,10 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec Enyo = new()
+    public static readonly RiderSpec Hector = new()
     {
-        Id = "enyo", Name = "ENYO", Tonnage = 100f, JumpCapable = false,
-        ModelPath = "res://assets/atlas.fbx", PartsId = "enyo", MaxHp = 340f,
+        Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
+        ModelPath = "res://assets/atlas.fbx", PartsId = "hector", MaxHp = 340f,
         Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
@@ -83,12 +83,12 @@ public static class RiderSpecs
 
     // Every chassis the lab can offer. Adding a rider = one new
     // RiderSpec + one entry here (+ its RiderParts layout and model).
-    public static readonly RiderSpec[] All = { Hector, Enyo };
+    public static readonly RiderSpec[] All = { Enyo, Hector };
 
     public static RiderSpec ById(string id)
     {
         foreach (var s in All) if (s.Id == id) return s;
-        return Hector;
+        return Enyo;
     }
 }
 
@@ -98,7 +98,7 @@ public sealed class LoadoutState
 {
     // A hardpoint fits as many weapons of its type as its tonnage
     // cap allows (owner, 2026-10-31: with one weapon per slot, the
-    // 3-slot Enyo fielded less than the 4-slot Hector despite
+    // 3-slot Hector fielded less than the 4-slot Enyo despite
     // the bigger budget — slot count beat tonnage). The tonnage is
     // the real limit now, exactly like the MW4 lab.
     public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> Equipped = new();
@@ -196,14 +196,14 @@ public sealed class LoadoutState
     }
 
     public static LoadoutState DefaultFor(RiderSpec spec) =>
-        spec.Id == "enyo" ? DefaultEnyo() : DefaultHector();
+        spec.Id == "hector" ? DefaultHector() : DefaultEnyo();
 
-    public static LoadoutState DefaultEnyo()
+    public static LoadoutState DefaultHector()
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         // Every slot filled (owner, 2026-10-31): 95t of 100t.
-        var at = RiderSpecs.Enyo;
+        var at = RiderSpecs.Hector;
         l.TryAssign(at, "arm_L", WeaponCatalog.Ppc);
         l.TryAssign(at, "arm_L", WeaponCatalog.LargeLaser);
         l.TryAssign(at, "arm_L", WeaponCatalog.MediumLaser);       // 17/18t
@@ -220,12 +220,12 @@ public sealed class LoadoutState
         return l;
     }
 
-    public static LoadoutState DefaultHector()
+    public static LoadoutState DefaultEnyo()
     {
         var l = new LoadoutState();
         l.JumpJets = true; // default fit: thrusters loaded
         // Every slot filled (owner, 2026-10-31): 64t of 75t.
-        var tw = RiderSpecs.Hector;
+        var tw = RiderSpecs.Enyo;
         l.TryAssign(tw, "arm_L", WeaponCatalog.LargeLaser);
         l.TryAssign(tw, "arm_L", WeaponCatalog.MediumLaser);       // 8/8t
         l.TryAssign(tw, "arm_R", WeaponCatalog.Autocannon);

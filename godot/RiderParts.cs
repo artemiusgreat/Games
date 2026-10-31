@@ -15,7 +15,7 @@ using System.Collections.Generic;
 //         arm_L/R = UpperArm + ShoulderPad + Elbow + Forearm + HandGun
 //           (+ WeaponERPPC), all shoulder/elbow-bound
 //         leg_L/R = Thigh + Shin + FootHub + all Toe meshes
-//   ENYO torso = Torso core + Pelvis + AC20 + SRM6 (per spec the guns
+//   HECTOR torso = Torso core + Pelvis + AC20 + SRM6 (per spec the guns
 //           ride with the torso part)
 //         head  = skull cap region split out of Torso
 //         arm_L/R = Shoulder + UpperArm + Elbow + Forearm
@@ -96,7 +96,7 @@ public sealed class RiderParts
         var byName = new Dictionary<string, MeshInstance3D>();
         CollectMeshes(walker.ModelRoot, byName);
 
-        if (riderId == "hector")
+        if (riderId == "enyo")
         {
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
@@ -117,7 +117,7 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
-        else if (riderId == "enyo")
+        else if (riderId == "hector")
         {
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
@@ -444,9 +444,9 @@ public sealed class RiderParts
 
     public bool Has(string id) => _parts.ContainsKey(id);
     // Tolerant lookups: a chassis may simply not HAVE a part (the
-    // Enyo has no missile pods). Absent reads as destroyed / 0 HP /
+    // Hector has no missile pods). Absent reads as destroyed / 0 HP /
     // null rather than throwing — a hard dictionary lookup here
-    // crashed every frame for an Enyo player and froze the camera
+    // crashed every frame for an Hector player and froze the camera
     // mid-duel (owner's report, 2026-10-30).
     public Part GetPart(string id) => _parts.TryGetValue(id, out var p) ? p : null;
     public bool Alive(string id) => _parts.TryGetValue(id, out var p) && !p.Destroyed;

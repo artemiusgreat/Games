@@ -2,7 +2,7 @@ using Godot;
 using System.Collections.Generic;
 
 // RiderDuel: two-rider duel — a PLAYER rider vs an ENEMY rider, each
-// fielding a chassis chosen in the RiderLab (Hector / Enyo
+// fielding a chassis chosen in the RiderLab (Enyo / Hector
 // are the two chassis in Data/RiderSpec.cs; code names the ROLES,
 // the specs name the machines). W/S throttle along the legs
 // heading, A/D turn the legs, mouse twists/pitches the torso
@@ -39,12 +39,12 @@ public partial class RiderDuel : Node3D
     private DirectionalLight3D _labLight; // lab-only fill: the rider must read as the centerpiece, not a silhouette
     private bool _test;
     private bool _labShot; // dev flag: capture the live RiderLab to /tmp/lab_live.png and quit
-    private bool _enyoCam; // dev flag: swap player to Enyo, force-deploy, capture the chase view
+    private bool _hectorCam; // dev flag: swap player to Hector, force-deploy, capture the chase view
     private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
-    private bool _enyoLab; // dev flag: open the lab on the Enyo for the --lab-shot capture
+    private bool _hectorLab; // dev flag: open the lab on the Hector for the --lab-shot capture
     private bool _layoutDumped;
     private int _labShotFrames;
-    private bool _enyoCamDone; private float _enyoCamT; private bool _enyoCamFired;
+    private bool _hectorCamDone; private float _hectorCamT; private bool _hectorCamFired;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
@@ -101,11 +101,11 @@ public partial class RiderDuel : Node3D
     // RiderLab loadout (owner): the equipped weapon defs drive damage,
     // cooldowns, salvo composition and knockdown weight. Defaults equal
     // the original fixed fit, so every harness number is unchanged.
-    private LoadoutState _loadout = LoadoutState.DefaultHector();
-    private LoadoutState _enemyLoadout = LoadoutState.DefaultEnyo();
+    private LoadoutState _loadout = LoadoutState.DefaultEnyo();
+    private LoadoutState _enemyLoadout = LoadoutState.DefaultHector();
 
     // Free-for-all (owner, 2026-10-31): the match fields TWO AI
-    // opponents — a Hector and an Enyo — and every rider
+    // opponents — a Enyo and an Hector — and every rider
     // fights every other; there are no teams. The legacy enemy
     // (foe 0) keeps its fields above; foe 1 is this record. Foe 1
     // is not built in the precision test modes (duel / weapons /
@@ -139,8 +139,8 @@ public partial class RiderDuel : Node3D
     private RiderWalker _foe0TargetW; // foe 0's current AI target (re-picked on a think timer)
     private float _foe0ThinkT;
     // Which rider each side fields (round 22: chosen in the lab).
-    private RiderSpec _playerSpec = RiderSpecs.Hector;
-    private RiderSpec _enemySpec = RiderSpecs.Enyo;
+    private RiderSpec _playerSpec = RiderSpecs.Enyo;
+    private RiderSpec _enemySpec = RiderSpecs.Hector;
     private WeaponDef _defEnergy, _defBallistic, _defPodL, _defPodR, _defEnemyBallistic;
     private string _enemyBallisticSlot;
     private readonly System.Collections.Generic.List<(string Slot, WeaponDef Def)> _gunsEnergy = new(), _gunsBallistic = new(), _podGunsL = new(), _podGunsR = new();
@@ -250,9 +250,9 @@ public partial class RiderDuel : Node3D
             if (arg == "--photo") _photo = true;
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--gait-shot") _gaitShot = true;
-            if (arg == "--enyo-cam") _enyoCam = true;
+            if (arg == "--hector-cam") _hectorCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
-            if (arg == "--enyo-lab") _enyoLab = true;
+            if (arg == "--hector-lab") _hectorLab = true;
             if (arg == "--ffa-test") _ffaTest = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
@@ -611,42 +611,42 @@ public partial class RiderDuel : Node3D
 
     public override void _Process(double delta)
     {
-        if (_enyoCam && !_enyoCamDone && _player != null && _player.IsReady)
+        if (_hectorCam && !_hectorCamDone && _player != null && _player.IsReady)
         {
-            _enyoCamDone = true;
-            SetRiderSelection("enyo", "hector");
+            _hectorCamDone = true;
+            SetRiderSelection("hector", "enyo");
             ApplyLoadout();
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
             _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
-            GD.Print("ENYOCAM swapped player to Enyo and deployed");
+            GD.Print("HECTORCAM swapped player to Hector and deployed");
         }
-        if (_enyoCam && _enyoCamDone && !_labOpen)
+        if (_hectorCam && _hectorCamDone && !_labOpen)
         {
-            _enyoCamT += (float)delta;
-            if (!_enyoCamFired && _enyoCamT > 1.2f)
+            _hectorCamT += (float)delta;
+            if (!_hectorCamFired && _hectorCamT > 1.2f)
             {
-                _enyoCamFired = true;
-                GD.Print($"ENYOCAM defs energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"}");
+                _hectorCamFired = true;
+                GD.Print($"HECTORCAM defs energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"}");
                 FireLaser(_enemy.RootPos + Vector3.Up * 6f);
                 FireLrmSalvo(_enemy.RootPos);
             }
-            if (_enyoCamT > 2.5f && _camMode == "chase")
+            if (_hectorCamT > 2.5f && _camMode == "chase")
             {
                 var back = -RiderWalker.HeadingVec(_player.TorsoYawWorld);
                 var camRel = _cam.GlobalPosition - _player.RootPos;
-                GD.Print($"ENYOCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
-                QueueCapture("res://proof/enyo_player_chase.png", "enyoP", "chase", () => GetTree().Quit());
-                _enyoCamT = -999f;
+                GD.Print($"HECTORCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
+                QueueCapture("res://proof/hector_player_chase.png", "hectorP", "chase", () => GetTree().Quit());
+                _hectorCamT = -999f;
             }
         }
 
-        if (_enyoLab && _labOpen && _lab != null)
+        if (_hectorLab && _labOpen && _lab != null)
         {
-            _enyoLab = false;
-            SetRiderSelection("enyo", _enemySpec.Id);
-            GD.Print("ENYOLAB lab reopened on the Enyo");
+            _hectorLab = false;
+            SetRiderSelection("hector", _enemySpec.Id);
+            GD.Print("HECTORLAB lab reopened on the Hector");
         }
 
         if (_multiShot && _labOpen && _lab != null)
