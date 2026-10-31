@@ -261,51 +261,94 @@ public partial class RiderLab : Control
                     Mathf.Clamp(want.Y, 0f, Mathf.Max(0f, Size.Y - panel.Size.Y)));
             }
 
-            // Panels WITH a live anchor (owner, the flip fix):
-            // the panel sits in a column on the SAME side of the
-            // area as its dot — the showroom camera faces the
-            // rider, so its left side appears on the viewer's
-            // right, and the old fixed anatomical layout put
-            // every panel opposite its dot, crossing all the
-            // lines. Within a column, panels stack in dot-Y
-            // order, so lines from one column cannot cross.
+            // Panels WITH a live anchor sit ALONG THE BODY
+            // (owner, 2026-10-31): each panel is placed outward
+            // from the rider's center through its own dot, so it
+            // hugs the silhouette near the part it names — pods
+            // up by the shoulders, arms out at arm height, the
+            // waist gun below — instead of the two ruler-straight
+            // columns the flip fix used. The direction comes from
+            // the measured anchors themselves (the torso anchor
+            // is the center when present, else the centroid), so
+            // a panel always lands on its dot's own side; a short
+            // relaxation pass then separates any overlaps
+            // vertically. Lines stay short and uncrossed.
             if (_live.Count > 0)
             {
-                float riderCx = 0f;
-                foreach (var v in _live.Values) riderCx += v.X;
-                riderCx /= _live.Count;
-                var cols = new System.Collections.Generic.List<(string Id, Control Panel, Vector2 Anchor)>[2]
+                Vector2 center;
+                if (_live.TryGetValue("torso", out var tc)) center = tc;
+                else
                 {
-                    new(), new()
-                };
+                    center = Vector2.Zero;
+                    foreach (var v in _live.Values) center += v;
+                    center /= _live.Count;
+                }
                 foreach (var (id, panel) in _panels)
-                    if (_live.TryGetValue(id, out var an))
-                        cols[an.X < riderCx ? 0 : 1].Add((id, panel, an));
-                for (int side = 0; side < 2; side++)
                 {
-                    var col = cols[side];
-                    col.Sort((x, y) => x.Anchor.Y.CompareTo(y.Anchor.Y));
-                    float total = 0f;
-                    foreach (var e in col) total += e.Panel.Size.Y + 8f;
-                    total -= 8f;
-                    float cy = 0f;
-                    foreach (var e in col) cy += e.Anchor.Y;
-                    float y = col.Count > 0 ? Mathf.Clamp(cy / col.Count - total * 0.5f, 0f, Mathf.Max(0f, Size.Y - total)) : 0f;
-                    foreach (var e in col)
+                    if (!_live.TryGetValue(id, out var an)) continue;
+                    var dir = an - center;
+                    if (dir.Length() < 14f)
                     {
-                        // Columns hug the rider: just outside its
-                        // anchor centroid on the dot's own side,
-                        // clamped into the area. (At the area's
-                        // edges the panels sat far from a rider
-                        // framed off-center, and the lines still
-                        // fanned across it — measured in the frame.)
-                        float x = side == 0
-                            ? riderCx - e.Panel.Size.X - 46f
-                            : riderCx + 46f;
-                        x = Mathf.Clamp(x, 0f, Mathf.Max(0f, Size.X - e.Panel.Size.X));
-                        e.Panel.Position = new Vector2(x, y);
-                        y += e.Panel.Size.Y + 8f;
+                        // The dot sits (almost) at the center —
+                        // the chest: push it out along its
+                        // fractional fallback direction instead.
+                        dir = Anchors.TryGetValue(id, out var fr)
+                            ? fr - new Vector2(0.47f, 0.42f)
+                            : new Vector2(0.3f, -0.2f);
+                        if (dir.LengthSquared() < 0.001f) dir = new Vector2(0.3f, -0.2f);
                     }
+                    dir = dir.Normalized();
+                    float tx = Mathf.Abs(dir.X) > 0.02f
+                        ? (panel.Size.X * 0.5f + 14f) / Mathf.Abs(dir.X) : float.MaxValue;
+                    float ty = Mathf.Abs(dir.Y) > 0.02f
+                        ? (panel.Size.Y * 0.5f + 14f) / Mathf.Abs(dir.Y) : float.MaxValue;
+                    var c = an + dir * Mathf.Min(tx, ty);
+                    c = new Vector2(
+                        Mathf.Clamp(c.X, panel.Size.X * 0.5f, Mathf.Max(panel.Size.X * 0.5f, Size.X - panel.Size.X * 0.5f)),
+                        Mathf.Clamp(c.Y, panel.Size.Y * 0.5f, Mathf.Max(panel.Size.Y * 0.5f, Size.Y - panel.Size.Y * 0.5f)));
+                    panel.Position = c - panel.Size * 0.5f;
+                }
+                // Overlap relaxation: push overlapping pairs
+                // apart along whichever axis penetrates less
+                // (diagonal neighbors separate diagonally that
+                // way), six passes, re-clamped each pass. In a
+                // short area five tall panels cannot all fit —
+                // the passes at least order them cleanly.
+                var placed = new System.Collections.Generic.List<Control>();
+                foreach (var (id, panel) in _panels)
+                    if (_live.ContainsKey(id)) placed.Add(panel);
+                for (int pass = 0; pass < 10; pass++)
+                {
+                    for (int i = 0; i < placed.Count; i++)
+                    for (int j = i + 1; j < placed.Count; j++)
+                    {
+                        var A = placed[i]; var B = placed[j];
+                        float ox = Mathf.Min(A.Position.X + A.Size.X, B.Position.X + B.Size.X)
+                                 - Mathf.Max(A.Position.X, B.Position.X);
+                        float oy = Mathf.Min(A.Position.Y + A.Size.Y, B.Position.Y + B.Size.Y)
+                                 - Mathf.Max(A.Position.Y, B.Position.Y);
+                        if (ox <= 0f || oy <= 0f) continue;
+                        var ca = A.Position + A.Size * 0.5f;
+                        var cb = B.Position + B.Size * 0.5f;
+                        if (ox < oy)
+                        {
+                            float push = ox * 0.5f + 1f;
+                            float s = ca.X <= cb.X ? -1f : 1f;
+                            A.Position = new Vector2(A.Position.X + s * push, A.Position.Y);
+                            B.Position = new Vector2(B.Position.X - s * push, B.Position.Y);
+                        }
+                        else
+                        {
+                            float push = oy * 0.5f + 1f;
+                            float s = ca.Y <= cb.Y ? -1f : 1f;
+                            A.Position = new Vector2(A.Position.X, A.Position.Y + s * push);
+                            B.Position = new Vector2(B.Position.X, B.Position.Y - s * push);
+                        }
+                    }
+                    foreach (var p in placed)
+                        p.Position = new Vector2(
+                            Mathf.Clamp(p.Position.X, 0f, Mathf.Max(0f, Size.X - p.Size.X)),
+                            Mathf.Clamp(p.Position.Y, 0f, Mathf.Max(0f, Size.Y - p.Size.Y)));
                 }
             }
             QueueRedraw();
