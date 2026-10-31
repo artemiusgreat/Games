@@ -66,11 +66,18 @@ public static class MechSpecs
         ModelPath = "res://assets/atlas.fbx", PartsId = "atlas", MaxHp = 340f,
         Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, MaxSpeed = 4.2f,
         FlipKneePole = true,
+        // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
+        // heavier mechs get MORE hardpoints, not just fatter ones —
+        // with everything on one arm, losing the arm disarms the
+        // mech. Five mounts: both arms, the waist gun, a chest
+        // mount, and the SRM rack. Caps sum to the 100t budget.
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 30f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 40f },
-            new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 30f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 18f },
+            new SlotDef { Id = "gun", Display = "WAIST GUN", Type = WeaponSlotType.Ballistic, MaxWeight = 30f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 10f },
+            new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 28f },
         }
     };
 
@@ -155,6 +162,17 @@ public sealed class LoadoutState
         return true;
     }
 
+    // Removes one specific fitted weapon (the lab's list rows).
+    public bool RemoveAt(string slotId, int index, out string removedId)
+    {
+        removedId = null;
+        if (!Equipped.TryGetValue(slotId, out var l) || index < 0 || index >= l.Count) return false;
+        removedId = l[index];
+        l.RemoveAt(index);
+        if (l.Count == 0) Equipped.Remove(slotId);
+        return true;
+    }
+
     public void Clear(string slotId) => Equipped.Remove(slotId);
 
     public void Strip()
@@ -185,7 +203,7 @@ public sealed class LoadoutState
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         l.TryAssign(MechSpecs.Atlas, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(MechSpecs.Atlas, "arm_R", WeaponCatalog.ById("ac20"));
+        l.TryAssign(MechSpecs.Atlas, "gun", WeaponCatalog.ById("ac20"));
         l.TryAssign(MechSpecs.Atlas, "pod_L", WeaponCatalog.Srm);
         return l;
     }

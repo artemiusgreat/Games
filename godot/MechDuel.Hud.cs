@@ -76,7 +76,7 @@ public partial class MechDuel
         leftBox.AddChild(grid);
         foreach (var (id, name) in new[]
         {
-            ("head", "HEAD"), ("arm_L", "ARM L"), ("arm_R", "ARM R"), ("pod_L", "POD L"),
+            ("head", "HEAD"), ("arm_L", "ARM L"), ("arm_R", "ARM R"), ("gun", "GUN"), ("pod_L", "POD L"),
             ("pod_R", "POD R"), ("leg_L", "LEG L"), ("leg_R", "LEG R"),
         })
         {
@@ -270,8 +270,8 @@ public partial class MechDuel
         }
 
         var status = new System.Collections.Generic.List<string>();
-        if (lasDead && _defEnergy != null) status.Add("LASER DESTROYED — LEFT ARM LOST");
-        if (acDead && _defBallistic != null) status.Add("AUTOCANNON DESTROYED — RIGHT ARM LOST");
+        if (lasDead && _defEnergy != null) status.Add("ENERGY WEAPONS DESTROYED — ALL MOUNTS LOST");
+        if (acDead && _defBallistic != null) status.Add("BALLISTIC WEAPONS DESTROYED — ALL MOUNTS LOST");
         // Pod status: only for pods the chassis actually HAS (the
         // Atlas carries a single rack — an absent right pod is not
         // a "lost" one). Wording follows the equipped pod weapon.

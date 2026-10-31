@@ -112,13 +112,29 @@ public partial class MechDuel
             Mathf.Clamp(sp.Y, 28f, vp.Y - 28f));
     }
 
-    // Muzzle hardpoints: the Timber Wolf's forearm cannons sit on the
-    // elbow bones (the Hand_* parts are bound there), pushed forward along
-    // the torso facing so the shot clears the arm. Laser = left, AC = right.
-    private Vector3 PlayerMuzzle(bool left)
+    // Muzzle hardpoints: forearm weapons sit on the elbow bones
+    // (the Hand_* parts are bound there), pushed forward along
+    // the torso facing so the shot clears the arm.
+    private Vector3 ElbowMuzzle(MechWalker w, bool left)
     {
-        var bone = _player.BoneWorldPos(left ? "elbow_L" : "elbow_R");
-        return bone + MechWalker.HeadingVec(_player.TorsoYawWorld) * 2.8f;
+        var bone = w.BoneWorldPos(left ? "elbow_L" : "elbow_R");
+        return bone + MechWalker.HeadingVec(w.TorsoYawWorld) * 2.8f;
+    }
+
+    private Vector3 PlayerMuzzle(bool left) => ElbowMuzzle(_player, left);
+
+    // Where a fitted weapon fires from, by hardpoint: the waist
+    // gun slot shoots from the waist gun, a chest mount from the
+    // upper torso, arm slots from their elbows.
+    private Vector3 MuzzleFor(MechWalker w, string slot)
+    {
+        if (slot == "gun") return TorsoGunMuzzle(w);
+        if (slot == "torso")
+        {
+            var t = w.BoneWorldPos("torso");
+            return t + Vector3.Up * 2.0f + MechWalker.HeadingVec(w.TorsoYawWorld) * 1.6f;
+        }
+        return ElbowMuzzle(w, slot != "arm_R");
     }
 
     // Torso gun (the Atlas's waist AC/20): torso bone origin plus a
@@ -133,7 +149,7 @@ public partial class MechDuel
         return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
     }
 
-    private Vector3 EnemyMuzzle() => TorsoGunMuzzle(_enemy);
+    private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? "arm_R");
 
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
@@ -501,12 +517,7 @@ public partial class MechDuel
         _ => AnyGunAlive(_podGunsL) || AnyGunAlive(_podGunsR),
     };
 
-    // Where a fitted weapon fires from: its own hardpoint on the rig.
-    private Vector3 MuzzleForSlot(string slot, bool ballistic)
-    {
-        if (ballistic && _playerSpec.Id == "atlas") return TorsoGunMuzzle(_player);
-        return PlayerMuzzle(slot != "arm_R");
-    }
+    private Vector3 MuzzleForSlot(string slot, bool ballistic) => MuzzleFor(_player, slot);
 
     // When the selected weapon is destroyed, fall to the next live one.
     private void AutoSwitchWeapon()

@@ -123,7 +123,8 @@ public sealed class MechParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 12.45f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis", "AC20");
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
+            AddPart("gun", "WAIST GUN", 65f, byName, "AC20");
             AddPart("pod_L", "SRM POD", 45f, byName, "SRM6");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
             AddPart("arm_L", "LEFT ARM", 65f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
