@@ -126,20 +126,47 @@ public partial class MechDuel
         // mount them AND the loadout has them fitted.
         _player.JumpJets = _playerSpec.JumpCapable && _loadout.JumpJets;
         _enemy.JumpJets = _enemySpec.JumpCapable;
-        string eId = SlotOf(_playerSpec, WeaponSlotType.Energy);
-        string bId = SlotOf(_playerSpec, WeaponSlotType.Ballistic);
-        string pL = SlotOf(_playerSpec, WeaponSlotType.Missile, 0);
-        string pR = SlotOf(_playerSpec, WeaponSlotType.Missile, 1);
-        _defEnergy = eId == null ? null : WeaponCatalog.ById(_loadout.WeaponIn(eId));
-        _defBallistic = bId == null ? null : WeaponCatalog.ById(_loadout.WeaponIn(bId));
-        _defPodL = pL == null ? null : WeaponCatalog.ById(_loadout.WeaponIn(pL));
-        _defPodR = pR == null ? null : WeaponCatalog.ById(_loadout.WeaponIn(pR));
+        // Firing groups (multi-fit): every weapon fitted in a slot
+        // of the matching type, in spec slot order. The single
+        // _def* fields stay as each group's representative (the
+        // slowest-cooldown weapon) for HUD bars and labels.
+        _gunsEnergy.Clear(); _gunsBallistic.Clear(); _podGunsL.Clear(); _podGunsR.Clear();
+        int missileIdx = 0;
+        foreach (var slot in _playerSpec.Slots)
+        {
+            var bucket = slot.Type == WeaponSlotType.Energy ? _gunsEnergy
+                : slot.Type == WeaponSlotType.Ballistic ? _gunsBallistic
+                : missileIdx++ == 0 ? _podGunsL : _podGunsR; // missile slots in order: left pod, right pod
+            foreach (var wid in _loadout.WeaponsIn(slot.Id))
+            {
+                var def = WeaponCatalog.ById(wid);
+                if (def != null) bucket.Add((slot.Id, def));
+            }
+        }
+        _defEnergy = Slowest(_gunsEnergy);
+        _defBallistic = Slowest(_gunsBallistic);
+        _defPodL = Slowest(_podGunsL);
+        _defPodR = Slowest(_podGunsR);
         string eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
         _defEnemyBallistic = eb == null ? null : WeaponCatalog.ById(_enemyLoadout.WeaponIn(eb));
-        _wpnShort[0] = "1 " + (_defEnergy?.Short ?? "—");
-        _wpnShort[1] = "2 " + (_defBallistic?.Short ?? "—");
-        _wpnShort[2] = "3 " + ((_defPodL ?? _defPodR)?.Short ?? "—");
+        _wpnShort[0] = "1 " + GroupLabel(_gunsEnergy);
+        _wpnShort[1] = "2 " + GroupLabel(_gunsBallistic);
+        _wpnShort[2] = "3 " + GroupLabel(_podGunsL, _podGunsR);
         GD.Print($"LAB loadout energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"} total={_loadout.TotalWeaponWeight:F0}t");
+    }
+
+    private static WeaponDef Slowest(System.Collections.Generic.List<(string Slot, WeaponDef Def)> guns)
+    {
+        WeaponDef best = null;
+        foreach (var g in guns) if (best == null || g.Def.Cooldown > best.Cooldown) best = g.Def;
+        return best;
+    }
+
+    private static string GroupLabel(params System.Collections.Generic.List<(string Slot, WeaponDef Def)>[] groups)
+    {
+        int n = 0; string first = null;
+        foreach (var g in groups) foreach (var gun in g) { if (first == null) first = gun.Def.Short; n++; }
+        return first == null ? "—" : n > 1 ? $"{first} ×{n}" : first;
     }
 
 }

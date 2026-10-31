@@ -277,10 +277,13 @@ public partial class MechDuel
         // a "lost" one). Wording follows the equipped pod weapon.
         string podName = (_defPodL ?? _defPodR)?.Short ?? "LRM";
         bool hasPodL = _partsPlayer.Has("pod_L"), hasPodR = _partsPlayer.Has("pod_R");
+        int podRocketsL = 0, podRocketsR = 0;
+        foreach (var g in _podGunsL) podRocketsL += g.Def.Rockets;
+        foreach (var g in _podGunsR) podRocketsR += g.Def.Rockets;
         if (lrmDead && (_defPodL != null || _defPodR != null))
             status.Add(hasPodL && hasPodR ? $"{podName} DESTROYED — BOTH PODS LOST" : $"{podName} DESTROYED — POD LOST");
-        else if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L")) status.Add($"{podName} DEGRADED — LEFT POD LOST ({_defPodL.Rockets} ROCKETS)");
-        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R")) status.Add($"{podName} DEGRADED — RIGHT POD LOST ({_defPodR.Rockets} ROCKETS)");
+        else if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L")) status.Add($"{podName} DEGRADED — LEFT POD LOST ({podRocketsL} ROCKETS)");
+        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R")) status.Add($"{podName} DEGRADED — RIGHT POD LOST ({podRocketsR} ROCKETS)");
         if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED — CROSSHAIR SWAY");
         _lblWeaponStatus.Text = string.Join("\n", status);
 

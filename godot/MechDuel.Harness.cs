@@ -51,6 +51,20 @@ public partial class MechDuel
                         { GD.PrintErr($"DUEL FAIL: {sp.Id} slot caps sum {sum:F0}t != tonnage {sp.Tonnage:F0}t"); GetTree().Quit(1); return; }
                     }
                     GD.Print("LABTEST CAPACITY PASS slot caps sum to chassis tonnage for every mech");
+                    // Multi-fit (owner): a hardpoint fits several
+                    // weapons up to its cap — cumulative tonnage is
+                    // the limit, not one weapon per slot.
+                    var multi = new LoadoutState();
+                    if (multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
+                        || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
+                        || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) == null)
+                    { GD.PrintErr("DUEL FAIL: multi-fit cumulative arm cap wrong (2x ML = 6t fits the 8t arm, 3x = 9t must refuse)"); GetTree().Quit(1); return; }
+                    if (multi.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null
+                        || multi.TryAssign(spec, "pod_L", WeaponCatalog.Srm) != null)
+                    { GD.PrintErr("DUEL FAIL: multi-fit pod refused (LRM 10t + SRM 4t = 14t <= 21t cap)"); GetTree().Quit(1); return; }
+                    if (!multi.RemoveLast("pod_L", out var peeled) || peeled != "srm" || multi.WeaponIn("pod_L") != "lrm")
+                    { GD.PrintErr("DUEL FAIL: multi-fit peel wrong"); GetTree().Quit(1); return; }
+                    GD.Print("LABTEST MULTIFIT PASS hardpoints fit multiple weapons up to their tonnage cap; peel removes the last one");
                     // Mech selection (round 22): swap both chassis and
                     // verify the duel follows — parts layout, pools
                     // and equipped defs all follow the spec.

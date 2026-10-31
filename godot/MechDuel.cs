@@ -40,6 +40,7 @@ public partial class MechDuel : Node3D
     private bool _test;
     private bool _labShot; // dev flag: capture the live MechLab to /tmp/lab_live.png and quit
     private bool _atlasCam; // dev flag: swap player to Atlas, force-deploy, capture the chase view
+    private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
     private bool _atlasCamDone; private float _atlasCamT; private bool _atlasCamFired;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
@@ -103,6 +104,7 @@ public partial class MechDuel : Node3D
     private MechSpec _playerSpec = MechSpecs.TimberWolf;
     private MechSpec _enemySpec = MechSpecs.Atlas;
     private WeaponDef _defEnergy, _defBallistic, _defPodL, _defPodR, _defEnemyBallistic;
+    private readonly System.Collections.Generic.List<(string Slot, WeaponDef Def)> _gunsEnergy = new(), _gunsBallistic = new(), _podGunsL = new(), _podGunsR = new();
     private readonly string[] _wpnShort = { "1 LAS", "2 AC", "3 LRM" };
     private bool _labOpen;
     private MechLab _lab;
@@ -209,6 +211,7 @@ public partial class MechDuel : Node3D
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--gait-shot") _gaitShot = true;
             if (arg == "--atlas-cam") _atlasCam = true;
+            if (arg == "--multifit-shot") _multiShot = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -542,6 +545,17 @@ public partial class MechDuel : Node3D
                 QueueCapture("res://proof/atlas_player_chase.png", "atlasP", "chase", () => GetTree().Quit());
                 _atlasCamT = -999f;
             }
+        }
+
+        if (_multiShot && _labOpen && _lab != null)
+        {
+            _multiShot = false;
+            _loadout.TryAssign(_playerSpec, "arm_L", WeaponCatalog.MediumLaser); // LL 5 + ML 3 = 8t = arm cap exactly
+            _loadout.TryAssign(_playerSpec, "pod_L", WeaponCatalog.Srm);          // LRM 10 + SRM 4 in one pod
+            _loadout.TryAssign(_playerSpec, "arm_R", WeaponCatalog.HeavyCannon);  // AC 12 + HC 16 = 28 > 25 cap: must refuse
+            var err = _loadout.Check(_playerSpec, "arm_R", WeaponCatalog.HeavyCannon);
+            _lab.Refresh();
+            GD.Print($"MULTISHOT fitted arm_L={string.Join(",", _loadout.WeaponsIn("arm_L"))} pod_L={string.Join(",", _loadout.WeaponsIn("pod_L"))} arm_R refused: {err}");
         }
 
         if (_labShot && Time.GetTicksMsec() > 20000)

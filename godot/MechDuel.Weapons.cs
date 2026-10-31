@@ -149,10 +149,11 @@ public partial class MechDuel
     private void FireLaser(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        if (!_partsPlayer.Alive("arm_L") || _defEnergy == null) { DenyWeapon("laser"); return; }
+        var fired = _gunsEnergy.FindAll(g => _partsPlayer.Alive(g.Slot));
+        if (fired.Count == 0) { DenyWeapon("laser"); return; }
         if (_cdLaser > 0f) return;
-        _cdLaser = _defEnergy.Cooldown;
-        var muzzle = PlayerMuzzle(true);
+        _cdLaser = 0f; foreach (var g in fired) _cdLaser = Mathf.Max(_cdLaser, g.Def.Cooldown);
+        var muzzle = MuzzleForSlot(fired[0].Slot, false);
         // Round 20 (owner, two repros): the hit resolves on the
         // CAMERA's ray, not on a re-cast from the muzzle. The muzzle
         // re-cast kept disagreeing with the reticle by parallax —
@@ -200,14 +201,20 @@ public partial class MechDuel
             var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
             hit = _hit.Ray(muzzle, dir, 140f, "PLAYER", 0.9f);
         }
-        bool ppc = _defEnergy.Id == "ppc";
-        // The beam ends where the shot ends (owner): on a hit,
+        // The beams end where the shot ends (owner): on a hit,
         // the hit point; on a miss — the sky — the cursor's own
-        // point. It used to draw to the raycast's no-hit endpoint
-        // (muzzle + dir x 140), streaking far past the reticle.
-        SpawnBeam(muzzle, hit.Hit ? hit.Point : aimPoint, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), ppc ? 0.15f : 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
-        PlaySfx(_sfxLaser, muzzle, 0f, ppc ? 0.8f : 1f);
-        SpawnFlash(muzzle, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
+        // point. Every fitted laser fires its own beam from its
+        // own hardpoint (multi-fit volley); the hit itself was
+        // resolved once, on the camera's line, above.
+        var beamEnd = hit.Hit ? hit.Point : aimPoint;
+        for (int i = 0; i < fired.Count; i++)
+        {
+            var mz = MuzzleForSlot(fired[i].Slot, false);
+            bool ppc = fired[i].Def.Id == "ppc";
+            SpawnBeam(mz, beamEnd, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
+            if (i == 0) PlaySfx(_sfxLaser, mz, 0f, ppc ? 0.8f : 1f);
+            SpawnFlash(mz, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
+        }
         if (hit.Hit)
         {
             SpawnFlash(hit.Point, new Color(0.7f, 0.95f, 1f), 0.55f, 0.16f);
@@ -215,8 +222,8 @@ public partial class MechDuel
             SpawnImpactLight(hit.Point, new Color(0.55f, 0.9f, 1f), 2.4f, 10f, 0.3f);
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == "ENEMY") ApplyDamage(_enemy, _defEnergy.Damage, hit, "PLAYER", _defEnergy.Weight, "laser");
-            else if (hit.Target == "PROP") DamageProp(hit.Point, _defEnergy.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
+            if (hit.Target == "ENEMY") foreach (var g in fired) ApplyDamage(_enemy, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser");
+            else if (hit.Target == "PROP") foreach (var g in fired) DamageProp(hit.Point, g.Def.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -234,27 +241,32 @@ public partial class MechDuel
     private void FireAutocannon(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        if (!_partsPlayer.Alive("arm_R") || _defBallistic == null) { DenyWeapon("ac"); return; }
+        var fired = _gunsBallistic.FindAll(g => _partsPlayer.Alive(g.Slot));
+        if (fired.Count == 0) { DenyWeapon("ac"); return; }
         if (_cdAc > 0f) return;
-        _cdAc = _defBallistic.Cooldown;
-        var muzzle = _playerSpec.Id == "atlas" ? TorsoGunMuzzle(_player) : PlayerMuzzle(false);
-        var toAim = aimPoint - muzzle;
-        // No clamp needed here: the cannon fires the pointer line
-        // directly with no range compensation, so a far aim point
-        // changes nothing but parallax. (Rockets were the mortar
-        // case — see LaunchRocket.)
-        var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
-        (float spd, float grav) = _defBallistic.Id switch
+        _cdAc = 0f; foreach (var g in fired) _cdAc = Mathf.Max(_cdAc, g.Def.Cooldown);
+        // Every fitted cannon fires (multi-fit volley), each from
+        // its own hardpoint on the pointer line. No clamp needed:
+        // the cannon fires the line directly with no range
+        // compensation, so a far aim point changes nothing but
+        // parallax. (Rockets were the mortar case — LaunchRocket.)
+        foreach (var (slot, def) in fired)
         {
-            "machine_gun" => (85f, 3f),
-            "heavy_cannon" => (138f, 7f), // 46 x3 (owner, 2026-10-29: every cannon bullet 3x faster)
-            _ => (420f, 5f) // autocannon 140 x3 (same owner instruction; the 60->95->140 history is in git)
-        };
-        SpawnProjectile(muzzle, dir * spd, grav, _defBallistic.Damage, 0f, "PLAYER", rocket: false, weaponWeight: _defBallistic.Weight);
-        PlaySfx(_sfxCannon, muzzle, _defBallistic.Id == "machine_gun" ? -7f : 0f,
-            _defBallistic.Id == "heavy_cannon" ? 0.72f : _defBallistic.Id == "machine_gun" ? 1.65f : 1f);
-        SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
-        GD.Print($"WPN AC fired dir={dir}");
+            var muzzle = MuzzleForSlot(slot, true);
+            var toAim = aimPoint - muzzle;
+            var dir = toAim.Length() > 0.5f ? toAim.Normalized() : MechWalker.HeadingVec(_player.TorsoYawWorld);
+            (float spd, float grav) = def.Id switch
+            {
+                "machine_gun" => (85f, 3f),
+                "heavy_cannon" => (138f, 7f), // 46 x3 (owner, 2026-10-29: every cannon bullet 3x faster)
+                _ => (420f, 5f) // autocannon 140 x3 (same owner instruction; the 60->95->140 history is in git)
+            };
+            SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
+            PlaySfx(_sfxCannon, muzzle, def.Id == "machine_gun" ? -7f : 0f,
+                def.Id == "heavy_cannon" ? 0.72f : def.Id == "machine_gun" ? 1.65f : 1f);
+            SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
+            GD.Print($"WPN AC fired {def.Id} dir={dir}");
+        }
     }
 
     // LRM salvo: 8 rockets staggered 0.07s apart, alternating ear pods.
@@ -265,16 +277,17 @@ public partial class MechDuel
     private void FireLrmSalvo(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        bool podL = _partsPlayer.Alive("pod_L") && _defPodL != null;
-        bool podR = _partsPlayer.Alive("pod_R") && _defPodR != null;
+        bool podL = _podGunsL.Count > 0 && _partsPlayer.Alive(_podGunsL[0].Slot);
+        bool podR = _podGunsR.Count > 0 && _partsPlayer.Alive(_podGunsR[0].Slot);
         if (!podL && !podR) { DenyWeapon("lrm"); return; }
         if (_cdLrm > 0f) return;
-        _cdLrm = Mathf.Max(podL ? _defPodL.Cooldown : 0f, podR ? _defPodR.Cooldown : 0f);
-        // Each alive, equipped pod fires its own pack; pods interleave.
+        _cdLrm = 0f;
+        // Each alive pod fires every pack fitted in it (multi-fit);
+        // pods interleave.
         var left = new System.Collections.Generic.List<WeaponDef>();
         var right = new System.Collections.Generic.List<WeaponDef>();
-        if (podL) for (int i = 0; i < _defPodL.Rockets; i++) left.Add(_defPodL);
-        if (podR) for (int i = 0; i < _defPodR.Rockets; i++) right.Add(_defPodR);
+        if (podL) foreach (var (_, def) in _podGunsL) { _cdLrm = Mathf.Max(_cdLrm, def.Cooldown); for (int i = 0; i < def.Rockets; i++) left.Add(def); }
+        if (podR) foreach (var (_, def) in _podGunsR) { _cdLrm = Mathf.Max(_cdLrm, def.Cooldown); for (int i = 0; i < def.Rockets; i++) right.Add(def); }
         var ordered = new System.Collections.Generic.List<(bool Left, WeaponDef Def)>();
         int li = 0, ri = 0;
         while (li < left.Count || ri < right.Count)
@@ -284,7 +297,7 @@ public partial class MechDuel
         }
         for (int i = 0; i < ordered.Count; i++)
             _lrmQueue.Add((i * 0.07f, ordered[i].Left, aimPoint, ordered[i].Def));
-        PlaySfx(_sfxRocket, PodMuzzle(true), -1f);
+        PlaySfx(_sfxRocket, PodMuzzle(podL), -1f);
         GD.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
     }
 
@@ -475,12 +488,25 @@ public partial class MechDuel
         if (parts == _partsPlayer) AutoSwitchWeapon();
     }
 
+    private bool AnyGunAlive(System.Collections.Generic.List<(string Slot, WeaponDef Def)> guns)
+    {
+        foreach (var g in guns) if (_partsPlayer.Alive(g.Slot)) return true;
+        return false;
+    }
+
     private bool WeaponAlive(int sel) => sel switch
     {
-        0 => _partsPlayer.Alive("arm_L") && _defEnergy != null,
-        1 => _partsPlayer.Alive("arm_R") && _defBallistic != null,
-        _ => (_partsPlayer.Alive("pod_L") && _defPodL != null) || (_partsPlayer.Alive("pod_R") && _defPodR != null),
+        0 => AnyGunAlive(_gunsEnergy),
+        1 => AnyGunAlive(_gunsBallistic),
+        _ => AnyGunAlive(_podGunsL) || AnyGunAlive(_podGunsR),
     };
+
+    // Where a fitted weapon fires from: its own hardpoint on the rig.
+    private Vector3 MuzzleForSlot(string slot, bool ballistic)
+    {
+        if (ballistic && _playerSpec.Id == "atlas") return TorsoGunMuzzle(_player);
+        return PlayerMuzzle(slot != "arm_R");
+    }
 
     // When the selected weapon is destroyed, fall to the next live one.
     private void AutoSwitchWeapon()
