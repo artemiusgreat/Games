@@ -624,9 +624,13 @@ public partial class RiderWalker : Node3D
             // is linear at >= 1x speed per second — not an
             // exponential glide that never quite arrives. The 1.15
             // factor keeps the measured stop (which includes a
-            // frame of detection lag) inside the second.
+            // frame of detection lag) inside the second, and the
+            // rate never drops below the spec's Accel: at low
+            // speeds a bare 1.15x rate would brake SLOWER than the
+            // mech used to accelerate (the duel's limp-reverse
+            // phase caught exactly that).
             // Acceleration still uses the spec's Accel.
-            _brakeV = Mathf.Max(_brakeV, Mathf.Abs(_speed) * 1.15f);
+            _brakeV = Mathf.Max(_brakeV, Mathf.Max(Mathf.Abs(_speed) * 1.15f, _cfg.Accel));
             dv = _brakeV * h;
         }
         else _brakeV = 0f;
