@@ -42,6 +42,7 @@ public partial class RiderDuel : Node3D
     private bool _hectorCam; // dev flag: swap player to Hector, force-deploy, capture the chase view
     private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
     private bool _hectorLab; // dev flag: open the lab on the Hector for the --lab-shot capture
+    private string _labRiderId; // dev flag: --lab-rider=<id> opens the lab on that rider for the --lab-shot capture
     private bool _layoutDumped;
     private int _labShotFrames;
     private bool _hectorCamDone; private float _hectorCamT; private bool _hectorCamFired;
@@ -277,6 +278,9 @@ public partial class RiderDuel : Node3D
             if (arg == "--hector-cam") _hectorCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
             if (arg == "--hector-lab") _hectorLab = true;
+            if (arg.StartsWith("--lab-rider=")) _labRiderId = arg.Substring("--lab-rider=".Length);
+            if (arg.StartsWith("--player-rider=")) _playerSpec = RiderSpecs.ById(arg.Substring("--player-rider=".Length));
+            if (arg.StartsWith("--enemy-rider=")) _enemySpec = RiderSpecs.ById(arg.Substring("--enemy-rider=".Length));
             if (arg == "--ffa-test") _ffaTest = true;
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--view-shot") _viewShot = true;
@@ -697,6 +701,14 @@ public partial class RiderDuel : Node3D
             _hectorLab = false;
             SetRiderSelection("hector", _enemySpec.Id);
             GD.Print("HECTORLAB lab reopened on the Hector");
+        }
+
+        if (_labRiderId != null && _labOpen && _lab != null)
+        {
+            var id = _labRiderId;
+            _labRiderId = null;
+            SetRiderSelection(id, _enemySpec.Id);
+            GD.Print($"LABRIDER lab reopened on {id}");
         }
 
         if (_multiShot && _labOpen && _lab != null)
