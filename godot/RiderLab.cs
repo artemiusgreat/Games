@@ -290,17 +290,10 @@ public partial class RiderLab : Control
             // vertically. Lines stay short and uncrossed.
             if (_live.Count > 0)
             {
-                // Pin every live panel to its content size
-                // first: measured in the lab, a slot panel's
-                // Size drifts well past its combined minimum
-                // (227-321px tall against 133-180 minimums),
-                // which silently broke every packing computation
-                // below — the math packed phantom panels while
-                // the real ones overlapped. Layout runs every
-                // frame, so the pin holds.
-                foreach (var (id, panel) in _panels)
-                    if (_live.ContainsKey(id))
-                        panel.Size = panel.GetCombinedMinimumSize();
+                // The body's center first: panel sides and the
+                // stacking order are read off the dots relative
+                // to it (round 29), and the fixed panel height
+                // below needs the side counts.
                 Vector2 center;
                 var bc = CenterProj?.Invoke();
                 if (bc.HasValue) center = bc.Value - GetGlobalPosition();
@@ -312,10 +305,44 @@ public partial class RiderLab : Control
                     center /= _live.Count;
                 }
                 foreach (var (id, panel) in _panels)
+                    if (_live.TryGetValue(id, out var an0))
+                    {
+                        _side[id] = an0.X >= center.X ? 1 : 0;
+                        _anchorY[id] = an0.Y;
+                    }
+                // Fixed panel height (owner, round 30): every
+                // live panel gets the SAME height — the header
+                // plus a scroll viewport of two weapon rows,
+                // dropping to one row when a side's stack would
+                // not otherwise fit the area. Width still pins
+                // to content (unpinned Sizes drift well past
+                // their minimums — 227-321px tall against
+                // 133-180 minimums measured in round 28 — and
+                // the packing math goes phantom). Layout runs
+                // every frame, so the pin holds.
+                int maxSide = 0;
+                {
+                    int l = 0, r = 0;
+                    foreach (var (id, _) in _panels)
+                        if (_live.ContainsKey(id))
+                            if ((_side.TryGetValue(id, out var sd) ? sd : 0) == 0) l++; else r++;
+                    maxSide = Mathf.Max(1, Mathf.Max(l, r));
+                }
+                float avail = Mathf.Max(60f, (Size.Y - (maxSide - 1) * 8f) / maxSide);
+                int rowsVisible = avail >= 133f ? 2 : 1;
+                float scrollH = rowsVisible * 44f + (rowsVisible - 1) * 4f;
+                float panelH = rowsVisible == 2 ? 133f : Mathf.Min(85f, avail);
+                if (rowsVisible == 1 && panelH < 85f) scrollH = Mathf.Max(20f, panelH - 41f);
+                foreach (var (id, panel) in _panels)
+                    if (_live.ContainsKey(id))
+                    {
+                        panel.Size = new Vector2(panel.GetCombinedMinimumSize().X, panelH);
+                        if (panel is SlotPanel sp && sp.Scroll != null)
+                            sp.Scroll.CustomMinimumSize = new Vector2(0f, scrollH);
+                    }
+                foreach (var (id, panel) in _panels)
                 {
                     if (!_live.TryGetValue(id, out var an)) continue;
-                    _side[id] = an.X >= center.X ? 1 : 0;
-                    _anchorY[id] = an.Y;
                     var dir = an - center;
                     if (dir.Length() < 14f)
                     {
@@ -338,52 +365,72 @@ public partial class RiderLab : Control
                         Mathf.Clamp(c.Y, panel.Size.Y * 0.5f, Mathf.Max(panel.Size.Y * 0.5f, Size.Y - panel.Size.Y * 0.5f)));
                     panel.Position = c - panel.Size * 0.5f;
                 }
-                // Overlap resolution: per side (by the
-                // panel's DOT side, see _side), sort by the
-                // dot's height along the body and
-                // sweep apart — top-down, then bottom-up if the
-                // stack runs past the area's foot. The pairwise
-                // relaxation this replaces oscillated at the
-                // clamps when a side's panels exactly filled
-                // the area (measured on Enyo: pod + arm
-                // panels share the rider's upper body, 330px of
-                // panel in a 340px area — the sweeps find the
-                // one packing that fits, the pushes never did).
-                // X stays wherever the radial placement put it:
-                // panels keep hugging their own side of the
-                // silhouette, only their heights de-overlap.
+                // Stacking (round 30): per dot-side, in
+                // dot-height order, the panels form one
+                // contiguous stack with an 8px gap, anchored at
+                // the first dot's height and clamped to fit the
+                // area. Heights are fixed (above) and the
+                // stack's total fits by construction, so overlap
+                // is impossible at any window size — the sweeps
+                // this replaces could only separate panels when
+                // their content heights happened to fit, and
+                // Hector's five tall panels did not (owner's
+                // screenshot: the missile panel drawn over the
+                // energy panel's third row). X stays wherever
+                // the radial placement put it: panels keep
+                // hugging their own side of the silhouette;
+                // this step owns only Y.
                 var placed = new System.Collections.Generic.List<(string Id, Control Panel)>();
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id)) placed.Add((id, panel));
                 var yOf = new System.Collections.Generic.Dictionary<Control, float>();
                 foreach (var (pid, p) in placed)
                     yOf[p] = _anchorY.TryGetValue(pid, out var ay) ? ay : p.Position.Y + p.Size.Y * 0.5f;
+                var groups = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(string Id, Control Panel)>>();
                 foreach (var side in new[] { 0, 1 })
                 {
-                    var group = new System.Collections.Generic.List<Control>();
+                    var group = new System.Collections.Generic.List<(string Id, Control Panel)>();
                     foreach (var (pid, p) in placed)
                         if ((_side.TryGetValue(pid, out var sd) ? sd : (p.Position.X + p.Size.X * 0.5f < Size.X * 0.5f ? 0 : 1)) == side)
-                            group.Add(p);
-                    group.Sort((a, b) => yOf[a].CompareTo(yOf[b]));
-                    float cursor = 0f;
-                    foreach (var p in group)
+                            group.Add((pid, p));
+                    group.Sort((a, b) => yOf[a.Panel].CompareTo(yOf[b.Panel]));
+                    groups[side] = group;
+                    if (group.Count == 0) continue;
+                    float total = group.Count * panelH + (group.Count - 1) * 8f;
+                    float startY = Mathf.Clamp(yOf[group[0].Panel] - panelH * 0.5f, 0f, Mathf.Max(0f, Size.Y - total));
+                    for (int i = 0; i < group.Count; i++)
                     {
-                        float y = Mathf.Max(p.Position.Y, cursor);
-                        p.Position = new Vector2(p.Position.X, y);
-                        cursor = y + p.Size.Y + 4f;
+                        var pp = group[i].Panel;
+                        pp.Position = new Vector2(pp.Position.X, startY + i * (panelH + 8f));
                     }
-                    // A side whose panels total more than the
-                    // area is tall cannot fit without overlap —
-                    // separation wins over containment: the
-                    // stack may spill up to 90px past the foot
-                    // rather than crush back into its neighbor.
-                    cursor = Size.Y + 90f;
-                    for (int i = group.Count - 1; i >= 0; i--)
+                }
+                // Level-pair spread: at the same stack level the
+                // two sides' panels can still overlap in X when
+                // the area is narrower than the two panels side
+                // by side (215 + 215 in a 376px area) — the
+                // radial placement already gives the geometric
+                // minimum overlap, but the graze lands on the
+                // panels' content. Push the pair apart by the
+                // overlap, half each way; the panels may spill a
+                // little past the area's sides (it does not clip
+                // its children) rather than cover each other's
+                // text. Wide windows never trigger this (the
+                // pairs sit farther apart than their widths).
+                if (groups.TryGetValue(0, out var gL) && groups.TryGetValue(1, out var gR))
+                {
+                    int levels = Mathf.Min(gL.Count, gR.Count);
+                    for (int i = 0; i < levels; i++)
                     {
-                        var p = group[i];
-                        float y = Mathf.Min(p.Position.Y, cursor - p.Size.Y);
-                        p.Position = new Vector2(p.Position.X, Mathf.Max(0f, y));
-                        cursor = p.Position.Y - 4f;
+                        var a = gL[i].Panel; var b = gR[i].Panel;
+                        float aC = a.Position.X + a.Size.X * 0.5f;
+                        float bC = b.Position.X + b.Size.X * 0.5f;
+                        if (bC < aC) (a, b) = (b, a);
+                        float need = (a.Size.X + b.Size.X) * 0.5f;
+                        float dist = (b.Position.X + b.Size.X * 0.5f) - (a.Position.X + a.Size.X * 0.5f);
+                        if (dist >= need) continue;
+                        float push = (need - dist) * 0.5f;
+                        a.Position = new Vector2(Mathf.Max(a.Position.X - push, -60f), a.Position.Y);
+                        b.Position = new Vector2(Mathf.Min(b.Position.X + push, Size.X - b.Size.X + 60f), b.Position.Y);
                     }
                 }
             }
@@ -422,6 +469,7 @@ public partial class RiderLab : Control
         public RiderLab Lab;
         public Label HeadLabel;
         public VBoxContainer ListBox;
+        public ScrollContainer Scroll;
         public Control Tile;
         public override bool _CanDropData(Vector2 atPosition, Variant data)
         {
@@ -557,9 +605,18 @@ public partial class RiderLab : Control
             head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
+            // The weapon list scrolls inside the panel (owner,
+            // round 30): the panel's height is fixed by the
+            // layout, the list shows a viewport of one or two
+            // rows and scrolls for the rest — however many
+            // weapons the slot carries, the panel never grows
+            // into its neighbors.
+            panel.Scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            vb.AddChild(panel.Scroll);
             panel.ListBox = new VBoxContainer();
             panel.ListBox.AddThemeConstantOverride("separation", 4);
-            vb.AddChild(panel.ListBox);
+            panel.ListBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            panel.Scroll.AddChild(panel.ListBox);
             var capturedSlot = slot;
             panel.GuiInput += (InputEvent e) =>
             {
@@ -678,7 +735,7 @@ public partial class RiderLab : Control
         {
             var c = panel.GetGlobalRect().GetCenter();
             var a = _paperdoll?.LiveAnchor(id);
-            sb.AppendLine($"LABLAYOUT {id} panel=({c.X:F0},{c.Y:F0}) anchor={(a.HasValue ? $"({a.Value.X:F0},{a.Value.Y:F0})" : "none")}");
+            sb.AppendLine($"LABLAYOUT {id} panel=({c.X:F0},{c.Y:F0}) size=({panel.Size.X:F0},{panel.Size.Y:F0}) anchor={(a.HasValue ? $"({a.Value.X:F0},{a.Value.Y:F0})" : "none")}");
         }
         return sb.ToString();
     }
