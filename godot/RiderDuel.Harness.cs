@@ -611,6 +611,63 @@ public partial class RiderDuel
     private bool _ffaStaged;
     private Vector3 _ffaHome0, _ffaHome1;
 
+    // --view-shot: the owner's hilltop case (2026-10-31) — the
+    // player low at the mesa foot, the torso at its up stop, a foe
+    // standing on the top. BEFORE frame: the mouse stays at the
+    // torso stop (wide pitch unset) — the old framing. AFTER: the
+    // wide aim pitch is pushed to its max and the world view must
+    // tilt up with the excess, bringing the foe into frame.
+    private float _viewT;
+    private int _viewStage = -1;
+    private void UpdateViewShot(float dt)
+    {
+        _aimPoint = TorsoAimPoint(); // live play refreshes the reticle point every frame; the staging must too
+        _viewT += dt;
+        if (_viewStage < 0)
+        {
+            _viewStage = 0;
+            _viewT = 0f;
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 58f), 58f), Mathf.Pi);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = 0f;
+            _player.TorsoPitch = 0.48f; // the torso's up stop
+            _player.AimPitchWide = float.NaN;
+            _hpPlayer = 100000f;
+            GD.Print("VIEWSHOT staged: player low at the mesa foot, torso at its up stop, foe on the top");
+            return;
+        }
+        if (_pendingPath != null || _capturing) return;
+        var chest = _enemy.RootPos + Vector3.Up * (_enemySpec.Height * 0.68f);
+        var vp = GetViewport().GetVisibleRect().Size;
+        if (_viewStage == 0 && _viewT > 0.6f)
+        {
+            _viewStage = 1;
+            var scr = _cam.UnprojectPosition(chest);
+            GD.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp}");
+            QueueCapture("res://proof/view_hilltop_before.png", "vbefore", "chase", () =>
+            {
+                _player.AimPitchWide = 1.35f; // mouse pushed fully up
+                _viewStage = 2;
+                _viewT = 0f;
+            });
+        }
+        else if (_viewStage == 2 && _viewT > 0.4f)
+        {
+            _viewStage = 3;
+            var scr = _cam.UnprojectPosition(chest);
+            var rp = _reticlePoint;
+            var rscr = _cam.UnprojectPosition(rp);
+            GD.Print($"VIEWSHOT AFTER reticlePoint={rp} screen=({rscr.X:F0},{rscr.Y:F0}) behind={_cam.IsPositionBehind(rp)} crossPos={_cross.ReticlePos}");
+            bool inFrame = scr.X > 0f && scr.X < vp.X && scr.Y > 0f && scr.Y < vp.Y;
+            GD.Print($"VIEWSHOT AFTER foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp} inFrame={inFrame}");
+            GD.Print(inFrame
+                ? "VIEWSHOT PASS the view tilts up past the torso stop — the hilltop foe is in frame"
+                : "VIEWSHOT FAIL the hilltop foe is still out of frame");
+            QueueCapture("res://proof/view_hilltop.png", "vafter", "chase", () => GetTree().Quit());
+        }
+    }
+
     private void UpdateFfaTest(float dt)
     {
         _ffaT += dt;

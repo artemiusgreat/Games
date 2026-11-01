@@ -203,6 +203,20 @@ public partial class RiderDuel
             var look = _player.RootPos + Vector3.Up * (4.5f * k) + RiderWalker.HeadingVec(torsoYaw) * (14f * k);
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
+            // The view follows the mouse past the torso's stops
+            // (owner, 2026-10-31): the torso pitches only within
+            // [-0.32, +0.48], but a player who keeps pushing the
+            // mouse is asking to LOOK further — the excess tilts
+            // the camera itself, so a hilltop above (or the ground
+            // at the feet below) comes into frame, reticle and all.
+            // AimPitchWide is NaN in harness poses, so proof
+            // framing is untouched there.
+            if (!float.IsNaN(_player.AimPitchWide))
+            {
+                float excess = _player.AimPitchWide
+                    - Mathf.Clamp(_player.AimPitchWide, -0.32f, 0.48f);
+                if (Mathf.Abs(excess) > 0.001f) _cam.RotateX(excess);
+            }
             if (delta > 0f && _shake > 0.002f)
             {
                 _cam.GlobalPosition += new Vector3(
