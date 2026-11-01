@@ -27,14 +27,18 @@ def brown_noise(n, leak=0.985):
     return out
 
 def laser():
-    n = int(0.22 * SR); s = []
+    # Fast whoosh (owner, 2026-10-31): the rocket's recipe — noise
+    # through a swelling lowpass with an arch envelope — compressed
+    # from 0.6s to 0.16s with a higher, snappier cutoff sweep. A
+    # LOCAL rng keeps the shared sequence untouched, so every other
+    # WAV regenerates byte-identical.
+    lr = random.Random(777)
+    n = int(0.16 * SR); s = []; lp = 0.0
     for i in range(n):
         t = i / SR
-        f = 240 + 1500 * math.exp(-t * 14)
-        ph = 2 * math.pi * (240 * t + 1500 * (1 - math.exp(-t * 14)) / 14)
-        e = math.exp(-t * 11)
-        s.append((math.sin(ph) + 0.35 * math.sin(2 * ph)) * e)
-    s[0] += 0.8; s[1] += 0.5
+        cut = 0.05 + 0.85 * math.sin(math.pi * min(1, t / 0.16)) ** 2
+        lp += cut * (lr.uniform(-1, 1) - lp)
+        s.append(lp * 2.4 * math.sin(math.pi * min(1, t / 0.15)))
     return s
 
 def cannon():
