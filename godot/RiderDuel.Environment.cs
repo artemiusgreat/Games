@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // stays one partial class — see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
-    private struct Circle { public Vector2 P; public float R; public float RoofTop; } // RoofTop > 0: a building circle whose push-out lifts at roof level
+    private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; } // RoofTop > 0: a building circle whose push-out lifts at roof level. Pass: the circle never blocks movement (stones — owner, round 29: only TALL objects block a rider)
 
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees ignite, burn for 3s, then smoke
@@ -282,7 +282,10 @@ public partial class RiderDuel
     }
 
     // Low-poly rock: squashed, randomly tilted icosphere-ish blob. Gets a
-    // collision circle + hit cylinder like every other prop.
+    // hit cylinder (shots still collide) and a movement circle marked
+    // Pass: stones do NOT block riders (owner, round 29 — a rider got
+    // stuck in a tree-and-stone patch; only tall objects, buildings
+    // and other riders, may block movement).
     private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
     {
         float groundY = Main.HeightAt(pos.X, pos.Z);
@@ -311,7 +314,7 @@ public partial class RiderDuel
         AddChild(mi);
         }
         float r = Mathf.Max(scl.X, scl.Z) * 0.92f;
-        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
+        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, Pass = true });
         _hit.Props.Add(new HitModel.PropCyl
         {
             P = new Vector2(pos.X, pos.Z), R = r,
@@ -659,10 +662,16 @@ public partial class RiderDuel
         }
     }
 
-    // Any rider whose footprint reaches a standing tree crushes it:
-    // the tree drops into the fast evaporation path (0.8s shrink with
-    // dust), its shot-blocking cylinder is removed at once, and the
-    // rider walks on. Buildings are never stompable.
+    // Any rider whose body is about to reach a standing tree crushes
+    // it first (owner, round 29: the tree must explode BEFORE the
+    // collision is noticeable — the old trigger fired only once the
+    // rider's center was within CollisionRadius + 0.35 of the trunk,
+    // i.e. after the body was already inside the trunk disc). The
+    // trigger is the body's reach (collision radius + trunk radius)
+    // plus a margin, so the tree drops into the fast evaporation
+    // path (0.8s shrink with dust), its shot-blocking cylinder is
+    // removed at once, and the rider walks on unimpeded. Buildings
+    // are never stompable.
     private void StompCheck()
     {
         var walkers = new System.Collections.Generic.List<RiderWalker> { _player, _enemy };
@@ -676,7 +685,7 @@ public partial class RiderDuel
             {
                 if (d.Kind != "tree" || d.State != 0) continue;
                 var tp = new Vector2(d.Center.X, d.Center.Z);
-                if (wp.DistanceTo(tp) > w.CollisionRadius + 0.35f) continue;
+                if (wp.DistanceTo(tp) > w.CollisionRadius + d.Radius + 0.9f) continue;
                 DestroyTree(d, 0.8f);
                 if (w == _player) _shake = Mathf.Max(_shake, 0.18f);
                 GD.Print($"DUEL STOMP {TagOf(w)} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
@@ -695,6 +704,7 @@ public partial class RiderDuel
                 // but not one standing on its roof or flying over
                 // it: at roof level the circle is not a wall.
                 if (c.RoofTop > 0f && w.SoleLevel + 1.5f >= c.RoofTop) continue;
+                if (c.Pass) continue; // stones: kept for scatter spacing and shot hits, never a wall
                 p = PushOut(p, w.CollisionRadius, c, out _);
             }
         }
