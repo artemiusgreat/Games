@@ -49,6 +49,7 @@ public partial class RiderDuel : Node3D
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _grassShot; // TEMP probe: census + capture the grass clump instances
     private bool _boomShot; // TEMP probe: rider visibility across the pitch travel (round 28)
+    private bool _boomCheck; // TEMP probe: boom vs buildings + photo level frame (round 28 follow-up)
     private bool _grassStaged;
     private Vector3 _grassPos;
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
@@ -269,6 +270,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--grass-shot") { _photo = true; _grassShot = true; }
             if (arg == "--boom-shot") _boomShot = true;
+            if (arg == "--boom-check") _boomCheck = true;
             if (arg == "--gait-shot") _gaitShot = true;
             if (arg == "--hector-cam") _hectorCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
@@ -407,7 +409,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -815,6 +817,7 @@ public partial class RiderDuel : Node3D
             else if (_photoTest) UpdatePhotoTest(dt);
             else if (_grassShot) UpdateGrassShot(dt);
             else if (_boomShot) UpdateBoomShot(dt);
+            else if (_boomCheck) UpdateBoomCheck(dt);
             else if (_test) UpdateTest(dt);
             else
             {

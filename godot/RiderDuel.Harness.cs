@@ -775,6 +775,71 @@ public partial class RiderDuel
         }
     }
 
+    // --boom-check (round 28 follow-up, owner repeated "the
+    // player's rider should be always visible" after the boom
+    // shipped): stage the live-play cases the static sweep did
+    // not cover — the rider backed up against a building (does
+    // the boom put the camera inside it?) at level and at a
+    // mesa-aim pitch, and (photo scene) a level chase frame.
+    private int _boomCheckStage = -1;
+    private float _boomCheckT;
+    private void UpdateBoomCheck(float dt)
+    {
+        _aimPoint = TorsoAimPoint();
+        _boomCheckT += dt;
+        if (_boomCheckStage < 0)
+        {
+            _boomCheckStage = 0;
+            _boomCheckT = 0f;
+            var bp = _buildingPts[0];
+            _player.Teleport(new Vector3(bp.X, Main.HeightAt(bp.X, bp.Y - 14f), bp.Y - 14f), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            _foe1.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = 0f;
+            _hpPlayer = 100000f;
+            GD.Print($"BOOMCHECK staged: rider 14u in front of building[0] at {bp}, facing -Z (building behind)");
+            return;
+        }
+        if (_pendingPath != null || _capturing || _boomCheckT < 0.4f) return;
+        _boomCheckT = 0f;
+        if (_boomCheckStage == 0 || _boomCheckStage == 1)
+        {
+            float pitch = _boomCheckStage == 0 ? 0f : 0.35f;
+            _player.AimPitchWide = pitch;
+            _player.TorsoPitch = pitch;
+            UpdateCamera(0f);
+            var vp = GetViewport().GetVisibleRect().Size;
+            var head = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
+            var feet = _cam.UnprojectPosition(_player.RootPos);
+            GD.Print($"BOOMCHECK city pitch={pitch:F2} camPos={_cam.GlobalPosition} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) viewport={vp}");
+            var anch = _player.RootPos + Vector3.Up * (_playerSpec.Height * 1.15f);
+            var blk = _hit.Ray(anch, -AimDirWorld(), 26f, "PLAYER");
+            GD.Print($"BOOMDBG root={_player.RootPos} anchor={anch} terrainAtCam={Main.HeightAt(_cam.GlobalPosition.X, _cam.GlobalPosition.Z):F1} blockHit={blk.Hit} blockT={blk.T:F1} blockTarget={blk.Target}");
+            foreach (var pc in _hit.Props) if (new Vector2(pc.P.X - _buildingPts[0].X, pc.P.Y - _buildingPts[0].Y).Length() < 12f)
+                GD.Print($"BOOMDBG cyl P={pc.P} R={pc.R:F1} base={pc.BaseY:F1} top={pc.BaseY + pc.Height:F1}");
+            int st = _boomCheckStage;
+            _boomCheckStage++;
+            QueueCapture($"res://proof/boom_city{st}.png", $"boomcity{st}", "chase");
+        }
+        else if (_boomCheckStage == 2)
+        {
+            _boomCheckStage++;
+            if (_photo)
+            {
+                _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
+                _player.SetDrive(0f, 0f);
+                _player.TorsoTwist = 0f;
+                _player.AimPitchWide = 0f;
+                _player.TorsoPitch = 0f;
+                UpdateCamera(0f);
+                QueueCapture("res://proof/boom_photo_level.png", "boomphotolevel", "chase",
+                    () => { GD.Print("BOOMCHECK DONE"); GetTree().Quit(); });
+            }
+            else { GD.Print("BOOMCHECK DONE"); GetTree().Quit(); }
+        }
+    }
+
     private void UpdateViewShot(float dt)
     {
         _aimPoint = TorsoAimPoint(); // live play refreshes the aim every frame; the staging must too
