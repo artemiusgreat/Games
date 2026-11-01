@@ -306,10 +306,19 @@ public partial class RiderDuel
                     if (target.Y < fy2) target.Y = fy2;
                 }
             }
-            if (delta > 0f)
-                _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
-            else
-                _cam.GlobalPosition = target;
+            // No position smoothing (owner, round 29): the
+            // camera sits exactly on the boom target every
+            // frame. The exponential glide this replaces (rate
+            // 6/s) trailed every mouse flick — measured by
+            // --lag-check on the old code: one frame after a
+            // hard flick the camera was still 24.6u short of
+            // its target and needed 62 frames (~1s) to settle,
+            // so the world kept panning after the mouse had
+            // stopped, which read as the (fixed) crosshair
+            // still moving — jittery aim. The aim state is set
+            // directly by the input events; the camera now
+            // is too.
+            _cam.GlobalPosition = target;
             // Center-crosshair aiming (owner's pick, round 27):
             // the camera looks along the aim direction itself
             // (AimDirWorld — the mouse's yaw/pitch), so the fixed
