@@ -714,6 +714,67 @@ public partial class RiderDuel
         }
     }
 
+    // --boom-shot (round 28, owner: "the player's rider should
+    // be always visible"): sweep the full pitch travel on two
+    // stands (flats, mesa skirt) and print the rider's head/feet
+    // screen positions per step — the measured visibility
+    // envelope of the boom camera. Captures at the extremes and
+    // level on the flats.
+    private int _boomStage = -1;
+    private float _boomT, _boomPitch;
+    private void UpdateBoomShot(float dt)
+    {
+        _aimPoint = TorsoAimPoint();
+        _boomT += dt;
+        if (_boomStage < 0)
+        {
+            _boomStage = 0;
+            _boomT = 0f;
+            _boomPitch = -1.35f;
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            _foe1.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = 0f;
+            _hpPlayer = 100000f;
+            GD.Print("BOOMSHOT staged: sweep on the flats (0,85), then the skirt (0,45)");
+            return;
+        }
+        if (_pendingPath != null || _capturing) return;
+        if (_boomStage <= 1)
+        {
+            if (_boomT < 0.3f) return;
+            _boomT = 0f;
+            _player.AimPitchWide = _boomPitch;
+            _player.TorsoPitch = _boomPitch;
+            UpdateCamera(0f);
+            var vp = GetViewport().GetVisibleRect().Size;
+            var head = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
+            var feet = _cam.UnprojectPosition(_player.RootPos);
+            bool headIn = head.X > 0f && head.X < vp.X && head.Y > 0f && head.Y < vp.Y && !_cam.IsPositionBehind(_player.RootPos + Vector3.Up * _playerSpec.Height);
+            bool feetIn = feet.X > 0f && feet.X < vp.X && feet.Y > 0f && feet.Y < vp.Y && !_cam.IsPositionBehind(_player.RootPos);
+            GD.Print($"BOOMSWEEP stand={(_boomStage == 0 ? "flats" : "skirt")} pitch={_boomPitch:F2} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) headIn={headIn} feetIn={feetIn} camPos={_cam.GlobalPosition}");
+            if (_boomStage == 0)
+            {
+                string cap = Mathf.Abs(_boomPitch + 1.35f) < 0.01f ? "down" : Mathf.Abs(_boomPitch) < 0.01f ? "level" : Mathf.Abs(_boomPitch - 1.35f) < 0.01f ? "up" : null;
+                if (cap != null) QueueCapture($"res://proof/boom_{cap}.png", $"boom{cap}", "chase");
+            }
+            _boomPitch += 0.15f;
+            if (_boomPitch > 1.36f)
+            {
+                _boomStage++;
+                _boomPitch = -1.35f;
+                if (_boomStage == 1)
+                {
+                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 45f), 45f), 0f);
+                    _player.SetDrive(0f, 0f);
+                    _player.TorsoTwist = 0f;
+                }
+                else { GD.Print("BOOMSHOT DONE"); GetTree().Quit(); }
+            }
+        }
+    }
+
     private void UpdateViewShot(float dt)
     {
         _aimPoint = TorsoAimPoint(); // live play refreshes the aim every frame; the staging must too
