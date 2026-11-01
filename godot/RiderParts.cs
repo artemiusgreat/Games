@@ -132,6 +132,34 @@ public sealed class RiderParts
             AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
         }
+        else if (riderId == "prometheus")
+        {
+            // Hellbringer kit: the head is the cockpit hood region
+            // split out of the Torso mesh (measured on the built
+            // model: |x| <= 1.3, top front). No pod split — the
+            // SRM housing is fused into the torso, so the missile
+            // slot rides on the torso part itself.
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                // Classification space note: measured on the
+                // built model — the cockpit is the top of the
+                // torso's dense front slab, which lands at
+                // Z >= -0.72 in this space (region census +
+                // per-mesh AABB checks), not at the gait-front
+                // sign one would guess from the other riders.
+                ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 11.0f && p.Z >= -0.72f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 65f, byName,
+                "ShoulderAct_L", "UpperArm_L", "UpperArm2_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
+            AddPart("arm_R", "RIGHT ARM", 65f, byName,
+                "ShoulderAct_R", "UpperArm_R", "UpperArm2_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
+            AddPart("leg_L", "LEFT LEG", 90f, byName,
+                "Thigh_L", "Knee_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName,
+                "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
+        }
         else
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
@@ -143,7 +171,6 @@ public sealed class RiderParts
             byName.Keys.CopyTo(all, 0);
             AddPart("torso", "TORSO", 0f, byName, all);
         }
-
         foreach (var part in _parts.Values)
         {
             string line = $"{_riderId} PART {part.Id} hp={(part.MaxHp > 0 ? part.MaxHp.ToString("F0") : "pool")} meshes=[";

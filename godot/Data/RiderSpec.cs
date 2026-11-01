@@ -81,9 +81,28 @@ public static class RiderSpecs
         }
     };
 
+    // PROMETHEUS (Hellbringer kit, 65t Heavy): three mounts —
+    // the ballistic arm, the energy arm, and the torso missile
+    // rack (the kit's SRM housing is fused into the torso mesh,
+    // so the rack is a torso slot, not a breakable pod). Caps
+    // sum to the 65t budget.
+    public static readonly RiderSpec Prometheus = new()
+    {
+        Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = false,
+        ModelPath = "res://assets/hellbringer.fbx", PartsId = "prometheus", MaxHp = 235f,
+        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
+        FlipKneePole = true,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 23f },
+            new SlotDef { Id = "torso", Display = "TORSO RACK", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+        }
+    };
+
     // Every chassis the lab can offer. Adding a rider = one new
     // RiderSpec + one entry here (+ its RiderParts layout and model).
-    public static readonly RiderSpec[] All = { Enyo, Hector };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus };
 
     public static RiderSpec ById(string id)
     {
@@ -196,7 +215,29 @@ public sealed class LoadoutState
     }
 
     public static LoadoutState DefaultFor(RiderSpec spec) =>
-        spec.Id == "hector" ? DefaultHector() : DefaultEnyo();
+        spec.Id == "hector" ? DefaultHector()
+        : spec.Id == "prometheus" ? DefaultPrometheus()
+        : DefaultEnyo();
+
+    public static LoadoutState DefaultPrometheus()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false; // the chassis cannot mount them
+        // Every slot filled (owner, 2026-10-31): 65t of 65t.
+        var pr = RiderSpecs.Prometheus;
+        l.TryAssign(pr, "arm_L", WeaponCatalog.ById("ac20"));
+        l.TryAssign(pr, "arm_L", WeaponCatalog.MachineGun);
+        l.TryAssign(pr, "arm_L", WeaponCatalog.MachineGun);
+        l.TryAssign(pr, "arm_L", WeaponCatalog.MachineGun);        // 22/22t
+        l.TryAssign(pr, "arm_R", WeaponCatalog.Ppc);
+        l.TryAssign(pr, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(pr, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(pr, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(pr, "arm_R", WeaponCatalog.SmallLaser);        // 23/23t
+        l.TryAssign(pr, "torso", WeaponCatalog.Lrm);
+        l.TryAssign(pr, "torso", WeaponCatalog.Lrm);               // 20/20t
+        return l;
+    }
 
     public static LoadoutState DefaultHector()
     {
