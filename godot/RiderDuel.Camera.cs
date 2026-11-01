@@ -200,17 +200,47 @@ public partial class RiderDuel
         }
         else // chase (interactive)
         {
-            var torsoYaw = _player.TorsoYawWorld;
-            var back = -RiderWalker.HeadingVec(torsoYaw);
-            // Centered and HIGH (owner, round 12): no sideways
-            // offset — the camera sits on the torso axis, lifted
-            // well above the rider so the field in front of it is
-            // visible over the hull. Distances scale with the
-            // chassis height (reference: the 13u Enyo this
-            // framing was tuned on), so a taller or shorter rider
-            // is framed the same way.
+            // Boom framing (round 28, owner: "the player's rider
+            // should be always visible"): the camera rides a boom
+            // ON the aim axis — anchored above the rider's head,
+            // positioned behind the anchor along the aim direction.
+            // The boom rotates rigidly with the aim pitch, so the
+            // rider's framing is the same at EVERY pitch: it hangs
+            // below the anchor in the lower-center of the frame,
+            // head clear of the crosshair, and can never leave the
+            // frame. (Round 27's fixed high perch pitched the view
+            // along the mouse but left the camera in place, so
+            // looking up dropped the rider out of the bottom of
+            // the frame — the owner's report.) Centered, no
+            // sideways offset (owner, round 12); distances scale
+            // with the chassis height, as before.
             float k = _playerSpec.Height / 13f;
-            var target = _player.RootPos + back * (16.0f * k) + Vector3.Up * (23.0f * k);
+            var aimDir = AimDirWorld();
+            // The anchor rides higher as |pitch| grows (up to
+            // +0.22 heights at the +-1.35 cap): the torso pitches
+            // with the aim, and at the extremes its head would
+            // otherwise crowd the crosshair the boom is centered
+            // on. Level framing (ramp ~0) is untouched.
+            float upRamp = Mathf.Abs(aimDir.Y) / 0.9757f;
+            var anchor = _player.RootPos + Vector3.Up * (_playerSpec.Height * (1.15f + 0.22f * upRamp));
+            // Boom length: the full 26k while it fits. A steep
+            // up-pitch swings the boom down behind the rider;
+            // where the full boom would sink it into the ground,
+            // shorten the boom instead of lifting the camera off
+            // the axis — the camera stays ON the aim line (the
+            // rider centered on it, seen from below) down to the
+            // last length that keeps it above the terrain under
+            // the anchor. The floor clamp below stays as a
+            // backstop for sloping ground behind the rider.
+            float boom = 26f * k;
+            if (aimDir.Y > 0.05f)
+            {
+                float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + 1.3f);
+                boom = Mathf.Min(boom, Mathf.Max(8f * k, clearance / aimDir.Y));
+            }
+            var target = anchor - aimDir * boom;
+            float floorY = Main.HeightAt(target.X, target.Z) + 1.3f;
+            if (target.Y < floorY) target.Y = floorY;
             if (delta > 0f)
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
@@ -225,12 +255,9 @@ public partial class RiderDuel
             // nothing pins, saturates or inverts, and the
             // close-steep parallax dead zone measured after round
             // 26 (a top-edge target unpointable inside ~18u)
-            // cannot occur. The accepted trade, standard for
-            // third-person shooters: the rider sits low in frame
-            // at neutral pitch and leaves the frame at the pitch
-            // extremes. Pitch is capped at +-1.35 rad, well clear
-            // of the vertical LookAt singularity.
-            var lookTarget = _cam.GlobalPosition + AimDirWorld();
+            // cannot occur. Pitch is capped at +-1.35 rad, well
+            // clear of the vertical LookAt singularity.
+            var lookTarget = _cam.GlobalPosition + aimDir;
             if (_cam.GlobalPosition.DistanceSquaredTo(lookTarget) > 0.0001f)
                 _cam.LookAt(lookTarget, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)
