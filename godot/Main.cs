@@ -165,6 +165,28 @@ public partial class Main : Node3D
     // Verification hook: the stored analytic height at a grid node.
     public static float GridHeightAt(int i, int j) => Grid[j * GridN + i];
 
+    // Building roofs a rider can stand on (owner, 2026-10-31):
+    // registered by RiderDuel's AddBuilding, removed when the
+    // building is destroyed. Axis-aligned rectangles with a top.
+    public struct RoofRect { public float Cx, Cz, Hx, Hz, Top; }
+    public static readonly System.Collections.Generic.List<RoofRect> Roofs = new();
+
+    // Ground height for a walker at (x, z): the terrain, or a
+    // roof's top when the walker's soles are already at that level
+    // — refY is the sole level plus a small step tolerance, so a
+    // walker standing ON the roof (or falling onto it) grounds on
+    // it, while a walker on the ground beside the building, whose
+    // refY sits far below the top, keeps the terrain and is still
+    // stopped by the walls.
+    public static float GroundAt(float x, float z, float refY)
+    {
+        float g = HeightAt(x, z);
+        foreach (var r in Roofs)
+            if (r.Top > g && refY >= r.Top && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
+                g = r.Top;
+        return g;
+    }
+
     private static Vector3 GridNormal(int i, int j, float step)
     {
         int il = Mathf.Max(i - 1, 0), ir = Mathf.Min(i + 1, GridN - 1);

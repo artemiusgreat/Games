@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // stays one partial class — see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
-    private struct Circle { public Vector2 P; public float R; }
+    private struct Circle { public Vector2 P; public float R; public float RoofTop; } // RoofTop > 0: a building circle whose push-out lifts at roof level
 
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees ignite, burn for 3s, then smoke
@@ -340,7 +340,7 @@ public partial class RiderDuel
             if (TerrainGrade(x, z) > 0.3f) continue;
             if (Main.RoadDistance(x, z) < 3.0f) continue;
             bool bad = false;
-            foreach (var bp in _buildingPts) if (new Vector2(x, z).DistanceTo(bp) < 7f) { bad = true; break; }
+            foreach (var bp in _buildingPts) if (new Vector2(x, z).DistanceTo(bp) < 13f) { bad = true; break; }
             if (bad) continue;
             foreach (var c in _props) if (new Vector2(x, z).DistanceTo(c.P) < c.R + 0.6f) { bad = true; break; }
             if (bad) continue;
@@ -627,7 +627,12 @@ public partial class RiderDuel
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
         float groundY = Main.HeightAt(pos.X, pos.Z);
-        pos.Y = groundY + size.Y / 2f - 0.3f;
+        // The big footprints (owner, 2026-10-31: larger buildings)
+        // sit on slopes — sink the base well into the grade so no
+        // corner hovers; the roof top is the walkable surface.
+        const float Sink = 2.4f;
+        float roofTop = groundY + size.Y - Sink;
+        pos.Y = groundY + size.Y / 2f - Sink;
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = size };
         mi.MaterialOverride = _photo
@@ -645,8 +650,8 @@ public partial class RiderDuel
         // Circle colliders: one for near-square footprints, two along the
         // long axis for elongated ones. Radius covers the short side plus a
         // margin; extreme corners can poke slightly past a circle (POC).
-        // The same circles register as hit-model cylinders (base sunk 0.3
-        // with the mesh, full height) so buildings block shots too.
+        // The same circles register as hit-model cylinders (base sunk
+        // with the mesh, top at the roof) so buildings block shots too.
         float sx = size.X, sz = size.Z;
         if (Mathf.Max(sx, sz) / Mathf.Min(sx, sz) > 1.45f)
         {
@@ -655,16 +660,16 @@ public partial class RiderDuel
             var a = new Vector2(pos.X, pos.Z);
             var b = new Vector2(pos.X, pos.Z);
             if (sx > sz) { a.X -= off; b.X += off; } else { a.Y -= off; b.Y += off; }
-            _props.Add(new Circle { P = a, R = r });
-            _props.Add(new Circle { P = b, R = r });
-            _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - 0.3f, Height = size.Y });
-            _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - 0.3f, Height = size.Y });
+            _props.Add(new Circle { P = a, R = r, RoofTop = roofTop });
+            _props.Add(new Circle { P = b, R = r, RoofTop = roofTop });
+            _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - Sink, Height = size.Y });
+            _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - Sink, Height = size.Y });
         }
         else
         {
             float r = Mathf.Max(sx, sz) / 2f + 0.3f;
-            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r });
-            _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - 0.3f, Height = size.Y });
+            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, RoofTop = roofTop });
+            _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - Sink, Height = size.Y });
         }
         var bd = new Destructible
         {
@@ -676,6 +681,10 @@ public partial class RiderDuel
         for (int i = pc0; i < _props.Count; i++) bd.CirclePts.Add(_props[i].P);
         for (int i = hc0; i < _hit.Props.Count; i++) bd.Cyls.Add(_hit.Props[i]);
         _destructibles.Add(bd);
+        // The roof is a floor (owner, 2026-10-31): a rider with
+        // thrusters can land and stand on it. Removed again when
+        // the building is destroyed (RemovePropColliders).
+        Main.Roofs.Add(new Main.RoofRect { Cx = pos.X, Cz = pos.Z, Hx = size.X / 2f, Hz = size.Z / 2f, Top = roofTop });
     }
 
     // ---------- collisions ----------
@@ -759,6 +768,10 @@ public partial class RiderDuel
         {
             foreach (var c in _props)
             {
+                // A building's walls stop a rider on the ground —
+                // but not one standing on its roof or flying over
+                // it: at roof level the circle is not a wall.
+                if (c.RoofTop > 0f && w.SoleLevel + 1.5f >= c.RoofTop) continue;
                 p = PushOut(p, w.CollisionRadius, c, out _);
             }
         }
@@ -808,7 +821,9 @@ public partial class RiderDuel
         foreach (var pt in d.CirclePts)
             for (int i = 0; i < _props.Count; i++)
                 if (_props[i].P.DistanceSquaredTo(pt) < 0.001f)
-                    _props[i] = new Circle { P = pt, R = 0f };
+                    _props[i] = new Circle { P = pt, R = 0f, RoofTop = -1f };
+        if (d.Kind == "building")
+            Main.Roofs.RemoveAll(r => Mathf.Abs(r.Cx - d.Center.X) < 0.01f && Mathf.Abs(r.Cz - d.Center.Z) < 0.01f);
     }
 
     private void StartCollapse(Destructible d)

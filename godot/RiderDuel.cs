@@ -137,6 +137,7 @@ public partial class RiderDuel : Node3D
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
     private bool _viewShot; // --view-shot: hilltop view-pitch proof frames
     private bool _brakeTest; // --brake-test: stop-within-1s measurement, both chassis
+    private bool _roofTest; // --roof-test: jump onto a building roof and stand there
     private readonly System.Collections.Generic.List<(string Target, Vector3 Point)> _lrmImpacts = new();
     private Vector3 _enemyVel;
     private Vector3 _prevEnemyRoot;
@@ -260,6 +261,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--view-shot") _viewShot = true;
             if (arg == "--brake-test") _brakeTest = true;
+            if (arg == "--roof-test") _roofTest = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -313,6 +315,7 @@ public partial class RiderDuel : Node3D
         AddChild(new WorldEnvironment { Environment = duelEnv });
 
         BuildTerrain();
+        Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
         // Round-1 props (same spots as Main) + a few more for a fuller map.
         AddTree(new Vector3(-12f, 0f, -8f));
         AddTree(new Vector3(14f, 0f, -18f));
@@ -321,10 +324,14 @@ public partial class RiderDuel : Node3D
         AddTree(new Vector3(30f, 0f, -30f));
         AddTree(new Vector3(-32f, 0f, -6f));
         AddTree(new Vector3(26f, 0f, 30f));
-        AddBuilding(new Vector3(-20f, 0f, 14f), new Vector3(7f, 5f, 6f));
-        AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(6f, 7f, 6f));
-        AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(8f, 6f, 5f));
-        AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(5f, 9f, 5f));
+        // Larger (owner, 2026-10-31): footprints 10-15u, heights
+        // 11-16u — real cover next to a 13-14u rider, and every
+        // roof stays under the ~24u thruster apex so a jump-jet
+        // rider can land on top.
+        AddBuilding(new Vector3(-20f, 0f, 14f), new Vector3(13f, 11f, 11f));
+        AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(12f, 13f, 12f));
+        AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
+        AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
         ScatterNature();
         if (_photo)
         {
@@ -351,7 +358,7 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
-        if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest) || _ffaTest) BuildFoe1();
+        if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest) BuildFoe1();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
@@ -379,7 +386,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -759,6 +766,7 @@ public partial class RiderDuel : Node3D
             _simT += delta;
             if (_viewShot) UpdateViewShot(dt);
             else if (_brakeTest) UpdateBrakeTest(dt);
+            else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
             else if (_breakTest) UpdateBreakTest(dt);

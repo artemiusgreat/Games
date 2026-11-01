@@ -136,6 +136,27 @@ public partial class RiderWalker : Node3D
     }
     public bool IsReady => _ready;
     public float Speed => _speed;
+
+    // The walker's current sole level: the higher planted sole, or
+    // — airborne — the soles hanging ~10.5u under the root. Roof
+    // grounding (GroundHere) and the duel's roof collision gate
+    // both key on this: it is what "already at roof level" means.
+    public float SoleLevel
+    {
+        get
+        {
+            float s = float.MinValue;
+            if (_legL.Planted) s = Mathf.Max(s, _legL.SoleTarget.Y);
+            if (_legR.Planted) s = Mathf.Max(s, _legR.SoleTarget.Y);
+            if (s == float.MinValue) s = _rootPos.Y - 10.5f;
+            if (_jumpH > 0.05f) s = Mathf.Max(s, _rootPos.Y - 10.5f);
+            return s;
+        }
+    }
+
+    // Foot ground: terrain, or a building roof the soles are
+    // already level with (standing on it, falling onto it).
+    private float GroundHere(float x, float z) => Main.GroundAt(x, z, SoleLevel + 1.5f);
     public float LegsYaw => _legsYaw;
     public float CollisionRadius => _cfg.CollisionRadius;
     public Vector3 RootPos => _rootPos;
@@ -367,7 +388,7 @@ public partial class RiderWalker : Node3D
         leg.AnkleAboveSoleW = ankW.Y - groundY;
         var hipLocal = holderG.AffineInverse() * (skelG * leg.Hrest);
         leg.HomeLocal = new Vector2(hipLocal.X, hipLocal.Z);
-        leg.SoleTarget = new Vector3(soleW.X, Main.HeightAt(soleW.X, soleW.Z), soleW.Z);
+        leg.SoleTarget = new Vector3(soleW.X, GroundHere(soleW.X, soleW.Z), soleW.Z);
         leg.PlantBasisW = FootBasisAt(leg.SoleTarget, 0f);
         leg.CurBasisW = leg.PlantBasisW;
         leg.SolvedSoleWorld = leg.SoleTarget;
@@ -415,7 +436,7 @@ public partial class RiderWalker : Node3D
             leg.StepT = -1f;
             leg.Planted = true;
             var home = HomeSlot(leg, pos);
-            leg.SoleTarget = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
+            leg.SoleTarget = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
             leg.PlantBasisW = FootBasisAt(leg.SoleTarget, legsYaw);
             leg.CurBasisW = leg.PlantBasisW;
             leg.HasPrev = false;
@@ -506,7 +527,7 @@ public partial class RiderWalker : Node3D
         var predRoot = _rootPos + vel * (_cfg.StepTime + 0.10f);
         var home = HomeSlot(leg, predRoot) + vel * 0.30f;
         leg.StepFrom = leg.SoleTarget;
-        leg.StepTo = new Vector3(home.X, Main.HeightAt(home.X, home.Z), home.Z);
+        leg.StepTo = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
         // Swing endpoints in the FACING frame (owner: leg motion
         // must read in the sagittal plane from the front — a
         // world-space lerp cuts across the body whenever the rider

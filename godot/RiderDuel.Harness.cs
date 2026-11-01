@@ -750,6 +750,88 @@ public partial class RiderDuel
         }
     }
 
+    // --roof-test: the owner's rooftop case (2026-10-31) — the
+    // Enyo jump-jets from beside the (22,8) building, flies over
+    // its roof, cuts the thrusters and must LAND AND STAND on the
+    // roof (soles at roof level, not sunk to the terrain, not
+    // pushed out by the wall colliders) — then walk on it.
+    private int _roofStage = -1;
+    private float _roofT, _roofTop;
+    private Vector3 _roofCenter, _roofWalkFrom;
+    private void UpdateRoofTest(float dt)
+    {
+        _roofT += dt;
+        if (_roofStage < 0)
+        {
+            _roofStage = 0;
+            _roofT = 0f;
+            foreach (var r in Main.Roofs)
+                if (Mathf.Abs(r.Cx - 22f) < 0.1f && Mathf.Abs(r.Cz - 8f) < 0.1f)
+                { _roofTop = r.Top; _roofCenter = new Vector3(r.Cx, 0f, r.Cz); }
+            if (_roofTop <= 0f) { GD.Print("ROOF FAIL no roof registered for the (22,8) building"); GetTree().Quit(); return; }
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            // A running approach, like real play: the burn budget
+            // (2.2s) cannot lift from a standstill AND cross — the
+            // horizontal Accel is only 4.2. Walk in from x=6, light
+            // the thrusters at x=10.5, and momentum plus burn carry
+            // him over the edge (x=16) just as his soles reach the
+            // roof line.
+            _player.Teleport(new Vector3(6f, Main.HeightAt(6f, 8f), 8f), RiderWalker.YawOf(Vector3.Right));
+            _player.SetDrive(_player.LegsYaw, 4.2f);
+            GD.Print($"ROOF staged: roofTop={_roofTop:F1} terrainAtBuilding={Main.HeightAt(22f, 8f):F1} — walking in, thrusters at x=10.5");
+            return;
+        }
+        if (_roofT > 40f) { GD.Print($"ROOF FAIL timeout in stage {_roofStage} (root={_player.RootPos} sole={_player.SoleLevel:F1} jumpH={_player.JumpHeight:F1} charge={_player.JumpCharge:F2})"); GetTree().Quit(); return; }
+        switch (_roofStage)
+        {
+            case 0: // walking in — light the thrusters at the mark
+                if (_player.RootPos.X >= 10.5f)
+                {
+                    _player.SetThrust(true);
+                    _roofStage = 1;
+                    GD.Print($"ROOF thrusters lit at x={_player.RootPos.X:F1} — climbing over the edge");
+                }
+                break;
+            case 1: // over the roof (or set down on it early): cut
+                if (Mathf.Abs(_player.RootPos.X - _roofCenter.X) < 2.5f && Mathf.Abs(_player.RootPos.Z - _roofCenter.Z) < 2.5f
+                    || _player.JumpHeight <= 0.01f && _player.RootPos.X > 17f)
+                {
+                    _player.SetThrust(false);
+                    _player.SetDrive(_player.LegsYaw, 0f);
+                    _roofStage = 2;
+                    _roofT = 0f;
+                    GD.Print($"ROOF over the roof at x={_player.RootPos.X:F1} — thrusters cut, settling");
+                }
+                break;
+            case 2: // land and settle
+                if (_player.JumpHeight <= 0.01f && _roofT > 1.6f)
+                {
+                    float soleErr = _player.SoleLevel - _roofTop;
+                    bool onRoof = Mathf.Abs(soleErr) <= 0.8f && _player.RootPos.Y > Main.HeightAt(22f, 8f) + 7f;
+                    GD.Print($"ROOF LAND sole={_player.SoleLevel:F2} roofTop={_roofTop:F2} err={soleErr:F2} rootY={_player.RootPos.Y:F1}");
+                    GD.Print(onRoof ? "ROOF LAND PASS standing on the roof" : "ROOF LAND FAIL not standing on the roof");
+                    _roofWalkFrom = _player.RootPos;
+                    _player.SetDrive(_player.LegsYaw, 3f);
+                    _roofStage = 3;
+                    _roofT = 0f;
+                }
+                break;
+            case 3: // walk on the roof
+                if (_roofT > 1.5f)
+                {
+                    _player.SetDrive(_player.LegsYaw, 0f);
+                    float walked = new Vector2(_player.RootPos.X - _roofWalkFrom.X, _player.RootPos.Z - _roofWalkFrom.Z).Length();
+                    float soleErr = _player.SoleLevel - _roofTop;
+                    bool ok = walked >= 2.2f && Mathf.Abs(soleErr) <= 0.8f;
+                    GD.Print($"ROOF WALK walked={walked:F1}u sole={_player.SoleLevel:F2} err={soleErr:F2}");
+                    GD.Print(ok ? "ROOF WALK PASS walked across the roof at roof level" : "ROOF WALK FAIL could not walk on the roof");
+                    _roofStage = 4;
+                    QueueCapture("res://proof/roof_stand.png", "roof", "chase", () => GetTree().Quit());
+                }
+                break;
+        }
+    }
+
     private void UpdateFfaTest(float dt)
     {
         _ffaT += dt;
