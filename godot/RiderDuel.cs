@@ -47,6 +47,9 @@ public partial class RiderDuel : Node3D
     private bool _hectorCamDone; private float _hectorCamT; private bool _hectorCamFired;
     private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
+    private bool _grassShot; // TEMP probe: census + capture the grass clump instances
+    private bool _grassStaged;
+    private Vector3 _grassPos;
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
     private float _gaitT;
     private float _gaitDumpT;
@@ -136,6 +139,16 @@ public partial class RiderDuel : Node3D
     private int _foe1Shots;
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
     private bool _viewShot; // --view-shot: hilltop view-pitch proof frames
+    private bool _pointTest; // --point-test: can the reticle be put ON a hilltop foe, per range?
+    private bool _pointHectorFirst; // --point-hector: select Hector at start (the lab path)
+    private bool _pointCenter; // --point-center: the foe stands at the mesa top CENTER
+    private bool _pointWalk; // --point-walk: the player walks at the hill during the sweep
+    private bool _pointClose; // --point-close: close-steep stands just under the rim (the owner's screenshot position, 2026-11-01)
+    private bool _pointSwapDone;
+    private int _pointStage = -1;
+    private float _pointPitch, _pointBest, _pointBestPitch, _pointT;
+    private float _pointDbgNext;
+    private bool _pointHector;
     private bool _brakeTest; // --brake-test: stop-within-1s measurement, both chassis
     private bool _roofTest; // --roof-test: jump onto a building roof and stand there
     private readonly System.Collections.Generic.List<(string Target, Vector3 Point)> _lrmImpacts = new();
@@ -253,6 +266,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--lab-shot") _labShot = true;
             if (arg == "--photo") _photo = true;
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
+            if (arg == "--grass-shot") { _photo = true; _grassShot = true; }
             if (arg == "--gait-shot") _gaitShot = true;
             if (arg == "--hector-cam") _hectorCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
@@ -260,6 +274,11 @@ public partial class RiderDuel : Node3D
             if (arg == "--ffa-test") _ffaTest = true;
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--view-shot") _viewShot = true;
+            if (arg == "--point-test") _pointTest = true;
+            if (arg == "--point-hector") _pointHectorFirst = true;
+            if (arg == "--point-center") _pointCenter = true;
+            if (arg == "--point-walk") _pointWalk = true;
+            if (arg == "--point-close") _pointClose = true;
             if (arg == "--brake-test") _brakeTest = true;
             if (arg == "--roof-test") _roofTest = true;
         }
@@ -386,7 +405,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -618,6 +637,24 @@ public partial class RiderDuel : Node3D
 
     public override void _Process(double delta)
     {
+        if (_pointTest && _pointHectorFirst && !_pointSwapDone && _player != null && _player.IsReady)
+        {
+            // Select Hector the way the owner does — in the lab,
+            // before the duel starts (hectorcam's ritual). A
+            // MID-RUN swap is invalid measurement: a stale scorch
+            // entry from the old walker makes UpdateCombat throw
+            // every frame and freezes the reticle/camera updates
+            // downstream of it (found by this probe, 2026-11-01).
+            _pointSwapDone = true;
+            SetRiderSelection("hector", "enyo");
+            ApplyLoadout();
+            if (_lab != null) { _lab.QueueFree(); _lab = null; }
+            _labOpen = false;
+            if (_labLight != null) _labLight.Visible = false;
+            _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
+            _pointHector = true;
+            GD.Print("POINTTEST selected Hector at start (lab path)");
+        }
         if (_hectorCam && !_hectorCamDone && _player != null && _player.IsReady)
         {
             _hectorCamDone = true;
@@ -765,6 +802,7 @@ public partial class RiderDuel : Node3D
         {
             _simT += delta;
             if (_viewShot) UpdateViewShot(dt);
+            else if (_pointTest) UpdatePointTest(dt);
             else if (_brakeTest) UpdateBrakeTest(dt);
             else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
@@ -773,6 +811,7 @@ public partial class RiderDuel : Node3D
             else if (_weaponsTest) UpdateWeaponsTest(dt);
             else if (_terrainTest) UpdateTerrainTest(dt);
             else if (_photoTest) UpdatePhotoTest(dt);
+            else if (_grassShot) UpdateGrassShot(dt);
             else if (_test) UpdateTest(dt);
             else
             {

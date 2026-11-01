@@ -267,9 +267,10 @@ public partial class RiderDuel
                     }
                 }
                 break;
-            case 6: // AIM: the aim ray follows the TORSO (owner's model):
-                    // pitch and twist steer TorsoAimPoint, and the
-                    // reticle's screen position rides the projection.
+            case 6: // AIM: the aim follows the CAMERA AXIS (owner's
+                    // round-27 model): pitch and twist steer
+                    // TorsoAimPoint, and the crosshair is the screen
+                    // center the axis projects to.
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_phaseT > 20) { GD.PrintErr("DUEL FAIL: aim phase timeout"); GetTree().Quit(1); }
@@ -300,50 +301,50 @@ public partial class RiderDuel
                     float dxz = new Vector2(aimT.X - aimC.X, aimT.Z - aimC.Z).Length();
                     if (dxz < 5f)
                     { GD.PrintErr($"DUEL FAIL: torso twist does not steer the aim (dxz={dxz:F2})"); GetTree().Quit(1); break; }
-                    // WIDE AIM (round 13): the mouse target is not
-                    // bound by the torso clamp — with AimPitchWide
-                    // driven to -1.05 the convergence must land on
-                    // the ground right in front of the feet, in the
-                    // screen's lower half, while the torso's own
-                    // pitch stays clamped at -0.32.
+                    // WIDE AIM (round 13, round-27 form): the mouse
+                    // target is not bound by the torso clamp — with
+                    // AimPitchWide driven to -1.05 the convergence
+                    // must land on the ground right in front of the
+                    // feet, under the center crosshair (the aim
+                    // point rides the camera axis now, so it
+                    // projects to the center), while the torso's
+                    // own pitch stays clamped at -0.32.
                     _player.TorsoTwist = 0f;
                     _player.TorsoPitch = 0f;
                     _player.AimPitchWide = -1.05f;
+                    UpdateCamera(0f); // a real frame runs the camera before the aim is read
                     var aimWide = TorsoAimPoint();
                     var scrW = _cam.UnprojectPosition(aimWide);
                     var vpW = GetViewport().GetVisibleRect().Size;
-                    if (_aimTarget != "TERRAIN" || aimWide.DistanceTo(_player.RootPos) > 30f || scrW.Y < vpW.Y * 0.5f)
-                    { GD.PrintErr($"DUEL FAIL: wide aim cannot reach the feet (target='{_aimTarget}' dist={aimWide.DistanceTo(_player.RootPos):F1} scrY={scrW.Y:F0}/{vpW.Y:F0})"); GetTree().Quit(1); break; }
+                    if (_aimTarget != "TERRAIN" || aimWide.DistanceTo(_player.RootPos) > 30f || scrW.DistanceTo(vpW * 0.5f) > 10f)
+                    { GD.PrintErr($"DUEL FAIL: wide aim cannot reach the feet (target='{_aimTarget}' dist={aimWide.DistanceTo(_player.RootPos):F1} scr=({scrW.X:F0},{scrW.Y:F0}) center=({vpW.X * 0.5f:F0},{vpW.Y * 0.5f:F0})"); GetTree().Quit(1); break; }
                     if (_player.TorsoPitch < -0.33f)
                     { GD.PrintErr("DUEL FAIL: torso pitch escaped its clamp"); GetTree().Quit(1); break; }
                     _player.AimPitchWide = float.NaN;
-                    GD.Print($"DUEL WIDEAIM PASS free mouse pitch reaches the ground in front of the feet (dist {aimWide.DistanceTo(_player.RootPos):F1}u, screen y {scrW.Y:F0}/{vpW.Y:F0}); torso pitch stays clamped");
-                    // Reticle TRUTH (round 8): sweep the pitch across
-                    // the Hector; at every step the reticle must sit
-                    // exactly on the projection of the true aim point
-                    // (the spot weapons converge on) — no parallax
-                    // fiction between cursor and impact.
+                    GD.Print($"DUEL WIDEAIM PASS free mouse pitch reaches the ground in front of the feet, on the crosshair (dist {aimWide.DistanceTo(_player.RootPos):F1}u); torso pitch stays clamped");
+                    // Reticle TRUTH (round 27): at every pitch the
+                    // crosshair must BE the screen center, and the
+                    // convergence point (what the weapons converge
+                    // on) must project onto that same center — the
+                    // camera axis is the aim, so cursor and impact
+                    // can never disagree. (The round-8 contract,
+                    // restated for center-crosshair aiming.)
                     _player.TorsoTwist = 0f;
                     var vpAim = GetViewport().GetVisibleRect().Size;
-                    float firstRy = 0f, lastRy = 0f;
+                    var ctrAim = vpAim * 0.5f;
                     for (int i = 0; i <= 5; i++)
                     {
                         _player.TorsoPitch = -0.05f + i * 0.02f;
+                        UpdateCamera(0f);
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
-                        var exp = _cam.UnprojectPosition(_reticlePoint);
-                        exp = new Vector2(
-                            Mathf.Clamp(exp.X, 28f, vpAim.X - 28f),
-                            Mathf.Clamp(exp.Y, 28f, vpAim.Y - 28f));
-                        var got = _cross.ReticlePos;
-                        if (Mathf.Abs(got.X - exp.X) > 6f || Mathf.Abs(got.Y - exp.Y) > 6f)
-                        { GD.PrintErr($"DUEL FAIL: reticle is not on the aim point (step {i}: got {got}, expected {exp})"); _aimStep = 99; GetTree().Quit(1); break; }
-                        if (i == 0) firstRy = got.Y;
-                        lastRy = got.Y;
+                        if (_cross.ReticlePos.DistanceTo(ctrAim) > 1f)
+                        { GD.PrintErr($"DUEL FAIL: crosshair is not at screen center (step {i}: got {_cross.ReticlePos}, center {ctrAim})"); _aimStep = 99; GetTree().Quit(1); break; }
+                        var proj = _cam.UnprojectPosition(_reticlePoint);
+                        if (proj.DistanceTo(ctrAim) > 8f)
+                        { GD.PrintErr($"DUEL FAIL: convergence point off the crosshair (step {i}: proj ({proj.X:F0},{proj.Y:F0}), center ({ctrAim.X:F0},{ctrAim.Y:F0}))"); _aimStep = 99; GetTree().Quit(1); break; }
                     }
                     if (_aimStep == 99) break; // sweep failed above; Quit(1) already queued
-                    if (lastRy > firstRy - 8f)
-                    { GD.PrintErr($"DUEL FAIL: reticle barely rides the pitch sweep (first={firstRy:F0} last={lastRy:F0})"); GetTree().Quit(1); break; }
                     // The synthesis contract, tested through the REAL
                     // weapon: cursor low on the Hector => the laser
                     // HITS him; cursor raised above him => it MISSES
@@ -352,8 +353,20 @@ public partial class RiderDuel
                     _enemyDmgEvents = 0;
                     int rescues0 = _laserRescues;
                     _cdLaser = 0f;
-                    _player.TorsoPitch = -0.10f;
-                    _aimPoint = TorsoAimPoint();
+                    // Round 27: hunt the pitch that puts the center
+                    // crosshair on the Hector, the way a player
+                    // does — the fixed -0.10 fixture belonged to
+                    // the old free-reticle geometry.
+                    bool onFoe = false;
+                    for (float tp = -0.05f; tp >= -0.50f; tp -= 0.025f)
+                    {
+                        _player.TorsoPitch = tp;
+                        UpdateCamera(0f);
+                        _aimPoint = TorsoAimPoint();
+                        if (_aimTarget == "ENEMY") { onFoe = true; break; }
+                    }
+                    if (!onFoe)
+                    { GD.PrintErr("DUEL FAIL: no pitch puts the crosshair on the Hector"); GetTree().Quit(1); break; }
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents < 1)
                     { GD.PrintErr("DUEL FAIL: cursor low on the Hector but the laser missed him"); GetTree().Quit(1); break; }
@@ -401,7 +414,7 @@ public partial class RiderDuel
                     if (_player.TorsoTwist > -3.39f)
                     { GD.PrintErr($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg was clamped (full 360 required)"); _aimStep = 99; GetTree().Quit(1); break; }
                     _player.TorsoTwist = 0f;
-                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, reticle IS the convergence point: laser hits low, misses high; twist unclamped (full 360)");
+                    GD.Print($"DUEL AIM PASS pitch aimY {aimDown.Y:F1} -> {aimUp.Y:F1}, twist dxz={dxz:F1}, crosshair IS the convergence point: laser hits low, misses high; twist unclamped (full 360)");
                     // Rendered-pitch check next (steps 1-2): the AIM
                     // math above is property-based; these read the
                     // skeleton's actual facing after a StepWalker ran.
@@ -611,91 +624,161 @@ public partial class RiderDuel
     private bool _ffaStaged;
     private Vector3 _ffaHome0, _ffaHome1;
 
-    // --view-shot: the owner's hilltop case (2026-10-31) — the
-    // player low at the mesa foot, the torso at its up stop, a foe
-    // standing on the top. BEFORE frame: the mouse stays at the
-    // torso stop (wide pitch unset) — the old framing. AFTER: the
-    // wide aim pitch is pushed to its max and the world view must
-    // tilt up with the excess, bringing the foe into frame.
+    // --view-shot: the owner's hilltop case — the player low at
+    // the mesa foot, a foe standing on the top. Round 27 form:
+    // BEFORE frame at a level view (crosshair on the flats, foe
+    // above it); then the wide pitch sweeps its full travel and
+    // the foe's chest must cross the screen center; AFTER frame
+    // captured at the crossing pitch, crosshair on the foe.
     private float _viewT;
     private int _viewStage = -1;
-    private readonly System.Collections.Generic.List<float> _viewSweepY = new();
+    private float _viewPitch, _viewBest, _viewBestPitch;
+    // --point-test (owner, 2026-11-01: "lookup is clamped — I
+    // couldn't point the reticle at the top of the hill"): a
+    // player simulation. The foe stands on the mesa top; the
+    // player stands at a ladder of ranges on the flats and the
+    // skirt, and the wide pitch sweeps its full travel through
+    // the real per-frame path. For each stand, report the closest
+    // the foe's chest ever gets to the SCREEN CENTER on screen:
+    // under round-27 center-crosshair aiming the center IS the
+    // reticle — if no pitch puts the chest on it, pointing at
+    // the hilltop is impossible from there — measured, not argued.
+    // (The probe originally measured the free reticle point and
+    // found the close-steep dead zone that decided round 27.)
+    private static readonly float[] PointRanges = { 80f, 65f, 58f, 45f, 35f, 26f };
+    private static readonly float[] PointRangesClose = { 24f, 21f, 18f, 16f };
+    private float[] ActivePointRanges => _pointClose ? PointRangesClose : PointRanges;
+    private int _pointNext = 0;
+
+    private void UpdatePointTest(float dt)
+    {
+        _aimPoint = TorsoAimPoint();
+        _pointT += dt;
+        if (_pointStage == -1)
+        {
+            if (_pointNext >= ActivePointRanges.Length)
+            {
+                GD.Print("POINTTEST DONE");
+                GetTree().Quit(0);
+                _pointStage = -99;
+                return;
+            }
+            int idx = _pointNext;
+            _pointStage = idx;
+            float r = ActivePointRanges[idx];
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, r), r), 0f); // yaw 0 faces -Z (the mesa) directly — no staging turn to pollute the early samples
+            float foeZ = _pointClose ? 11f : (_pointCenter ? 0f : 10f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, foeZ), foeZ), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = 0f;
+            _hpPlayer = 100000f; _hpEnemy = 100000f;
+            _pointPitch = -1.35f; // round 27: sweep the FULL wide travel — under center-crosshair aiming a close top-edge target is crossed at NEGATIVE pitch (the camera hovers above its chest)
+            _pointDbgNext = -1.33f;
+            _pointBest = 1e9f;
+            _pointBestPitch = 0f;
+            _pointT = 0f;
+            GD.Print($"POINTTEST staged {(_pointHector ? "hector" : "enyo")} r={r:F0} labOpen={_labOpen} camMode={_camMode} frozen={_frozen} playerSpec={_playerSpec.Id}");
+            return;
+        }
+        if (_pointStage >= 0)
+        {
+            if (_pointT < 0.25f) return; // settle after the teleport
+            if (_pointPitch <= -1.34f) GD.Print($"POINTSWEEP start stage={_pointStage} walk={_pointWalk} dbgNext={_pointDbgNext:F2}");
+            if (_pointWalk) _player.SetDrive(0f, 2.2f); // yaw 0 faces -Z: toward the mesa from the +Z stands (HeadingVec = (-sin, -cos))
+            _player.AimPitchWide = _pointPitch;
+            _player.TorsoPitch = _pointPitch;
+            var chest = _enemy.RootPos + Vector3.Up * (_enemySpec.Height * 0.68f);
+            bool chestBehind = _cam.IsPositionBehind(chest);
+            var fs = _cam.UnprojectPosition(chest);
+            var ctrP = GetViewport().GetVisibleRect().Size * 0.5f;
+            if ((_pointStage == 0 || _pointStage == ActivePointRanges.Length - 1) && _pointPitch >= _pointDbgNext)
+            {
+                _pointDbgNext += 0.15f;
+                GD.Print($"POINTDBG w={_pointWalk} p={_pointPitch:F2} behind={chestBehind} ctr=({ctrP.X:F0},{ctrP.Y:F0}) chest=({fs.X:F0},{fs.Y:F0}) legsYaw={_player.LegsYaw:F2} torsoYaw={_player.TorsoYawWorld:F2} root={_player.RootPos} spd={_player.Speed:F1} camPos={_cam.GlobalPosition} retPt={_reticlePoint}");
+            }
+            if (!chestBehind)
+            {
+                float d = (fs - ctrP).Length();
+                if (d < _pointBest) { _pointBest = d; _pointBestPitch = _pointPitch; }
+            }
+            _pointPitch += 0.03f;
+            if (_pointPitch > 1.35f)
+            {
+                int idx = _pointStage;
+                float r = ActivePointRanges[idx];
+                GD.Print($"POINTTEST {(_pointHector ? "hector" : "enyo")} stand r={r:F0} bestCenterMiss={_pointBest:F0}px at pitch {_pointBestPitch:F2} " +
+                    (_pointBest <= 10f ? "REACHABLE" : "UNREACHABLE — the crosshair never lands on the hilltop chest"));
+                _pointNext = idx + 1;
+                _pointStage = -1;
+            }
+        }
+    }
+
     private void UpdateViewShot(float dt)
     {
-        _aimPoint = TorsoAimPoint(); // live play refreshes the reticle point every frame; the staging must too
+        _aimPoint = TorsoAimPoint(); // live play refreshes the aim every frame; the staging must too
         _viewT += dt;
         if (_viewStage < 0)
         {
             _viewStage = 0;
             _viewT = 0f;
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 58f), 58f), Mathf.Pi);
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 58f), 58f), 0f);
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
-            _player.TorsoPitch = 0.48f; // the torso's up stop
-            _player.AimPitchWide = float.NaN;
+            _player.TorsoPitch = 0f;
+            _player.AimPitchWide = 0f; // looking level: the crosshair rests on the flats
             _hpPlayer = 100000f;
-            GD.Print("VIEWSHOT staged: player low at the mesa foot, torso at its up stop, foe on the top");
+            GD.Print("VIEWSHOT staged: player at the mesa foot, foe on the top, view level");
             return;
         }
         if (_pendingPath != null || _capturing) return;
         var chest = _enemy.RootPos + Vector3.Up * (_enemySpec.Height * 0.68f);
         var vp = GetViewport().GetVisibleRect().Size;
+        var ctr = vp * 0.5f;
         if (_viewStage == 0 && _viewT > 0.6f)
         {
             _viewStage = 1;
             var scr = _cam.UnprojectPosition(chest);
-            GD.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp}");
+            GD.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) center=({ctr.X:F0},{ctr.Y:F0})");
             QueueCapture("res://proof/view_hilltop_before.png", "vbefore", "chase", () =>
             {
-                _player.AimPitchWide = 0.30f; // the sweep starts below the torso stop
+                _viewPitch = -1.35f;
+                _viewBest = 1e9f;
+                _viewBestPitch = 0f;
                 _viewStage = 2;
                 _viewT = 0f;
-                _viewSweepY.Clear();
             });
         }
         else if (_viewStage == 2)
         {
-            // The mouse keeps pushing up: the wide pitch climbs to
-            // its max and the reticle's screen Y must NEVER move
-            // back down (the owner's inversion report). ReticlePos
-            // lags one frame (input -> aim -> reticle -> camera),
-            // which is the live trajectory all the same.
-            _player.AimPitchWide = Mathf.Min(1.35f, _player.AimPitchWide + 0.045f);
-            _player.TorsoPitch = _player.AimPitchWide;
-            // Only the push PAST the torso stop is judged (the
-            // owner's complaint zone) — the samples below it include
-            // the staging reset from the BEFORE frame's 0.48 pitch
-            // down to the sweep's 0.30 start.
-            if (_player.AimPitchWide >= 0.48f) _viewSweepY.Add(_cross.ReticlePos.Y);
-            if (_player.AimPitchWide >= 1.35f)
+            // The mouse sweeps its full travel: the foe's chest
+            // must cross the screen center (the crosshair) at some
+            // pitch — the round-27 acceptance for the owner's
+            // hilltop case.
+            _player.AimPitchWide = _viewPitch;
+            _player.TorsoPitch = _viewPitch;
+            if (!_cam.IsPositionBehind(chest))
+            {
+                float d = (_cam.UnprojectPosition(chest) - ctr).Length();
+                if (d < _viewBest) { _viewBest = d; _viewBestPitch = _viewPitch; }
+            }
+            _viewPitch += 0.03f;
+            if (_viewPitch > 1.35f)
             {
                 _viewStage = 3;
                 _viewT = 0f;
-                float worst = 0f;
-                for (int i = 1; i < _viewSweepY.Count; i++)
-                    worst = Mathf.Max(worst, _viewSweepY[i] - _viewSweepY[i - 1]);
-                var seq = new System.Text.StringBuilder();
-                foreach (var y in _viewSweepY) seq.Append($"{y:F0},");
-                GD.Print($"VIEWSHOT SWEEP steps={_viewSweepY.Count} worstDownwardMove={worst:F1}px seq={seq}");
-                GD.Print(worst <= 2f
-                    ? "VIEWSHOT SWEEP PASS the reticle never reverses while the mouse pushes up"
-                    : "VIEWSHOT SWEEP FAIL the reticle still reverses on the way up");
+                _player.AimPitchWide = _viewBestPitch;
+                _player.TorsoPitch = _viewBestPitch;
+                GD.Print($"VIEWSHOT SWEEP bestCenterMiss={_viewBest:F0}px at pitch {_viewBestPitch:F2}");
+                GD.Print(_viewBest <= 10f
+                    ? "VIEWSHOT PASS the hilltop foe crosses the center crosshair"
+                    : "VIEWSHOT FAIL the hilltop foe never reaches the crosshair");
             }
         }
         else if (_viewStage == 3 && _viewT > 0.4f)
         {
             _viewStage = 4;
-            var scr = _cam.UnprojectPosition(chest);
-            var rp = _reticlePoint;
-            var rscr = _cam.UnprojectPosition(rp);
-            GD.Print($"VIEWSHOT AFTER reticlePoint={rp} screen=({rscr.X:F0},{rscr.Y:F0}) behind={_cam.IsPositionBehind(rp)} crossPos={_cross.ReticlePos}");
-            bool inFrame = scr.X > 0f && scr.X < vp.X && scr.Y > 0f && scr.Y < vp.Y;
-            bool retOk = _cross.ReticlePos.Y >= 28f && _cross.ReticlePos.Y < vp.Y * 0.5f;
-            GD.Print($"VIEWSHOT AFTER foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp} inFrame={inFrame} reticleY={_cross.ReticlePos.Y:F0} reticleOk={retOk}");
-            GD.Print(inFrame && retOk
-                ? "VIEWSHOT PASS the view tilts up past the torso stop — the hilltop foe is in frame"
-                : "VIEWSHOT FAIL the hilltop foe is still out of frame");
             QueueCapture("res://proof/view_hilltop.png", "vafter", "chase", () => GetTree().Quit());
         }
     }
@@ -1301,13 +1384,15 @@ public partial class RiderDuel
                     // distant hillside with a clear line must
                     // converge on the hill itself, not the sky. The
                     // Hector steps aside. Staging is searched, not
-                    // assumed: a continuous rise is met at its
-                    // nearest point (~44u) and a low rim is overflown
-                    // (both measured), so the harness tries pads x
-                    // facings with the game's own aim math and keeps
-                    // the first setup where a pitch hunt finds a
-                    // far TERRAIN convergence — the same search a
-                    // player does when he turns toward a slope.
+                    // assumed, so the harness tries pads x facings
+                    // with the game's own aim math and keeps the
+                    // first setup where a pitch hunt finds a far
+                    // TERRAIN convergence — the same search a player
+                    // does when he turns toward a slope. Round 27:
+                    // the hunt band extends to -0.60 — the old
+                    // free-reticle ray descended by parallax inside
+                    // the old band, while the center axis is level
+                    // at pitch 0, so far slopes are met lower.
                     _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), Mathf.Pi);
                     Vector3 convH = Vector3.Zero; bool onHill = false;
                     var hillPads = new[] { new Vector2(0f, 0f), new Vector2(30f, 30f), new Vector2(-30f, 30f), new Vector2(30f, -30f), new Vector2(-30f, -30f) };
@@ -1329,7 +1414,7 @@ public partial class RiderDuel
                             _playerYaw = a;
                             _player.TorsoTwist = 0f;
                             UpdateCamera(0f);
-                            for (float pp = 0.40f; pp >= -0.10f; pp -= 0.02f)
+                            for (float pp = 0.40f; pp >= -0.60f; pp -= 0.02f)
                             {
                                 _player.TorsoPitch = pp;
                                 convH = TorsoAimPoint();
@@ -2134,6 +2219,50 @@ public partial class RiderDuel
     // ground frame, report draw calls / primitives / fps (fps on
     // this GPU-less VM is llvmpipe software rendering — the number
     // that matters is measured on the owner's laptop).
+    // TEMP probe (square-grass report): census the hero-clump
+    // MultiMesh — which sub-mesh it carries, its AABB and tri
+    // count — then capture one instance close, from directly
+    // above, and the field from a chase-like elevation.
+    private void UpdateGrassShot(float dt)
+    {
+        _photoT += dt;
+        if (_grassStaged || _photoT < 2.0f) return;
+        _grassStaged = true;
+        MultiMeshInstance3D found = null;
+        var stack = new System.Collections.Generic.Stack<Node>();
+        stack.Push(this);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            if (n is MultiMeshInstance3D mm && mm.Multimesh != null
+                && mm.Multimesh.InstanceCount >= 100) { found = mm; break; }
+            foreach (var c in n.GetChildren()) stack.Push(c);
+        }
+        if (found == null) { GD.PrintErr("GRASSSHOT FAIL: no clump multimesh found"); GetTree().Quit(1); return; }
+        var m = found.Multimesh;
+        var am = m.Mesh as ArrayMesh;
+        long tris = 0;
+        if (am != null)
+            for (int i = 0; i < am.GetSurfaceCount(); i++)
+            {
+                var verts = am.SurfaceGetArrays(i)[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+                var idx = am.SurfaceGetArrays(i)[(int)Mesh.ArrayType.Index].AsInt32Array();
+                tris += (idx.Length > 0 ? idx.Length : verts.Length) / 3;
+            }
+        GD.Print($"GRASSSHOT instances={m.InstanceCount} meshAabb={m.Mesh.GetAabb()} trisPerInstance={tris} surfaces={(am != null ? am.GetSurfaceCount() : -1)}");
+        var t0 = m.GetInstanceTransform(0);
+        var t5 = m.GetInstanceTransform(5);
+        GD.Print($"GRASSSHOT inst0 pos={t0.Origin} scale={t0.Basis.Scale} inst5 pos={t5.Origin} scale={t5.Basis.Scale}");
+        _grassPos = t5.Origin;
+        QueueCapture("res://proof/grass_close.png", "gclose", "grassClose", () =>
+        QueueCapture("res://proof/grass_top.png", "gtop", "grassTop", () =>
+        QueueCapture("res://proof/grass_field.png", "gfield", "grassField", () =>
+        {
+            GD.Print("GRASSSHOT DONE");
+            GetTree().Quit(0);
+        })));
+    }
+
     private void UpdatePhotoTest(float dt)
     {
         _photoT += dt;
