@@ -700,6 +700,56 @@ public partial class RiderDuel
         }
     }
 
+    // --brake-test: the owner's no-inertia rule (2026-10-31) —
+    // from a full RUN (12.6 u/s) with the throttle released, EVERY
+    // chassis must be at a standstill within one second. Measured
+    // on the Enyo, then the player is swapped to the Hector (the
+    // heavy one, whose spec Accel used to glide 5+ seconds) and
+    // measured again.
+    private int _brakeStage = -1;
+    private float _brakeT;
+    private void UpdateBrakeTest(float dt)
+    {
+        if (_brakeStage < 0)
+        {
+            _brakeStage = 0;
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            _player.Teleport(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), Mathf.Pi);
+            _player.SetDrive(Mathf.Pi, 12.6f);
+            GD.Print("BRAKE staged: Enyo accelerating to run speed");
+            return;
+        }
+        if (_brakeStage == 0 || _brakeStage == 2)
+        {
+            if (_player.Speed >= 12.5f)
+            {
+                _brakeT = 0f;
+                _player.SetDrive(_player.LegsYaw, 0f);
+                _brakeStage++;
+                GD.Print($"BRAKE released at speed {_player.Speed:F2} — timing the stop");
+            }
+            return;
+        }
+        _brakeT += dt;
+        if (_player.Speed <= 0.02f || _brakeT > 3f)
+        {
+            string who = _brakeStage == 1 ? "ENYO" : "HECTOR";
+            bool pass = _player.Speed <= 0.02f && _brakeT <= 1.05f;
+            GD.Print($"BRAKE {who} stopTime={_brakeT:F2}s fromSpeed=12.6 finalSpeed={_player.Speed:F2}");
+            GD.Print(pass ? $"BRAKE {who} PASS stopped within one second" : $"BRAKE {who} FAIL stop took too long");
+            if (_brakeStage == 1)
+            {
+                SetRiderSelection("hector", "enyo");
+                ApplyLoadout();
+                _player.Teleport(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), Mathf.Pi);
+                _player.SetDrive(Mathf.Pi, 12.6f);
+                _brakeStage = 2;
+                GD.Print("BRAKE staged: Hector accelerating to run speed");
+            }
+            else GetTree().Quit();
+        }
+    }
+
     private void UpdateFfaTest(float dt)
     {
         _ffaT += dt;

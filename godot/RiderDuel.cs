@@ -136,6 +136,7 @@ public partial class RiderDuel : Node3D
     private int _foe1Shots;
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
     private bool _viewShot; // --view-shot: hilltop view-pitch proof frames
+    private bool _brakeTest; // --brake-test: stop-within-1s measurement, both chassis
     private readonly System.Collections.Generic.List<(string Target, Vector3 Point)> _lrmImpacts = new();
     private Vector3 _enemyVel;
     private Vector3 _prevEnemyRoot;
@@ -258,6 +259,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--ffa-test") _ffaTest = true;
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--view-shot") _viewShot = true;
+            if (arg == "--brake-test") _brakeTest = true;
         }
         if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
             _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
@@ -349,7 +351,7 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
-        if ((!PrecisionTest && !_lrmProbe && !_viewShot) || _ffaTest) BuildFoe1();
+        if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest) || _ffaTest) BuildFoe1();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
@@ -377,7 +379,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -756,6 +758,7 @@ public partial class RiderDuel : Node3D
         {
             _simT += delta;
             if (_viewShot) UpdateViewShot(dt);
+            else if (_brakeTest) UpdateBrakeTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
             else if (_breakTest) UpdateBreakTest(dt);

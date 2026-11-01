@@ -91,6 +91,7 @@ public partial class RiderWalker : Node3D
     private float _prevYaw;
     private float _yawRate;
     private float _speed;
+    private float _brakeV; // the current braking episode's captured rate (owner: no inertia)
     private float _jumpH, _jumpVel;
     private float _groundY; // gait-followed root height; the jump arc rides on top unsmoothed
     public bool JumpJets; // thrusters fitted AND chassis capable (set by the duel from spec+loadout)
@@ -590,8 +591,25 @@ public partial class RiderWalker : Node3D
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
         _prevYaw = _legsYaw;
 
+        float tgt = _fallT >= 0f ? 0f : _targetSpeed * SpeedFactor;
         float dv = _cfg.Accel * h;
-        _speed = Mathf.MoveToward(_speed, _fallT >= 0f ? 0f : _targetSpeed * SpeedFactor, dv);
+        if (Mathf.Abs(tgt) < Mathf.Abs(_speed) - 0.001f)
+        {
+            // Braking (owner, 2026-10-31): no inertia — a stop from
+            // ANY speed completes within one second, whatever the
+            // chassis weighs (the spec Accel made the 100t Hector
+            // glide 5+ seconds from a run). The brake rate is the
+            // episode's peak speed, captured and held, so the stop
+            // is linear at >= 1x speed per second — not an
+            // exponential glide that never quite arrives. The 1.15
+            // factor keeps the measured stop (which includes a
+            // frame of detection lag) inside the second.
+            // Acceleration still uses the spec's Accel.
+            _brakeV = Mathf.Max(_brakeV, Mathf.Abs(_speed) * 1.15f);
+            dv = _brakeV * h;
+        }
+        else _brakeV = 0f;
+        _speed = Mathf.MoveToward(_speed, tgt, dv);
         var vel = HeadingVec(_legsYaw) * _speed;
         _rootPos += vel * h;
 
