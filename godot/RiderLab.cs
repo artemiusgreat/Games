@@ -209,6 +209,16 @@ public partial class RiderLab : Control
     {
         private readonly System.Collections.Generic.Dictionary<string, Control> _panels = new();
         private readonly System.Collections.Generic.Dictionary<string, Vector2> _live = new();
+        // Each live panel's side and stacking order come from its
+        // DOT (anchor vs the body center, and the dot's height) —
+        // never from the placed panel's own center (owner, round
+        // 29: on a window resize a wide panel whose dot sits near
+        // the body's midline had its center cross the middle, the
+        // overlap sweep then grouped it with the WRONG side's
+        // stack and dragged it down it — Enyo's right missile
+        // panel ended up flipped under the energy panel).
+        private readonly System.Collections.Generic.Dictionary<string, int> _side = new();
+        private readonly System.Collections.Generic.Dictionary<string, float> _anchorY = new();
         // Viewport position of a slot's part on the rider (owner):
         // set by the duel; null entries fall back to the fractions.
         public System.Func<string, Vector2?> Projector;
@@ -236,6 +246,8 @@ public partial class RiderLab : Control
         {
             // Live anchors first: panel placement follows them.
             _live.Clear();
+            _side.Clear();
+            _anchorY.Clear();
             if (Projector != null)
                 foreach (var id in _panels.Keys)
                 {
@@ -302,6 +314,8 @@ public partial class RiderLab : Control
                 foreach (var (id, panel) in _panels)
                 {
                     if (!_live.TryGetValue(id, out var an)) continue;
+                    _side[id] = an.X >= center.X ? 1 : 0;
+                    _anchorY[id] = an.Y;
                     var dir = an - center;
                     if (dir.Length() < 14f)
                     {
@@ -324,8 +338,9 @@ public partial class RiderLab : Control
                         Mathf.Clamp(c.Y, panel.Size.Y * 0.5f, Mathf.Max(panel.Size.Y * 0.5f, Size.Y - panel.Size.Y * 0.5f)));
                     panel.Position = c - panel.Size * 0.5f;
                 }
-                // Overlap resolution: per side (by panel
-                // center), sort by height along the body and
+                // Overlap resolution: per side (by the
+                // panel's DOT side, see _side), sort by the
+                // dot's height along the body and
                 // sweep apart — top-down, then bottom-up if the
                 // stack runs past the area's foot. The pairwise
                 // relaxation this replaces oscillated at the
@@ -337,16 +352,19 @@ public partial class RiderLab : Control
                 // X stays wherever the radial placement put it:
                 // panels keep hugging their own side of the
                 // silhouette, only their heights de-overlap.
-                var placed = new System.Collections.Generic.List<Control>();
+                var placed = new System.Collections.Generic.List<(string Id, Control Panel)>();
                 foreach (var (id, panel) in _panels)
-                    if (_live.ContainsKey(id)) placed.Add(panel);
+                    if (_live.ContainsKey(id)) placed.Add((id, panel));
+                var yOf = new System.Collections.Generic.Dictionary<Control, float>();
+                foreach (var (pid, p) in placed)
+                    yOf[p] = _anchorY.TryGetValue(pid, out var ay) ? ay : p.Position.Y + p.Size.Y * 0.5f;
                 foreach (var side in new[] { 0, 1 })
                 {
                     var group = new System.Collections.Generic.List<Control>();
-                    foreach (var p in placed)
-                        if ((p.Position.X + p.Size.X * 0.5f < Size.X * 0.5f ? 0 : 1) == side)
+                    foreach (var (pid, p) in placed)
+                        if ((_side.TryGetValue(pid, out var sd) ? sd : (p.Position.X + p.Size.X * 0.5f < Size.X * 0.5f ? 0 : 1)) == side)
                             group.Add(p);
-                    group.Sort((a, b) => (a.Position.Y + a.Size.Y * 0.5f).CompareTo(b.Position.Y + b.Size.Y * 0.5f));
+                    group.Sort((a, b) => yOf[a].CompareTo(yOf[b]));
                     float cursor = 0f;
                     foreach (var p in group)
                     {
@@ -540,7 +558,7 @@ public partial class RiderLab : Control
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
             panel.ListBox = new VBoxContainer();
-            panel.ListBox.AddThemeConstantOverride("separation", 3);
+            panel.ListBox.AddThemeConstantOverride("separation", 4);
             vb.AddChild(panel.ListBox);
             var capturedSlot = slot;
             panel.GuiInput += (InputEvent e) =>
@@ -706,12 +724,12 @@ public partial class RiderLab : Control
                 var rsb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.15f, 0.55f) };
                 rsb.SetCornerRadiusAll(4);
                 rsb.ContentMarginLeft = 5; rsb.ContentMarginRight = 5;
-                rsb.ContentMarginTop = 3; rsb.ContentMarginBottom = 3;
+                rsb.ContentMarginTop = 4; rsb.ContentMarginBottom = 4;
                 rowPanel.AddThemeStyleboxOverride("panel", rsb);
                 var rhb = new HBoxContainer();
                 rhb.AddThemeConstantOverride("separation", 7);
                 rowPanel.AddChild(rhb);
-                var tile = TileVisual(def, 34);
+                var tile = TileVisual(def, 36);
                 tile.MouseFilter = MouseFilterEnum.Ignore;
                 rhb.AddChild(tile);
                 var texts = new VBoxContainer();
