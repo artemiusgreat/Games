@@ -204,18 +204,30 @@ public partial class RiderDuel
             if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
                 _cam.LookAt(look, Vector3.Up);
             // The view follows the mouse past the torso's stops
-            // (owner, 2026-10-31): the torso pitches only within
-            // [-0.32, +0.48], but a player who keeps pushing the
-            // mouse is asking to LOOK further — the excess tilts
-            // the camera itself, so a hilltop above (or the ground
-            // at the feet below) comes into frame, reticle and all.
-            // AimPitchWide is NaN in harness poses, so proof
-            // framing is untouched there.
-            if (!float.IsNaN(_player.AimPitchWide))
+            // (owner, 2026-10-31) — as a SERVO on the reticle, not
+            // the raw pitch excess. The first version pitched the
+            // camera 1:1 with the excess and INVERTED at the top:
+            // the reticle rides a point only ~43u out, so past
+            // ~0.9 rad the camera's linear pitch outran the point's
+            // saturating elevation and the reticle (and the world)
+            // slid DOWN the screen while the player pushed up.
+            // Now the camera pitches only by the reticle's angular
+            // overflow past the frame's vertical cone (a small
+            // margin inside the edge): the reticle rises to the
+            // edge, pins there, and the world scrolls under it —
+            // it can never reverse. Symmetric downward. Gated on
+            // the live wide pitch: harness poses (NaN) keep their
+            // framing untouched.
+            if (!float.IsNaN(_player.AimPitchWide) && !_cam.IsPositionBehind(_reticlePoint))
             {
-                float excess = _player.AimPitchWide
-                    - Mathf.Clamp(_player.AimPitchWide, -0.32f, 0.48f);
-                if (Mathf.Abs(excess) > 0.001f) _cam.RotateX(excess);
+                var local = _cam.GlobalTransform.AffineInverse() * _reticlePoint;
+                if (local.Z < -0.5f)
+                {
+                    float ang = Mathf.Atan2(local.Y, -local.Z);
+                    float maxAng = Mathf.DegToRad(_cam.Fov) * 0.5f - 0.055f;
+                    float corr = ang - Mathf.Clamp(ang, -maxAng, maxAng);
+                    if (Mathf.Abs(corr) > 0.001f) _cam.RotateX(corr);
+                }
             }
             if (delta > 0f && _shake > 0.002f)
             {

@@ -619,6 +619,7 @@ public partial class RiderDuel
     // tilt up with the excess, bringing the foe into frame.
     private float _viewT;
     private int _viewStage = -1;
+    private readonly System.Collections.Generic.List<float> _viewSweepY = new();
     private void UpdateViewShot(float dt)
     {
         _aimPoint = TorsoAimPoint(); // live play refreshes the reticle point every frame; the staging must too
@@ -647,21 +648,52 @@ public partial class RiderDuel
             GD.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp}");
             QueueCapture("res://proof/view_hilltop_before.png", "vbefore", "chase", () =>
             {
-                _player.AimPitchWide = 1.35f; // mouse pushed fully up
+                _player.AimPitchWide = 0.30f; // the sweep starts below the torso stop
                 _viewStage = 2;
                 _viewT = 0f;
+                _viewSweepY.Clear();
             });
         }
-        else if (_viewStage == 2 && _viewT > 0.4f)
+        else if (_viewStage == 2)
         {
-            _viewStage = 3;
+            // The mouse keeps pushing up: the wide pitch climbs to
+            // its max and the reticle's screen Y must NEVER move
+            // back down (the owner's inversion report). ReticlePos
+            // lags one frame (input -> aim -> reticle -> camera),
+            // which is the live trajectory all the same.
+            _player.AimPitchWide = Mathf.Min(1.35f, _player.AimPitchWide + 0.045f);
+            _player.TorsoPitch = _player.AimPitchWide;
+            // Only the push PAST the torso stop is judged (the
+            // owner's complaint zone) — the samples below it include
+            // the staging reset from the BEFORE frame's 0.48 pitch
+            // down to the sweep's 0.30 start.
+            if (_player.AimPitchWide >= 0.48f) _viewSweepY.Add(_cross.ReticlePos.Y);
+            if (_player.AimPitchWide >= 1.35f)
+            {
+                _viewStage = 3;
+                _viewT = 0f;
+                float worst = 0f;
+                for (int i = 1; i < _viewSweepY.Count; i++)
+                    worst = Mathf.Max(worst, _viewSweepY[i] - _viewSweepY[i - 1]);
+                var seq = new System.Text.StringBuilder();
+                foreach (var y in _viewSweepY) seq.Append($"{y:F0},");
+                GD.Print($"VIEWSHOT SWEEP steps={_viewSweepY.Count} worstDownwardMove={worst:F1}px seq={seq}");
+                GD.Print(worst <= 2f
+                    ? "VIEWSHOT SWEEP PASS the reticle never reverses while the mouse pushes up"
+                    : "VIEWSHOT SWEEP FAIL the reticle still reverses on the way up");
+            }
+        }
+        else if (_viewStage == 3 && _viewT > 0.4f)
+        {
+            _viewStage = 4;
             var scr = _cam.UnprojectPosition(chest);
             var rp = _reticlePoint;
             var rscr = _cam.UnprojectPosition(rp);
             GD.Print($"VIEWSHOT AFTER reticlePoint={rp} screen=({rscr.X:F0},{rscr.Y:F0}) behind={_cam.IsPositionBehind(rp)} crossPos={_cross.ReticlePos}");
             bool inFrame = scr.X > 0f && scr.X < vp.X && scr.Y > 0f && scr.Y < vp.Y;
-            GD.Print($"VIEWSHOT AFTER foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp} inFrame={inFrame}");
-            GD.Print(inFrame
+            bool retOk = _cross.ReticlePos.Y >= 28f && _cross.ReticlePos.Y < vp.Y * 0.5f;
+            GD.Print($"VIEWSHOT AFTER foe chest screen=({scr.X:F0},{scr.Y:F0}) viewport={vp} inFrame={inFrame} reticleY={_cross.ReticlePos.Y:F0} reticleOk={retOk}");
+            GD.Print(inFrame && retOk
                 ? "VIEWSHOT PASS the view tilts up past the torso stop — the hilltop foe is in frame"
                 : "VIEWSHOT FAIL the hilltop foe is still out of frame");
             QueueCapture("res://proof/view_hilltop.png", "vafter", "chase", () => GetTree().Quit());
