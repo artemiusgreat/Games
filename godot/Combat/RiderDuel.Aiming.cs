@@ -9,71 +9,57 @@ using System.Collections.Generic;
 // The class stays one partial class — see RiderDuel.cs.
 public partial class RiderDuel
 {
-    // Torso aim (owner's model): the aim ray leaves the chest along
-    // the TORSO's facing — mouse twist and pitch steer it — and the
-    // weapons converge on whatever it lands on (max 200u). The reticle
-    // is drawn at this point's screen projection (UpdateReticle), so
-    // the cursor target visibly rides the torso instead of sitting on
-    // the camera axis, which crossed the player's own back.
+    // Aim (owner's model, round 27 — center crosshair, his pick
+    // over the free reticle point): the crosshair is fixed at the
+    // screen center and the CAMERA's axis is the aim. The mouse
+    // steers yaw/pitch (AimDirWorld); the chase camera looks along
+    // exactly that direction, and this method casts that same axis
+    // from the camera — the weapons converge on its first hit, at
+    // any range or angle. The torso still twists/pitches after the
+    // mouse to its mechanical stops, as a visual. This retires the
+    // free 40u reticle point (rounds 9-26): its projection against
+    // the high chase camera left a parallax dead zone close-in and
+    // steep (measured round 26 follow-up: a top-edge target could
+    // not be pointed at inside ~18u), which a center crosshair
+    // cannot have by construction.
     private Vector3 _aimPoint;
     private Vector3 _aimFrom, _aimDir;
-    private Vector3 TorsoAimPoint()
+    // The one aim direction: the mouse's world yaw and the
+    // effective pitch (the wide mouse pitch when the player has
+    // taken it past the torso clamp, else the torso's own pitch —
+    // every harness phase drives TorsoPitch directly). The chase
+    // camera, the convergence cast and the laser's truth ray all
+    // use this, so they can never disagree about where "aim" is.
+    private Vector3 AimDirWorld()
     {
         float yaw = _player.TorsoYawWorld;
-        // Aim direction: the wide mouse pitch when the player has
-        // taken it past the torso clamp, else the torso's own pitch
-        // (every harness phase drives TorsoPitch directly).
         float p = float.IsNaN(_player.AimPitchWide) ? _player.TorsoPitch : _player.AimPitchWide;
         var h = RiderWalker.HeadingVec(yaw);
-        var dir = new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
+        return new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
+    }
+
+    private Vector3 TorsoAimPoint()
+    {
+        var dir = AimDirWorld();
         var from = _player.BoneWorldPos("torso") + dir * 3.2f;
         _aimFrom = from;
         _aimDir = dir;
         _reticlePoint = from + dir * AimDepth;
-        // Round 12: converge on the point UNDER THE CURSOR — a ray
-        // from the CAMERA through the reticle. The high camera broke
-        // the chest-ray convergence: the view line and the torso
-        // line now diverge steeply, so shots converging on the chest
-        // ray's hit landed visibly BELOW the cursor (reticle on the
-        // Hector's chest, beam in its legs — the owner's screenshot).
-        // The camera ray defines what the player is pointing at, at
-        // any camera height: its first hit within 60u of the player
-        // is where every weapon goes. Live play always runs the
-        // chase camera; harness proof poses keep the chest logic.
+        // Round 27: converge on the point UNDER THE CROSSHAIR —
+        // a ray from the CAMERA along the aim axis (the direction
+        // the chase camera is looking). Its first hit of ANY kind
+        // is where every weapon goes: what the center crosshair
+        // rests on is what gets hit, at any range; a clean sky
+        // shot converges on the far point of the axis itself.
+        // Live play always runs the chase camera; harness proof
+        // poses keep the chest logic below.
         if (_camMode == "chase")
         {
             var camPos = _cam.GlobalPosition;
-            var viewHit = _hit.Ray(camPos, (_reticlePoint - camPos).Normalized(), 220f, "PLAYER");
-            // RIDER and PROP hits converge at ANY range (owner,
-            // round 13): a 60u cap from the chest-ray era silently
-            // rejected the cursor's hit on far targets and the shot
-            // fell back to the free point — in the sky. TERRAIN
-            // converges within 60u outright (the ground at your
-            // feet, a near slope). Beyond 60u the hillside is a real
-            // target too (owner: shooting at the hill shot the sky)
-            // — but only when the chest's own line to that point is
-            // clear of riders and props. If a rider stands in front of
-            // the backdrop, the hillside stays backdrop: converging
-            // on it would drag the muzzle's line down through the
-            // rider (the AIM sweep's raised-cursor case), so the shot
-            // follows the aim line over him instead.
-            if (viewHit.Hit)
-            {
-                bool farTerrain = viewHit.Target == "TERRAIN" && viewHit.Point.DistanceTo(_player.RootPos) > 60f;
-                if (!farTerrain)
-                {
-                    _aimTarget = viewHit.Target;
-                    return viewHit.Point;
-                }
-                var toPt = viewHit.Point - from;
-                var block = _hit.Ray(from, toPt.Normalized(), toPt.Length(), "PLAYER");
-                if (!block.Hit || block.Target == "TERRAIN")
-                {
-                    _aimTarget = "TERRAIN";
-                    return viewHit.Point;
-                }
-                // Blocked by a rider/prop: backdrop — fall through.
-            }
+            var viewHit = _hit.Ray(camPos, dir, 220f, "PLAYER");
+            _aimTarget = viewHit.Hit ? viewHit.Target : "";
+            _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * 220f;
+            return _reticlePoint;
         }
         // Fallback (round 11): the chest ray's RIDER/PROP hit within
         // weapon reach, else the free 40u point.
@@ -104,13 +90,12 @@ public partial class RiderDuel
     private const float AimDepth = 40f;
     private void UpdateReticle()
     {
-        var pt = _reticlePoint;
+        // Center crosshair (round 27): the reticle is the viewport
+        // center, always — the camera axis is the aim, so there is
+        // no world point left to project. (_reticlePoint still
+        // tracks the convergence point for the weapon code.)
         var vp = GetViewport().GetVisibleRect().Size;
-        var sp = _cam.UnprojectPosition(pt);
-        if (_cam.IsPositionBehind(pt)) sp = vp - sp;
-        _cross.ReticlePos = new Vector2(
-            Mathf.Clamp(sp.X, 28f, vp.X - 28f),
-            Mathf.Clamp(sp.Y, 28f, vp.Y - 28f));
+        _cross.ReticlePos = vp * 0.5f;
     }
 
 }

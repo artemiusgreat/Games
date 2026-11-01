@@ -83,17 +83,15 @@ public partial class RiderDuel
         bool camTruth = _camMode == "chase" && !_labOpen;
         if (camTruth)
         {
-            // The view line is camera -> _reticlePoint (the torso
-            // aim's 40u point) — the SAME line TorsoAimPoint casts.
-            // Round 20's first cut used the camera's raw forward
-            // (-Basis.Z) instead: from the high chase rig that ray
-            // always lands on the ground in front of the rider, so
-            // every live shot hit the dirt at its feet no matter
-            // where the cursor was (owner's screenshot; the suites
-            // passed only because the test fallback below rescued
-            // them). The reticle line is the truth in play and in
-            // tests alike.
-            var camDir = (_reticlePoint - _cam.GlobalPosition).Normalized();
+            // The view line is the camera's axis — AimDirWorld,
+            // the SAME direction the chase camera looks and
+            // TorsoAimPoint casts. Round 20's first cut used the
+            // camera's raw forward (-Basis.Z) under the OLD
+            // fixed-tilt camera and hit the dirt at the rider's
+            // feet; round 27's center-crosshair camera aims where
+            // the mouse points by construction, so the axis is the
+            // truth in play and in tests alike.
+            var camDir = AimDirWorld();
             hit = _hit.Ray(_cam.GlobalPosition, camDir, 220f, "PLAYER", 0.9f);
             bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))

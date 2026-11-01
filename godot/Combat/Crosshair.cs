@@ -8,10 +8,11 @@ public partial class Crosshair : Control
 {
     public float Hitmark;
     public Vector2 Sway;
-    // Screen position of the reticle, set by the duel every frame to
-    // the projection of the torso's aim point — the reticle rides
-    // where the torso actually points instead of sitting at screen
-    // center. Negative X = unset (fall back to screen center).
+    // Screen position of the reticle. Since round 27 (center-
+    // crosshair aiming, the owner's pick) the duel sets this to the
+    // viewport center every frame; the field remains so the sway
+    // offset and the unset fallback below keep working.
+    // Negative X = unset (fall back to screen center).
     public Vector2 ReticlePos = new Vector2(-999f, -999f);
 
     public override void _Ready()

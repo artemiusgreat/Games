@@ -160,6 +160,21 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(-18.6f, Main.HeightAt(-18.6f, 2.2f) + 0.55f, 2.2f);
             _cam.LookAt(new Vector3(-21.5f, Main.HeightAt(-21.5f, -1.5f) + 0.30f, -1.5f), Vector3.Up);
         }
+        else if (_camMode == "grassClose")
+        {
+            _cam.GlobalPosition = _grassPos + new Vector3(2.4f, 1.5f, 2.4f);
+            _cam.LookAt(_grassPos + Vector3.Up * 0.25f, Vector3.Up);
+        }
+        else if (_camMode == "grassTop")
+        {
+            _cam.GlobalPosition = _grassPos + new Vector3(0.01f, 8f, 0.01f);
+            _cam.LookAt(_grassPos, Vector3.Up);
+        }
+        else if (_camMode == "grassField")
+        {
+            _cam.GlobalPosition = _grassPos + new Vector3(-17f, 14f, 17f);
+            _cam.LookAt(_grassPos, Vector3.Up);
+        }
         else if (_camMode == "photoGround")
         {
             // Ground level by the hand-placed trees, looking across
@@ -200,35 +215,24 @@ public partial class RiderDuel
                 _cam.GlobalPosition = _cam.GlobalPosition.Lerp(target, 1f - Mathf.Exp(-6f * delta));
             else
                 _cam.GlobalPosition = target;
-            var look = _player.RootPos + Vector3.Up * (4.5f * k) + RiderWalker.HeadingVec(torsoYaw) * (14f * k);
-            if (_cam.GlobalPosition.DistanceSquaredTo(look) > 0.01f)
-                _cam.LookAt(look, Vector3.Up);
-            // The view follows the mouse past the torso's stops
-            // (owner, 2026-10-31) — as a SERVO on the reticle, not
-            // the raw pitch excess. The first version pitched the
-            // camera 1:1 with the excess and INVERTED at the top:
-            // the reticle rides a point only ~43u out, so past
-            // ~0.9 rad the camera's linear pitch outran the point's
-            // saturating elevation and the reticle (and the world)
-            // slid DOWN the screen while the player pushed up.
-            // Now the camera pitches only by the reticle's angular
-            // overflow past the frame's vertical cone (a small
-            // margin inside the edge): the reticle rises to the
-            // edge, pins there, and the world scrolls under it —
-            // it can never reverse. Symmetric downward. Gated on
-            // the live wide pitch: harness poses (NaN) keep their
-            // framing untouched.
-            if (!float.IsNaN(_player.AimPitchWide) && !_cam.IsPositionBehind(_reticlePoint))
-            {
-                var local = _cam.GlobalTransform.AffineInverse() * _reticlePoint;
-                if (local.Z < -0.5f)
-                {
-                    float ang = Mathf.Atan2(local.Y, -local.Z);
-                    float maxAng = Mathf.DegToRad(_cam.Fov) * 0.5f - 0.055f;
-                    float corr = ang - Mathf.Clamp(ang, -maxAng, maxAng);
-                    if (Mathf.Abs(corr) > 0.001f) _cam.RotateX(corr);
-                }
-            }
+            // Center-crosshair aiming (owner's pick, round 27):
+            // the camera looks along the aim direction itself
+            // (AimDirWorld — the mouse's yaw/pitch), so the fixed
+            // center crosshair, the rendered view and the weapons'
+            // convergence ray are one and the same line at every
+            // range and angle. This replaces the reticle servo of
+            // rounds 25-26: with no free reticle point to chase,
+            // nothing pins, saturates or inverts, and the
+            // close-steep parallax dead zone measured after round
+            // 26 (a top-edge target unpointable inside ~18u)
+            // cannot occur. The accepted trade, standard for
+            // third-person shooters: the rider sits low in frame
+            // at neutral pitch and leaves the frame at the pitch
+            // extremes. Pitch is capped at +-1.35 rad, well clear
+            // of the vertical LookAt singularity.
+            var lookTarget = _cam.GlobalPosition + AimDirWorld();
+            if (_cam.GlobalPosition.DistanceSquaredTo(lookTarget) > 0.0001f)
+                _cam.LookAt(lookTarget, Vector3.Up);
             if (delta > 0f && _shake > 0.002f)
             {
                 _cam.GlobalPosition += new Vector3(
