@@ -177,6 +177,25 @@ public sealed class RiderParts
             AddPart("leg_L", "LEFT LEG", 65f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 65f, byName, "Thigh_R", "Shin_R", "Foot_R");
         }
+        else if (riderId == "atalanta")
+        {
+            // Arctic Cheetah miniature, cut at build time; the
+            // shoulder pods are their own meshes. Head = cockpit
+            // dome split (census-sized on the built model:
+            // 1,338 tris, ~8% of the torso, like the others).
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                ("Head", p => Mathf.Abs(p.X) <= 1.1f && p.Y >= 8.6f && p.Z >= -0.72f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
+            AddPart("head", "HEAD", 35f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 40f, byName, "UpperArm_L", "GunArm_L");
+            AddPart("arm_R", "RIGHT ARM", 40f, byName, "UpperArm_R", "GunArm_R");
+            AddPart("leg_L", "LEFT LEG", 60f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 60f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AddPart("pod_L", "LEFT POD", 40f, byName, "Pod_L");
+            AddPart("pod_R", "RIGHT POD", 40f, byName, "Pod_R");
+        }
         else
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD

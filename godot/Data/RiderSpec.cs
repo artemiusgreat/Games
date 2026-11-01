@@ -119,7 +119,25 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Apollo };
+    // ATALANTA (Arctic Cheetah ACH-Prime, 30t Light): the fast
+    // jumper — an energy mount in each arm and an SRM pod on each
+    // shoulder. Caps sum to the 30t budget.
+    public static readonly RiderSpec Atalanta = new()
+    {
+        Id = "atalanta", Name = "ATALANTA", Tonnage = 30f, JumpCapable = true,
+        ModelPath = "res://assets/cheetah.fbx", PartsId = "atalanta", MaxHp = 115f,
+        Height = 10.0f, Radius = 1.6f, StepTime = 0.40f, StepThreshold = 1.4f, StepLift = 0.85f, Accel = 5.4f, MaxSpeed = 4.2f,
+        FlipKneePole = false, // digitigrade legs: the mid joint bends back
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 7f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 7f },
+            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 8f },
+            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 8f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Apollo, Atalanta };
 
     public static RiderSpec ById(string id)
     {
@@ -235,7 +253,27 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "apollo" ? DefaultApollo()
+        : spec.Id == "atalanta" ? DefaultAtalanta()
         : DefaultEnyo();
+
+    public static LoadoutState DefaultAtalanta()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = true;
+        // Every slot filled (owner, 2026-10-31): 30t of 30t.
+        var at = RiderSpecs.Atalanta;
+        l.TryAssign(at, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(at, "arm_L", WeaponCatalog.SmallLaser);
+        l.TryAssign(at, "arm_L", WeaponCatalog.SmallLaser);        // 7/7t
+        l.TryAssign(at, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(at, "arm_R", WeaponCatalog.SmallLaser);
+        l.TryAssign(at, "arm_R", WeaponCatalog.SmallLaser);        // 7/7t
+        l.TryAssign(at, "pod_L", WeaponCatalog.Srm);
+        l.TryAssign(at, "pod_L", WeaponCatalog.Srm);               // 8/8t
+        l.TryAssign(at, "pod_R", WeaponCatalog.Srm);
+        l.TryAssign(at, "pod_R", WeaponCatalog.Srm);               // 8/8t
+        return l;
+    }
 
     public static LoadoutState DefaultApollo()
     {
