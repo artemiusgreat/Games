@@ -781,6 +781,115 @@ public partial class RiderDuel
     // not cover — the rider backed up against a building (does
     // the boom put the camera inside it?) at level and at a
     // mesa-aim pitch, and (photo scene) a level chase frame.
+    // Round 29 probe (owner reports): (1) camera lag — one frame
+    // after a hard mouse flick, how far is the chase camera from
+    // its boom target, and how many frames until it settles?
+    // (2) rocks — can the rider walk THROUGH a rock's center
+    // (only tall objects should block movement)? (3) trees — a
+    // rider staged just outside the old stomp trigger but inside
+    // body reach: does the tree die before contact?
+    private int _lagStage = -1;
+    private float _lagT;
+    private Circle _lagRock;
+    private bool _lagHasRock;
+    private bool _lagRockStaged;
+    private float _lagRockMin = float.MaxValue;
+    private Destructible _lagTree;
+    private void UpdateLagCheck(float dt)
+    {
+        _lagT += dt;
+        if (_lagStage < 0)
+        {
+            _lagStage = 0;
+            _lagT = 0f;
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            _foe1.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = 0f;
+            _player.TorsoPitch = 0f;
+            _player.AimPitchWide = 0f;
+            _playerYaw = 0f;
+            _torsoWorldYaw = 0f;
+            _hpPlayer = 100000f;
+            UpdateCamera(0f); // settle exactly on the current boom target
+            _torsoWorldYaw = 1.2f;
+            MaintainTorsoWorldYaw();
+            _player.AimPitchWide = 0.8f;
+            _player.TorsoPitch = 0.8f;
+            UpdateCamera(1f / 60f); // ONE frame after the flick
+            var posA = _cam.GlobalPosition;
+            UpdateCamera(0f);       // the exact target, by construction
+            var posB = _cam.GlobalPosition;
+            float lag0 = posA.DistanceTo(posB);
+            _cam.GlobalPosition = posA;
+            int settle = 0;
+            while (settle < 240 && _cam.GlobalPosition.DistanceTo(posB) > 0.05f)
+            {
+                UpdateCamera(1f / 60f);
+                settle++;
+            }
+            GD.Print($"LAGCHECK cameraLag={lag0:F2}u one frame after a 1.2rad yaw + 0.8rad pitch flick; settleFrames={settle} to within 0.05u (0 = camera exact every frame)");
+            _lagHasRock = false;
+            foreach (var c in _props)
+                if (c.RoofTop <= 0f && c.R > 1.2f) { _lagRock = c; _lagHasRock = true; break; }
+            GD.Print(_lagHasRock
+                ? $"LAGCHECK rock candidate at {_lagRock.P} R={_lagRock.R:F2} playerCR={_player.CollisionRadius:F2}"
+                : "LAGCHECK no rock candidate found");
+            return;
+        }
+        if (_lagStage == 0)
+        {
+            if (_lagHasRock)
+            {
+                if (!_lagRockStaged)
+                {
+                    _lagRockStaged = true;
+                    float off = _lagRock.R + _player.CollisionRadius + 3f;
+                    var sp = new Vector3(_lagRock.P.X + off, 0f, _lagRock.P.Y);
+                    sp.Y = Main.HeightAt(sp.X, sp.Z);
+                    _player.Teleport(sp, Mathf.Pi / 2f);
+                    _playerYaw = Mathf.Pi / 2f; // heading -X, straight at the rock
+                }
+                ApplyPlayerInput(dt, true, false, false, false, false);
+                var rp0 = new Vector2(_player.RootPos.X, _player.RootPos.Z);
+                _lagRockMin = Mathf.Min(_lagRockMin, rp0.DistanceTo(_lagRock.P));
+            }
+            if (_lagT > 5f)
+            {
+                _lagStage = 1;
+                _lagT = 0f;
+                var rp = new Vector2(_player.RootPos.X, _player.RootPos.Z);
+                float dist = rp.DistanceTo(_lagRock.P);
+                GD.Print($"LAGCHECK ROCK endDist={dist:F2} minDist={_lagRockMin:F2} rockR={_lagRock.R:F2} oldWallAt={_lagRock.R + _player.CollisionRadius:F2} {(_lagRockMin < _lagRock.R ? "CROSSED the rock disc — walked through" : "STOPPED outside it")}");
+                _player.SetDrive(_playerYaw, 0f);
+                _lagTree = null;
+                foreach (var d in _destructibles)
+                    if (d.Kind == "tree" && d.State == 0 && d.Center.Y < 12f) { _lagTree = d; break; }
+                if (_lagTree != null)
+                {
+                    float off = _player.CollisionRadius + _lagTree.Radius + 0.5f;
+                    var sp = new Vector3(_lagTree.Center.X + off, 0f, _lagTree.Center.Z);
+                    sp.Y = Main.HeightAt(sp.X, sp.Z);
+                    _player.Teleport(sp, 0f);
+                    _player.SetDrive(0f, 0f);
+                    GD.Print($"LAGCHECK tree at ({_lagTree.Center.X:F0},{_lagTree.Center.Z:F0}) trunkR={_lagTree.Radius:F2} stagedDist={off:F2} oldTrigger={_player.CollisionRadius + 0.35f:F2} bodyReach={_player.CollisionRadius + _lagTree.Radius:F2}");
+                }
+                else GD.Print("LAGCHECK no tree candidate found");
+            }
+            return;
+        }
+        if (_lagStage == 1 && _lagT > 0.5f)
+        {
+            _lagStage = 2;
+            GD.Print(_lagTree != null
+                ? $"LAGCHECK TREE state={_lagTree.State} {(_lagTree.State != 0 ? "STOMPED at the staged distance" : "still standing")}"
+                : "LAGCHECK TREE skipped");
+            GD.Print("LAGCHECK DONE");
+            GetTree().Quit();
+        }
+    }
+
     private int _boomCheckStage = -1;
     private float _boomCheckT;
     private void UpdateBoomCheck(float dt)
