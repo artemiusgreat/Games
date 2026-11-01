@@ -186,16 +186,23 @@ public partial class RiderLab : Control
         var strip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
         strip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
         strip.OffsetLeft = 2; strip.OffsetRight = -2; // inset: the strip must not cover the tile's border (owner)
-        strip.OffsetTop = -(size >= 44 ? 16 : 14) - 2;
+        strip.OffsetTop = -(size >= 44 ? 18 : 16) - 2;
         strip.OffsetBottom = -2;
         root.AddChild(strip);
-        var ab = new Label { Text = Abbrev(w), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
+        var ab = new Label { Text = Abbrev(w), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
         ab.AddThemeFontSizeOverride("font_size", size >= 44 ? 12 : 10);
         ab.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
         ab.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
         ab.AddThemeConstantOverride("shadow_offset_x", 1);
         ab.AddThemeConstantOverride("shadow_offset_y", 1);
-        ab.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        // The label fills the STRIP's rect (not the whole tile)
+        // with the text centered in it: the abbreviation gets a
+        // couple of pixels of breathing room at the top and the
+        // bottom (owner). Bottom-aligned in the full tile it sat
+        // flush on the tile's bottom edge, below the strip.
+        ab.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+        ab.OffsetLeft = 2; ab.OffsetRight = -2;
+        ab.OffsetTop = strip.OffsetTop; ab.OffsetBottom = -2;
         root.AddChild(ab);
         return root;
     }
