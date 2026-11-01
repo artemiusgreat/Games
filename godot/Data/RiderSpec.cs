@@ -102,7 +102,24 @@ public static class RiderSpecs
 
     // Every chassis the lab can offer. Adding a rider = one new
     // RiderSpec + one entry here (+ its RiderParts layout and model).
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus };
+    // APOLLO (Adder ADR-Prime, 35t Light): the twin-PPC striker —
+    // an energy mount in each arm and a small chest mount. Caps
+    // sum to the 35t budget.
+    public static readonly RiderSpec Apollo = new()
+    {
+        Id = "apollo", Name = "APOLLO", Tonnage = 35f, JumpCapable = false,
+        ModelPath = "res://assets/adder.fbx", PartsId = "apollo", MaxHp = 130f,
+        Height = 10.5f, Radius = 1.7f, StepTime = 0.44f, StepThreshold = 1.5f, StepLift = 0.8f, Accel = 5.0f, MaxSpeed = 4.2f,
+        FlipKneePole = true,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 7f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Apollo };
 
     public static RiderSpec ById(string id)
     {
@@ -217,7 +234,26 @@ public sealed class LoadoutState
     public static LoadoutState DefaultFor(RiderSpec spec) =>
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
+        : spec.Id == "apollo" ? DefaultApollo()
         : DefaultEnyo();
+
+    public static LoadoutState DefaultApollo()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false; // the chassis cannot mount them
+        // Every slot filled (owner, 2026-10-31): 35t of 35t.
+        var ap = RiderSpecs.Apollo;
+        l.TryAssign(ap, "arm_L", WeaponCatalog.Ppc);
+        l.TryAssign(ap, "arm_L", WeaponCatalog.LargeLaser);        // 14/14t
+        l.TryAssign(ap, "arm_R", WeaponCatalog.Ppc);
+        l.TryAssign(ap, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(ap, "arm_R", WeaponCatalog.SmallLaser);
+        l.TryAssign(ap, "arm_R", WeaponCatalog.SmallLaser);        // 14/14t
+        l.TryAssign(ap, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(ap, "torso", WeaponCatalog.SmallLaser);
+        l.TryAssign(ap, "torso", WeaponCatalog.SmallLaser);        // 7/7t
+        return l;
+    }
 
     public static LoadoutState DefaultPrometheus()
     {

@@ -160,6 +160,23 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
         }
+        else if (riderId == "apollo")
+        {
+            // Adder miniature, cut at build time: the head is the
+            // cockpit hood region split out of the Torso mesh.
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                // (census-sized on the built model: 2,580 tris,
+                // ~9% of the torso, matching the other riders)
+                ("Head", p => p.X >= -2.15f && p.X <= 0.45f && p.Y >= 8.9f && p.Z >= -0.72f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
+            AddPart("head", "HEAD", 40f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 45f, byName, "UpperArm_L", "GunArm_L");
+            AddPart("arm_R", "RIGHT ARM", 45f, byName, "UpperArm_R", "GunArm_R");
+            AddPart("leg_L", "LEFT LEG", 65f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 65f, byName, "Thigh_R", "Shin_R", "Foot_R");
+        }
         else
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
