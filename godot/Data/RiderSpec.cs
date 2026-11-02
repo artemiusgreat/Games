@@ -15,6 +15,9 @@ public sealed class RiderSpec
     public string Id;
     public string Name;
     public float Tonnage;
+    // Weight class for the lab label (owner, 2026-11-01):
+    // Light under 40t, Medium under 60t, Heavy from 60t.
+    public string ClassLabel => Tonnage < 40f ? "LIGHT" : Tonnage < 60f ? "MEDIUM" : "HEAVY";
     public bool JumpCapable; // chassis can mount jump jets (thrusters)
     public SlotDef[] Slots;
 
@@ -102,13 +105,13 @@ public static class RiderSpecs
 
     // Every chassis the lab can offer. Adding a rider = one new
     // RiderSpec + one entry here (+ its RiderParts layout and model).
-    // APOLLO (Adder ADR-Prime, 35t Light): the twin-PPC striker —
+    // ATALANTA (Adder ADR-Prime, 35t Light): the twin-PPC striker —
     // an energy mount in each arm and a small chest mount. Caps
     // sum to the 35t budget.
-    public static readonly RiderSpec Apollo = new()
+    public static readonly RiderSpec Atalanta = new()
     {
-        Id = "apollo", Name = "APOLLO", Tonnage = 35f, JumpCapable = false,
-        ModelPath = "res://assets/adder.fbx", PartsId = "apollo", MaxHp = 130f,
+        Id = "atalanta", Name = "ATALANTA", Tonnage = 35f, JumpCapable = false,
+        ModelPath = "res://assets/adder.fbx", PartsId = "atalanta", MaxHp = 130f,
         Height = 10.5f, Radius = 1.7f, StepTime = 0.44f, StepThreshold = 1.5f, StepLift = 0.8f, Accel = 5.0f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         Slots = new[]
@@ -119,13 +122,13 @@ public static class RiderSpecs
         }
     };
 
-    // ATALANTA (Arctic Cheetah ACH-Prime, 30t Light): the fast
+    // PERSEUS (Arctic Cheetah ACH-Prime, 30t Light): the fast
     // jumper — an energy mount in each arm and an SRM pod on each
     // shoulder. Caps sum to the 30t budget.
-    public static readonly RiderSpec Atalanta = new()
+    public static readonly RiderSpec Perseus = new()
     {
-        Id = "atalanta", Name = "ATALANTA", Tonnage = 30f, JumpCapable = true,
-        ModelPath = "res://assets/cheetah.fbx", PartsId = "atalanta", MaxHp = 115f,
+        Id = "perseus", Name = "PERSEUS", Tonnage = 30f, JumpCapable = true,
+        ModelPath = "res://assets/cheetah.fbx", PartsId = "perseus", MaxHp = 115f,
         Height = 10.0f, Radius = 1.6f, StepTime = 0.40f, StepThreshold = 1.4f, StepLift = 0.85f, Accel = 5.4f, MaxSpeed = 4.2f,
         FlipKneePole = false, // digitigrade legs: the mid joint bends back
         Slots = new[]
@@ -137,7 +140,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Apollo, Atalanta };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Atalanta, Perseus };
 
     public static RiderSpec ById(string id)
     {
@@ -252,16 +255,16 @@ public sealed class LoadoutState
     public static LoadoutState DefaultFor(RiderSpec spec) =>
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
-        : spec.Id == "apollo" ? DefaultApollo()
         : spec.Id == "atalanta" ? DefaultAtalanta()
+        : spec.Id == "perseus" ? DefaultPerseus()
         : DefaultEnyo();
 
-    public static LoadoutState DefaultAtalanta()
+    public static LoadoutState DefaultPerseus()
     {
         var l = new LoadoutState();
         l.JumpJets = true;
         // Every slot filled (owner, 2026-10-31): 30t of 30t.
-        var at = RiderSpecs.Atalanta;
+        var at = RiderSpecs.Perseus;
         l.TryAssign(at, "arm_L", WeaponCatalog.LargeLaser);
         l.TryAssign(at, "arm_L", WeaponCatalog.SmallLaser);
         l.TryAssign(at, "arm_L", WeaponCatalog.SmallLaser);        // 7/7t
@@ -275,12 +278,12 @@ public sealed class LoadoutState
         return l;
     }
 
-    public static LoadoutState DefaultApollo()
+    public static LoadoutState DefaultAtalanta()
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         // Every slot filled (owner, 2026-10-31): 35t of 35t.
-        var ap = RiderSpecs.Apollo;
+        var ap = RiderSpecs.Atalanta;
         l.TryAssign(ap, "arm_L", WeaponCatalog.Ppc);
         l.TryAssign(ap, "arm_L", WeaponCatalog.LargeLaser);        // 14/14t
         l.TryAssign(ap, "arm_R", WeaponCatalog.Ppc);

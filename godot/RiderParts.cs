@@ -160,7 +160,7 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
         }
-        else if (riderId == "apollo")
+        else if (riderId == "atalanta")
         {
             // Adder miniature, cut at build time: the head is the
             // cockpit hood region split out of the Torso mesh.
@@ -177,7 +177,7 @@ public sealed class RiderParts
             AddPart("leg_L", "LEFT LEG", 65f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 65f, byName, "Thigh_R", "Shin_R", "Foot_R");
         }
-        else if (riderId == "atalanta")
+        else if (riderId == "perseus")
         {
             // Arctic Cheetah miniature, cut at build time; the
             // shoulder pods are their own meshes. Head = cockpit
@@ -221,6 +221,35 @@ public sealed class RiderParts
         foreach (var part in _parts.Values)
             centers += $" {part.Id}={PartCenterWorld(part.Id)}";
         GD.Print(centers);
+
+        // The fused-miniature builds (atalanta, perseus) are cut
+        // from one shell, so their parts have open seams; with
+        // backface culling on, a seam reads as a see-through hole
+        // (owner report, 2026-11-01: visible through Atalanta's
+        // gun). Render those riders' materials double-sided so a
+        // seam shows the part's dark interior instead of the sky.
+        if (_riderId == "atalanta" || _riderId == "perseus")
+        {
+            var dupCache = new Dictionary<Material, Material>();
+            foreach (var part in _parts.Values)
+                foreach (var rec in part.Meshes)
+                {
+                    var mesh = rec.Mi.Mesh;
+                    if (mesh == null) continue;
+                    for (int si = 0; si < mesh.GetSurfaceCount(); si++)
+                    {
+                        var mat = rec.Mi.GetSurfaceOverrideMaterial(si) ?? mesh.SurfaceGetMaterial(si);
+                        if (mat is not StandardMaterial3D sm) continue;
+                        if (!dupCache.TryGetValue(sm, out var dup))
+                        {
+                            dup = (StandardMaterial3D)sm.Duplicate();
+                            ((StandardMaterial3D)dup).CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+                            dupCache[sm] = dup;
+                        }
+                        rec.Mi.SetSurfaceOverrideMaterial(si, dup);
+                    }
+                }
+        }
     }
 
     // ---------- registry construction ----------

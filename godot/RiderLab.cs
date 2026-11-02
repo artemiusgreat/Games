@@ -513,7 +513,7 @@ public partial class RiderLab : Control
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
-        var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS" };
+        var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}" };
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
