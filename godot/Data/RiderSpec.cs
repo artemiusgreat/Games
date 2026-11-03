@@ -111,7 +111,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Atalanta = new()
     {
         Id = "atalanta", Name = "ATALANTA", Tonnage = 35f, JumpCapable = false,
-        ModelPath = "res://assets/adder.fbx", PartsId = "atalanta", MaxHp = 130f,
+        ModelPath = "res://assets/atalanta.fbx", PartsId = "atalanta", MaxHp = 130f,
         Height = 10.5f, Radius = 1.7f, StepTime = 0.44f, StepThreshold = 1.5f, StepLift = 0.8f, Accel = 5.0f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         Slots = new[]
