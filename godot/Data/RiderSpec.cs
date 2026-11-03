@@ -124,7 +124,92 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax };
+    // ACHILLES (Black Knight BL6-KNT, 75t Heavy): the energy
+    // boat — every hardpoint is a laser mount. Caps sum to 75t.
+    public static readonly RiderSpec Achilles = new()
+    {
+        Id = "achilles", Name = "ACHILLES", Tonnage = 75f, JumpCapable = false,
+        ModelPath = "res://assets/achilles.fbx", PartsId = "achilles", MaxHp = 260f,
+        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 26f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 28f },
+        }
+    };
+
+    // MEDEA (Conjurer / Hellhound Prime, 50t Medium): a missile
+    // rack on the left shoulder, a heavy cannon in the right arm,
+    // lasers in the left. Jump-capable, like the original.
+    public static readonly RiderSpec Medea = new()
+    {
+        Id = "medea", Name = "MEDEA", Tonnage = 50f, JumpCapable = true,
+        ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 185f,
+        Height = 11.5f, Radius = 2.0f, StepTime = 0.5f, StepThreshold = 1.6f, StepLift = 0.85f, Accel = 3.6f, MaxSpeed = 4.2f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 16f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+        }
+    };
+
+    // JASON (Corsair COR-1X4, 95t Heavy): the FrankenMech — a
+    // missile drum on the right shoulder, a twin-AC left arm,
+    // torso autocannons and a mixed energy right arm.
+    public static readonly RiderSpec Jason = new()
+    {
+        Id = "jason", Name = "JASON", Tonnage = 95f, JumpCapable = false,
+        ModelPath = "res://assets/jason.fbx", PartsId = "jason", MaxHp = 320f,
+        Height = 13.0f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 2.8f, MaxSpeed = 4.2f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 24f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+        }
+    };
+
+    // THANATOS (Dire Wolf / Daishi Prime, 100t Heavy): twin
+    // cannon pods for arms, an LRM rack on the left shoulder,
+    // PPCs in the torso. Digitigrade — knees bend backward.
+    public static readonly RiderSpec Thanatos = new()
+    {
+        Id = "thanatos", Name = "THANATOS", Tonnage = 100f, JumpCapable = false,
+        ModelPath = "res://assets/thanatos.fbx", PartsId = "thanatos", MaxHp = 340f,
+        Height = 13.5f, Radius = 2.4f, StepTime = 0.6f, StepThreshold = 1.7f, StepLift = 1.0f, Accel = 2.6f, MaxSpeed = 4.2f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+        }
+    };
+
+    // HERMES (Flea FLE-4, 20t Light): the speedster — all small
+    // energy mounts, but the fastest legs in the roster.
+    public static readonly RiderSpec Hermes = new()
+    {
+        Id = "hermes", Name = "HERMES", Tonnage = 20f, JumpCapable = false,
+        ModelPath = "res://assets/hermes.fbx", PartsId = "hermes", MaxHp = 70f,
+        Height = 8.5f, Radius = 1.5f, StepTime = 0.36f, StepThreshold = 1.3f, StepLift = 0.7f, Accel = 6.0f, MaxSpeed = 5.4f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 9f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 5f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 6f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Achilles, Medea, Jason, Thanatos, Hermes };
 
     public static RiderSpec ById(string id)
     {
@@ -240,7 +325,110 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
+        : spec.Id == "achilles" ? DefaultAchilles()
+        : spec.Id == "medea" ? DefaultMedea()
+        : spec.Id == "jason" ? DefaultJason()
+        : spec.Id == "thanatos" ? DefaultThanatos()
+        : spec.Id == "hermes" ? DefaultHermes()
         : DefaultEnyo();
+
+    public static LoadoutState DefaultAchilles()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false;
+        // Every slot filled: 75t of 75t, all energy.
+        var ac = RiderSpecs.Achilles;
+        l.TryAssign(ac, "arm_R", WeaponCatalog.Ppc);
+        l.TryAssign(ac, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(ac, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(ac, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(ac, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(ac, "arm_R", WeaponCatalog.SmallLaser);           // 26/26t
+        l.TryAssign(ac, "arm_L", WeaponCatalog.Ppc);
+        l.TryAssign(ac, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(ac, "arm_L", WeaponCatalog.MediumLaser);
+        l.TryAssign(ac, "arm_L", WeaponCatalog.MediumLaser);
+        l.TryAssign(ac, "arm_L", WeaponCatalog.SmallLaser);          // 21/21t
+        l.TryAssign(ac, "torso", WeaponCatalog.Ppc);
+        l.TryAssign(ac, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(ac, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(ac, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(ac, "torso", WeaponCatalog.MediumLaser);
+        l.TryAssign(ac, "torso", WeaponCatalog.SmallLaser);          // 28/28t
+        return l;
+    }
+
+    public static LoadoutState DefaultMedea()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = true; // the Conjurer jumps
+        // Every slot filled: 50t of 50t.
+        var md = RiderSpecs.Medea;
+        l.TryAssign(md, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(md, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
+        l.TryAssign(md, "arm_R", WeaponCatalog.HeavyCannon);         // 16/16t
+        l.TryAssign(md, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(md, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(md, "arm_L", WeaponCatalog.MediumLaser);
+        l.TryAssign(md, "arm_L", WeaponCatalog.SmallLaser);          // 14/14t
+        return l;
+    }
+
+    public static LoadoutState DefaultJason()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false;
+        // Every slot filled: 95t of 95t.
+        var js = RiderSpecs.Jason;
+        l.TryAssign(js, "pod_R", WeaponCatalog.Lrm);
+        l.TryAssign(js, "pod_R", WeaponCatalog.Lrm);
+        l.TryAssign(js, "pod_R", WeaponCatalog.Srm);                 // 24/24t
+        l.TryAssign(js, "arm_L", WeaponCatalog.Autocannon);
+        l.TryAssign(js, "arm_L", WeaponCatalog.Autocannon);
+        l.TryAssign(js, "arm_L", WeaponCatalog.MachineGun);          // 26/26t
+        l.TryAssign(js, "torso", WeaponCatalog.Autocannon);
+        l.TryAssign(js, "torso", WeaponCatalog.Autocannon);          // 24/24t
+        l.TryAssign(js, "arm_R", WeaponCatalog.Ppc);
+        l.TryAssign(js, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(js, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(js, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(js, "arm_R", WeaponCatalog.SmallLaser);          // 21/21t
+        return l;
+    }
+
+    public static LoadoutState DefaultThanatos()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false;
+        // Every slot filled: 100t of 100t.
+        var th = RiderSpecs.Thanatos;
+        l.TryAssign(th, "arm_L", WeaponCatalog.HeavyCannon);
+        l.TryAssign(th, "arm_L", WeaponCatalog.Autocannon);          // 28/28t
+        l.TryAssign(th, "arm_R", WeaponCatalog.HeavyCannon);
+        l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);          // 28/28t
+        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
+        l.TryAssign(th, "torso", WeaponCatalog.Ppc);
+        l.TryAssign(th, "torso", WeaponCatalog.Ppc);
+        l.TryAssign(th, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(th, "torso", WeaponCatalog.SmallLaser);          // 24/24t
+        return l;
+    }
+
+    public static LoadoutState DefaultHermes()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false;
+        // Every slot filled: 20t of 20t.
+        var hm = RiderSpecs.Hermes;
+        l.TryAssign(hm, "arm_R", WeaponCatalog.LargeLaser);
+        l.TryAssign(hm, "arm_R", WeaponCatalog.MediumLaser);
+        l.TryAssign(hm, "arm_R", WeaponCatalog.SmallLaser);          // 9/9t
+        l.TryAssign(hm, "arm_L", WeaponCatalog.LargeLaser);          // 5/5t
+        l.TryAssign(hm, "torso", WeaponCatalog.MediumLaser);
+        l.TryAssign(hm, "torso", WeaponCatalog.MediumLaser);         // 6/6t
+        return l;
+    }
 
     public static LoadoutState DefaultAjax()
     {
