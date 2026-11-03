@@ -92,7 +92,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Prometheus = new()
     {
         Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = false,
-        ModelPath = "res://assets/hellbringer.fbx", PartsId = "prometheus", MaxHp = 235f,
+        ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
         Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         Slots = new[]
