@@ -105,23 +105,6 @@ public static class RiderSpecs
 
     // Every chassis the lab can offer. Adding a rider = one new
     // RiderSpec + one entry here (+ its RiderParts layout and model).
-    // ATALANTA (Adder ADR-Prime, 35t Light): the twin-PPC striker —
-    // an energy mount in each arm and a small chest mount. Caps
-    // sum to the 35t budget.
-    public static readonly RiderSpec Atalanta = new()
-    {
-        Id = "atalanta", Name = "ATALANTA", Tonnage = 35f, JumpCapable = false,
-        ModelPath = "res://assets/atalanta.fbx", PartsId = "atalanta", MaxHp = 130f,
-        Height = 10.5f, Radius = 1.7f, StepTime = 0.44f, StepThreshold = 1.5f, StepLift = 0.8f, Accel = 5.0f, MaxSpeed = 4.2f,
-        FlipKneePole = true,
-        Slots = new[]
-        {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 7f },
-        }
-    };
-
     // PERSEUS (Arctic Cheetah ACH-Prime, 30t Light): the fast
     // jumper — an energy mount in each arm and an SRM pod on each
     // shoulder. Caps sum to the 30t budget.
@@ -140,7 +123,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Atalanta, Perseus };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Perseus };
 
     public static RiderSpec ById(string id)
     {
@@ -255,7 +238,6 @@ public sealed class LoadoutState
     public static LoadoutState DefaultFor(RiderSpec spec) =>
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
-        : spec.Id == "atalanta" ? DefaultAtalanta()
         : spec.Id == "perseus" ? DefaultPerseus()
         : DefaultEnyo();
 
@@ -275,24 +257,6 @@ public sealed class LoadoutState
         l.TryAssign(at, "pod_L", WeaponCatalog.Srm);               // 8/8t
         l.TryAssign(at, "pod_R", WeaponCatalog.Srm);
         l.TryAssign(at, "pod_R", WeaponCatalog.Srm);               // 8/8t
-        return l;
-    }
-
-    public static LoadoutState DefaultAtalanta()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false; // the chassis cannot mount them
-        // Every slot filled (owner, 2026-10-31): 35t of 35t.
-        var ap = RiderSpecs.Atalanta;
-        l.TryAssign(ap, "arm_L", WeaponCatalog.Ppc);
-        l.TryAssign(ap, "arm_L", WeaponCatalog.LargeLaser);        // 14/14t
-        l.TryAssign(ap, "arm_R", WeaponCatalog.Ppc);
-        l.TryAssign(ap, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(ap, "arm_R", WeaponCatalog.SmallLaser);
-        l.TryAssign(ap, "arm_R", WeaponCatalog.SmallLaser);        // 14/14t
-        l.TryAssign(ap, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(ap, "torso", WeaponCatalog.SmallLaser);
-        l.TryAssign(ap, "torso", WeaponCatalog.SmallLaser);        // 7/7t
         return l;
     }
 
