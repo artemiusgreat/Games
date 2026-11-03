@@ -66,7 +66,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Hector = new()
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
-        ModelPath = "res://assets/atlas.fbx", PartsId = "hector", MaxHp = 340f,
+        ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
         Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, MaxSpeed = 4.2f,
         FlipKneePole = true,
         // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
