@@ -51,7 +51,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Enyo = new()
     {
         Id = "enyo", Name = "ENYO", Tonnage = 75f, JumpCapable = true,
-        ModelPath = "res://assets/timberwolf.fbx", PartsId = "enyo", MaxHp = 260f,
+        ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
