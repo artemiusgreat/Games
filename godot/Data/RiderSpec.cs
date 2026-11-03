@@ -94,7 +94,7 @@ public static class RiderSpecs
         Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = false,
         ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
         Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
-        FlipKneePole = true,
+        FlipKneePole = false,
         Slots = new[]
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
@@ -114,7 +114,7 @@ public static class RiderSpecs
         Id = "ajax", Name = "AJAX", Tonnage = 85f, JumpCapable = false,
         ModelPath = "res://assets/ajax.fbx", PartsId = "ajax", MaxHp = 290f,
         Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
-        FlipKneePole = true,
+        FlipKneePole = false,
         Slots = new[]
         {
             new SlotDef { Id = "torso", Display = "TURRET", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
