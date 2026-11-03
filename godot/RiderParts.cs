@@ -160,25 +160,6 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
         }
-        else if (riderId == "perseus")
-        {
-            // Arctic Cheetah miniature, cut at build time; the
-            // shoulder pods are their own meshes. Head = cockpit
-            // dome split (census-sized on the built model:
-            // 1,338 tris, ~8% of the torso, like the others).
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.1f && p.Y >= 8.6f && p.Z >= -0.72f),
-            });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
-            AddPart("head", "HEAD", 35f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 40f, byName, "UpperArm_L", "GunArm_L");
-            AddPart("arm_R", "RIGHT ARM", 40f, byName, "UpperArm_R", "GunArm_R");
-            AddPart("leg_L", "LEFT LEG", 60f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 60f, byName, "Thigh_R", "Shin_R", "Foot_R");
-            AddPart("pod_L", "LEFT POD", 40f, byName, "Pod_L");
-            AddPart("pod_R", "RIGHT POD", 40f, byName, "Pod_R");
-        }
         else if (riderId == "ajax")
         {
             // Shield mech (original design), cut at build time;
@@ -222,13 +203,13 @@ public sealed class RiderParts
             centers += $" {part.Id}={PartCenterWorld(part.Id)}";
         GD.Print(centers);
 
-        // The fused-miniature builds (perseus, ajax) are cut
+        // The fused-miniature build (ajax) is cut
         // from one shell, so their parts have open seams; with
         // backface culling on, a seam reads as a see-through hole
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "perseus" || _riderId == "ajax")
+        if (_riderId == "ajax")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
