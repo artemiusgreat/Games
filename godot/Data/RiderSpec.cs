@@ -123,7 +123,26 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Perseus };
+    // AJAX (shield mech, original design, 85t Heavy): the wall —
+    // a turret cannon up top, a twin-AC gun arm, a missile rack
+    // on the left shoulder, and a small energy mount in the
+    // shield arm. Caps sum to the 85t budget.
+    public static readonly RiderSpec Ajax = new()
+    {
+        Id = "ajax", Name = "AJAX", Tonnage = 85f, JumpCapable = false,
+        ModelPath = "res://assets/ajax.fbx", PartsId = "ajax", MaxHp = 290f,
+        Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
+        FlipKneePole = true,
+        Slots = new[]
+        {
+            new SlotDef { Id = "torso", Display = "TURRET", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 15f },
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Perseus, Ajax };
 
     public static RiderSpec ById(string id)
     {
@@ -239,6 +258,7 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "perseus" ? DefaultPerseus()
+        : spec.Id == "ajax" ? DefaultAjax()
         : DefaultEnyo();
 
     public static LoadoutState DefaultPerseus()
@@ -257,6 +277,25 @@ public sealed class LoadoutState
         l.TryAssign(at, "pod_L", WeaponCatalog.Srm);               // 8/8t
         l.TryAssign(at, "pod_R", WeaponCatalog.Srm);
         l.TryAssign(at, "pod_R", WeaponCatalog.Srm);               // 8/8t
+        return l;
+    }
+
+    public static LoadoutState DefaultAjax()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false; // the chassis cannot mount them
+        // Every slot filled: 85t of 85t.
+        var aj = RiderSpecs.Ajax;
+        l.TryAssign(aj, "torso", WeaponCatalog.Autocannon);
+        l.TryAssign(aj, "torso", WeaponCatalog.Autocannon);
+        l.TryAssign(aj, "torso", WeaponCatalog.MachineGun);          // 26/26t
+        l.TryAssign(aj, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(aj, "arm_R", WeaponCatalog.Autocannon);          // 24/24t
+        l.TryAssign(aj, "arm_L", WeaponCatalog.Ppc);
+        l.TryAssign(aj, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(aj, "arm_L", WeaponCatalog.SmallLaser);          // 15/15t
+        l.TryAssign(aj, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(aj, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
         return l;
     }
 

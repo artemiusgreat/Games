@@ -179,6 +179,23 @@ public sealed class RiderParts
             AddPart("pod_L", "LEFT POD", 40f, byName, "Pod_L");
             AddPart("pod_R", "RIGHT POD", 40f, byName, "Pod_R");
         }
+        else if (riderId == "ajax")
+        {
+            // Shield mech (original design), cut at build time;
+            // the tower shield rides the left forearm as part of
+            // the arm_L group. Head = the turret cap split.
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                ("Head", p => Mathf.Abs(p.X) <= 1.6f && p.Y >= 10.3f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
+            AddPart("head", "HEAD", 45f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 60f, byName, "UpperArm_L", "GunArm_L", "Shield_L");
+            AddPart("arm_R", "RIGHT ARM", 60f, byName, "UpperArm_R", "GunArm_R");
+            AddPart("leg_L", "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
+        }
         else
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
@@ -205,13 +222,13 @@ public sealed class RiderParts
             centers += $" {part.Id}={PartCenterWorld(part.Id)}";
         GD.Print(centers);
 
-        // The fused-miniature build (perseus) is cut
+        // The fused-miniature builds (perseus, ajax) are cut
         // from one shell, so their parts have open seams; with
         // backface culling on, a seam reads as a see-through hole
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "perseus")
+        if (_riderId == "perseus" || _riderId == "ajax")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
