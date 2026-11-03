@@ -128,7 +128,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Perseus = new()
     {
         Id = "perseus", Name = "PERSEUS", Tonnage = 30f, JumpCapable = true,
-        ModelPath = "res://assets/cheetah.fbx", PartsId = "perseus", MaxHp = 115f,
+        ModelPath = "res://assets/perseus.fbx", PartsId = "perseus", MaxHp = 115f,
         Height = 10.0f, Radius = 1.6f, StepTime = 0.40f, StepThreshold = 1.4f, StepLift = 0.85f, Accel = 5.4f, MaxSpeed = 4.2f,
         FlipKneePole = false, // digitigrade legs: the mid joint bends back
         Slots = new[]
