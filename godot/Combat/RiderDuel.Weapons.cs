@@ -378,9 +378,10 @@ public partial class RiderDuel
         bool isFoe1 = _foe1 != null && target == _foe1.Walker;
         if (isPlayer ? _playerDead : isFoe1 ? _foe1.Dead : _enemyDead) return;
         var parts = isPlayer ? _partsPlayer : isFoe1 ? _foe1.Parts : _partsEnemy;
-        // Local damage routing: torso hits burn the main pool; head hits
-        // burn the head part AND the pool; every other part absorbs its
-        // own hits. Counters still record the nominal damage once per
+        // Damage routing (owner, 2026-11-03): EVERY hit burns the
+        // main pool, whatever part it lands on — arms, legs, head,
+        // pods all count. Parts additionally take their own damage
+        // toward breaking or wrecking, exactly as before. Counters still record the nominal damage once per
         // hit event. Attribution: a box-ray hit already carries its part
         // (a box surface point is unambiguous, while an interior SDF
         // resolve can name a neighbor whose AABB overlaps the spot);
@@ -391,10 +392,8 @@ public partial class RiderDuel
             : parts.AttributePoint(hit.Point);
         if (isPlayer) { _playerDmgEvents++; _playerDmgTotal += dmg; }
         else if (!isFoe1) { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
-        float poolDmg = 0f;
-        if (partId == "torso") poolDmg = dmg;
-        else if (partId == "head") { poolDmg = dmg; parts.DamagePart("head", dmg); }
-        else parts.DamagePart(partId, dmg);
+        float poolDmg = dmg;
+        parts.DamagePart(partId, dmg); // torso is pool-owned: a no-op there
         if (poolDmg > 0f)
         {
             if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - poolDmg, 0f);
