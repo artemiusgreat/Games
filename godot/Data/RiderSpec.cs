@@ -126,23 +126,6 @@ public static class RiderSpecs
 
 
 
-    // JASON (Corsair COR-1X4, 95t Heavy): the FrankenMech — a
-    // missile drum on the right shoulder, a twin-AC left arm,
-    // torso autocannons and a mixed energy right arm.
-    public static readonly RiderSpec Jason = new()
-    {
-        Id = "jason", Name = "JASON", Tonnage = 95f, JumpCapable = false,
-        ModelPath = "res://assets/jason.fbx", PartsId = "jason", MaxHp = 320f,
-        Height = 13.0f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 2.8f, MaxSpeed = 4.2f,
-        FlipKneePole = false,
-        Slots = new[]
-        {
-            new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 24f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
-        }
-    };
 
     // THANATOS (Dire Wolf / Daishi Prime, 100t Heavy): twin
     // cannon pods for arms, an LRM rack on the left shoulder,
@@ -178,7 +161,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Jason, Thanatos, Hermes };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Thanatos, Hermes };
 
     public static RiderSpec ById(string id)
     {
@@ -294,34 +277,12 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
-        : spec.Id == "jason" ? DefaultJason()
         : spec.Id == "thanatos" ? DefaultThanatos()
         : spec.Id == "hermes" ? DefaultHermes()
         : DefaultEnyo();
 
 
 
-    public static LoadoutState DefaultJason()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false;
-        // Every slot filled: 95t of 95t.
-        var js = RiderSpecs.Jason;
-        l.TryAssign(js, "pod_R", WeaponCatalog.Lrm);
-        l.TryAssign(js, "pod_R", WeaponCatalog.Lrm);
-        l.TryAssign(js, "pod_R", WeaponCatalog.Srm);                 // 24/24t
-        l.TryAssign(js, "arm_L", WeaponCatalog.Autocannon);
-        l.TryAssign(js, "arm_L", WeaponCatalog.Autocannon);
-        l.TryAssign(js, "arm_L", WeaponCatalog.MachineGun);          // 26/26t
-        l.TryAssign(js, "torso", WeaponCatalog.Autocannon);
-        l.TryAssign(js, "torso", WeaponCatalog.Autocannon);          // 24/24t
-        l.TryAssign(js, "arm_R", WeaponCatalog.Ppc);
-        l.TryAssign(js, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(js, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(js, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(js, "arm_R", WeaponCatalog.SmallLaser);          // 21/21t
-        return l;
-    }
 
     public static LoadoutState DefaultThanatos()
     {
