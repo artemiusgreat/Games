@@ -91,7 +91,7 @@ public static class RiderSpecs
     // sum to the 65t budget.
     public static readonly RiderSpec Prometheus = new()
     {
-        Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = false,
+        Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = true,
         ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
         Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
         FlipKneePole = false,
@@ -369,7 +369,7 @@ public sealed class LoadoutState
     public static LoadoutState DefaultPrometheus()
     {
         var l = new LoadoutState();
-        l.JumpJets = false; // the chassis cannot mount them
+        l.JumpJets = true; // thrusters fitted by default (owner, 2026-11-04)
         // Every slot filled (owner, 2026-10-31): 65t of 65t.
         var pr = RiderSpecs.Prometheus;
         l.TryAssign(pr, "arm_L", WeaponCatalog.ById("ac20"));
