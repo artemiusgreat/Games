@@ -160,7 +160,7 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
         }
-        else if (riderId == "ajax")
+        else if (riderId == "medea")
         {
             // Shield mech (original design), cut at build time;
             // the tower shield rides the left forearm as part of
@@ -177,7 +177,7 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
         }
-        else if (riderId == "thanatos")
+        else if (riderId == "demeter")
         {
             // Dire Wolf upper body (owner's hand split) on the Enyo
             // leg rig. Head = cockpit dome split, Pod_L = the left
@@ -197,7 +197,7 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 95f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
-        else if (riderId == "leonidas")
+        else if (riderId == "theseus")
         {
             // Hauptmann upper body (owner's hand split) on the Enyo
             // leg rig. Head = cockpit prow split; the sculpt's LRM
@@ -251,7 +251,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "ajax" || _riderId == "thanatos" || _riderId == "leonidas")
+        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)

@@ -109,10 +109,10 @@ public static class RiderSpecs
     // a turret cannon up top, a twin-AC gun arm, a missile rack
     // on the left shoulder, and a small energy mount in the
     // shield arm. Caps sum to the 85t budget.
-    public static readonly RiderSpec Ajax = new()
+    public static readonly RiderSpec Medea = new()
     {
-        Id = "ajax", Name = "AJAX", Tonnage = 85f, JumpCapable = false,
-        ModelPath = "res://assets/ajax.fbx", PartsId = "ajax", MaxHp = 290f,
+        Id = "medea", Name = "MEDEA", Tonnage = 85f, JumpCapable = false,
+        ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 290f,
         Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
@@ -130,13 +130,13 @@ public static class RiderSpecs
 
 
 
-    // THANATOS (Dire Wolf / Daishi, 100t Heavy): owner kitbash -
+    // DEMETER (Dire Wolf / Daishi, 100t Heavy): owner kitbash -
     // his hand-split Daishi upper body on the Enyo leg rig.
     // Caps sum to 100t.
-    public static readonly RiderSpec Thanatos = new()
+    public static readonly RiderSpec Demeter = new()
     {
-        Id = "thanatos", Name = "THANATOS", Tonnage = 100f, JumpCapable = false,
-        ModelPath = "res://assets/thanatos.fbx", PartsId = "thanatos", MaxHp = 340f,
+        Id = "demeter", Name = "DEMETER", Tonnage = 100f, JumpCapable = false,
+        ModelPath = "res://assets/demeter.fbx", PartsId = "demeter", MaxHp = 340f,
         Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
@@ -149,14 +149,14 @@ public static class RiderSpecs
     };
 
 
-    // LEONIDAS (Hauptmann HA1-O, 95t Heavy): owner kitbash -
+    // THESEUS (Hauptmann HA1-O, 95t Heavy): owner kitbash -
     // his hand-split Hauptmann upper body on the Enyo leg rig.
     // The sculpt carries its LRM rack on the RIGHT shoulder.
     // Caps sum to 95t.
-    public static readonly RiderSpec Leonidas = new()
+    public static readonly RiderSpec Theseus = new()
     {
-        Id = "leonidas", Name = "LEONIDAS", Tonnage = 95f, JumpCapable = false,
-        ModelPath = "res://assets/leonidas.fbx", PartsId = "leonidas", MaxHp = 320f,
+        Id = "theseus", Name = "THESEUS", Tonnage = 95f, JumpCapable = false,
+        ModelPath = "res://assets/theseus.fbx", PartsId = "theseus", MaxHp = 320f,
         Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
@@ -168,7 +168,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Thanatos, Leonidas };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus };
 
     public static RiderSpec ById(string id)
     {
@@ -283,9 +283,9 @@ public sealed class LoadoutState
     public static LoadoutState DefaultFor(RiderSpec spec) =>
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
-        : spec.Id == "ajax" ? DefaultAjax()
-        : spec.Id == "thanatos" ? DefaultThanatos()
-        : spec.Id == "leonidas" ? DefaultLeonidas()
+        : spec.Id == "medea" ? DefaultMedea()
+        : spec.Id == "demeter" ? DefaultDemeter()
+        : spec.Id == "theseus" ? DefaultTheseus()
         : DefaultEnyo();
 
 
@@ -293,12 +293,12 @@ public sealed class LoadoutState
 
 
 
-    public static LoadoutState DefaultAjax()
+    public static LoadoutState DefaultMedea()
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         // Every slot filled: 85t of 85t.
-        var aj = RiderSpecs.Ajax;
+        var aj = RiderSpecs.Medea;
         l.TryAssign(aj, "torso", WeaponCatalog.Autocannon);
         l.TryAssign(aj, "torso", WeaponCatalog.Autocannon);
         l.TryAssign(aj, "torso", WeaponCatalog.MachineGun);          // 26/26t
@@ -312,12 +312,12 @@ public sealed class LoadoutState
         return l;
     }
 
-    public static LoadoutState DefaultThanatos()
+    public static LoadoutState DefaultDemeter()
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         // Every slot filled: 100t of 100t.
-        var th = RiderSpecs.Thanatos;
+        var th = RiderSpecs.Demeter;
         l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);
         l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);
         l.TryAssign(th, "arm_R", WeaponCatalog.MachineGun);
@@ -337,12 +337,12 @@ public sealed class LoadoutState
         return l;
     }
 
-    public static LoadoutState DefaultLeonidas()
+    public static LoadoutState DefaultTheseus()
     {
         var l = new LoadoutState();
         l.JumpJets = false; // the chassis cannot mount them
         // Every slot filled: 95t of 95t.
-        var le = RiderSpecs.Leonidas;
+        var le = RiderSpecs.Theseus;
         l.TryAssign(le, "arm_R", WeaponCatalog.Autocannon);
         l.TryAssign(le, "arm_R", WeaponCatalog.Autocannon);
         l.TryAssign(le, "arm_R", WeaponCatalog.MachineGun);
