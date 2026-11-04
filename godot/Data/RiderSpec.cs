@@ -129,7 +129,26 @@ public static class RiderSpecs
 
 
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax };
+
+    // THANATOS (Dire Wolf / Daishi, 100t Heavy): owner kitbash -
+    // his hand-split Daishi upper body on the Enyo leg rig.
+    // Caps sum to 100t.
+    public static readonly RiderSpec Thanatos = new()
+    {
+        Id = "thanatos", Name = "THANATOS", Tonnage = 100f, JumpCapable = false,
+        ModelPath = "res://assets/thanatos.fbx", PartsId = "thanatos", MaxHp = 340f,
+        Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Thanatos };
 
     public static RiderSpec ById(string id)
     {
@@ -245,6 +264,7 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
+        : spec.Id == "thanatos" ? DefaultThanatos()
         : DefaultEnyo();
 
 
@@ -270,6 +290,32 @@ public sealed class LoadoutState
         l.TryAssign(aj, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
         return l;
     }
+
+    public static LoadoutState DefaultThanatos()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false; // the chassis cannot mount them
+        // Every slot filled: 100t of 100t.
+        var th = RiderSpecs.Thanatos;
+        l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(th, "arm_R", WeaponCatalog.MachineGun);
+        l.TryAssign(th, "arm_R", WeaponCatalog.MachineGun);          // 28/28t
+        l.TryAssign(th, "arm_L", WeaponCatalog.Autocannon);
+        l.TryAssign(th, "arm_L", WeaponCatalog.Autocannon);
+        l.TryAssign(th, "arm_L", WeaponCatalog.MachineGun);
+        l.TryAssign(th, "arm_L", WeaponCatalog.MachineGun);          // 28/28t
+        l.TryAssign(th, "torso", WeaponCatalog.Ppc);
+        l.TryAssign(th, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(th, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(th, "torso", WeaponCatalog.MediumLaser);
+        l.TryAssign(th, "torso", WeaponCatalog.SmallLaser);
+        l.TryAssign(th, "torso", WeaponCatalog.SmallLaser);          // 24/24t
+        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);
+        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
+        return l;
+    }
+
 
     public static LoadoutState DefaultPrometheus()
     {

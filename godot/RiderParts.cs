@@ -177,6 +177,27 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
         }
+        else if (riderId == "thanatos")
+        {
+            // Dire Wolf upper body (owner's hand split) on the Enyo
+            // leg rig. Head = cockpit dome split, Pod_L = the left
+            // shoulder rack split (bands measured on the mesh).
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                ("Head", p => Mathf.Abs(p.X) <= 1.1f && p.Z <= -2.4f && p.Y >= 9.2f && p.Y <= 11.6f),
+                ("Pod_L", p => p.X >= 1.6f && p.Y >= 12.0f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
+            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
+            AddPart("arm_L", "LEFT ARM", 70f, byName, "GunArm_L");
+            AddPart("arm_R", "RIGHT ARM", 70f, byName, "GunArm_R");
+            AddPart("leg_L", "LEFT LEG", 95f, byName,
+                "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
+            AddPart("leg_R", "RIGHT LEG", 95f, byName,
+                "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
+        }
+
         else
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
@@ -209,7 +230,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "ajax")
+        if (_riderId == "ajax" || _riderId == "thanatos")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
