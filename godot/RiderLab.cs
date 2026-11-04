@@ -696,6 +696,9 @@ public partial class RiderLab : Control
         var lab = new Label { Text = role + ":", VerticalAlignment = VerticalAlignment.Center };
         lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         box.AddChild(lab);
+        // Wider gap between the role label and the selector
+        // (owner, 2026-11-04).
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(22, 0) });
         var name = new Label
         {
             CustomMinimumSize = new Vector2(170, 0),
