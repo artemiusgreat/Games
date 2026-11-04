@@ -148,7 +148,27 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Thanatos };
+
+    // LEONIDAS (Hauptmann HA1-O, 95t Heavy): owner kitbash -
+    // his hand-split Hauptmann upper body on the Enyo leg rig.
+    // The sculpt carries its LRM rack on the RIGHT shoulder.
+    // Caps sum to 95t.
+    public static readonly RiderSpec Leonidas = new()
+    {
+        Id = "leonidas", Name = "LEONIDAS", Tonnage = 95f, JumpCapable = false,
+        ModelPath = "res://assets/leonidas.fbx", PartsId = "leonidas", MaxHp = 320f,
+        Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 19f },
+            new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 24f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Thanatos, Leonidas };
 
     public static RiderSpec ById(string id)
     {
@@ -265,6 +285,7 @@ public sealed class LoadoutState
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
         : spec.Id == "thanatos" ? DefaultThanatos()
+        : spec.Id == "leonidas" ? DefaultLeonidas()
         : DefaultEnyo();
 
 
@@ -315,6 +336,34 @@ public sealed class LoadoutState
         l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
         return l;
     }
+
+    public static LoadoutState DefaultLeonidas()
+    {
+        var l = new LoadoutState();
+        l.JumpJets = false; // the chassis cannot mount them
+        // Every slot filled: 95t of 95t.
+        var le = RiderSpecs.Leonidas;
+        l.TryAssign(le, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(le, "arm_R", WeaponCatalog.Autocannon);
+        l.TryAssign(le, "arm_R", WeaponCatalog.MachineGun);
+        l.TryAssign(le, "arm_R", WeaponCatalog.MachineGun);          // 28/28t
+        l.TryAssign(le, "arm_L", WeaponCatalog.Ppc);
+        l.TryAssign(le, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(le, "arm_L", WeaponCatalog.LargeLaser);
+        l.TryAssign(le, "arm_L", WeaponCatalog.MediumLaser);
+        l.TryAssign(le, "arm_L", WeaponCatalog.SmallLaser);
+        l.TryAssign(le, "arm_L", WeaponCatalog.SmallLaser);          // 24/24t
+        l.TryAssign(le, "torso", WeaponCatalog.Ppc);
+        l.TryAssign(le, "torso", WeaponCatalog.LargeLaser);
+        l.TryAssign(le, "torso", WeaponCatalog.MediumLaser);
+        l.TryAssign(le, "torso", WeaponCatalog.SmallLaser);
+        l.TryAssign(le, "torso", WeaponCatalog.SmallLaser);          // 19/19t
+        l.TryAssign(le, "pod_R", WeaponCatalog.Lrm);
+        l.TryAssign(le, "pod_R", WeaponCatalog.Lrm);
+        l.TryAssign(le, "pod_R", WeaponCatalog.Srm);                 // 24/24t
+        return l;
+    }
+
 
 
     public static LoadoutState DefaultPrometheus()
