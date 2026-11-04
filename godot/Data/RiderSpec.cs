@@ -124,21 +124,6 @@ public static class RiderSpecs
         }
     };
 
-    // ACHILLES (Black Knight BL6-KNT, 75t Heavy): the energy
-    // boat — every hardpoint is a laser mount. Caps sum to 75t.
-    public static readonly RiderSpec Achilles = new()
-    {
-        Id = "achilles", Name = "ACHILLES", Tonnage = 75f, JumpCapable = false,
-        ModelPath = "res://assets/achilles.fbx", PartsId = "achilles", MaxHp = 260f,
-        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
-        FlipKneePole = false,
-        Slots = new[]
-        {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 26f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 28f },
-        }
-    };
 
     // MEDEA (Conjurer / Hellhound Prime, 50t Medium): a missile
     // rack on the left shoulder, a heavy cannon in the right arm,
@@ -209,7 +194,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Achilles, Medea, Jason, Thanatos, Hermes };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Medea, Jason, Thanatos, Hermes };
 
     public static RiderSpec ById(string id)
     {
@@ -325,38 +310,12 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
-        : spec.Id == "achilles" ? DefaultAchilles()
         : spec.Id == "medea" ? DefaultMedea()
         : spec.Id == "jason" ? DefaultJason()
         : spec.Id == "thanatos" ? DefaultThanatos()
         : spec.Id == "hermes" ? DefaultHermes()
         : DefaultEnyo();
 
-    public static LoadoutState DefaultAchilles()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false;
-        // Every slot filled: 75t of 75t, all energy.
-        var ac = RiderSpecs.Achilles;
-        l.TryAssign(ac, "arm_R", WeaponCatalog.Ppc);
-        l.TryAssign(ac, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(ac, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(ac, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(ac, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(ac, "arm_R", WeaponCatalog.SmallLaser);           // 26/26t
-        l.TryAssign(ac, "arm_L", WeaponCatalog.Ppc);
-        l.TryAssign(ac, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(ac, "arm_L", WeaponCatalog.MediumLaser);
-        l.TryAssign(ac, "arm_L", WeaponCatalog.MediumLaser);
-        l.TryAssign(ac, "arm_L", WeaponCatalog.SmallLaser);          // 21/21t
-        l.TryAssign(ac, "torso", WeaponCatalog.Ppc);
-        l.TryAssign(ac, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(ac, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(ac, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(ac, "torso", WeaponCatalog.MediumLaser);
-        l.TryAssign(ac, "torso", WeaponCatalog.SmallLaser);          // 28/28t
-        return l;
-    }
 
     public static LoadoutState DefaultMedea()
     {

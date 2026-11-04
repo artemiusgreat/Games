@@ -177,21 +177,6 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
         }
-        else if (riderId == "achilles")
-        {
-            // Black Knight miniature, cut at build time.
-            // Head = cockpit split (census rule on the built model).
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.0f && p.Y >= 11.55f),
-            });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
-            AddPart("head", "HEAD", 45f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 60f, byName, "UpperArm_L", "GunArm_L");
-            AddPart("arm_R", "RIGHT ARM", 60f, byName, "UpperArm_R", "GunArm_R");
-            AddPart("leg_L", "LEFT LEG", 85f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 85f, byName, "Thigh_R", "Shin_R", "Foot_R");
-        }
         else if (riderId == "medea")
         {
             // Conjurer miniature, cut at build time; the head and
@@ -285,7 +270,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "ajax" || _riderId == "achilles" || _riderId == "medea" || _riderId == "jason" || _riderId == "thanatos" || _riderId == "hermes")
+        if (_riderId == "ajax" || _riderId == "medea" || _riderId == "jason" || _riderId == "thanatos" || _riderId == "hermes")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
