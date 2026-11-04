@@ -125,22 +125,6 @@ public static class RiderSpecs
     };
 
 
-    // MEDEA (Conjurer / Hellhound Prime, 50t Medium): a missile
-    // rack on the left shoulder, a heavy cannon in the right arm,
-    // lasers in the left. Jump-capable, like the original.
-    public static readonly RiderSpec Medea = new()
-    {
-        Id = "medea", Name = "MEDEA", Tonnage = 50f, JumpCapable = true,
-        ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 185f,
-        Height = 11.5f, Radius = 2.0f, StepTime = 0.5f, StepThreshold = 1.6f, StepLift = 0.85f, Accel = 3.6f, MaxSpeed = 4.2f,
-        FlipKneePole = false,
-        Slots = new[]
-        {
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 16f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
-        }
-    };
 
     // JASON (Corsair COR-1X4, 95t Heavy): the FrankenMech — a
     // missile drum on the right shoulder, a twin-AC left arm,
@@ -194,7 +178,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Medea, Jason, Thanatos, Hermes };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Jason, Thanatos, Hermes };
 
     public static RiderSpec ById(string id)
     {
@@ -310,28 +294,12 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
-        : spec.Id == "medea" ? DefaultMedea()
         : spec.Id == "jason" ? DefaultJason()
         : spec.Id == "thanatos" ? DefaultThanatos()
         : spec.Id == "hermes" ? DefaultHermes()
         : DefaultEnyo();
 
 
-    public static LoadoutState DefaultMedea()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = true; // the Conjurer jumps
-        // Every slot filled: 50t of 50t.
-        var md = RiderSpecs.Medea;
-        l.TryAssign(md, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(md, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
-        l.TryAssign(md, "arm_R", WeaponCatalog.HeavyCannon);         // 16/16t
-        l.TryAssign(md, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(md, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(md, "arm_L", WeaponCatalog.MediumLaser);
-        l.TryAssign(md, "arm_L", WeaponCatalog.SmallLaser);          // 14/14t
-        return l;
-    }
 
     public static LoadoutState DefaultJason()
     {
