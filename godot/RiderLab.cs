@@ -683,8 +683,25 @@ public partial class RiderLab : Control
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
         btnRow.AddChild(start);
+        PadButton(strip); PadButton(_jetsBtn); PadButton(start);
 
         Refresh();
+    }
+
+    // Roomier inner padding for the bottom action chips (owner,
+    // 2026-11-04): duplicate the theme styleboxes so only the content
+    // margins grow - colors, corners and borders stay the theme's.
+    private static void PadButton(Button b)
+    {
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+        {
+            if (b.GetThemeStylebox(state).Duplicate() is StyleBox sb)
+            {
+                sb.ContentMarginLeft = 18; sb.ContentMarginRight = 18;
+                sb.ContentMarginTop = 11; sb.ContentMarginBottom = 11;
+                b.AddThemeStyleboxOverride(state, sb);
+            }
+        }
     }
 
     // Slideshow selector (owner): chips don't scale to tens of
