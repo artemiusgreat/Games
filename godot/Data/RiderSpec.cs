@@ -128,23 +128,8 @@ public static class RiderSpecs
 
 
 
-    // HERMES (Flea FLE-4, 20t Light): the speedster — all small
-    // energy mounts, but the fastest legs in the roster.
-    public static readonly RiderSpec Hermes = new()
-    {
-        Id = "hermes", Name = "HERMES", Tonnage = 20f, JumpCapable = false,
-        ModelPath = "res://assets/hermes.fbx", PartsId = "hermes", MaxHp = 70f,
-        Height = 8.5f, Radius = 1.5f, StepTime = 0.36f, StepThreshold = 1.3f, StepLift = 0.7f, Accel = 6.0f, MaxSpeed = 5.4f,
-        FlipKneePole = false,
-        Slots = new[]
-        {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 9f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 5f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 6f },
-        }
-    };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Hermes };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax };
 
     public static RiderSpec ById(string id)
     {
@@ -260,27 +245,12 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
-        : spec.Id == "hermes" ? DefaultHermes()
         : DefaultEnyo();
 
 
 
 
 
-    public static LoadoutState DefaultHermes()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false;
-        // Every slot filled: 20t of 20t.
-        var hm = RiderSpecs.Hermes;
-        l.TryAssign(hm, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(hm, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(hm, "arm_R", WeaponCatalog.SmallLaser);          // 9/9t
-        l.TryAssign(hm, "arm_L", WeaponCatalog.LargeLaser);          // 5/5t
-        l.TryAssign(hm, "torso", WeaponCatalog.MediumLaser);
-        l.TryAssign(hm, "torso", WeaponCatalog.MediumLaser);         // 6/6t
-        return l;
-    }
 
     public static LoadoutState DefaultAjax()
     {

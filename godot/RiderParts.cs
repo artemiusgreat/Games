@@ -177,21 +177,6 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
         }
-        else if (riderId == "hermes")
-        {
-            // Flea miniature, cut at build time (stride re-posed
-            // in the build). Head = sensor block split.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 0.8f && p.Y >= 7.7f),
-            });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
-            AddPart("head", "HEAD", 25f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 30f, byName, "UpperArm_L", "GunArm_L");
-            AddPart("arm_R", "RIGHT ARM", 30f, byName, "UpperArm_R", "GunArm_R");
-            AddPart("leg_L", "LEFT LEG", 45f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 45f, byName, "Thigh_R", "Shin_R", "Foot_R");
-        }
         else
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
@@ -224,7 +209,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "ajax" || _riderId == "hermes")
+        if (_riderId == "ajax")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
