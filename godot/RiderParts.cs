@@ -177,22 +177,6 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
         }
-        else if (riderId == "thanatos")
-        {
-            // Dire Wolf miniature, cut at build time.
-            // Head = cockpit dome split.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 2.2f && p.Y >= 10.8f),
-            });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 70f, byName, "UpperArm_L", "GunArm_L");
-            AddPart("arm_R", "RIGHT ARM", 70f, byName, "UpperArm_R", "GunArm_R");
-            AddPart("leg_L", "LEFT LEG", 95f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 95f, byName, "Thigh_R", "Shin_R", "Foot_R");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Pod_L");
-        }
         else if (riderId == "hermes")
         {
             // Flea miniature, cut at build time (stride re-posed
@@ -240,7 +224,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "ajax" || _riderId == "thanatos" || _riderId == "hermes")
+        if (_riderId == "ajax" || _riderId == "hermes")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)

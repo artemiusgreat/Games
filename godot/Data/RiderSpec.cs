@@ -127,23 +127,6 @@ public static class RiderSpecs
 
 
 
-    // THANATOS (Dire Wolf / Daishi Prime, 100t Heavy): twin
-    // cannon pods for arms, an LRM rack on the left shoulder,
-    // PPCs in the torso. Digitigrade — knees bend backward.
-    public static readonly RiderSpec Thanatos = new()
-    {
-        Id = "thanatos", Name = "THANATOS", Tonnage = 100f, JumpCapable = false,
-        ModelPath = "res://assets/thanatos.fbx", PartsId = "thanatos", MaxHp = 340f,
-        Height = 13.5f, Radius = 2.4f, StepTime = 0.6f, StepThreshold = 1.7f, StepLift = 1.0f, Accel = 2.6f, MaxSpeed = 4.2f,
-        FlipKneePole = false,
-        Slots = new[]
-        {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
-        }
-    };
 
     // HERMES (Flea FLE-4, 20t Light): the speedster — all small
     // energy mounts, but the fastest legs in the roster.
@@ -161,7 +144,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Thanatos, Hermes };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Ajax, Hermes };
 
     public static RiderSpec ById(string id)
     {
@@ -277,31 +260,12 @@ public sealed class LoadoutState
         spec.Id == "hector" ? DefaultHector()
         : spec.Id == "prometheus" ? DefaultPrometheus()
         : spec.Id == "ajax" ? DefaultAjax()
-        : spec.Id == "thanatos" ? DefaultThanatos()
         : spec.Id == "hermes" ? DefaultHermes()
         : DefaultEnyo();
 
 
 
 
-    public static LoadoutState DefaultThanatos()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false;
-        // Every slot filled: 100t of 100t.
-        var th = RiderSpecs.Thanatos;
-        l.TryAssign(th, "arm_L", WeaponCatalog.HeavyCannon);
-        l.TryAssign(th, "arm_L", WeaponCatalog.Autocannon);          // 28/28t
-        l.TryAssign(th, "arm_R", WeaponCatalog.HeavyCannon);
-        l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);          // 28/28t
-        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
-        l.TryAssign(th, "torso", WeaponCatalog.Ppc);
-        l.TryAssign(th, "torso", WeaponCatalog.Ppc);
-        l.TryAssign(th, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(th, "torso", WeaponCatalog.SmallLaser);          // 24/24t
-        return l;
-    }
 
     public static LoadoutState DefaultHermes()
     {
