@@ -55,6 +55,13 @@ public static class FlowUi
         b.AddThemeStyleboxOverride("hover", ButtonBox(new Color(0.16f, 0.21f, 0.30f, 0.98f)));
         b.AddThemeStyleboxOverride("pressed", ButtonBox(new Color(0.23f, 0.19f, 0.08f, 0.98f)));
         b.AddThemeStyleboxOverride("disabled", ButtonBox(new Color(0.07f, 0.08f, 0.10f, 0.9f)));
+        // Keyboard focus must be VISIBLE: a gold frame, no fill.
+        var focus = ButtonBox(new Color(0, 0, 0, 0));
+        focus.DrawCenter = false;
+        focus.BorderColor = Gold;
+        focus.SetBorderWidthAll(3);
+        b.AddThemeStyleboxOverride("focus", focus);
+        b.AddThemeColorOverride("font_focus_color", Gold);
         return b;
     }
 
