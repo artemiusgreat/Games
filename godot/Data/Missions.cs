@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // Pure data — the duel reads WorldConfig.SelectedMission.
 public sealed class PlanetDef
 {
-    public string Name;         // "ARES PRIME"
+    public string Name;         // "Ares Prime"
     public string Subtitle;     // "Desert war world · Lyran Marches"
     public string Intel;        // orbital-screen info column
     public Color BaseColor;     // planet texture: deep ground
@@ -52,7 +52,7 @@ public static class MissionCatalog
     {
         var ares = new PlanetDef
         {
-            Name = "ARES PRIME",
+            Name = "Ares Prime",
             Subtitle = "Desert war world · Inner Marches",
             Intel = "Ares Prime changed hands four times in the last decade and the maps never caught up. " +
                     "House Asterion holds the northern forts; House Corvane raids out of the southern flats. " +
@@ -79,7 +79,7 @@ public static class MissionCatalog
 
         var thalassa = new PlanetDef
         {
-            Name = "THALASSA",
+            Name = "Thalassa",
             Subtitle = "Oceanic industrial world · Rimward Trade Lane",
             Intel = "Nine-tenths ocean, and the tenth that matters is refinery steel. Thalassa's platforms pump the " +
                     "fuel every House in the sector burns, which makes them worth raiding weekly. The Combine pays " +
@@ -106,7 +106,7 @@ public static class MissionCatalog
 
         var kryos = new PlanetDef
         {
-            Name = "KRYOS",
+            Name = "Kryos",
             Subtitle = "Ice world · The Far Reaches",
             Intel = "Kryos keeps what it kills: riders frozen mid-stride still stand in the passes from the first " +
                     "landings. The research stations here pay in hard currency and salvage rights, and the machine " +

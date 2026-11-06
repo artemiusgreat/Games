@@ -17,25 +17,25 @@ public partial class MapTypeScreen : Control
         root.AddThemeConstantOverride("separation", 18);
         center.AddChild(root);
 
-        root.AddChild(FlowUi.MakeLabel("THE AGE OF TITANS", 52, FlowUi.Gold, HorizontalAlignment.Center));
-        root.AddChild(FlowUi.MakeLabel("S E L E C T   G A M E   M O D E", 16, FlowUi.Dim, HorizontalAlignment.Center));
+        root.AddChild(FlowUi.MakeLabel("The Age of Titans", 52, FlowUi.Gold, HorizontalAlignment.Center));
+        root.AddChild(FlowUi.MakeLabel("Select game mode", 16, FlowUi.Dim, HorizontalAlignment.Center));
 
         var cards = new HBoxContainer();
         cards.AddThemeConstantOverride("separation", 22);
         cards.Alignment = BoxContainer.AlignmentMode.Center;
         root.AddChild(cards);
         cards.AddChild(Card(
-            "TOURNAMENT",
+            "Tournament",
             "Arena duel on a compact battlefield. Three riders enter — one leaves. " +
             "The classic test of machine and pilot, fought around the mesa under tournament rules.",
-            "MAP 260u  ·  RIDERS 3  ·  FREE-FOR-ALL",
-            "ENTER THE ARENA", () => OnTournament?.Invoke()));
+            "Map 260u · Riders 3 · Free-for-all",
+            "Select map", () => OnTournament?.Invoke()));
         cards.AddChild(Card(
-            "MISSION",
+            "Mission",
             "Planetary operations on a full-scale front. Pick a world in orbit, sign a " +
             "contract in the bar, then deploy from your base and march on the enemy.",
-            "MAP 1900u  ·  BASES 3  ·  CONTRACTS 9",
-            "FIND A CONTRACT", () => OnMission?.Invoke()));
+            "Map 1900u · Bases 3 · Contracts 9",
+            "Find a contract", () => OnMission?.Invoke()));
 
         root.AddChild(FlowUi.MakeLabel("More modes will follow.", 12, FlowUi.Dim, HorizontalAlignment.Center));
     }
