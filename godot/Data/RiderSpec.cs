@@ -30,7 +30,13 @@ public sealed class RiderSpec
     public float Height;        // hit-capsule height
     public float Radius;        // collision / hit capsule radius
     public float StepTime, StepThreshold, StepLift, Accel;
-    public float MaxSpeed;      // chassis top speed (walk) in either seat
+    public float BaseSpeed;     // chassis walk speed before the weight-class factor
+    // Weight-class speed (owner, 2026-11-06): a MEDIUM rider moves at
+    // the chassis' defined speed, a LIGHT rider faster, a HEAVY rider
+    // slower. MaxSpeed is the effective walk speed every movement
+    // reader uses; class thresholds match ClassLabel.
+    public float ClassSpeedFactor => Tonnage < 40f ? 1.30f : Tonnage < 60f ? 1.00f : 0.75f;
+    public float MaxSpeed => BaseSpeed * ClassSpeedFactor;
     public bool FlipKneePole;   // plantigrade: knees bend forward
 
     public SlotDef Slot(string id)
@@ -52,7 +58,7 @@ public static class RiderSpecs
     {
         Id = "enyo", Name = "ENYO", Tonnage = 75f, JumpCapable = true,
         ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
-        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, MaxSpeed = 4.2f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -67,7 +73,7 @@ public static class RiderSpecs
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
         ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
-        Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, MaxSpeed = 4.2f,
+        Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 4.2f,
         FlipKneePole = true,
         // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
         // heavier riders get MORE hardpoints, not just fatter ones —
@@ -93,7 +99,7 @@ public static class RiderSpecs
     {
         Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = true,
         ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
-        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, MaxSpeed = 4.2f,
+        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, BaseSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -113,7 +119,7 @@ public static class RiderSpecs
     {
         Id = "medea", Name = "MEDEA", Tonnage = 85f, JumpCapable = false,
         ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 290f,
-        Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
+        Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -137,7 +143,7 @@ public static class RiderSpecs
     {
         Id = "demeter", Name = "DEMETER", Tonnage = 100f, JumpCapable = false,
         ModelPath = "res://assets/demeter.fbx", PartsId = "demeter", MaxHp = 340f,
-        Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
+        Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -157,7 +163,7 @@ public static class RiderSpecs
     {
         Id = "theseus", Name = "THESEUS", Tonnage = 95f, JumpCapable = false,
         ModelPath = "res://assets/theseus.fbx", PartsId = "theseus", MaxHp = 320f,
-        Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, MaxSpeed = 4.2f,
+        Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 4.2f,
         FlipKneePole = false,
         Slots = new[]
         {
