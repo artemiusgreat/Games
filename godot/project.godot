@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="GodotPoc"
-run/main_scene="res://photo/PhotoDuel.tscn"
+run/main_scene="res://Flow/Flow.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [dotnet]

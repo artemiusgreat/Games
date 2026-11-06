@@ -2252,6 +2252,61 @@ public partial class RiderDuel
         return found;
     }
 
+    private int _mPhase;
+    private float _mPhaseT, _mDistE0, _mDistF0;
+    private Vector3 _mEnemyStart, _mFoe1Start;
+
+    // Mission front smoke: world facts (size, pad plateau flatness,
+    // base buildings), base + vista captures, then 50 s of AI march
+    // — both foes must close real distance toward their targets.
+    private void UpdateMissionTest(float dt)
+    {
+        _mPhaseT += dt;
+        if (_mPhase == 0 && _mPhaseT > 1.2f)
+        {
+            GD.Print($"MISSION WORLD size={Main.TerrainSize} segs={Main.TerrainSegs} bound={WorldConfig.WorldBound}");
+            for (int i = 0; i < Main.SpawnPads.Length; i++)
+            {
+                var pad = Main.SpawnPads[i];
+                float hc = Main.HeightAt(pad.X, pad.Y);
+                float dev = 0f;
+                for (int k = 0; k < 16; k++)
+                {
+                    float a = k / 16f * Mathf.Tau;
+                    dev = Mathf.Max(dev, Mathf.Abs(Main.HeightAt(pad.X + Mathf.Cos(a) * 20f, pad.Y + Mathf.Sin(a) * 20f) - hc));
+                }
+                GD.Print($"MISSION BASE {i} pad=({pad.X:F0},{pad.Y:F0}) h={hc:F2} maxDevR20={dev:F3}");
+                if (dev > 0.05f) { GD.PrintErr("MISSION FAIL: base plateau not flat"); GetTree().Quit(1); return; }
+            }
+            GD.Print($"MISSION BUILDINGS pts={_buildingPts.Count} (expect 19: 4 arena + 15 base)");
+            _mDistE0 = _enemy.RootPos.DistanceTo(_player.RootPos);
+            _mDistF0 = _foe1 != null ? _foe1.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
+            _mEnemyStart = _enemy.RootPos; _mFoe1Start = _foe1?.Walker.RootPos ?? Vector3.Zero;
+            GD.Print($"MISSION MARCH start: enemy distToPlayer={_mDistE0:F0} foe1 distToPlayer={_mDistF0:F0}");
+            QueueCapture("res://proof/mission_base.png", "mbase", "missionBase", () =>
+            QueueCapture("res://proof/mission_vista.png", "mvista", "missionVista", () =>
+            { _mPhase = 1; _mPhaseT = 0f; }));
+            _mPhase = 99;
+        }
+        else if (_mPhase == 1)
+        {
+            _player.SetDrive(_playerYaw, 0f); // hold position; the foes must come to us
+            UpdateEnemyAI(dt);                 // test branches drive the AI themselves (cf. FFA test)
+            if (_foe1 != null) UpdateFoe1AI(dt);
+            if (_mPhaseT > 25f)
+            {
+                float dE = _enemy.RootPos.DistanceTo(_player.RootPos);
+                float dispE = _enemy.RootPos.DistanceTo(_mEnemyStart);
+                float dispF = _foe1 != null ? _foe1.Walker.RootPos.DistanceTo(_mFoe1Start) : 0f;
+                GD.Print($"MISSION MARCH end: enemy displaced={dispE:F0}u distToPlayer {_mDistE0:F0}->{dE:F0}; foe1 displaced={dispF:F0}u");
+                if (dispE < 35f) { GD.PrintErr("MISSION FAIL: enemy did not march"); GetTree().Quit(1); return; }
+                GD.Print("MISSION TEST DONE");
+                GetTree().Quit(0);
+            }
+        }
+        if (_mPhaseT > 90f && _mPhase != 99) { GD.PrintErr("MISSION FAIL: timeout"); GetTree().Quit(1); }
+    }
+
     private void UpdateTerrainTest(float dt)
     {
         _tPhaseT += dt;

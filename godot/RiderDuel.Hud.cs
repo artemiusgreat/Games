@@ -14,8 +14,25 @@ public partial class RiderDuel
         return l;
     }
 
+    // Mission fronts: objective markers for the three bases (the
+    // 90u radar cannot navigate a 1900u map). Screen-projected,
+    // clamped to the viewport edge when off-screen.
+    private Label[] _baseMarks;
+
     private void BuildHud(CanvasLayer layer)
     {
+        if (WorldConfig.IsMission)
+        {
+            _baseMarks = new Label[Main.SpawnPads.Length];
+            for (int i = 0; i < _baseMarks.Length; i++)
+            {
+                var l = MakeLabel(13, i == 0 ? new Color(0.55f, 0.95f, 0.6f) : new Color(1f, 0.55f, 0.45f));
+                l.Visible = false;
+                l.MouseFilter = Control.MouseFilterEnum.Ignore;
+                layer.AddChild(l);
+                _baseMarks[i] = l;
+            }
+        }
         // ---- Cockpit control panel: one console strip along the bottom
         // holding rider integrity, per-part status, weapon charge with the
         // selected weapon marked, and target/system readouts.
@@ -206,9 +223,39 @@ public partial class RiderDuel
             lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
     }
 
+    private void UpdateBaseMarks()
+    {
+        if (_baseMarks == null) return;
+        bool show = _panel.Visible && !_labOpen && _cam != null;
+        var vp = GetViewport().GetVisibleRect().Size;
+        for (int i = 0; i < _baseMarks.Length; i++)
+        {
+            var l = _baseMarks[i];
+            var pad = Main.SpawnPads[i];
+            var world = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y) + 20f, pad.Y);
+            float dist = _player.RootPos.DistanceTo(world);
+            if (!show || dist < 45f) { l.Visible = false; continue; }
+            Vector2 sp;
+            if (_cam.IsPositionBehind(world))
+            {
+                // Mirror through the screen center, then clamp to the edge.
+                var fwd = -_cam.GlobalTransform.Basis.Z;
+                var to = (world - _cam.GlobalPosition).Normalized();
+                float side = Mathf.Sign(to.Dot(_cam.GlobalTransform.Basis.X));
+                sp = new Vector2(vp.X * (0.5f + 0.46f * side), vp.Y * 0.92f);
+            }
+            else sp = _cam.UnprojectPosition(world);
+            sp = new Vector2(Mathf.Clamp(sp.X, 70f, vp.X - 190f), Mathf.Clamp(sp.Y, 30f, vp.Y - 210f));
+            l.Position = sp - new Vector2(60f, 10f);
+            l.Text = i == 0 ? $"◆ HOME BASE · {dist:F0} u" : $"◆ ENEMY BASE · {dist:F0} u";
+            l.Visible = true;
+        }
+    }
+
     private void UpdateHud()
     {
         if (_barPlayer == null) return;
+        UpdateBaseMarks();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
         _lblPlayerHp.Text = $"{_playerSpec.Name} — {_hpPlayer:F0} HP";
         _barEnemy.Visible = !_enemyDead;

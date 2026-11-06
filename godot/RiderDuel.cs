@@ -29,9 +29,15 @@ public partial class RiderDuel : Node3D
 {
     private const float EnemyMaxSpeed = 2.2f; // AI tactical pace cap; the chassis cap is RiderSpec.MaxSpeed
     private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
+    // Mission fronts: beyond engagement range the AI MARCHES at full
+    // chassis speed toward its target instead of creeping at the
+    // tactical cap — a 1000u approach at 2.2 u/s would take 8 minutes.
+    private float PaceFor(RiderSpec spec, float distToTarget) =>
+        WorldConfig.IsMission && distToTarget > 130f ? spec.MaxSpeed
+        : Mathf.Min(spec.MaxSpeed, EnemyMaxSpeed);
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 0.85f;
-    private const float WorldBound = 115f; // heightfield world is 260 wide
+    private static float WorldBound => WorldConfig.WorldBound; // arena 115 (260 world); Mission front 915 (1900 world)
 
     private RiderWalker _player;
     private RiderWalker _enemy;
@@ -140,6 +146,7 @@ public partial class RiderDuel : Node3D
     private Foe _foe1;
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private bool _ffaTest; // --ffa-test: staged three-way AI probe
+    private bool _missionTest; // --mission-test: Mission front smoke (world facts, base/vista captures, AI march)
     private int _foe1Shots;
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
     private bool _viewShot; // --view-shot: hilltop view-pitch proof frames
@@ -264,6 +271,8 @@ public partial class RiderDuel : Node3D
         foreach (var arg in OS.GetCmdlineUserArgs())
         {
             if (arg == "--duel-test") _test = true;
+            if (arg == "--mission") WorldConfig.Mode = WorldConfig.MapMode.Mission; // must land before BuildTerrain below
+            if (arg == "--mission-test") { _missionTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--weapons-test") _weaponsTest = true;
             if (arg == "--breakable-test") _breakTest = true;
             if (arg == "--terrain-test") _terrainTest = true;
@@ -337,7 +346,7 @@ public partial class RiderDuel : Node3D
                 TonemapMode = Environment.ToneMapper.Aces,
                 FogEnabled = true,
                 FogLightColor = new Color(0.63f, 0.73f, 0.84f),
-                FogDensity = 0.0011f,
+                FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0011f,
                 FogSunScatter = 0.25f
             };
         if (_photo) PhotoEnv.Tune(duelEnv, sun);
@@ -361,6 +370,7 @@ public partial class RiderDuel : Node3D
         AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(12f, 13f, 12f));
         AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
         AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
+        if (WorldConfig.IsMission) BuildBases();
         ScatterNature();
         if (_photo)
         {
@@ -415,7 +425,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_missionTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -825,6 +835,7 @@ public partial class RiderDuel : Node3D
             else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
+            else if (_missionTest) UpdateMissionTest(dt);
             else if (_breakTest) UpdateBreakTest(dt);
             else if (_weaponsTest) UpdateWeaponsTest(dt);
             else if (_terrainTest) UpdateTerrainTest(dt);

@@ -2,16 +2,16 @@ using Godot;
 
 public partial class Main : Node3D
 {
-	public const int TerrainSize = 260; // world units, square (was 170 — bigger map, owner 2026-10-31)
-	public const int TerrainSegs = 384; // mesh segments per side == heightfield cells
+	// World size comes from the front-end flow (WorldConfig): the
+	// 260u Tournament arena, or the 1900u Mission front.
+	public static int TerrainSize => WorldConfig.WorldSize;
+	public static int TerrainSegs => WorldConfig.TerrainSegs;
 
-	// The three spawn pads, 120° apart at r=80 (pairwise ~139u —
-	// far beyond first-sight range). RawHeight flattens the
-	// ground at each pad. Index 0 is the player's.
-	public static readonly Vector2[] SpawnPads =
-	{
-		new(0f, 80f), new(-69.3f, -40f), new(69.3f, -40f)
-	};
+	// The three spawn pads / Mission bases, 120 degrees apart.
+	// Tournament: r=80 (pairwise ~139u — far beyond first-sight
+	// range). Mission: the base triangle at r=620 (~1075u apart).
+	// RawHeight flattens the ground at each. Index 0 is the player's.
+	public static Vector2[] SpawnPads => WorldConfig.Pads;
 
 	// ---- Heightfield terrain (roadmap step 4) ----
 	// The world is ONE heightfield grid, generated once from a seeded
@@ -22,9 +22,13 @@ public partial class Main : Node3D
 	// the NW; a shallow valley in the SE; mountain ring at the edges.
 	// Amplitude is modulated by radius so the central arena (r < ~36)
 	// keeps gentle duel-playable slopes while the rim rises properly.
-	private const int GridN = TerrainSegs + 1; // 257 sample points per side
+	private static int GridN => TerrainSegs + 1; // sample points per side
 	private const uint NoiseSeed = 20261027u;
-	private static readonly float[] Grid = BuildGrid();
+	// Built lazily on first use: the flow sets WorldConfig.Mode
+	// before the duel scene loads, and whichever mode is current
+	// at first access is the world this process runs.
+	private static float[] _grid;
+	private static float[] Grid => _grid ??= BuildGrid();
 
 	private static float LatticeHash(int ix, int iz)
 	{
@@ -99,15 +103,19 @@ public partial class Main : Node3D
 		float h = BaseHeight(x, z);
 		// Flatten each spawn pad toward its own center height, so
 		// a rider starts on level ground in its hollow.
+		float flatR = WorldConfig.PadFlattenRadius;
 		foreach (var pad in SpawnPads)
 		{
 			float d = new Vector2(x, z).DistanceTo(pad);
-			if (d < 18f)
+			if (d < flatR)
 			{
-				// Pads sit LOW (at most 3u) whatever the local
+				// Arena pads sit LOW (at most 3u) whatever the local
 				// relief says — the hollows the dome math assumes.
-				float padH = Mathf.Min(BaseHeight(pad.X, pad.Y), 3f);
-				h = Mathf.Lerp(h, padH, Smooth(18f, 8f, d));
+				// Mission bases flatten to their own plateau height.
+				float padH = WorldConfig.IsMission
+					? BaseHeight(pad.X, pad.Y)
+					: Mathf.Min(BaseHeight(pad.X, pad.Y), 3f);
+				h = Mathf.Lerp(h, padH, Smooth(flatR, flatR * 0.44f, d));
 			}
 		}
 		return h;
@@ -118,6 +126,11 @@ public partial class Main : Node3D
 		float r = Mathf.Sqrt(x * x + z * z);
 		// Rolling hills, the base relief everywhere.
 		float hills = Fbm(x / 58f, z / 58f, 5) * 6.5f;
+		// Mission fronts get broad macro swells under the detail
+		// noise, so a 1900u crossing has real country in it. Damped
+		// near the center so the mesa keeps its clean plateau.
+		if (WorldConfig.IsMission)
+			hills += Fbm(x / 420f + 7f, z / 420f - 3f, 4) * 26f * Smooth(120f, 300f, r);
 		// Craggy ridge line through the NW quadrant.
 		float dRidge = DistToSegment(x, z, -88f, -28f, -24f, -88f);
 		float crag = 1f - Mathf.Abs(Fbm(x / 21f + 40f, z / 21f - 17f, 3));
@@ -127,11 +140,13 @@ public partial class Main : Node3D
 		float valley = -3.6f * Mathf.Exp(-(dVal * dVal) / (2f * 13f * 13f));
 		// Mountain ring bounding the map (square falloff follows the rim).
 		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-		float m = Smooth(88f, 128f, sq);
+		float half = TerrainSize / 2f;
+		float m = Smooth(half - 42f, half - 2f, sq);
 		float mtn = m * (9f + 7f * (Fbm(x / 37f - 9f, z / 37f + 23f, 4) * 0.5f + 0.5f));
 		float full = hills + ridge + valley + mtn;
 		// Arena modulation: 22% amplitude at the center, full by r=94.
-		float t = Smooth(54f, 94f, r);
+		// The Mission front keeps full amplitude everywhere.
+		float t = WorldConfig.IsMission ? 1f : Smooth(54f, 94f, r);
 		return full * (0.22f + 0.78f * t) + DomeHeight(x, z);
 	}
 
@@ -196,12 +211,22 @@ public partial class Main : Node3D
 		return new Vector3(-dhdx, 1f, -dhdz).Normalized();
 	}
 
-	// Roads (terrain-detail ask): two strips crossing at (-14, 6) — an
-	// east-west road along z = 6 and a north-south road along x = -14.
-	// Pure coloring: HeightAt is untouched, so gait, hit tests and
-	// collisions never notice them. Distance is to the nearer centerline.
+	// Roads: pure coloring — HeightAt is untouched, so gait, hit
+	// tests and collisions never notice them. Distance is to the
+	// nearer centerline. The arena has two strips crossing at
+	// (-14, 6); the Mission front gets dirt roads along the three
+	// base-to-base legs, so the march between bases has a line to
+	// follow.
 	public static float RoadDistance(float x, float z)
 	{
+		if (WorldConfig.IsMission)
+		{
+			var p = WorldConfig.Pads;
+			float d = DistToSegment(x, z, p[0].X, p[0].Y, p[1].X, p[1].Y);
+			d = Mathf.Min(d, DistToSegment(x, z, p[1].X, p[1].Y, p[2].X, p[2].Y));
+			d = Mathf.Min(d, DistToSegment(x, z, p[2].X, p[2].Y, p[0].X, p[0].Y));
+			return d;
+		}
 		return Mathf.Min(Mathf.Abs(z - 6f), Mathf.Abs(x + 14f));
 	}
 
