@@ -44,7 +44,21 @@ public partial class RiderDuel
 
     private void UpdateCamera(float delta)
     {
-        if (_camMode == "enemyFront")
+        if (_camMode == "missionBase")
+        {
+            var pad = Main.SpawnPads[0];
+            var c = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y), pad.Y);
+            _cam.GlobalPosition = c + new Vector3(46f, 17f, 46f);
+            _cam.LookAt(c + new Vector3(0f, 7f, 0f), Vector3.Up);
+        }
+        else if (_camMode == "missionVista")
+        {
+            var pad = Main.SpawnPads[0];
+            float gy = Main.HeightAt(pad.X, pad.Y);
+            _cam.GlobalPosition = new Vector3(pad.X + 30f, gy + 60f, pad.Y + 95f);
+            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 240f) + 16f, 240f), Vector3.Up);
+        }
+        else if (_camMode == "enemyFront")
         {
             // In front of the enemy, on its line of advance: the
             // frontal view (knee stance reads here, not from the side).
