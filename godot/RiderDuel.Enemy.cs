@@ -61,7 +61,8 @@ public partial class RiderDuel
     {
         var (target, _, _) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, delta);
         _foe0TargetW = target;
-        UpdateFoeMovement(_enemy, _partsEnemy, EnemyPace,
+        float pace0 = target != null ? PaceFor(_enemySpec, _enemy.RootPos.DistanceTo(target.RootPos)) : EnemyPace;
+        UpdateFoeMovement(_enemy, _partsEnemy, pace0,
             ref _enemyYaw, ref _orbitDir, ref _orbitTimer, target, delta);
     }
 
@@ -70,7 +71,8 @@ public partial class RiderDuel
         if (_foe1.Dead) { _foe1.Walker.SetDrive(_foe1.Yaw, 0f); return; }
         var (target, _, _) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, delta);
         _foe1TargetW = target;
-        float pace = Mathf.Min(_foe1.Spec.MaxSpeed, EnemyMaxSpeed);
+        float pace = target != null ? PaceFor(_foe1.Spec, _foe1.Walker.RootPos.DistanceTo(target.RootPos))
+            : Mathf.Min(_foe1.Spec.MaxSpeed, EnemyMaxSpeed);
         UpdateFoeMovement(_foe1.Walker, _foe1.Parts, pace,
             ref _foe1.Yaw, ref _foe1.OrbitDir, ref _foe1.OrbitTimer, target, delta);
     }

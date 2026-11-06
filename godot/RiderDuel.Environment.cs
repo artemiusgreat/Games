@@ -131,6 +131,51 @@ public partial class RiderDuel
         AddChild(mi);
     }
 
+    // Mission scatter: groves and rock fields cluster around the
+    // bases (cover where fights happen) with sparse wild growth
+    // across the front, so the open country still reads empty.
+    private void ScatterNatureMission()
+    {
+        var rng = new System.Random(0x5EED);
+        var zones = new System.Collections.Generic.List<(Vector2 C, float R, int Trees, int Rocks)>();
+        foreach (var pad in Main.SpawnPads) zones.Add((pad, 250f, 12, 7));
+        zones.Add((Vector2.Zero, 700f, 26, 18)); // wild, centered
+        foreach (var (c, rad, treeN, rockN) in zones)
+        {
+            int trees = 0, tries = 0;
+            while (trees < treeN && tries++ < 600)
+            {
+                float ang = (float)rng.NextDouble() * Mathf.Tau;
+                float rr = 42f + (rad - 42f) * Mathf.Sqrt((float)rng.NextDouble());
+                var p = c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
+                if (Mathf.Abs(p.X) > 880f || Mathf.Abs(p.Y) > 880f) continue;
+                float sc = 0.85f + (float)rng.NextDouble() * 0.75f;
+                if (!ScatterFree(p, 0.7f * sc + 0.6f)) continue;
+                if (TerrainGrade(p.X, p.Y) > 0.5f) continue;
+                if (Main.HeightAt(p.X, p.Y) > 12.5f) continue;
+                AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
+                trees++;
+            }
+            int rocks = 0; tries = 0;
+            while (rocks < rockN && tries++ < 600)
+            {
+                float ang = (float)rng.NextDouble() * Mathf.Tau;
+                float rr = 40f + (rad - 40f) * Mathf.Sqrt((float)rng.NextDouble());
+                var p = c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
+                if (Mathf.Abs(p.X) > 880f || Mathf.Abs(p.Y) > 880f) continue;
+                var scl = new Vector3(
+                    1.2f + (float)rng.NextDouble() * 2.0f,
+                    0.8f + (float)rng.NextDouble() * 1.3f,
+                    1.2f + (float)rng.NextDouble() * 2.0f);
+                scl.Y *= 0.62f;
+                if (!ScatterFree(p, Mathf.Max(scl.X, scl.Z))) continue;
+                if (Main.HeightAt(p.X, p.Y) > 21f) continue;
+                AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
+                rocks++;
+            }
+        }
+    }
+
     private void AddTree(Vector3 pos) => AddTreeV(pos, 0, 1f, 0f);
 
     // Tree varieties: 0 classic, 1 pine, 2 broadleaf. Detail pass
@@ -369,6 +414,7 @@ public partial class RiderDuel
     // ground.
     private void ScatterNature()
     {
+        if (WorldConfig.IsMission) { ScatterNatureMission(); return; }
         var rng = new System.Random(0x5EED);
         int trees = 0, tries = 0;
         while (trees < 33 && tries++ < 900)
@@ -547,6 +593,37 @@ public partial class RiderDuel
         // Godot front faces are clockwise from outside (the same
         // convention the terrain fix established): BL -> TR -> BR.
         idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
+    }
+
+    // Mission fronts: a base cluster on each flattened plateau —
+    // four structures and a comms mast around the spawn court, so
+    // every base reads as a place from across the map and fights
+    // like the arena's building blocks (same HP, roofs, colliders).
+    private void BuildBases()
+    {
+        var offs = new[]
+        {
+            new Vector2(34f, 12f), new Vector2(-30f, 26f),
+            new Vector2(14f, -36f), new Vector2(-34f, -20f)
+        };
+        var sizes = new[]
+        {
+            new Vector3(14f, 12f, 12f), new Vector3(11f, 15f, 11f),
+            new Vector3(15f, 11f, 10f), new Vector3(10f, 16f, 10f)
+        };
+        for (int b = 0; b < Main.SpawnPads.Length; b++)
+        {
+            var pad = Main.SpawnPads[b];
+            float rot = b * 2.1f; // vary the layout per base
+            for (int i = 0; i < offs.Length; i++)
+            {
+                var o = offs[i].Rotated(rot);
+                AddBuilding(new Vector3(pad.X + o.X, 0f, pad.Y + o.Y), sizes[i]);
+            }
+            var m = new Vector2(22f, -26f).Rotated(rot);
+            AddBuilding(new Vector3(pad.X + m.X, 0f, pad.Y + m.Y), new Vector3(3f, 27f, 3f)); // comms mast
+        }
+        GD.Print("MISSION bases built at the three plateaus");
     }
 
     private void AddBuilding(Vector3 pos, Vector3 size)

@@ -76,7 +76,7 @@ uniform sampler2D asph_arm : repeat_enable;
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-    vec4 sp = texture(splat, wpos.xz / 260.0 + 0.5);
+    vec4 sp = texture(splat, wpos.xz / WORLD_SIZE + 0.5);
     float tot = max(sp.r + sp.g + sp.b + sp.a, 0.001);
     float wr = sp.r / tot, wg = sp.g / tot, wb = sp.b / tot, wa = sp.a / tot;
     vec2 uv1 = wpos.xz * 0.055;
@@ -154,7 +154,8 @@ void fragment() {
 
     public static Material TerrainMaterial()
     {
-        var sh = new Shader { Code = TerrainShader };
+        var sh = new Shader { Code = TerrainShader.Replace("WORLD_SIZE",
+            Main.TerrainSize.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)) };
         var m = new ShaderMaterial { Shader = sh };
         m.SetShaderParameter("splat", BuildSplat());
         m.SetShaderParameter("grass_diff", Tex("leafy_grass", "diff"));
@@ -341,7 +342,9 @@ void fragment() {
 
     public static void AddBackdrop(Node3D parent)
     {
-        // Apron closing the horizon under the arena rim.
+        bool mission = WorldConfig.IsMission;
+        float bs = Main.TerrainSize / 260f; // backdrop scale vs the arena
+        // Apron closing the horizon under the rim.
         var apronMat = new StandardMaterial3D
         {
             AlbedoTexture = Tex("leafy_grass", "diff"),
@@ -351,7 +354,7 @@ void fragment() {
         };
         var apron = new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(1700f, 1700f) },
+            Mesh = new PlaneMesh { Size = new Vector2(1700f * bs, 1700f * bs) },
             MaterialOverride = apronMat,
             Position = new Vector3(0f, -3.2f, 0f),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
@@ -373,8 +376,8 @@ void fragment() {
         for (int i = 0; i < 12; i++)
         {
             float a = i / 12f * Mathf.Tau + rng.RandfRange(-0.14f, 0.14f);
-            float dist = rng.RandfRange(330f, 520f);
-            float h = rng.RandfRange(38f, 95f);
+            float dist = rng.RandfRange(330f, 520f) * (mission ? bs * 0.55f : 1f);
+            float h = rng.RandfRange(38f, 95f) * (mission ? 2.1f : 1f);
             float r = h * rng.RandfRange(1.15f, 1.7f);
             var cone = new MeshInstance3D
             {
@@ -392,12 +395,15 @@ void fragment() {
         }
 
         // Forest edge: scanned trees ringing the arena, visual only.
+        // On the Mission front they ring the rim instead (visual).
         for (int i = 0; i < 44; i++)
         {
             float a = rng.RandfRange(0f, Mathf.Tau);
-            float dist = rng.RandfRange(98f, 165f);
+            float half = Main.TerrainSize / 2f;
+            float dist = mission ? rng.RandfRange(half + 18f, half + 95f) : rng.RandfRange(98f, 165f);
             var pos = new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist);
-            pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -84f, 84f), Mathf.Clamp(pos.Z, -84f, 84f)) - 0.3f;
+            float cl = mission ? half - 4f : 84f;
+            pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -cl, cl), Mathf.Clamp(pos.Z, -cl, cl)) - 0.3f;
             var holder = new Node3D { Position = pos };
             AddTreeModel(holder, rng.RandiRange(0, 2), rng);
             holder.Scale = Vector3.One * rng.RandfRange(1.15f, 1.6f);
@@ -415,13 +421,13 @@ void fragment() {
         // occlusion; convergence cost is spread thinner, which
         // flattens frame times. Quality at arena scale is unchanged
         // in practice — 4 cascades cover 170u comfortably.
-        env.SdfgiCascades = 4;
+        env.SdfgiCascades = WorldConfig.IsMission ? 6 : 4;
         env.SdfgiUseOcclusion = true;
         env.SdfgiMinCellSize = 0.35f;
         env.SsaoEnabled = true;
         env.VolumetricFogEnabled = true;
-        env.VolumetricFogDensity = 0.0022f; // probe run 1 white-out: volumetric density is its own dial, and the default buried the scene
-        env.FogDensity = 0.0016f; // distance haze like the reference shot
+        env.VolumetricFogDensity = WorldConfig.IsMission ? 0.00075f : 0.0022f; // probe run 1 white-out: volumetric density is its own dial, and the default buried the scene
+        env.FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0016f; // distance haze; the Mission front hazes out near ~1200u
         env.GlowEnabled = true;
         env.GlowIntensity = 0.15f;
         env.GlowStrength = 0.7f;
@@ -442,7 +448,7 @@ void fragment() {
         env.AdjustmentContrast = 1.08f;
         env.AdjustmentSaturation = 1.05f;
         sun.LightEnergy = 1.45f;
-        sun.DirectionalShadowMaxDistance = 520f;
+        sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? 900f : 520f;
         GD.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }
 }
