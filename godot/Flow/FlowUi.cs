@@ -80,6 +80,54 @@ public static class FlowUi
         return l;
     }
 
+    // A desk-monitor look for description text: a heavy bezel
+    // around a dark green-black screen, so the player reads the
+    // planet (or the contract) off a computer, not a panel.
+    public static StyleBoxFlat MonitorBezel()
+    {
+        var sb = new StyleBoxFlat
+        {
+            BgColor = new Color(0.05f, 0.06f, 0.075f, 0.98f),
+            BorderColor = new Color(0.30f, 0.33f, 0.38f),
+            ContentMarginLeft = 8, ContentMarginRight = 8,
+            ContentMarginTop = 8, ContentMarginBottom = 8
+        };
+        sb.SetBorderWidthAll(3);
+        sb.SetCornerRadiusAll(10);
+        return sb;
+    }
+
+    public static StyleBoxFlat MonitorScreen()
+    {
+        var sb = new StyleBoxFlat
+        {
+            BgColor = new Color(0.010f, 0.032f, 0.026f, 1f),
+            BorderColor = new Color(0.10f, 0.24f, 0.19f),
+            ContentMarginLeft = 10, ContentMarginRight = 10,
+            ContentMarginTop = 8, ContentMarginBottom = 8
+        };
+        sb.SetBorderWidthAll(1);
+        sb.SetCornerRadiusAll(4);
+        return sb;
+    }
+
+    public static readonly Color ScreenInk = new(0.84f, 0.96f, 0.89f);
+
+    // CRT dressing for the monitor screens: faint green scanlines
+    // and a soft glow at the top, drawn as an overlay texture.
+    public static ImageTexture ScanlineTexture(int w = 256, int h = 256)
+    {
+        var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
+        for (int j = 0; j < h; j++)
+        for (int i = 0; i < w; i++)
+        {
+            float a = (j % 3 == 2) ? 0.13f : 0f;
+            float glow = 0.05f * (1f - j / (float)h);
+            img.SetPixel(i, j, new Color(0.4f, 1f, 0.8f, a + glow * 0.35f));
+        }
+        return ImageTexture.CreateFromImage(img);
+    }
+
     public static string ThreatPips(int threat)
     {
         var sb = new System.Text.StringBuilder();
