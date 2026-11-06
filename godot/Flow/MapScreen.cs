@@ -17,6 +17,7 @@ public partial class MapScreen : Control
     public FlowMain Flow;
 
     private Label _nameLabel, _subLabel, _descLabel, _contractName, _contractBody;
+    private ScrollContainer _descScroll, _contractScroll;
     private TextureRect _disc;
     private Control _discHolder;
     private readonly System.Collections.Generic.List<Button> _markers = new();
@@ -63,15 +64,15 @@ public partial class MapScreen : Control
         root.AddChild(menu);
         if (IsMission)
         {
-            var toBar = FlowUi.MakeButton("Bar", 14);
-            toBar.Pressed += () => Flow.GoBar();
-            menu.AddChild(toBar);
-            var toLab = FlowUi.MakeButton("Command center", 14);
-            toLab.Pressed += () => Flow.EnterLab(fromPlanet: true);
-            menu.AddChild(toLab);
             var back = FlowUi.MakeButton("Back", 14);
             back.Pressed += () => Flow.GoMapType();
             menu.AddChild(back);
+            var toLab = FlowUi.MakeButton("Command center", 14);
+            toLab.Pressed += () => Flow.EnterLab(fromPlanet: true);
+            menu.AddChild(toLab);
+            var toBar = FlowUi.MakeButton("Bar", 14);
+            toBar.Pressed += () => Flow.GoBar();
+            menu.AddChild(toBar);
         }
         else
         {
@@ -108,9 +109,11 @@ public partial class MapScreen : Control
             SizeFlagsStretchRatio = 1.25f,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
+        _descScroll = descScroll;
         _descLabel = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
-        _descLabel.CustomMinimumSize = new Vector2(392f, 0f);
+        _descLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         descScroll.AddChild(_descLabel);
+        descScroll.Resized += () => FitTextWidth(descScroll, _descLabel);
         var descMonitor = Monitor(descScroll);
         descMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
         sv.AddChild(descMonitor);
@@ -128,9 +131,11 @@ public partial class MapScreen : Control
                 SizeFlagsStretchRatio = 0.8f,
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
             };
+            _contractScroll = contractScroll;
             _contractBody = FlowUi.MakeLabel("", 12, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
-            _contractBody.CustomMinimumSize = new Vector2(392f, 0f);
+            _contractBody.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             contractScroll.AddChild(_contractBody);
+            contractScroll.Resized += () => FitTextWidth(contractScroll, _contractBody);
             var contractMonitor = Monitor(contractScroll);
             contractMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
             sv.AddChild(contractMonitor);
@@ -157,6 +162,16 @@ public partial class MapScreen : Control
 
         Refresh();
         CallDeferred("Refresh"); // again once real layout sizes exist
+    }
+
+    // Keep a monitor label exactly as wide as its scroll viewport
+    // (minus the scrollbar), so the text reflows to the full screen
+    // width whenever the window or the layout changes size.
+    private static void FitTextWidth(ScrollContainer scroll, Label label)
+    {
+        if (scroll == null || label == null) return;
+        float w = scroll.Size.X - 14f;
+        if (w > 40f) label.CustomMinimumSize = new Vector2(w, label.CustomMinimumSize.Y);
     }
 
     private HBoxContainer Selector(out Label name, int fontSize, System.Action<int> step)
