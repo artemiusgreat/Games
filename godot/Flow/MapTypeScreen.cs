@@ -9,16 +9,13 @@ public partial class MapTypeScreen : Control
 
     public override void _Ready()
     {
-        SetAnchorsPreset(LayoutPreset.FullRect);
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(center);
         var root = new VBoxContainer();
-        root.SetAnchorsPreset(LayoutPreset.Center);
         root.AddThemeConstantOverride("separation", 18);
-        AddChild(root);
-        // Center the column manually (anchors center + grow both ways).
-        root.AnchorLeft = 0.5f; root.AnchorRight = 0.5f;
-        root.AnchorTop = 0.5f; root.AnchorBottom = 0.5f;
-        root.GrowHorizontal = GrowDirection.Both;
-        root.GrowVertical = GrowDirection.Both;
+        center.AddChild(root);
 
         root.AddChild(FlowUi.MakeLabel("THE AGE OF TITANS", 52, FlowUi.Gold, HorizontalAlignment.Center));
         root.AddChild(FlowUi.MakeLabel("S E L E C T   G A M E   M O D E", 16, FlowUi.Dim, HorizontalAlignment.Center));
@@ -51,7 +48,7 @@ public partial class MapTypeScreen : Control
         v.AddThemeConstantOverride("separation", 12);
         panel.AddChild(v);
         v.AddChild(FlowUi.MakeLabel(title, 30, FlowUi.Gold));
-        var d = FlowUi.MakeLabel(desc, 14, FlowUi.Ink);
+        var d = FlowUi.MakeLabel(desc, 14, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
         d.CustomMinimumSize = new Vector2(394f, 92f);
         v.AddChild(d);
         v.AddChild(FlowUi.MakeLabel(stats, 13, FlowUi.Dim));

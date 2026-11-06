@@ -58,12 +58,18 @@ public static class FlowUi
         return b;
     }
 
-    public static Label MakeLabel(string text, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Left)
+    // Autowrap is OPT-IN: a wrapping label reports a collapsed
+    // minimum width and a huge wrapped height, which poisons every
+    // container above it (measured: one wrapping label in a top bar
+    // inflated the whole screen's minimum height to 1380px).
+    // Paragraph labels pass wrap: true and live in fixed-width
+    // columns where the container assigns their width.
+    public static Label MakeLabel(string text, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Left, bool wrap = false)
     {
         var l = new Label { Text = text, HorizontalAlignment = align };
         l.AddThemeFontSizeOverride("font_size", size);
         l.AddThemeColorOverride("font_color", color);
-        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        if (wrap) l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         return l;
     }
 

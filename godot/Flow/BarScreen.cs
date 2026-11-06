@@ -15,13 +15,13 @@ public partial class BarScreen : Control
 
     public override void _Ready()
     {
-        SetAnchorsPreset(LayoutPreset.FullRect);
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         BuildDiorama();
 
         var ui = new VBoxContainer();
         ui.AddThemeConstantOverride("separation", 10);
         var pad = new MarginContainer();
-        pad.SetAnchorsPreset(LayoutPreset.FullRect);
+        pad.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         pad.AddThemeConstantOverride("margin_left", 18);
         pad.AddThemeConstantOverride("margin_right", 18);
         pad.AddThemeConstantOverride("margin_top", 12);
@@ -62,13 +62,13 @@ public partial class BarScreen : Control
         _offers.AddThemeConstantOverride("separation", 8);
         pv.AddChild(_offers);
 
+        ui.AddChild(FlowUi.MakeLabel("The bar keeps its own hours. Contracts signed here override the orbital selection.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
         var bottom = new HBoxContainer();
         bottom.AddThemeConstantOverride("separation", 10);
         ui.AddChild(bottom);
         var back = FlowUi.MakeButton("←  BACK TO ORBIT", 14);
         back.Pressed += () => Flow.GoPlanet();
         bottom.AddChild(back);
-        bottom.AddChild(FlowUi.MakeLabel("The bar keeps its own hours. Contracts signed here override the orbital selection.", 11, FlowUi.Dim));
 
         RefreshOffers();
     }
@@ -95,7 +95,7 @@ public partial class BarScreen : Control
             tx.AddThemeConstantOverride("separation", 2);
             h.AddChild(tx);
             tx.AddChild(FlowUi.MakeLabel(m.Patron, 14, FlowUi.Gold));
-            tx.AddChild(FlowUi.MakeLabel($"“{m.Pitch}”", 12, FlowUi.Ink));
+            tx.AddChild(FlowUi.MakeLabel($"“{m.Pitch}”", 12, FlowUi.Ink, HorizontalAlignment.Left, wrap: true));
             tx.AddChild(FlowUi.MakeLabel($"{m.Name} · {m.Type} · {m.Payment:N0} credits · Threat {FlowUi.ThreatPips(m.Threat)}", 11, FlowUi.Dim));
             bool signed = _signedHere == m || (_signedHere == null && current == m);
             var b = FlowUi.MakeButton(signed ? "SIGNED ✓" : "ACCEPT", 13);
@@ -119,7 +119,7 @@ public partial class BarScreen : Control
             Stretch = true,
             MouseFilter = MouseFilterEnum.Ignore
         };
-        svc.SetAnchorsPreset(LayoutPreset.FullRect);
+        svc.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(svc);
         var sv = new SubViewport
         {
@@ -136,16 +136,21 @@ public partial class BarScreen : Control
                 BackgroundMode = Environment.BGMode.Color,
                 BackgroundColor = new Color(0.015f, 0.02f, 0.03f),
                 AmbientLightSource = Environment.AmbientSource.Color,
-                AmbientLightColor = new Color(0.35f, 0.38f, 0.48f),
-                AmbientLightEnergy = 0.5f,
+                AmbientLightColor = new Color(0.42f, 0.45f, 0.55f),
+                AmbientLightEnergy = 0.85f,
                 TonemapMode = Environment.ToneMapper.Aces
             }
         };
         sv.AddChild(we);
 
-        var cam = new Camera3D { Position = new Vector3(0f, 2.1f, 5.6f), Fov = 62f };
+        var cam = new Camera3D { Position = new Vector3(0f, 2.3f, 6.2f), Fov = 62f };
         sv.AddChild(cam);
-        cam.LookAt(new Vector3(0.2f, 1.05f, -2.4f), Vector3.Up);
+        cam.LookAt(new Vector3(0.3f, 1.0f, -2.6f), Vector3.Up);
+        sv.AddChild(new DirectionalLight3D
+        {
+            LightEnergy = 0.55f, LightColor = new Color(1f, 0.9f, 0.78f),
+            Rotation = new Vector3(-0.9f, 0.4f, 0f), ShadowEnabled = false
+        });
 
         var root = new Node3D();
         sv.AddChild(root);
@@ -253,7 +258,7 @@ public partial class BarScreen : Control
             {
                 Position = lp,
                 LightColor = new Color(1f, 0.72f, 0.42f),
-                LightEnergy = 1.6f,
+                LightEnergy = 2.4f,
                 OmniRange = 7f
             };
             root.AddChild(omni);

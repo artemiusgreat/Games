@@ -19,9 +19,9 @@ public partial class PlanetScreen : Control
 
     public override void _Ready()
     {
-        SetAnchorsPreset(LayoutPreset.FullRect);
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var margin = new MarginContainer();
-        margin.SetAnchorsPreset(LayoutPreset.FullRect);
+        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         margin.AddThemeConstantOverride("margin_left", 18);
         margin.AddThemeConstantOverride("margin_right", 18);
         margin.AddThemeConstantOverride("margin_top", 14);
@@ -44,10 +44,7 @@ public partial class PlanetScreen : Control
             _tabBtns.Add(b);
         }
         top.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.Expand });
-        top.AddChild(FlowUi.MakeLabel("CURRENT DATE: 22 APRIL 3067   ·   12:48:15", 13, FlowUi.Dim));
-        var exit = FlowUi.MakeButton("✕", 15);
-        exit.Pressed += () => Flow.GoMapType();
-        top.AddChild(exit);
+        top.AddChild(FlowUi.MakeLabel("22 APRIL 3067 · 12:48", 13, FlowUi.Dim));
 
         // ---- middle: intel | disc | nav ----
         var mid = new HBoxContainer();
@@ -64,7 +61,7 @@ public partial class PlanetScreen : Control
         iv.AddChild(_planetName);
         _planetSub = FlowUi.MakeLabel("", 12, FlowUi.Dim);
         iv.AddChild(_planetSub);
-        _intelBody = FlowUi.MakeLabel("", 13, FlowUi.Ink);
+        _intelBody = FlowUi.MakeLabel("", 13, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
         iv.AddChild(_intelBody);
         iv.AddChild(new HSeparator());
         iv.AddChild(FlowUi.MakeLabel("SELECTED CONTRACT", 13, FlowUi.Gold));
@@ -77,7 +74,7 @@ public partial class PlanetScreen : Control
         var cv = new VBoxContainer();
         cv.AddThemeConstantOverride("separation", 8);
         centerPanel.AddChild(cv);
-        _discHolder = new Control { CustomMinimumSize = new Vector2(560f, 430f), SizeFlagsVertical = SizeFlags.Expand };
+        _discHolder = new Control { CustomMinimumSize = new Vector2(526f, 368f), SizeFlagsVertical = SizeFlags.Expand };
         cv.AddChild(_discHolder);
         _disc = new TextureRect
         {
@@ -86,7 +83,7 @@ public partial class PlanetScreen : Control
             MouseFilter = MouseFilterEnum.Ignore
         };
         _disc.SetAnchorsPreset(LayoutPreset.Center);
-        _disc.CustomMinimumSize = new Vector2(420f, 420f);
+        _disc.CustomMinimumSize = new Vector2(352f, 352f);
         _disc.GrowHorizontal = GrowDirection.Both;
         _disc.GrowVertical = GrowDirection.Both;
         _discHolder.AddChild(_disc);
@@ -120,12 +117,12 @@ public partial class PlanetScreen : Control
         var menu = FlowUi.MakeButton("MAIN MENU", 14);
         menu.Pressed += () => Flow.GoMapType();
         nav.AddChild(menu);
-        nav.AddChild(FlowUi.MakeLabel("Sign the contract in the bar, or take the orbital offer straight to the command center.", 11, FlowUi.Dim));
+        nav.AddChild(FlowUi.MakeLabel("Sign the contract in the bar, or take the orbital offer straight to the command center.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
 
         // ---- bottom: briefing ----
-        var brief = new PanelContainer { CustomMinimumSize = new Vector2(0f, 108f) };
+        var brief = new PanelContainer { CustomMinimumSize = new Vector2(0f, 96f) };
         brief.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
-        _briefingBody = FlowUi.MakeLabel("", 13, FlowUi.Ink);
+        _briefingBody = FlowUi.MakeLabel("", 13, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
         brief.AddChild(_briefingBody);
         root.AddChild(brief);
 
@@ -141,8 +138,8 @@ public partial class PlanetScreen : Control
         _planetSub.Text = p.Subtitle;
         _intelBody.Text = p.Intel;
         _fieldsBody.Text =
-            $"MISSION\n{m.Name}\n\nTYPE\n{m.Type}\n\nEMPLOYER\n{m.Employer}\n\n" +
-            $"PAYMENT\n{m.Payment:N0} credits\n\nTHREAT  {FlowUi.ThreatPips(m.Threat)}";
+            $"MISSION\n  {m.Name}\nTYPE\n  {m.Type}\nEMPLOYER\n  {m.Employer}\n" +
+            $"PAYMENT\n  {m.Payment:N0} credits\nTHREAT\n  {FlowUi.ThreatPips(m.Threat)}";
         _briefingBody.Text = $"{m.Site} — {m.Briefing}";
         _disc.Texture = FlowUi.PlanetTexture(p, 512, MissionCatalog.Planets.IndexOf(p) * 1.618f + 1f);
         for (int i = 0; i < _tabBtns.Count; i++)
@@ -167,7 +164,7 @@ public partial class PlanetScreen : Control
             b.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
             b.AddThemeStyleboxOverride("hover", new StyleBoxEmpty());
             b.AddThemeStyleboxOverride("pressed", new StyleBoxEmpty());
-            var pos = center + new Vector2(mm.SitePos.X * 178f, mm.SitePos.Y * 178f);
+            var pos = center + new Vector2(mm.SitePos.X * 150f, mm.SitePos.Y * 150f);
             b.Position = pos - new Vector2(60f, 10f);
             b.Pressed += () => { Flow.MissionIndex = idx; Refresh(); };
             _discHolder.AddChild(b);

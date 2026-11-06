@@ -34,7 +34,7 @@ public partial class FlowMain : Node3D
         _layer = new CanvasLayer();
         AddChild(_layer);
         _host = new Control();
-        _host.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _host.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _layer.AddChild(_host);
 
         switch (_flowshot)
