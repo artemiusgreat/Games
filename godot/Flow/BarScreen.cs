@@ -41,8 +41,11 @@ public partial class BarScreen : Control
         equip.Disabled = true;
         equip.TooltipText = "The equipment dealer opens in a later build.";
         icons.AddChild(equip);
+        var backTop = FlowUi.MakeButton("Back to orbit", 15);
+        backTop.Pressed += () => Flow.GoPlanet();
+        icons.AddChild(backTop);
         icons.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.Expand });
-        var lab = FlowUi.MakeButton("Rider lab →", 16);
+        var lab = FlowUi.MakeButton("Rider lab", 16);
         lab.Pressed += () => Flow.EnterLab();
         icons.AddChild(lab);
 
@@ -63,12 +66,6 @@ public partial class BarScreen : Control
         pv.AddChild(_offers);
 
         ui.AddChild(FlowUi.MakeLabel("The bar keeps its own hours. Contracts signed here override the orbital selection.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
-        var bottom = new HBoxContainer();
-        bottom.AddThemeConstantOverride("separation", 10);
-        ui.AddChild(bottom);
-        var back = FlowUi.MakeButton("← Back to orbit", 14);
-        back.Pressed += () => Flow.GoPlanet();
-        bottom.AddChild(back);
 
         RefreshOffers();
     }

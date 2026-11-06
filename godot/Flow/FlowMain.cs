@@ -180,15 +180,12 @@ public partial class FlowMain : Node3D
     {
         WorldConfig.Mode = WorldConfig.MapMode.Tournament;
         WorldConfig.SelectedMission = null;
-        var s = new TournamentMapScreen { Name = "tournament" };
-        s.OnEnter = () => EnterLabScene();
-        s.OnBack = () => GoMapType();
-        Show(s);
+        Show(new MapScreen { Name = "tournament", Flow = this });
     }
 
     public void GoPlanet()
     {
-        Show(new PlanetScreen { Name = "planet", Flow = this });
+        Show(new MapScreen { Name = "planet", Flow = this });
     }
 
     public void GoBar()
