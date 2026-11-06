@@ -4,7 +4,7 @@ using Godot;
 // backdrop — star panorama and a slowly turning planet — behind a
 // stack of full-screen UI steps:
 //
-//   MapType ──Tournament──► PhotoDuel (arena) ──► lab ──► duel
+//   MapType ──Tournament──► Map select ──► PhotoDuel (arena) ──► lab ──► duel
 //      │
 //      └────Mission────► Planet ──► Bar ──► PhotoDuel (front) ──► lab ──► duel
 //                          │
@@ -44,6 +44,9 @@ public partial class FlowMain : Node3D
                 WorldConfig.SelectedMission = MissionCatalog.Planets[0].Missions[0];
                 GoPlanet();
                 break;
+            case "tournament":
+                GoTournamentMap();
+                break;
             case "bar":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
                 WorldConfig.SelectedMission = MissionCatalog.Planets[0].Missions[0];
@@ -82,17 +85,22 @@ public partial class FlowMain : Node3D
     public void GoMapType()
     {
         var s = new MapTypeScreen { Name = "maptype" };
-        s.OnTournament = () =>
-        {
-            WorldConfig.Mode = WorldConfig.MapMode.Tournament;
-            WorldConfig.SelectedMission = null;
-            EnterLabScene();
-        };
+        s.OnTournament = () => GoTournamentMap();
         s.OnMission = () =>
         {
             WorldConfig.Mode = WorldConfig.MapMode.Mission;
             GoPlanet();
         };
+        Show(s);
+    }
+
+    public void GoTournamentMap()
+    {
+        WorldConfig.Mode = WorldConfig.MapMode.Tournament;
+        WorldConfig.SelectedMission = null;
+        var s = new TournamentMapScreen { Name = "tournament" };
+        s.OnEnter = () => EnterLabScene();
+        s.OnBack = () => GoMapType();
         Show(s);
     }
 
