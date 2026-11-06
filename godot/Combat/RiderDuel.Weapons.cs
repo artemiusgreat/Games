@@ -170,7 +170,7 @@ public partial class RiderDuel
             (float spd, float grav) = def.Id switch
             {
                 "machine_gun" => (85f, 3f),
-                "heavy_cannon" => (138f, 7f), // 46 x3 (owner, 2026-10-29: every cannon bullet 3x faster)
+                "heavy_cannon" => (420f, 5f), // large cannons match the autocannon's bullet speed (owner, 2026-11-06: 138 was too slow)
                 _ => (420f, 5f) // autocannon 140 x3 (same owner instruction; the 60->95->140 history is in git)
             };
             SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
