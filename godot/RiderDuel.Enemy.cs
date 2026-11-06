@@ -172,9 +172,10 @@ public partial class RiderDuel
         if (dist > 75f) return;
         var los = _hit.Ray(muzzle, (tp - muzzle).Normalized(), dist, tag);
         if (los.Hit && los.Target != targetTag) return; // blocked: building/terrain
-        float speed = def?.Id == "ac20" ? 150f
-            : def?.Id == "machine_gun" ? 85f
-            : def?.Id == "heavy_cannon" ? 138f : 420f;
+        // Large cannons (ac20, heavy cannon) fly at the autocannon's
+        // 420 u/s like the player's (owner, 2026-11-06); only the
+        // machine gun keeps its slow tracer stream.
+        float speed = def?.Id == "machine_gun" ? 85f : 420f;
         float tof = dist / speed;
         var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
