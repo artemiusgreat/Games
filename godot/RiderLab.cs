@@ -840,6 +840,6 @@ public partial class RiderLab : Control
         }
         _paperdoll?.Layout();
         if (_tonnage != null)
-            _tonnage.Text = $"WEAPONS: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis";
+            _tonnage.Text = $"WEAPONS: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis   ·   SPEED {Spec.MaxSpeed:F1} u/s walk / {Spec.MaxSpeed * 3f:F1} run ({Spec.ClassLabel} x{Spec.ClassSpeedFactor:0.00})";
     }
 }
