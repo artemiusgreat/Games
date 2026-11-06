@@ -89,7 +89,7 @@ public partial class MapScreen : Control
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
         root.AddChild(mid);
 
-        var side = new PanelContainer { CustomMinimumSize = new Vector2(470f, 0f) };
+        var side = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         side.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
         var sv = new VBoxContainer();
         sv.AddThemeConstantOverride("separation", 7);
@@ -137,7 +137,7 @@ public partial class MapScreen : Control
         }
 
         // Visual panel.
-        var centerPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.Expand };
+        var centerPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         centerPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.75f));
         _discHolder = new Control { CustomMinimumSize = new Vector2(386f, 420f), SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         centerPanel.AddChild(_discHolder);

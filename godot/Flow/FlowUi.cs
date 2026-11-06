@@ -121,9 +121,9 @@ public static class FlowUi
         for (int j = 0; j < h; j++)
         for (int i = 0; i < w; i++)
         {
-            float a = (j % 3 == 2) ? 0.13f : 0f;
-            float glow = 0.05f * (1f - j / (float)h);
-            img.SetPixel(i, j, new Color(0.4f, 1f, 0.8f, a + glow * 0.35f));
+            float a = (j % 3 == 2) ? 0.05f : 0f;
+            float glow = 0.03f * (1f - j / (float)h);
+            img.SetPixel(i, j, new Color(0.4f, 1f, 0.8f, a + glow * 0.3f));
         }
         return ImageTexture.CreateFromImage(img);
     }
