@@ -35,7 +35,7 @@ public partial class MapTypeScreen : Control
             "Planetary operations on a full-scale front. Pick a world in orbit, sign a " +
             "contract in the bar, then deploy from your base and march on the enemy.",
             "Map 1900u · Bases 3 · Contracts 9",
-            "Find a contract", () => OnMission?.Invoke()));
+            "Select map", () => OnMission?.Invoke()));
 
         root.AddChild(FlowUi.MakeLabel("More modes will follow.", 12, FlowUi.Dim, HorizontalAlignment.Center));
     }
