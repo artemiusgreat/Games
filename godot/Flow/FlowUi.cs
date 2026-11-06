@@ -55,6 +55,13 @@ public static class FlowUi
         b.AddThemeStyleboxOverride("hover", ButtonBox(new Color(0.16f, 0.21f, 0.30f, 0.98f)));
         b.AddThemeStyleboxOverride("pressed", ButtonBox(new Color(0.23f, 0.19f, 0.08f, 0.98f)));
         b.AddThemeStyleboxOverride("disabled", ButtonBox(new Color(0.07f, 0.08f, 0.10f, 0.9f)));
+        // Keyboard focus must be VISIBLE: a gold frame, no fill.
+        var focus = ButtonBox(new Color(0, 0, 0, 0));
+        focus.DrawCenter = false;
+        focus.BorderColor = Gold;
+        focus.SetBorderWidthAll(3);
+        b.AddThemeStyleboxOverride("focus", focus);
+        b.AddThemeColorOverride("font_focus_color", Gold);
         return b;
     }
 
@@ -140,6 +147,44 @@ public static class FlowUi
             float limb = 0.72f + 0.28f * nz;
             col = new Color(col.R * diff * limb, col.G * diff * limb, col.B * diff * limb, 1f);
             img.SetPixel(i, j, col);
+        }
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    // Stylized top-down of the tournament arena for the map card:
+    // dry-grass mottling, the flat mesa disc at the center, and the
+    // three spawn pads on their triangle.
+    public static ImageTexture ArenaTexture(int size = 512)
+    {
+        var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        var grass = new Color(0.42f, 0.40f, 0.22f);
+        var dry = new Color(0.55f, 0.47f, 0.28f);
+        var rock = new Color(0.48f, 0.40f, 0.33f);
+        var mesaTop = new Color(0.62f, 0.54f, 0.42f);
+        float half = size / 2f;
+        var pads = new[]
+        {
+            new Vector2(0f, 80f), new Vector2(-69.3f, -40f), new Vector2(69.3f, -40f)
+        };
+        for (int j = 0; j < size; j++)
+        for (int i = 0; i < size; i++)
+        {
+            float wx = (i - half) / half * 130f;
+            float wz = (j - half) / half * 130f;
+            float r = Mathf.Sqrt(wx * wx + wz * wz);
+            float n = Fbm(wx * 0.045f + 7f, wz * 0.045f, 4);
+            Color col = grass.Lerp(dry, Mathf.Clamp((n - 0.3f) * 1.8f, 0f, 1f));
+            if (r > 96f) col = col.Lerp(rock, Mathf.SmoothStep(96f, 128f, r + (n - 0.5f) * 22f)); // rim hills
+            if (r < 15.5f) col = col.Lerp(rock, Mathf.SmoothStep(15.5f, 13.5f, r));                 // mesa wall
+            if (r < 13.5f) col = mesaTop;                                                          // mesa top
+            foreach (var p in pads)
+            {
+                float d = new Vector2(wx - p.X, wz - p.Y).Length();
+                if (d < 5.5f) col = new Color(0.72f, 0.74f, 0.78f);
+                else if (d < 7.5f) col = new Color(0.20f, 0.21f, 0.24f);
+            }
+            float vig = 1f - 0.25f * Mathf.SmoothStep(90f, 130f, r);
+            img.SetPixel(i, j, new Color(col.R * vig, col.G * vig, col.B * vig, 1f));
         }
         return ImageTexture.CreateFromImage(img);
     }

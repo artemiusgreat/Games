@@ -4,7 +4,7 @@ using Godot;
 // backdrop — star panorama and a slowly turning planet — behind a
 // stack of full-screen UI steps:
 //
-//   MapType ──Tournament──► PhotoDuel (arena) ──► lab ──► duel
+//   MapType ──Tournament──► Map select ──► PhotoDuel (arena) ──► lab ──► duel
 //      │
 //      └────Mission────► Planet ──► Bar ──► PhotoDuel (front) ──► lab ──► duel
 //                          │
@@ -12,8 +12,10 @@ using Godot;
 //
 // The flow only CHOOSES; WorldConfig carries the choice into the
 // duel scene, which builds the right world and opens the RiderLab
-// as before. Harness: --flowshot=maptype|planet|bar renders one
-// screen, saves /tmp/flow_<name>.png and quits.
+// as before. Harness: --flowshot=maptype|planet|tournament|bar
+// renders one screen, saves /tmp/flow_<name>.png and quits;
+// --flowfocus=N injects N ui_down presses before the capture;
+// --flowtest-nav walks Mission -> planet -> lab by itself.
 public partial class FlowMain : Node3D
 {
     public int PlanetIndex = 0;
@@ -24,11 +26,22 @@ public partial class FlowMain : Node3D
     private MeshInstance3D _planet;
     private string _flowshot;
     private double _shotT;
+    private CanvasLayer _loadLayer;
+    private Label _loadLabel, _loadPct;
+    private bool _loading;
+    private double _loadT;
+    private int _focusTarget, _focusDone;
+    private bool _navTest;
+    private int _navStep;
 
     public override void _Ready()
     {
         foreach (var arg in OS.GetCmdlineUserArgs())
+        {
             if (arg.StartsWith("--flowshot=")) _flowshot = arg.Substring("--flowshot=".Length);
+            if (arg.StartsWith("--flowfocus=")) _focusTarget = int.Parse(arg.Substring("--flowfocus=".Length));
+            if (arg == "--flowtest-nav") _navTest = true;
+        }
 
         BuildBackdrop();
         _layer = new CanvasLayer();
@@ -36,6 +49,7 @@ public partial class FlowMain : Node3D
         _host = new Control();
         _host.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _layer.AddChild(_host);
+        BuildLoadingOverlay();
 
         switch (_flowshot)
         {
@@ -43,6 +57,9 @@ public partial class FlowMain : Node3D
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
                 WorldConfig.SelectedMission = MissionCatalog.Planets[0].Missions[0];
                 GoPlanet();
+                break;
+            case "tournament":
+                GoTournamentMap();
                 break;
             case "bar":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
@@ -58,6 +75,36 @@ public partial class FlowMain : Node3D
     public override void _Process(double delta)
     {
         if (_planet != null) _planet.RotateY((float)delta * 0.05f);
+        if (_loading)
+        {
+            _loadT += delta;
+            _loadLabel.Text = "Loading" + new string('.', 1 + (int)(_loadT * 3.0) % 3);
+        }
+        if (_navTest)
+        {
+            _shotT += delta;
+            if (_navStep == 0 && _shotT > 1.0)
+            {
+                _navStep = 1;
+                WorldConfig.Mode = WorldConfig.MapMode.Mission;
+                GoPlanet();
+            }
+            else if (_navStep == 1 && _shotT > 1.8)
+            {
+                _navStep = 2;
+                EnterLab(fromPlanet: true);
+            }
+        }
+        if (_focusTarget > 0)
+        {
+            _shotT += 0; // (timing shares _shotT below via flowshot clock)
+            if (_focusDone < _focusTarget && _shotT > 0.5 + _focusDone * 0.3)
+            {
+                Input.ParseInputEvent(new InputEventAction { Action = "ui_down", Pressed = true });
+                Input.ParseInputEvent(new InputEventAction { Action = "ui_down", Pressed = false });
+                _focusDone++;
+            }
+        }
         if (_flowshot != null)
         {
             _shotT += delta;
@@ -75,24 +122,67 @@ public partial class FlowMain : Node3D
 
     private void Show(Control screen)
     {
-        foreach (var c in _host.GetChildren()) c.QueueFree();
+        foreach (var c in _host.GetChildren()) { _host.RemoveChild(c); c.QueueFree(); }
         _host.AddChild(screen);
+        CallDeferred("GrabFirstFocus");
+    }
+
+    // Keyboard entry point: every screen opens with focus on its
+    // first button, so Tab / arrow keys work from the first press.
+    private void GrabFirstFocus()
+    {
+        FindFirstButton(_host)?.GrabFocus();
+    }
+
+    private static Button FindFirstButton(Node n)
+    {
+        if (n is Button b && !b.Disabled && b.IsInsideTree()) return b;
+        foreach (var c in n.GetChildren())
+        {
+            var r = FindFirstButton(c);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
+    private void BuildLoadingOverlay()
+    {
+        _loadLayer = new CanvasLayer { Layer = 5, Visible = false };
+        AddChild(_loadLayer);
+        var rect = new ColorRect { Color = new Color(0.015f, 0.02f, 0.035f, 0.98f) };
+        rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _loadLayer.AddChild(rect);
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _loadLayer.AddChild(center);
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 10);
+        center.AddChild(v);
+        _loadLabel = FlowUi.MakeLabel("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center);
+        v.AddChild(_loadLabel);
+        _loadPct = FlowUi.MakeLabel("Preparing the front…", 14, FlowUi.Dim, HorizontalAlignment.Center);
+        v.AddChild(_loadPct);
     }
 
     public void GoMapType()
     {
         var s = new MapTypeScreen { Name = "maptype" };
-        s.OnTournament = () =>
-        {
-            WorldConfig.Mode = WorldConfig.MapMode.Tournament;
-            WorldConfig.SelectedMission = null;
-            EnterLabScene();
-        };
+        s.OnTournament = () => GoTournamentMap();
         s.OnMission = () =>
         {
             WorldConfig.Mode = WorldConfig.MapMode.Mission;
             GoPlanet();
         };
+        Show(s);
+    }
+
+    public void GoTournamentMap()
+    {
+        WorldConfig.Mode = WorldConfig.MapMode.Tournament;
+        WorldConfig.SelectedMission = null;
+        var s = new TournamentMapScreen { Name = "tournament" };
+        s.OnEnter = () => EnterLabScene();
+        s.OnBack = () => GoMapType();
         Show(s);
     }
 
@@ -119,7 +209,44 @@ public partial class FlowMain : Node3D
         EnterLabScene();
     }
 
-    private void EnterLabScene() => GetTree().ChangeSceneToFile("res://photo/PhotoDuel.tscn");
+    // The duel scene takes seconds to build (terrain, textures,
+    // riders), which used to read as a freeze. Show the loading
+    // overlay, let it paint, then load the scene on a thread and
+    // swap when it is ready — the overlay's last frame stays up
+    // through the brief instantiation hitch.
+    private async void EnterLabScene()
+    {
+        if (_loading) return;
+        _loading = true;
+        _loadLayer.Visible = true;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        const string path = "res://photo/PhotoDuel.tscn";
+        if (ResourceLoader.LoadThreadedRequest(path) != Error.Ok)
+        {
+            GetTree().ChangeSceneToFile(path);
+            return;
+        }
+        var progress = new Godot.Collections.Array();
+        while (true)
+        {
+            var st = ResourceLoader.LoadThreadedGetStatus(path, progress);
+            if (st == ResourceLoader.ThreadLoadStatus.Loaded)
+            {
+                var packed = (PackedScene)ResourceLoader.LoadThreadedGet(path);
+                GetTree().ChangeSceneToPacked(packed);
+                return;
+            }
+            if (st == ResourceLoader.ThreadLoadStatus.Failed ||
+                st == ResourceLoader.ThreadLoadStatus.InvalidResource)
+            {
+                GetTree().ChangeSceneToFile(path);
+                return;
+            }
+            _loadPct.Text = $"Loading the front… {(int)((double)progress[0] * 100)}%";
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+    }
 
     private void BuildBackdrop()
     {

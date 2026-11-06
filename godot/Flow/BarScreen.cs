@@ -33,16 +33,16 @@ public partial class BarScreen : Control
         var icons = new HBoxContainer();
         icons.AddThemeConstantOverride("separation", 10);
         ui.AddChild(icons);
-        var bar = FlowUi.MakeButton("◆  BAR", 15);
+        var bar = FlowUi.MakeButton("◆ Bar", 15);
         bar.AddThemeColorOverride("font_color", FlowUi.Gold);
         icons.AddChild(bar);
-        icons.AddChild(FlowUi.MakeButton("◆  JOB OFFERS", 15));
-        var equip = FlowUi.MakeButton("◆  EQUIPMENT", 15);
+        icons.AddChild(FlowUi.MakeButton("◆ Job offers", 15));
+        var equip = FlowUi.MakeButton("◆ Equipment", 15);
         equip.Disabled = true;
         equip.TooltipText = "The equipment dealer opens in a later build.";
         icons.AddChild(equip);
         icons.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.Expand });
-        var lab = FlowUi.MakeButton("RIDER LAB  →", 16);
+        var lab = FlowUi.MakeButton("Rider lab →", 16);
         lab.Pressed += () => Flow.EnterLab();
         icons.AddChild(lab);
 
@@ -55,7 +55,7 @@ public partial class BarScreen : Control
         var pv = new VBoxContainer();
         pv.AddThemeConstantOverride("separation", 8);
         panel.AddChild(pv);
-        pv.AddChild(FlowUi.MakeLabel($"CONTRACT OFFERS — {Planet.Name}", 17, FlowUi.Gold));
+        pv.AddChild(FlowUi.MakeLabel($"Contract offers — {Planet.Name}", 17, FlowUi.Gold));
         _status = FlowUi.MakeLabel("", 12, FlowUi.Dim);
         pv.AddChild(_status);
         _offers = new VBoxContainer();
@@ -66,7 +66,7 @@ public partial class BarScreen : Control
         var bottom = new HBoxContainer();
         bottom.AddThemeConstantOverride("separation", 10);
         ui.AddChild(bottom);
-        var back = FlowUi.MakeButton("←  BACK TO ORBIT", 14);
+        var back = FlowUi.MakeButton("← Back to orbit", 14);
         back.Pressed += () => Flow.GoPlanet();
         bottom.AddChild(back);
 
@@ -98,7 +98,7 @@ public partial class BarScreen : Control
             tx.AddChild(FlowUi.MakeLabel($"“{m.Pitch}”", 12, FlowUi.Ink, HorizontalAlignment.Left, wrap: true));
             tx.AddChild(FlowUi.MakeLabel($"{m.Name} · {m.Type} · {m.Payment:N0} credits · Threat {FlowUi.ThreatPips(m.Threat)}", 11, FlowUi.Dim));
             bool signed = _signedHere == m || (_signedHere == null && current == m);
-            var b = FlowUi.MakeButton(signed ? "SIGNED ✓" : "ACCEPT", 13);
+            var b = FlowUi.MakeButton(signed ? "Signed ✓" : "Accept", 13);
             b.Disabled = signed;
             b.Pressed += () =>
             {
