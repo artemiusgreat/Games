@@ -18,12 +18,21 @@ using Godot;
 // --flowtest-nav walks Mission -> planet -> lab by itself.
 public partial class FlowMain : Node3D
 {
-    public int PlanetIndex = 0;
-    public int MissionIndex = 0;
-    public int ArenaIndex = System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
+    // Flow state is static so it survives the trip to the lab
+    // and back (the lab's Back button reloads this scene).
+    public static int PlanetIndex = 0;
+    public static int MissionIndex = 0;
+    public static int ArenaIndex = System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
     {
         "1" => 1, "2" => 2, _ => 0 // harness seed only; arenas carry their own biomes
     };
+
+    // Set by EnterLab; the lab shows its Back button only when
+    // the flow brought the player there. StartScreen is set by
+    // that button to name the screen _Ready should reopen.
+    public static bool FromFlow =
+        System.Environment.GetEnvironmentVariable("AOT_FROMFLOW") == "1"; // harness seed
+    public static string StartScreen;
 
     private CanvasLayer _layer;
     private Control _host;
@@ -70,7 +79,10 @@ public partial class FlowMain : Node3D
                 GoBar();
                 break;
             default:
-                GoMapType();
+                if (StartScreen == "planet") GoPlanet();
+                else if (StartScreen == "tournament") GoTournamentMap();
+                else GoMapType();
+                StartScreen = null;
                 break;
         }
     }
@@ -203,6 +215,12 @@ public partial class FlowMain : Node3D
     // the contract; from the bar, the signed contract stands.
     public void EnterLab(bool fromPlanet = false)
     {
+        // The orbital pick becomes the contract FIRST — reading
+        // its biome before this assignment threw on a null
+        // SelectedMission and the Command center button read as
+        // dead (owner's report).
+        if (WorldConfig.IsMission && (fromPlanet || WorldConfig.SelectedMission == null))
+            WorldConfig.SelectedMission = MissionCatalog.Planets[PlanetIndex].Missions[MissionIndex];
         // The selected map's PREDEFINED biome (owner: the
         // player never picks a map type): the contract's ground
         // on the mission path, the arena's on the tournament
@@ -211,8 +229,7 @@ public partial class FlowMain : Node3D
             WorldConfig.Biome = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.Biome
                 : ArenaCatalog.Arenas[ArenaIndex].Biome;
-        if (WorldConfig.IsMission && (fromPlanet || WorldConfig.SelectedMission == null))
-            WorldConfig.SelectedMission = MissionCatalog.Planets[PlanetIndex].Missions[MissionIndex];
+        FromFlow = true;
         EnterLabScene();
     }
 
