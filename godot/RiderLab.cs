@@ -539,7 +539,14 @@ public partial class RiderLab : Control
         root.AddChild(mid);
 
         // -- Catalog (left) --
-        var catBox = new VBoxContainer { CustomMinimumSize = new Vector2(400, 0) };
+        // The catalog column is FIXED at 530: left to content it
+        // creeps (mono rows are wide), the rows stretch to fill
+        // it, and the paperdoll's panels spill back over the
+        // rows' backdrops. 530 holds the widest grouped row
+        // (~481) with margin; anything wider clips in the scroll
+        // instead of widening the column. (A CustomMaximumSize
+        // here collapsed the column entirely — measured.)
+        var catBox = new VBoxContainer { CustomMinimumSize = new Vector2(530, 0) };
         catBox.AddThemeConstantOverride("separation", 4);
         mid.AddChild(catBox);
         var catTitle = new Label { Text = "WEAPONS" };
@@ -556,8 +563,30 @@ public partial class RiderLab : Control
         rowsBox.AddThemeConstantOverride("separation", 4);
         rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         scroll.AddChild(rowsBox);
-        foreach (var w in WeaponCatalog.All)
+        // The catalog is three stacked lists (owner): Lasers,
+        // Cannons, Missiles. The group heading replaces the type
+        // named in every row — which also buys back the width
+        // the mono font took: the widest row shrinks by the
+        // type segment, the paperdoll gets the room, and the
+        // slot backdrops stop spilling over the catalog's.
+        var catalogGroups = new (string Title, WeaponSlotType Type)[]
         {
+            ("Lasers", WeaponSlotType.Energy),
+            ("Cannons", WeaponSlotType.Ballistic),
+            ("Missiles", WeaponSlotType.Missile),
+        };
+        bool firstGroup = true;
+        foreach (var (gTitle, gType) in catalogGroups)
+        {
+            if (!firstGroup) rowsBox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+            firstGroup = false;
+            var gh = new Label { Text = gTitle };
+            gh.AddThemeFontSizeOverride("font_size", 13);
+            gh.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
+            rowsBox.AddChild(gh);
+            foreach (var w in WeaponCatalog.All)
+            {
+            if (w.Type != gType) continue;
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
             var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true }; // row sized to fit the tile with air around it
@@ -579,7 +608,7 @@ public partial class RiderLab : Control
             hb.AddChild(tileCtl);
             var lab = new Label
             {
-                Text = $"{w.Name} · {w.Weight:F0}t · {w.Type} · dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")} · cd {w.Cooldown:F2}s · rng {w.Range:F0}u",
+                Text = $"{w.Name} · {w.Weight:F0}t · dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")} · cd {w.Cooldown:F2}s · rng {w.Range:F0}u",
                 VerticalAlignment = VerticalAlignment.Center,
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -587,6 +616,7 @@ public partial class RiderLab : Control
             lab.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
             hb.AddChild(lab);
             rowsBox.AddChild(rowPanel);
+            }
         }
 
         // -- Hardpoints (right): MW4-style paperdoll over the rider --
