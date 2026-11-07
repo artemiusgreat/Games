@@ -56,6 +56,8 @@ public partial class RiderDuel : Node3D
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _grassShot; // TEMP probe: census + capture the grass clump instances
     private bool _boomShot; // TEMP probe: rider visibility across the pitch travel (round 28)
+    private bool _leaveShot, _leaveShotDone, _leaveShotSaved; // proof hook: frame the exit popup
+    private float _leaveShotT;
     private bool _boomCheck; // TEMP probe: boom vs buildings + photo level frame (round 28 follow-up)
     private bool _lagCheck; // TEMP probe: camera lag + rock/tree movement rules (round 29)
     private bool _grassStaged;
@@ -260,7 +262,7 @@ public partial class RiderDuel : Node3D
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
     private TriMark _markLaser, _markAc, _markLrm; // active-weapon triangles at the bar ends
     private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
-    private ConfirmationDialog _leaveDialog;
+    private LeaveOverlay _leaveDialog;
     private PanelContainer _panel;
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;
@@ -288,6 +290,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--grass-shot") { _photo = true; _grassShot = true; }
             if (arg == "--boom-shot") _boomShot = true;
+            if (arg == "--leave-shot") _leaveShot = true;
             if (arg == "--boom-check") _boomCheck = true;
             if (arg == "--lag-check") _lagCheck = true;
             if (arg == "--gait-shot") _gaitShot = true;
@@ -440,7 +443,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_missionTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_missionTest && !_leaveShot)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -689,6 +692,25 @@ public partial class RiderDuel : Node3D
             _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
             _pointHector = true;
             GD.Print("POINTTEST selected Hector at start (lab path)");
+        }
+        if (_leaveShot && !_leaveShotDone && _player != null && _player.IsReady)
+        {
+            // Frame the exit popup over the live duel (proof only;
+            // the pause itself is the Esc path's business).
+            _leaveShotDone = true;
+            _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
+            _leaveDialog.Open();
+        }
+        if (_leaveShot && _leaveShotDone && !_leaveShotSaved)
+        {
+            _leaveShotT += (float)delta;
+            if (_leaveShotT > 0.6f)
+            {
+                _leaveShotSaved = true;
+                GetViewport().GetTexture().GetImage().SavePng("/tmp/leave_popup.png");
+                GD.Print("LEAVESHOT saved");
+                GetTree().Quit();
+            }
         }
         if (_hectorCam && !_hectorCamDone && _player != null && _player.IsReady)
         {

@@ -211,17 +211,13 @@ public partial class RiderDuel
         layer.AddChild(_feedLabel);
 
         // Leave-game confirmation (owner): Esc opens it, the
-        // sim pauses behind it, Leave exits the match.
-        _leaveDialog = new ConfirmationDialog
-        {
-            Title = "Leave the game",
-            DialogText = "Leave this match?",
-            OkButtonText = "Leave",
-            CancelButtonText = "Stay",
-            ProcessMode = ProcessModeEnum.Always
-        };
-        _leaveDialog.Confirmed += OnLeaveConfirmed;
-        _leaveDialog.Canceled += () => { GetTree().Paused = false; };
+        // sim pauses behind it, YES exits the match. Styled
+        // after the owner's reference: dark panel, white corner
+        // brackets, white text, flat YES (dark) / NO (white)
+        // buttons with NO as the safe default.
+        _leaveDialog = new LeaveOverlay();
+        _leaveDialog.LeaveRequested += OnLeaveConfirmed;
+        _leaveDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; };
         layer.AddChild(_leaveDialog);
 
         // Death banner.
@@ -257,6 +253,133 @@ public partial class RiderDuel
                 new Vector2(c.X + 4f, c.Y + 5f),
                 new Vector2(c.X - 5f, c.Y)
             }, new Color(1f, 0.95f, 0.6f));
+        }
+    }
+
+    // The four white corner brackets of the exit popup,
+    // drawn proud of the panel's corners (owner's reference).
+    private sealed partial class CornerFrame : Control
+    {
+        public override void _Draw()
+        {
+            var col = new Color(1f, 1f, 1f, 0.9f);
+            float L = 18f, w = 2f;
+            var s = Size;
+            DrawLine(new Vector2(1, L), new Vector2(1, 1), col, w);
+            DrawLine(new Vector2(1, 1), new Vector2(L, 1), col, w);
+            DrawLine(new Vector2(s.X - L, 1), new Vector2(s.X - 1, 1), col, w);
+            DrawLine(new Vector2(s.X - 1, 1), new Vector2(s.X - 1, L), col, w);
+            DrawLine(new Vector2(s.X - 1, s.Y - L), new Vector2(s.X - 1, s.Y - 1), col, w);
+            DrawLine(new Vector2(s.X - 1, s.Y - 1), new Vector2(s.X - L, s.Y - 1), col, w);
+            DrawLine(new Vector2(1, s.Y - 1), new Vector2(L, s.Y - 1), col, w);
+            DrawLine(new Vector2(1, s.Y - L), new Vector2(1, s.Y - 1), col, w);
+        }
+    }
+
+    // The exit confirmation (owner's reference): dimmed game
+    // behind a dark panel with white corner brackets, white
+    // title and subtitle, and two flat wide buttons — YES dark
+    // on the left, NO white on the right and focused by default.
+    // Runs on ProcessMode.Always so it works while the tree is
+    // paused behind it; Esc inside it means NO.
+    private sealed partial class LeaveOverlay : Control
+    {
+        public event System.Action LeaveRequested;
+        private Button _noBtn;
+        private ulong _openedAt;
+
+        public LeaveOverlay()
+        {
+            ProcessMode = ProcessModeEnum.Always;
+            Visible = false;
+            SetAnchorsPreset(LayoutPreset.FullRect);
+            MouseFilter = MouseFilterEnum.Stop;
+
+            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.45f) };
+            dim.SetAnchorsPreset(LayoutPreset.FullRect);
+            AddChild(dim);
+
+            var center = new CenterContainer();
+            center.SetAnchorsPreset(LayoutPreset.FullRect);
+            AddChild(center);
+
+            var root = new Control { CustomMinimumSize = new Vector2(452, 204) };
+            center.AddChild(root);
+
+            var panel = new PanelContainer();
+            panel.SetAnchorsPreset(LayoutPreset.FullRect);
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.97f) });
+            root.AddChild(panel);
+
+            var v = new VBoxContainer();
+            v.SetAnchorsPreset(LayoutPreset.FullRect);
+            v.OffsetLeft = 30; v.OffsetTop = 28; v.OffsetRight = -30; v.OffsetBottom = -26;
+            v.AddThemeConstantOverride("separation", 10);
+            root.AddChild(v);
+
+            var title = new Label { Text = "Exit the game?", HorizontalAlignment = HorizontalAlignment.Center };
+            title.AddThemeFontSizeOverride("font_size", 21);
+            title.AddThemeColorOverride("font_color", Colors.White);
+            v.AddChild(title);
+            var sub = new Label { Text = "Any unsaved progress will be lost.", HorizontalAlignment = HorizontalAlignment.Center };
+            sub.AddThemeFontSizeOverride("font_size", 13);
+            sub.AddThemeColorOverride("font_color", Colors.White);
+            v.AddChild(sub);
+            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 16) });
+
+            var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+            row.AddThemeConstantOverride("separation", 18);
+            v.AddChild(row);
+            var yes = MakeBtn("YES", dark: true);
+            yes.Pressed += () => LeaveRequested?.Invoke();
+            row.AddChild(yes);
+            _noBtn = MakeBtn("NO", dark: false);
+            _noBtn.Pressed += () => Visible = false;
+            row.AddChild(_noBtn);
+
+            var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
+            frame.SetAnchorsPreset(LayoutPreset.FullRect);
+            frame.OffsetLeft = -7; frame.OffsetTop = -7; frame.OffsetRight = 7; frame.OffsetBottom = 7;
+            root.AddChild(frame);
+        }
+
+        private static Button MakeBtn(string text, bool dark)
+        {
+            var b = new Button { Text = text, CustomMinimumSize = new Vector2(148, 38) };
+            b.AddThemeFontSizeOverride("font_size", 15);
+            var bg = dark ? new Color(0.03f, 0.03f, 0.04f) : new Color(0.93f, 0.93f, 0.94f);
+            var fg = dark ? Colors.White : new Color(0.05f, 0.05f, 0.06f);
+            StyleBoxFlat S(Color c) => new() { BgColor = c };
+            b.AddThemeStyleboxOverride("normal", S(bg));
+            b.AddThemeStyleboxOverride("hover", S(dark ? new Color(0.13f, 0.13f, 0.15f) : Colors.White));
+            b.AddThemeStyleboxOverride("pressed", S(dark ? new Color(0.22f, 0.22f, 0.24f) : new Color(0.78f, 0.78f, 0.8f)));
+            b.AddThemeStyleboxOverride("focus", S(bg));
+            b.AddThemeColorOverride("font_color", fg);
+            b.AddThemeColorOverride("font_hover_color", fg);
+            b.AddThemeColorOverride("font_pressed_color", fg);
+            b.AddThemeColorOverride("font_focus_color", fg);
+            return b;
+        }
+
+        public void Open()
+        {
+            _openedAt = Time.GetTicksMsec();
+            Visible = true;
+            _noBtn.GrabFocus();
+        }
+
+        public override void _Input(InputEvent e)
+        {
+            if (!Visible) return;
+            // The Esc that OPENED the popup reaches this handler
+            // in the same dispatch (parent first, then children)
+            // — ignore Esc for a beat after opening.
+            if (Time.GetTicksMsec() - _openedAt < 200) return;
+            if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
+            {
+                Visible = false;
+                GetViewport().SetInputAsHandled();
+            }
         }
     }
 

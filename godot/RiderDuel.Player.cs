@@ -61,7 +61,7 @@ public partial class RiderDuel
             Input.MouseMode = Input.MouseModeEnum.Visible;
             if (_leaveDialog != null && !_leaveDialog.Visible)
             {
-                _leaveDialog.PopupCentered();
+                _leaveDialog.Open();
                 GetTree().Paused = true;
             }
         }
