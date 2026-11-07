@@ -221,13 +221,19 @@ public static class FlowUi
     // Stylized top-down of the tournament arena for the map card:
     // dry-grass mottling, the flat mesa disc at the center, and the
     // three spawn pads on their triangle.
-    public static ImageTexture ArenaTexture(int size = 512)
+    public static ImageTexture ArenaTexture(int size = 512, int biome = 1)
     {
         var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
-        var grass = new Color(0.42f, 0.40f, 0.22f);
-        var dry = new Color(0.55f, 0.47f, 0.28f);
-        var rock = new Color(0.48f, 0.40f, 0.33f);
-        var mesaTop = new Color(0.62f, 0.54f, 0.42f);
+        var grass = biome == 0 ? new Color(0.72f, 0.58f, 0.34f)
+            : biome == 2 ? new Color(0.33f, 0.34f, 0.36f)
+            : new Color(0.42f, 0.40f, 0.22f);
+        var dry = biome == 0 ? new Color(0.79f, 0.65f, 0.40f)
+            : biome == 2 ? new Color(0.40f, 0.40f, 0.42f)
+            : new Color(0.55f, 0.47f, 0.28f);
+        var rock = biome == 2 ? new Color(0.44f, 0.44f, 0.46f) : new Color(0.48f, 0.40f, 0.33f);
+        var mesaTop = biome == 0 ? new Color(0.82f, 0.68f, 0.45f)
+            : biome == 2 ? new Color(0.50f, 0.50f, 0.52f)
+            : new Color(0.62f, 0.54f, 0.42f);
         float half = size / 2f;
         var pads = new[]
         {
@@ -241,6 +247,13 @@ public static class FlowUi
             float r = Mathf.Sqrt(wx * wx + wz * wz);
             float n = Fbm(wx * 0.045f + 7f, wz * 0.045f, 4);
             Color col = grass.Lerp(dry, Mathf.Clamp((n - 0.3f) * 1.8f, 0f, 1f));
+            if (biome == 2)
+            {
+                // City: a street grid over the blocks.
+                float gx = Mathf.Abs(((wx + 13f) % 26f + 26f) % 26f - 13f);
+                float gz = Mathf.Abs(((wz + 13f) % 26f + 26f) % 26f - 13f);
+                if (Mathf.Min(gx, gz) > 11.4f) col = col.Darkened(0.35f);
+            }
             if (r > 96f) col = col.Lerp(rock, Mathf.SmoothStep(96f, 128f, r + (n - 0.5f) * 22f)); // rim hills
             if (r < 15.5f) col = col.Lerp(rock, Mathf.SmoothStep(15.5f, 13.5f, r));                 // mesa wall
             if (r < 13.5f) col = mesaTop;                                                          // mesa top

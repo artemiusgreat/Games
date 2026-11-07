@@ -11,6 +11,23 @@ public static class WorldConfig
 
     public static MapMode Mode = InitMode();
 
+    // The map type (owner): every map — a tournament arena or a
+    // mission contract's ground — is one of three biomes, picked
+    // on the map screen. Default Forest, which is the game's
+    // original look, so harness runs and tests build exactly the
+    // world they always have. The harness can force AOT_BIOME.
+    public enum BiomeKind { Desert, Forest, City }
+
+    public static BiomeKind Biome = InitBiome();
+
+    private static BiomeKind InitBiome() =>
+        System.Environment.GetEnvironmentVariable("AOT_BIOME") switch
+        {
+            "desert" => BiomeKind.Desert,
+            "city" => BiomeKind.City,
+            _ => BiomeKind.Forest
+        };
+
     // The contract signed in the flow (Mission path). Null on the
     // Tournament path and in harness runs.
     public static MissionDef SelectedMission;

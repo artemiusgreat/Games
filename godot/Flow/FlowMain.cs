@@ -20,6 +20,7 @@ public partial class FlowMain : Node3D
 {
     public int PlanetIndex = 0;
     public int MissionIndex = 0;
+    public int BiomeIndex = 1; // Desert 0, Forest 1, City 2 — the standing default is the game's original look
 
     private CanvasLayer _layer;
     private Control _host;
@@ -199,6 +200,7 @@ public partial class FlowMain : Node3D
     // the contract; from the bar, the signed contract stands.
     public void EnterLab(bool fromPlanet = false)
     {
+        WorldConfig.Biome = (WorldConfig.BiomeKind)BiomeIndex;
         if (WorldConfig.IsMission && (fromPlanet || WorldConfig.SelectedMission == null))
             WorldConfig.SelectedMission = MissionCatalog.Planets[PlanetIndex].Missions[MissionIndex];
         EnterLabScene();

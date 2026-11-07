@@ -17,32 +17,51 @@ public partial class MapScreen : Control
     public FlowMain Flow;
 
     private Label _nameLabel, _subLabel, _descLabel, _contractName, _contractBody;
+    private Label _biomeName, _biomeSub, _biomeDesc;
     private ScrollContainer _descScroll, _contractScroll;
     private TextureRect _disc;
     private Control _discHolder;
     private readonly System.Collections.Generic.List<Button> _markers = new();
-    private int _mapIndex; // tournament arena (one map today)
 
     private bool IsMission => WorldConfig.IsMission;
     private PlanetDef Planet => MissionCatalog.Planets[Flow.PlanetIndex];
     private MissionDef Mission => Planet.Missions[Flow.MissionIndex];
 
-    private sealed class ArenaDef { public string Name, Sub, Desc; }
-    private static readonly ArenaDef[] Arenas =
+    // The map types (owner): every map is one of three biomes.
+    // Order matches WorldConfig.BiomeKind and Flow.BiomeIndex.
+    private sealed class BiomeDef { public string Name, Sub, Desc; }
+    private static readonly BiomeDef[] Biomes =
     {
         new()
         {
-            Name = "The Proving Grounds",
-            Sub = "Tournament arena · Map 260u · Riders 3 · Free-for-all",
-            Desc = "A dry basin ringed by low hills, with a flat-topped mesa at its heart. " +
-                   "Three riders drop on the pads around the mesa and fight until one remains.\n\n" +
-                   "The mesa commands the center: its slopes are the only approach, its top the " +
-                   "only roof. Buildings on the basin floor give hard cover, and the tree line " +
-                   "breaks sight long before it stops fire.\n\n" +
-                   "Tournament rules: free-for-all, no bases, no retreat past the boundary. " +
-                   "Last machine standing takes the purse."
+            Name = "Desert",
+            Sub = "Open dunes · Rock cover · Long sightlines",
+            Desc = "Sand and rock under a hard sun. Sightlines run to the horizon, " +
+                   "rocks are the only hard cover, and the high ground stands bare."
+        },
+        new()
+        {
+            Name = "Forest",
+            Sub = "Woodland hills · Tree cover · Broken sightlines",
+            Desc = "Rolling woodland. Tree crowns stop shells and break every " +
+                   "sightline — but a trunk falls to a touch, so cover is spent " +
+                   "as the fight goes."
+        },
+        new()
+        {
+            Name = "City",
+            Sub = "Ruined city grid · Building cover · Standable roofs",
+            Desc = "A dead city of towers and blocks. Buildings block movement " +
+                   "and shells, their roofs are fighting ground, and every " +
+                   "street corner is close range."
         }
     };
+
+    private const string ArenaDesc =
+        "The Proving Grounds: a basin ringed by low hills, with a flat-topped mesa " +
+        "at its heart. Three riders drop on the pads around the mesa and fight until " +
+        "one remains.\n\nTournament rules: free-for-all, no bases, no retreat past " +
+        "the boundary. Last machine standing takes the purse.";
 
     public override void _Ready()
     {
@@ -141,6 +160,32 @@ public partial class MapScreen : Control
             sv.AddChild(contractMonitor);
         }
 
+        // Map section (Mission): the biome the contract is
+        // fought on. Tournament puts the same choice in its
+        // Map section above instead.
+        if (IsMission)
+        {
+            sv.AddChild(new HSeparator());
+            sv.AddChild(FlowUi.MakeHeading("Map", 13, FlowUi.Gold, bold: false));
+            sv.AddChild(Selector(out _biomeName, 15, StepBiome));
+            _biomeSub = FlowUi.MakeLabel("", 11, FlowUi.Dim);
+            sv.AddChild(_biomeSub);
+            var biomeScroll = new ScrollContainer
+            {
+                CustomMinimumSize = new Vector2(0f, 56f),
+                SizeFlagsVertical = SizeFlags.ExpandFill,
+                SizeFlagsStretchRatio = 0.55f,
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+            };
+            _biomeDesc = FlowUi.MakeLabel("", 12, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+            _biomeDesc.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            biomeScroll.AddChild(_biomeDesc);
+            biomeScroll.Resized += () => FitTextWidth(biomeScroll, _biomeDesc);
+            var biomeMonitor = Monitor(biomeScroll);
+            biomeMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
+            sv.AddChild(biomeMonitor);
+        }
+
         // Visual panel.
         var centerPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         centerPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.75f));
@@ -226,8 +271,15 @@ public partial class MapScreen : Control
         }
         else
         {
-            _mapIndex = (_mapIndex + d + Arenas.Length) % Arenas.Length;
+            StepBiome(d);
+            return;
         }
+        Refresh();
+    }
+
+    private void StepBiome(int d)
+    {
+        Flow.BiomeIndex = (Flow.BiomeIndex + d + Biomes.Length) % Biomes.Length;
         Refresh();
     }
 
@@ -255,11 +307,18 @@ public partial class MapScreen : Control
         }
         else
         {
-            var a = Arenas[_mapIndex];
-            _nameLabel.Text = a.Name;
-            _subLabel.Text = a.Sub;
-            _descLabel.Text = a.Desc;
-            _disc.Texture = FlowUi.ArenaTexture(512);
+            var b = Biomes[Flow.BiomeIndex];
+            _nameLabel.Text = b.Name;
+            _subLabel.Text = b.Sub;
+            _descLabel.Text = b.Desc + "\n\n" + ArenaDesc;
+            _disc.Texture = FlowUi.ArenaTexture(512, Flow.BiomeIndex);
+        }
+        if (_biomeName != null)
+        {
+            var b = Biomes[Flow.BiomeIndex];
+            _biomeName.Text = b.Name;
+            _biomeSub.Text = b.Sub;
+            _biomeDesc.Text = b.Desc;
         }
         PositionMarkers();
     }
