@@ -258,6 +258,7 @@ public partial class RiderDuel : Node3D
     private Label _lblFoe1Hp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
+    private Label _markLaser, _markAc, _markLrm; // active-weapon triangles at the bar ends
     private PanelContainer _panel;
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;

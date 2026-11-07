@@ -119,26 +119,32 @@ public partial class RiderDuel
         midBox.AddThemeConstantOverride("separation", 4);
         hbox.AddChild(midBox);
         midBox.AddChild(Title("WEAPONS"));
-        (Label, ProgressBar) CdRow(string name)
+        (Label, ProgressBar, Label) CdRow(string name)
         {
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
             var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(96, 0);
+            lab.CustomMinimumSize = new Vector2(74, 0);
             row.AddChild(lab);
             var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(218, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             row.AddChild(bar);
+            // The active-weapon triangle sits at the END of the
+            // bar (owner) — a fixed-width slot after the bar, so
+            // rows never shift when the selection moves.
+            var mark = MakeLabel(14, new Color(1f, 0.95f, 0.6f));
+            mark.CustomMinimumSize = new Vector2(16, 0);
+            row.AddChild(mark);
             midBox.AddChild(row);
-            return (lab, bar);
+            return (lab, bar, mark);
         }
         var rowLaser = CdRow("1 LAS");
-        _lblCdLaser = rowLaser.Item1; _cdBarLaser = rowLaser.Item2;
+        _lblCdLaser = rowLaser.Item1; _cdBarLaser = rowLaser.Item2; _markLaser = rowLaser.Item3;
         var rowAc = CdRow("2 AC");
-        _lblCdAc = rowAc.Item1; _cdBarAc = rowAc.Item2;
+        _lblCdAc = rowAc.Item1; _cdBarAc = rowAc.Item2; _markAc = rowAc.Item3;
         var rowLrm = CdRow("3 LRM");
-        _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2;
+        _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2; _markLrm = rowLrm.Item3;
         var rowThr = CdRow("THRUST");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
@@ -216,12 +222,13 @@ public partial class RiderDuel
         lab.AddThemeColorOverride("font_color", destroyed ? CdLabelDead : CdLabelNormal);
     }
 
-    // The selected weapon's panel row carries a pointer marker at
-    // the RIGHT of its text (owner) and, while the weapon lives,
+    // The selected weapon's row shows its triangle at the end of
+    // the cooldown bar (owner) and, while the weapon lives,
     // bright text; destroyed rows keep their red.
-    private static void SetSelLabel(Label lab, string baseText, bool selected, bool destroyed)
+    private static void SetSelLabel(Label lab, Label mark, string baseText, bool selected, bool destroyed)
     {
-        lab.Text = baseText + (selected ? " ▶" : "");
+        lab.Text = baseText;
+        mark.Text = selected ? "▶" : "";
         if (selected && !destroyed)
             lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
     }
@@ -296,9 +303,9 @@ public partial class RiderDuel
             _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
             _lblThr.Text = !fitted ? "THRUST —" : _player.Airborne ? "THRUST ▲" : "THRUST";
         }
-        SetSelLabel(_lblCdLaser, _wpnShort[0], _weaponSel == 0, lasDead);
-        SetSelLabel(_lblCdAc, _wpnShort[1], _weaponSel == 1, acDead);
-        SetSelLabel(_lblCdLrm, _wpnShort[2], _weaponSel == 2, lrmDead);
+        SetSelLabel(_lblCdLaser, _markLaser, _wpnShort[0], _weaponSel == 0, lasDead);
+        SetSelLabel(_lblCdAc, _markAc, _wpnShort[1], _weaponSel == 1, acDead);
+        SetSelLabel(_lblCdLrm, _markLrm, _wpnShort[2], _weaponSel == 2, lrmDead);
 
         // Per-part status cells (player rider).
         foreach (var (id, cell) in _partCells)
