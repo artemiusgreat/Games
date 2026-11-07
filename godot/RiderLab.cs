@@ -345,7 +345,9 @@ public partial class RiderLab : Control
                     if (_live.ContainsKey(id))
                     {
                         float capW = Mathf.Max(200f, Size.X * 0.5f - 6f);
-                        panel.Size = new Vector2(Mathf.Min(panel.GetCombinedMinimumSize().X, capW), panelH);
+                        float needW = panel.GetCombinedMinimumSize().X;
+                        if (panel is SlotPanel spn) needW = Mathf.Max(needW, spn.NeedW);
+                        panel.Size = new Vector2(Mathf.Min(needW, capW), panelH);
                         if (panel is SlotPanel sp && sp.Scroll != null)
                             sp.Scroll.CustomMinimumSize = new Vector2(0f, scrollH);
                     }
@@ -480,6 +482,7 @@ public partial class RiderLab : Control
         public VBoxContainer ListBox;
         public ScrollContainer Scroll;
         public Control Tile;
+        public float NeedW; // content width the fitted rows need at full length (set by Refresh; the inner scroll hides it from GetCombinedMinimumSize)
         public override bool _CanDropData(Vector2 atPosition, Variant data)
         {
             var wid = data.AsString();
@@ -836,6 +839,24 @@ public partial class RiderLab : Control
             // name, and slash-separated metrics — the same visual
             // language as the catalog. Clicking a row removes
             // exactly that weapon.
+            // Panel width need (owner: a fitted weapon is two
+            // lines, never clipped mid-word at this size): the
+            // rows live inside the panel's scroll, whose minimum
+            // size reports ~0, so measure the texts directly —
+            // panel margins + scrollbar + tile + gap + the
+            // longest name/metrics line.
+            {
+                var font = GetThemeDefaultFont();
+                float textW = 0f;
+                foreach (var wid in ids)
+                {
+                    var d = WeaponCatalog.ById(wid);
+                    if (d == null) continue;
+                    textW = Mathf.Max(textW, font.GetStringSize(d.Name, HorizontalAlignment.Left, -1f, 13).X);
+                    textW = Mathf.Max(textW, font.GetStringSize(Metrics(d), HorizontalAlignment.Left, -1f, 11).X);
+                }
+                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + 36f + 7f + textW + 4f;
+            }
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
             {
@@ -861,12 +882,22 @@ public partial class RiderLab : Control
                 var tile = TileVisual(def, 36);
                 tile.MouseFilter = MouseFilterEnum.Ignore;
                 rhb.AddChild(tile);
-                var texts = new VBoxContainer();
+                // ExpandFill is load-bearing: an HBox gives a
+                // plain child only its minimum width, and the
+                // metrics label's minimum is ~0 (ClipText) — the
+                // texts column collapsed to the name's width and
+                // the metrics clipped at ~10 characters (measured).
+                var texts = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
                 var nm = new Label { Text = def.Name };
                 nm.AddThemeFontSizeOverride("font_size", 13);
                 nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
                 texts.AddChild(nm);
-                var mt = new Label { Text = Metrics(def), AutowrapMode = TextServer.AutowrapMode.WordSmart };
+                // No wrap (owner): a fitted weapon is exactly two
+                // lines — name, metrics. The label's full-width
+                // minimum is what sizes the panel; if a panel is
+                // ever capped narrower, ClipText shortens the line
+                // instead of wrapping it onto extra lines.
+                var mt = new Label { Text = Metrics(def), ClipText = true };
                 mt.AddThemeFontSizeOverride("font_size", 11);
                 mt.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
                 texts.AddChild(mt);
