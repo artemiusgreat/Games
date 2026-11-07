@@ -119,7 +119,7 @@ public partial class RiderDuel
         midBox.AddThemeConstantOverride("separation", 4);
         hbox.AddChild(midBox);
         midBox.AddChild(Title("WEAPONS"));
-        (Label, ProgressBar, Label) CdRow(string name)
+        (Label, ProgressBar, TriMark) CdRow(string name)
         {
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
@@ -131,10 +131,15 @@ public partial class RiderDuel
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             row.AddChild(bar);
             // The active-weapon triangle sits at the END of the
-            // bar (owner) — a fixed-width slot after the bar, so
-            // rows never shift when the selection moves.
-            var mark = MakeLabel(14, new Color(1f, 0.95f, 0.6f));
-            mark.CustomMinimumSize = new Vector2(16, 0);
+            // bar (owner) — a fixed slot after the bar, so rows
+            // never shift when the selection moves. It is a DRAWN
+            // polygon, not a font glyph: the glyph's ink sat
+            // ~1.5px below the bar's center inside its line box
+            // however the label was aligned (measured), while the
+            // drawn triangle centers on the bar's own box exactly.
+            var mark = new TriMark();
+            mark.CustomMinimumSize = new Vector2(16, 13);
+            mark.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             row.AddChild(mark);
             midBox.AddChild(row);
             return (lab, bar, mark);
@@ -200,6 +205,25 @@ public partial class RiderDuel
         layer.AddChild(_bannerSub);
     }
 
+    // The active-weapon marker: a triangle drawn centered in
+    // its own rect (which is the cooldown bar's exact box), so
+    // its center is the bar's center by construction.
+    private sealed partial class TriMark : Control
+    {
+        public bool On;
+        public override void _Draw()
+        {
+            if (!On) return;
+            var c = Size / 2f;
+            DrawColoredPolygon(new[]
+            {
+                new Vector2(c.X - 4f, c.Y - 5f),
+                new Vector2(c.X - 4f, c.Y + 5f),
+                new Vector2(c.X + 5f, c.Y)
+            }, new Color(1f, 0.95f, 0.6f));
+        }
+    }
+
     private static readonly Color CdNormal = new Color(0.95f, 0.8f, 0.3f);
     private static readonly Color CdDead = new Color(0.45f, 0.12f, 0.1f);
     private static readonly Color CdDeny = new Color(1f, 0.16f, 0.1f);
@@ -225,10 +249,10 @@ public partial class RiderDuel
     // The selected weapon's row shows its triangle at the end of
     // the cooldown bar (owner) and, while the weapon lives,
     // bright text; destroyed rows keep their red.
-    private static void SetSelLabel(Label lab, Label mark, string baseText, bool selected, bool destroyed)
+    private static void SetSelLabel(Label lab, TriMark mark, string baseText, bool selected, bool destroyed)
     {
         lab.Text = baseText;
-        mark.Text = selected ? "▶" : "";
+        if (mark.On != selected) { mark.On = selected; mark.QueueRedraw(); }
         if (selected && !destroyed)
             lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
     }
