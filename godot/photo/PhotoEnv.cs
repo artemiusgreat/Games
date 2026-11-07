@@ -246,19 +246,45 @@ void fragment() {
         return holder;
     }
 
-    public static Material BuildingMaterial(Vector3 size, Color tint)
+    // Photographic wall sets (Poly Haven, CC0): one per
+    // building variant — the photoreal pass (owner, 2026-11-07)
+    // so buildings stop sharing a single concrete block.
+    private static readonly string[] WallSets =
     {
+        "concrete_block_wall_02", "brick_wall_04", "plastered_wall",
+        "concrete_panels", "concrete_tile_facade", "painted_plaster_wall"
+    };
+
+    public static Material BuildingMaterial(Vector3 size, Color tint, int variant = 0)
+    {
+        string set = WallSets[((variant % WallSets.Length) + WallSets.Length) % WallSets.Length];
         return new StandardMaterial3D
         {
             AlbedoColor = tint, // per-building shade (owner: buildings must not all look the same)
-            AlbedoTexture = Tex("concrete_block_wall_02", "diff"),
+            AlbedoTexture = Tex(set, "diff"),
             NormalEnabled = true,
             NormalScale = 0.9f,
-            NormalTexture = Tex("concrete_block_wall_02", "nor_gl"),
-            RoughnessTexture = Tex("concrete_block_wall_02", "arm"),
+            NormalTexture = Tex(set, "nor_gl"),
+            RoughnessTexture = Tex(set, "arm"),
             RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
-            AOTexture = Tex("concrete_block_wall_02", "arm"),
+            AOTexture = Tex(set, "arm"),
             Uv1Scale = new Vector3(Mathf.Max(size.X, size.Z) / 3.5f, size.Y / 3.5f, 1f)
+        };
+    }
+
+    // Roof faces wear gravel concrete, not the wall skin.
+    public static Material RoofMaterial(Vector3 size)
+    {
+        return new StandardMaterial3D
+        {
+            AlbedoTexture = Tex("gravel_concrete_02", "diff"),
+            NormalEnabled = true,
+            NormalScale = 0.7f,
+            NormalTexture = Tex("gravel_concrete_02", "nor_gl"),
+            RoughnessTexture = Tex("gravel_concrete_02", "arm"),
+            RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
+            AOTexture = Tex("gravel_concrete_02", "arm"),
+            Uv1Scale = new Vector3(size.X / 3f, size.Z / 3f, 1f)
         };
     }
 

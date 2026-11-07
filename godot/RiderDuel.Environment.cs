@@ -906,6 +906,55 @@ public partial class RiderDuel
         return node;
     }
 
+    // The building box as a two-surface ArrayMesh (a BoxMesh
+    // carries one material only): walls on surface 0, the roof
+    // face on surface 1. UVs are 0..1 per face — the mapping
+    // BoxMesh used — so each material's Uv1Scale keeps its
+    // meaning. Faces are (origin, right, up) triples with
+    // right x up = the outward normal, wound like the panes.
+    private static ArrayMesh BuildingBoxMesh(Vector3 size, Material wallMat, Material roofMat)
+    {
+        float hx = size.X / 2f, hy = size.Y / 2f, hz = size.Z / 2f;
+        var verts = new System.Collections.Generic.List<Vector3>();
+        var norms = new System.Collections.Generic.List<Vector3>();
+        var uvs = new System.Collections.Generic.List<Vector2>();
+        var wallI = new System.Collections.Generic.List<int>();
+        var roofI = new System.Collections.Generic.List<int>();
+        void Face(Vector3 o, Vector3 r, Vector3 u, System.Collections.Generic.List<int> idx)
+        {
+            int b = verts.Count;
+            var n = r.Cross(u).Normalized();
+            verts.Add(o); verts.Add(o + r); verts.Add(o + r + u); verts.Add(o + u);
+            for (int i = 0; i < 4; i++) norms.Add(n);
+            uvs.Add(new Vector2(0, 1)); uvs.Add(new Vector2(1, 1));
+            uvs.Add(new Vector2(1, 0)); uvs.Add(new Vector2(0, 0));
+            idx.Add(b); idx.Add(b + 2); idx.Add(b + 1);
+            idx.Add(b); idx.Add(b + 3); idx.Add(b + 2);
+        }
+        var X = new Vector3(size.X, 0, 0); var Y = new Vector3(0, size.Y, 0); var Z = new Vector3(0, 0, size.Z);
+        Face(new Vector3(-hx, -hy, hz), X, Y, wallI);   // +Z
+        Face(new Vector3(hx, -hy, -hz), -X, Y, wallI);  // -Z
+        Face(new Vector3(hx, -hy, hz), -Z, Y, wallI);   // +X
+        Face(new Vector3(-hx, -hy, -hz), Z, Y, wallI);  // -X
+        Face(new Vector3(-hx, -hy, -hz), X, Z, wallI);  // -Y (buried)
+        Face(new Vector3(-hx, hy, hz), X, -Z, roofI);   // +Y roof
+        var mesh = new ArrayMesh();
+        void Surf(System.Collections.Generic.List<int> idx, Material mat)
+        {
+            var arr = new Godot.Collections.Array(); arr.Resize((int)Mesh.ArrayType.Max);
+            arr[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+            arr[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+            arr[(int)Mesh.ArrayType.TexUV] = uvs.ToArray();
+            arr[(int)Mesh.ArrayType.Index] = idx.ToArray();
+            int at = mesh.GetSurfaceCount();
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
+            mesh.SurfaceSetMaterial(at, mat);
+        }
+        Surf(wallI, wallMat);
+        Surf(roofI, roofMat);
+        return mesh;
+    }
+
     private void AddBuilding(Vector3 pos, Vector3 size)
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
@@ -918,15 +967,22 @@ public partial class RiderDuel
         pos.Y = groundY + size.Y / 2f - Sink;
         int seq = _facadeSeq;
         var mi = new MeshInstance3D();
-        mi.Mesh = new BoxMesh { Size = size };
         float tintJ = 0.94f + (BrickHash(seq, 3, 9) % 13) * 0.01f;
-        mi.MaterialOverride = _photo
-            ? PhotoEnv.BuildingMaterial(size, BuildingTints[seq % BuildingTints.Length] * tintJ)
+        // Two-surface box (walls / roof): in the photo scene the
+        // walls take one of six photographic sets by sequence and
+        // the roof takes gravel; the plain scene keeps its
+        // authored facade and a flat dark roof.
+        var wallMat = _photo
+            ? PhotoEnv.BuildingMaterial(size, BuildingTints[seq % BuildingTints.Length] * tintJ, seq)
             : new StandardMaterial3D
             {
                 AlbedoTexture = MakeFacadeTexture(seq, FacadeBases[seq % FacadeBases.Length]),
                 Roughness = 0.92f
             };
+        var roofMat = _photo
+            ? PhotoEnv.RoofMaterial(size)
+            : new StandardMaterial3D { AlbedoColor = new Color(0.13f, 0.12f, 0.11f), Roughness = 1f };
+        mi.Mesh = BuildingBoxMesh(size, wallMat, roofMat);
         _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
