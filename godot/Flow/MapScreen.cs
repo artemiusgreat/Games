@@ -162,7 +162,7 @@ public partial class MapScreen : Control
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
             };
             _contractScroll = contractScroll;
-            _contractBody = FlowUi.MakeLabel("", 12, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+            _contractBody = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true); // same size as the planet text (owner)
             _contractBody.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             contractScroll.AddChild(_contractBody);
             contractScroll.Resized += () => FitTextWidth(contractScroll, _contractBody);
