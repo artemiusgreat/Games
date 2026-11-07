@@ -842,24 +842,32 @@ public partial class RiderDuel
     private static Material SkylineMaterial(int variant)
     {
         if (_skyMats.TryGetValue(variant, out var m)) return m;
+        // Dark silhouettes with bright windows — the owner's
+        // city references (first capture read as pale slabs:
+        // the cell average was too bright under the sun).
         var img = Image.Create(128, 256, false, Image.Format.Rgba8);
-        img.Fill(new Color(0.045f, 0.055f, 0.075f));
+        img.Fill(new Color(0.022f, 0.027f, 0.038f));
         for (int ry = 0; ry < 18; ry++)
         for (int cx = 0; cx < 7; cx++)
         {
             int hsh = BrickHash(variant, cx * 5 + 1, ry * 9 + 2);
-            var c = hsh % 100 < 34
+            var c = hsh % 100 < 40
                 ? (hsh % 3 == 0 ? new Color(0.60f, 0.80f, 1.00f) : new Color(0.95f, 0.75f, 0.45f))
-                : new Color(0.10f, 0.11f, 0.13f);
+                : new Color(0.048f, 0.053f, 0.063f);
             img.FillRect(new Rect2I(8 + cx * 17, 10 + ry * 13, 11, 8), c);
         }
         var tex = ImageTexture.CreateFromImage(img);
+        // Unshaded on purpose: these are backdrop cards, and as
+        // lit surfaces they blew out to white slabs under the
+        // scene sun in BOTH scenes (measured 255 in the plain
+        // duel, pale beige in the photo lab) whatever the texel
+        // values were. Unshaded renders the texture as authored
+        // — dark silhouette, bright windows — and fog still
+        // applies, so distance keeps its haze.
         m = new StandardMaterial3D
         {
-            AlbedoTexture = tex,
-            EmissionEnabled = true, EmissionTexture = tex,
-            Emission = new Color(1f, 1f, 1f), EmissionEnergyMultiplier = 0.8f,
-            Roughness = 1f
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            AlbedoTexture = tex
         };
         _skyMats[variant] = m;
         return m;
