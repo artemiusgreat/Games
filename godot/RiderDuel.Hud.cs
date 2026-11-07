@@ -39,7 +39,10 @@ public partial class RiderDuel
             _baseMarks = new Label[Main.SpawnPads.Length];
             for (int i = 0; i < _baseMarks.Length; i++)
             {
-                var l = MakeLabel(13, i == 0 ? new Color(0.55f, 0.95f, 0.6f) : new Color(1f, 0.55f, 0.45f));
+                // Enemy marker text is WHITE (owner: the salmon
+                // washed out against bright ground); the black
+                // outline stroke stays. Home keeps its green.
+                var l = MakeLabel(13, i == 0 ? new Color(0.55f, 0.95f, 0.6f) : new Color(1f, 1f, 1f));
                 l.AddThemeConstantOverride("outline_size", 8);
                 l.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
                 l.Visible = false;
