@@ -142,6 +142,10 @@ public partial class RiderDuel : Node3D
         public float DroopT;
         public Vector3 PrevRoot;
         public Vector3 Vel;
+        // Mission guard duty: engagement latch + patrol point.
+        public bool Engaged;
+        public Vector3 Patrol;
+        public float PatrolT;
     }
     private Foe _foe1;
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;

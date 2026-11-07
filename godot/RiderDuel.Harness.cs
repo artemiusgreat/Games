@@ -2255,6 +2255,7 @@ public partial class RiderDuel
     private int _mPhase;
     private float _mPhaseT, _mDistE0, _mDistF0;
     private Vector3 _mEnemyStart, _mFoe1Start;
+    private float _mMaxDisp, _mMaxHome, _mMaxHomeF, _mAggroD0;
 
     // Mission front smoke: world facts (size, pad plateau flatness,
     // base buildings), base + vista captures, then 50 s of AI march
@@ -2282,7 +2283,7 @@ public partial class RiderDuel
             _mDistE0 = _enemy.RootPos.DistanceTo(_player.RootPos);
             _mDistF0 = _foe1 != null ? _foe1.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
             _mEnemyStart = _enemy.RootPos; _mFoe1Start = _foe1?.Walker.RootPos ?? Vector3.Zero;
-            GD.Print($"MISSION MARCH start: enemy distToPlayer={_mDistE0:F0} foe1 distToPlayer={_mDistF0:F0}");
+            GD.Print($"MISSION PATROL start: enemy distToPlayer={_mDistE0:F0} foe1 distToPlayer={_mDistF0:F0}");
             QueueCapture("res://proof/mission_base.png", "mbase", "missionBase", () =>
             QueueCapture("res://proof/mission_vista.png", "mvista", "missionVista", () =>
             { _mPhase = 1; _mPhaseT = 0f; }));
@@ -2290,16 +2291,43 @@ public partial class RiderDuel
         }
         else if (_mPhase == 1)
         {
-            _player.SetDrive(_playerYaw, 0f); // hold position; the foes must come to us
+            // Patrol phase: the player holds at home, 1074u away.
+            // Both defenders must MOVE (patrol) yet STAY at their
+            // own bases — the old march assertion is inverted.
+            _player.SetDrive(_playerYaw, 0f);
             UpdateEnemyAI(dt);                 // test branches drive the AI themselves (cf. FFA test)
             if (_foe1 != null) UpdateFoe1AI(dt);
+            _mMaxDisp = Mathf.Max(_mMaxDisp, _enemy.RootPos.DistanceTo(_mEnemyStart));
+            _mMaxHome = Mathf.Max(_mMaxHome, _enemy.RootPos.DistanceTo(PadWorld(1)));
+            if (_foe1 != null) _mMaxHomeF = Mathf.Max(_mMaxHomeF, _foe1.Walker.RootPos.DistanceTo(PadWorld(2)));
             if (_mPhaseT > 25f)
             {
+                GD.Print($"MISSION PATROL end: enemy maxDisp={_mMaxDisp:F0}u maxDistFromHome={_mMaxHome:F0}u; foe1 maxDistFromHome={_mMaxHomeF:F0}u");
+                if (_mMaxDisp < 10f) { GD.PrintErr("MISSION FAIL: enemy did not patrol"); GetTree().Quit(1); return; }
+                if (_mMaxHome > 130f || _mMaxHomeF > 130f) { GD.PrintErr("MISSION FAIL: a defender left its base"); GetTree().Quit(1); return; }
+                // Aggro phase: put the player 190u from the enemy
+                // base — inside the 260u aggro ring — and watch the
+                // defender come out to fight.
+                var home = PadWorld(1);
+                var dirIn = (Vector3.Zero - home); dirIn.Y = 0f; dirIn = dirIn.Normalized();
+                var spot = home + dirIn * 190f;
+                spot.Y = Main.HeightAt(spot.X, spot.Z);
+                _player.Teleport(spot, RiderWalker.YawOf(-dirIn));
+                _mAggroD0 = _enemy.RootPos.DistanceTo(_player.RootPos);
+                GD.Print($"MISSION AGGRO start: player teleported, enemy distToPlayer={_mAggroD0:F0}");
+                _mPhase = 2; _mPhaseT = 0f;
+            }
+        }
+        else if (_mPhase == 2)
+        {
+            _player.SetDrive(_playerYaw, 0f);
+            UpdateEnemyAI(dt);
+            if (_foe1 != null) UpdateFoe1AI(dt);
+            if (_mPhaseT > 15f)
+            {
                 float dE = _enemy.RootPos.DistanceTo(_player.RootPos);
-                float dispE = _enemy.RootPos.DistanceTo(_mEnemyStart);
-                float dispF = _foe1 != null ? _foe1.Walker.RootPos.DistanceTo(_mFoe1Start) : 0f;
-                GD.Print($"MISSION MARCH end: enemy displaced={dispE:F0}u distToPlayer {_mDistE0:F0}->{dE:F0}; foe1 displaced={dispF:F0}u");
-                if (dispE < 35f) { GD.PrintErr("MISSION FAIL: enemy did not march"); GetTree().Quit(1); return; }
+                GD.Print($"MISSION AGGRO end: enemy distToPlayer {_mAggroD0:F0}->{dE:F0}");
+                if (dE > _mAggroD0 - 12f) { GD.PrintErr("MISSION FAIL: defender did not engage the player"); GetTree().Quit(1); return; }
                 GD.Print("MISSION TEST DONE");
                 GetTree().Quit(0);
             }

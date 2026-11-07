@@ -13,6 +13,68 @@ using System.Collections.Generic;
 // other foe while the player watches.
 public partial class RiderDuel
 {
+    // Mission guard duty (owner, 2026-11-06): on the big map the
+    // defenders PATROL their own base and only engage when the
+    // player closes inside AggroRange; past LeashRange they break
+    // off and go back to patrolling. No new AI framework — a
+    // two-state latch (patrol/engaged) around the existing range
+    // game, which still runs the fight once engaged. Tournament
+    // keeps the free-for-all hunt untouched.
+    private const float AggroRange = 260f;
+    private const float LeashRange = 360f;
+    private const float PatrolRadius = 55f; // the base plateau's flat disc is 60
+    private bool _foe0Engaged;
+    private Vector3 _foe0Patrol;
+    private float _foe0PatrolT;
+
+    private static Vector3 PadWorld(int i)
+    {
+        var p = Main.SpawnPads[i];
+        return new Vector3(p.X, Main.HeightAt(p.X, p.Y), p.Y);
+    }
+
+    // The engagement latch, with hysteresis: trips in at
+    // AggroRange, out at LeashRange, so a defender on the boundary
+    // does not flicker between states.
+    private bool GuardGate(RiderWalker self, ref bool engaged)
+    {
+        float dp = self.RootPos.DistanceTo(_player.RootPos);
+        if (_playerDead) engaged = false;
+        else if (!engaged && dp < AggroRange) engaged = true;
+        else if (engaged && dp > LeashRange) engaged = false;
+        return engaged;
+    }
+
+    // Walk a slow circuit of the home base: pick a point on the
+    // plateau disc, stroll to it, pick another. The torso faces
+    // the walk direction; weapons stay silent (gunnery is gated
+    // on the same latch).
+    private void PatrolMove(RiderWalker w, RiderParts parts, Vector3 home,
+        ref float yaw, ref Vector3 point, ref float timer, float pace, float delta)
+    {
+        timer -= delta;
+        var flat = new Vector2(w.RootPos.X, w.RootPos.Z);
+        var tgt = new Vector2(point.X, point.Z);
+        if (timer <= 0f || flat.DistanceTo(tgt) < 8f)
+        {
+            float a = (float)_rng.NextDouble() * Mathf.Tau;
+            float r = PatrolRadius * Mathf.Sqrt((float)_rng.NextDouble());
+            point = home + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+            point.Y = Main.HeightAt(point.X, point.Z);
+            timer = 16f;
+            tgt = new Vector2(point.X, point.Z);
+        }
+        var to = new Vector3(tgt.X - flat.X, 0f, tgt.Y - flat.Y);
+        float dist = to.Length();
+        if (dist < 0.6f) { w.SetDrive(yaw, 0f); return; }
+        float yawTo = RiderWalker.YawOf(to.Normalized());
+        float dy = RiderWalker.WrapAngle(yawTo - yaw);
+        yaw += Mathf.Clamp(dy, -0.7f * delta, 0.7f * delta);
+        w.SetDrive(yaw, dist > 8f ? pace : 0f);
+        TrackTorso(w, parts, yaw, yawTo, delta);
+        w.TorsoPitch = 0f;
+    }
+
     // The foe's current victim: nearest living opponent, re-picked
     // on a think timer so equidistant riders don't flip-flop.
     private (RiderWalker W, Vector3 Vel, string Tag) PickTarget(
@@ -59,6 +121,21 @@ public partial class RiderDuel
 
     private void UpdateEnemyAI(float delta)
     {
+        if (WorldConfig.IsMission)
+        {
+            if (!GuardGate(_enemy, ref _foe0Engaged))
+            {
+                _foe0TargetW = null;
+                PatrolMove(_enemy, _partsEnemy, PadWorld(1), ref _enemyYaw,
+                    ref _foe0Patrol, ref _foe0PatrolT, Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed), delta);
+                return;
+            }
+            _foe0TargetW = _player;
+            UpdateFoeMovement(_enemy, _partsEnemy,
+                PaceFor(_enemySpec, _enemy.RootPos.DistanceTo(_player.RootPos)),
+                ref _enemyYaw, ref _orbitDir, ref _orbitTimer, _player, delta);
+            return;
+        }
         var (target, _, _) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, delta);
         _foe0TargetW = target;
         float pace0 = target != null ? PaceFor(_enemySpec, _enemy.RootPos.DistanceTo(target.RootPos)) : EnemyPace;
@@ -69,6 +146,21 @@ public partial class RiderDuel
     private void UpdateFoe1AI(float delta)
     {
         if (_foe1.Dead) { _foe1.Walker.SetDrive(_foe1.Yaw, 0f); return; }
+        if (WorldConfig.IsMission)
+        {
+            if (!GuardGate(_foe1.Walker, ref _foe1.Engaged))
+            {
+                _foe1TargetW = null;
+                PatrolMove(_foe1.Walker, _foe1.Parts, PadWorld(2), ref _foe1.Yaw,
+                    ref _foe1.Patrol, ref _foe1.PatrolT, Mathf.Min(_foe1.Spec.MaxSpeed, EnemyMaxSpeed), delta);
+                return;
+            }
+            _foe1TargetW = _player;
+            UpdateFoeMovement(_foe1.Walker, _foe1.Parts,
+                PaceFor(_foe1.Spec, _foe1.Walker.RootPos.DistanceTo(_player.RootPos)),
+                ref _foe1.Yaw, ref _foe1.OrbitDir, ref _foe1.OrbitTimer, _player, delta);
+            return;
+        }
         var (target, _, _) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, delta);
         _foe1TargetW = target;
         float pace = target != null ? PaceFor(_foe1.Spec, _foe1.Walker.RootPos.DistanceTo(target.RootPos))
@@ -138,6 +230,7 @@ public partial class RiderDuel
     private void UpdateEnemyGunnery(float dt)
     {
         if (_enemyDead) return;
+        if (WorldConfig.IsMission && !_foe0Engaged) return;
         if (_cdEnemy > 0f) return;
         var (target, vel, tag) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, 0f);
         if (target == null) return;
@@ -152,6 +245,7 @@ public partial class RiderDuel
     private void UpdateFoe1Gunnery(float dt)
     {
         if (_foe1.Dead || _foe1.Cd > 0f) return;
+        if (WorldConfig.IsMission && !_foe1.Engaged) return;
         var (target, vel, tag) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, 0f);
         if (target == null) return;
         UpdateFoeGunnery(_foe1.Walker, _foe1.Parts, _foe1.DefBallistic, _foe1.BallisticSlot,
