@@ -514,6 +514,7 @@ public partial class RiderLab : Control
         AddChild(root);
 
         var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}" };
+        FlowUi.Heading(title);
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
@@ -542,6 +543,7 @@ public partial class RiderLab : Control
         mid.AddChild(catBox);
         var catTitle = new Label { Text = "WEAPONS" };
         catTitle.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
+        FlowUi.Heading(catTitle, false);
         catBox.AddChild(catTitle);
         // The catalog scrolls (owner): the full list outgrows the
         // screen height once tiles made the rows taller.
@@ -609,6 +611,7 @@ public partial class RiderLab : Control
             panel.AddChild(vb);
             var head = new Label { Text = $"{slot.Type} · max {slot.MaxWeight:F0}t" }; // slot names removed (owner): type + capacity only
             panel.HeadLabel = head;
+            FlowUi.Heading(head, false);
             head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
@@ -748,9 +751,12 @@ public partial class RiderLab : Control
         return box;
     }
 
+    // Fitted-row metrics stay compact: the range figure lives in
+    // the catalog rows — repeating it here widened the slot panels
+    // until the two pod panels overlapped (owner's screenshot).
     private static string Metrics(WeaponDef d) => d.Type == WeaponSlotType.Missile
-        ? $"{d.Weight:F0}t / {d.Damage} dmg ×{d.Rockets} / {d.Cooldown:0.00}s cd / rng {d.Range:F0}u"
-        : $"{d.Weight:F0}t / {d.Damage} dmg / {d.Cooldown:0.00}s cd / rng {d.Range:F0}u";
+        ? $"{d.Weight:F0}t / {d.Damage} dmg ×{d.Rockets} / {d.Cooldown:0.00}s cd"
+        : $"{d.Weight:F0}t / {d.Damage} dmg / {d.Cooldown:0.00}s cd";
 
     // Dev measurement: panel centers vs live projected anchors,
     // in viewport pixels — the slot-flip investigation record.

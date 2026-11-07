@@ -156,7 +156,7 @@ public partial class FlowMain : Node3D
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 10);
         center.AddChild(v);
-        _loadLabel = FlowUi.MakeLabel("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center);
+        _loadLabel = FlowUi.MakeHeading("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center);
         v.AddChild(_loadLabel);
         _loadPct = FlowUi.MakeLabel("Loading the front…", 14, FlowUi.Dim, HorizontalAlignment.Center);
         v.AddChild(_loadPct);

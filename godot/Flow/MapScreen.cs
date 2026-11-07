@@ -98,7 +98,7 @@ public partial class MapScreen : Control
         mid.AddChild(side);
 
         // Planet / Map section.
-        sv.AddChild(FlowUi.MakeLabel(IsMission ? "Planet" : "Map", 13, FlowUi.Gold));
+        sv.AddChild(FlowUi.MakeHeading(IsMission ? "Planet" : "Map", 13, FlowUi.Gold, bold: false));
         sv.AddChild(Selector(out _nameLabel, 16, StepPlace));
         _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
         sv.AddChild(_subLabel);
@@ -122,7 +122,7 @@ public partial class MapScreen : Control
         if (IsMission)
         {
             sv.AddChild(new HSeparator());
-            sv.AddChild(FlowUi.MakeLabel("Contract", 13, FlowUi.Gold));
+            sv.AddChild(FlowUi.MakeHeading("Contract", 13, FlowUi.Gold, bold: false));
             sv.AddChild(Selector(out _contractName, 15, StepMission));
             var contractScroll = new ScrollContainer
             {
@@ -182,7 +182,7 @@ public partial class MapScreen : Control
         prev.CustomMinimumSize = new Vector2(42f, 0f);
         prev.Pressed += () => step(-1);
         row.AddChild(prev);
-        name = FlowUi.MakeLabel("", fontSize, FlowUi.Gold, HorizontalAlignment.Center);
+        name = FlowUi.MakeHeading("", fontSize, FlowUi.Gold, HorizontalAlignment.Center);
         name.SizeFlagsHorizontal = SizeFlags.Expand;
         row.AddChild(name);
         var next = FlowUi.MakeButton("›", 17);

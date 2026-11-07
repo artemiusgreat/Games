@@ -17,7 +17,7 @@ public partial class MapTypeScreen : Control
         root.AddThemeConstantOverride("separation", 18);
         center.AddChild(root);
 
-        root.AddChild(FlowUi.MakeLabel("The Age of Titans", 52, FlowUi.Gold, HorizontalAlignment.Center));
+        root.AddChild(FlowUi.MakeHeading("The Age of Titans", 52, FlowUi.Gold, HorizontalAlignment.Center));
         root.AddChild(FlowUi.MakeLabel("Select game mode", 16, FlowUi.Dim, HorizontalAlignment.Center));
 
         var cards = new HBoxContainer();
@@ -47,7 +47,7 @@ public partial class MapTypeScreen : Control
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 12);
         panel.AddChild(v);
-        v.AddChild(FlowUi.MakeLabel(title, 30, FlowUi.Gold));
+        v.AddChild(FlowUi.MakeHeading(title, 30, FlowUi.Gold));
         var d = FlowUi.MakeLabel(desc, 14, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
         d.CustomMinimumSize = new Vector2(394f, 92f);
         v.AddChild(d);

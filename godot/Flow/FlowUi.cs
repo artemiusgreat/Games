@@ -128,6 +128,26 @@ public static class FlowUi
         return ImageTexture.CreateFromImage(img);
     }
 
+    private static FontFile _headBold, _headReg;
+    public static FontFile HeadFont(bool bold)
+    {
+        if (bold) return _headBold ??= GD.Load<FontFile>("res://assets/fonts/B612Mono-Bold.ttf");
+        return _headReg ??= GD.Load<FontFile>("res://assets/fonts/B612Mono-Regular.ttf");
+    }
+
+    // Terminal font for HEADINGS only (owner): body text keeps the
+    // built-in font — a mono everywhere broke fixed layouts.
+    public static void Heading(Control c, bool bold = true) =>
+        c.AddThemeFontOverride("font", HeadFont(bold));
+
+    public static Label MakeHeading(string text, int size, Color color,
+        HorizontalAlignment align = HorizontalAlignment.Left, bool bold = true)
+    {
+        var l = MakeLabel(text, size, color, align);
+        Heading(l, bold);
+        return l;
+    }
+
     public static string ThreatPips(int threat)
     {
         var sb = new System.Text.StringBuilder();

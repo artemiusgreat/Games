@@ -58,7 +58,7 @@ public partial class BarScreen : Control
         var pv = new VBoxContainer();
         pv.AddThemeConstantOverride("separation", 8);
         panel.AddChild(pv);
-        pv.AddChild(FlowUi.MakeLabel($"Contract offers — {Planet.Name}", 17, FlowUi.Gold));
+        pv.AddChild(FlowUi.MakeHeading($"Contract offers — {Planet.Name}", 17, FlowUi.Gold));
         _status = FlowUi.MakeLabel("", 12, FlowUi.Dim);
         pv.AddChild(_status);
         _offers = new VBoxContainer();
@@ -91,7 +91,7 @@ public partial class BarScreen : Control
             var tx = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.Expand };
             tx.AddThemeConstantOverride("separation", 2);
             h.AddChild(tx);
-            tx.AddChild(FlowUi.MakeLabel(m.Patron, 14, FlowUi.Gold));
+            tx.AddChild(FlowUi.MakeHeading(m.Patron, 14, FlowUi.Gold, bold: false));
             tx.AddChild(FlowUi.MakeLabel($"“{m.Pitch}”", 12, FlowUi.Ink, HorizontalAlignment.Left, wrap: true));
             tx.AddChild(FlowUi.MakeLabel($"{m.Name} · {m.Type} · {m.Payment:N0} credits · Threat {FlowUi.ThreatPips(m.Threat)}", 11, FlowUi.Dim));
             bool signed = _signedHere == m || (_signedHere == null && current == m);
