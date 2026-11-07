@@ -175,6 +175,7 @@ public partial class RiderLab : Control
     {
         Control root = drag != null ? drag : new Control();
         root.CustomMinimumSize = new Vector2(size, size);
+        root.SizeFlagsVertical = SizeFlags.ShrinkCenter; // else the row stretches the tile and the bottom-anchored abbreviation falls outside the icon (owner's closeup)
         // ExpandMode IgnoreSize is load-bearing: KeepSize makes
         // the TextureRect's minimum size the texture's 48px, which
         // inflates the whole tile past the row (measured live).
@@ -539,14 +540,13 @@ public partial class RiderLab : Control
         root.AddChild(mid);
 
         // -- Catalog (left) --
-        // The catalog column is FIXED at 530: left to content it
-        // creeps (mono rows are wide), the rows stretch to fill
-        // it, and the paperdoll's panels spill back over the
-        // rows' backdrops. 530 holds the widest grouped row
-        // (~481) with margin; anything wider clips in the scroll
+        // The catalog column is FIXED (400 since the rows went
+        // two-line): left to content it creeps, the rows stretch
+        // to fill it, and the paperdoll's panels spill back over
+        // the rows' backdrops. Anything wider clips in the scroll
         // instead of widening the column. (A CustomMaximumSize
         // here collapsed the column entirely — measured.)
-        var catBox = new VBoxContainer { CustomMinimumSize = new Vector2(530, 0) };
+        var catBox = new VBoxContainer { CustomMinimumSize = new Vector2(400, 0) };
         catBox.AddThemeConstantOverride("separation", 4);
         mid.AddChild(catBox);
         var catTitle = new Label { Text = "WEAPONS" };
@@ -562,7 +562,10 @@ public partial class RiderLab : Control
         var rowsBox = new VBoxContainer();
         rowsBox.AddThemeConstantOverride("separation", 4);
         rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        scroll.AddChild(rowsBox);
+        var rowsMargin = new MarginContainer();
+        rowsMargin.AddThemeConstantOverride("margin_right", 14); // air between the rows and the scrollbar (owner)
+        rowsMargin.AddChild(rowsBox);
+        scroll.AddChild(rowsMargin);
         // The catalog is three stacked lists (owner): Lasers,
         // Cannons, Missiles. The group heading replaces the type
         // named in every row — which also buys back the width
@@ -606,15 +609,17 @@ public partial class RiderLab : Control
             var tileCtl = TileVisual(w, 40, drag);
             tileCtl.SizeFlagsVertical = SizeFlags.ShrinkCenter; // the tile fits INSIDE the row band (owner)
             hb.AddChild(tileCtl);
-            var lab = new Label
-            {
-                Text = $"{w.Name} · {w.Weight:F0}t · dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")} · cd {w.Cooldown:F2}s · rng {w.Range:F0}u",
-                VerticalAlignment = VerticalAlignment.Center,
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            lab.AddThemeFontSizeOverride("font_size", 14);
-            lab.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
-            hb.AddChild(lab);
+            var texts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            texts.AddThemeConstantOverride("separation", 1);
+            var nm = new Label { Text = w.Name, MouseFilter = MouseFilterEnum.Ignore };
+            nm.AddThemeFontSizeOverride("font_size", 14);
+            nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+            texts.AddChild(nm);
+            var st = new Label { Text = StatsLine(w, full: true), MouseFilter = MouseFilterEnum.Ignore };
+            st.AddThemeFontSizeOverride("font_size", 11);
+            st.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
+            texts.AddChild(st);
+            hb.AddChild(texts);
             rowsBox.AddChild(rowPanel);
             }
         }
@@ -782,12 +787,11 @@ public partial class RiderLab : Control
         return box;
     }
 
-    // Fitted-row metrics stay compact: the range figure lives in
-    // the catalog rows — repeating it here widened the slot panels
-    // until the two pod panels overlapped (owner's screenshot).
-    private static string Metrics(WeaponDef d) => d.Type == WeaponSlotType.Missile
-        ? $"{d.Weight:F0}t · {d.Damage} dmg ×{d.Rockets} · {d.Cooldown:0.00}s cd"
-        : $"{d.Weight:F0}t · {d.Damage} dmg · {d.Cooldown:0.00}s cd";
+    private static string StatsLine(WeaponDef d, bool full) => d.Type == WeaponSlotType.Missile
+        ? $"{d.Weight:F0}t · {d.Damage} dmg ×{d.Rockets} · cd {d.Cooldown:0.00}s{(full ? $" · rng {d.Range:F0}u" : "")}"
+        : $"{d.Weight:F0}t · dmg {d.Damage:F0} · cd {d.Cooldown:0.00}s{(full ? $" · rng {d.Range:F0}u" : "")}";
+
+    private static string Metrics(WeaponDef d) => StatsLine(d, full: false);
 
     // Dev measurement: panel centers vs live projected anchors,
     // in viewport pixels — the slot-flip investigation record.
