@@ -140,8 +140,15 @@ public partial class RiderDuel
         var zones = new System.Collections.Generic.List<(Vector2 C, float R, int Trees, int Rocks)>();
         foreach (var pad in Main.SpawnPads) zones.Add((pad, 250f, 12, 7));
         zones.Add((Vector2.Zero, 700f, 26, 18)); // wild, centered
-        foreach (var (c, rad, treeN, rockN) in zones)
+        var (ztMul, zrMul) = WorldConfig.Biome switch
         {
+            WorldConfig.BiomeKind.Desert => (0.15f, 1.8f),
+            WorldConfig.BiomeKind.City => (0.30f, 0.15f),
+            _ => (1f, 1f)
+        };
+        foreach (var (c, rad, treeN0, rockN0) in zones)
+        {
+            int treeN = (int)(treeN0 * ztMul), rockN = (int)(rockN0 * zrMul);
             int trees = 0, tries = 0;
             while (trees < treeN && tries++ < 600)
             {
@@ -416,8 +423,15 @@ public partial class RiderDuel
     {
         if (WorldConfig.IsMission) { ScatterNatureMission(); return; }
         var rng = new System.Random(0x5EED);
+        var (treeMul, rockMul) = WorldConfig.Biome switch
+        {
+            WorldConfig.BiomeKind.Desert => (0.15f, 1.8f),
+            WorldConfig.BiomeKind.City => (0.30f, 0.15f),
+            _ => (1f, 1f) // Forest: the standing scatter, untouched
+        };
+        int treeTarget = (int)(33 * treeMul), rockTarget = (int)(25 * rockMul);
         int trees = 0, tries = 0;
-        while (trees < 33 && tries++ < 900)
+        while (trees < treeTarget && tries++ < 900)
         {
             float ang = (float)rng.NextDouble() * Mathf.Tau;
             float rad = 12f + 68f * Mathf.Sqrt((float)rng.NextDouble());
@@ -431,7 +445,7 @@ public partial class RiderDuel
         }
         int rocks = 0;
         tries = 0;
-        while (rocks < 25 && tries++ < 900)
+        while (rocks < rockTarget && tries++ < 900)
         {
             float ang = (float)rng.NextDouble() * Mathf.Tau;
             float rad = 10f + 70f * Mathf.Sqrt((float)rng.NextDouble());
@@ -453,7 +467,19 @@ public partial class RiderDuel
     private static readonly Color[] FacadeBases =
     {
         new(0.62f, 0.60f, 0.58f), new(0.66f, 0.60f, 0.52f),
-        new(0.55f, 0.58f, 0.62f), new(0.60f, 0.55f, 0.50f)
+        new(0.55f, 0.58f, 0.62f), new(0.60f, 0.55f, 0.50f),
+        new(0.50f, 0.58f, 0.56f), new(0.63f, 0.52f, 0.44f)
+    };
+
+    // Photo-scene shades over the shared concrete set (owner:
+    // buildings must not all look the same) — blue-grey, teal,
+    // warm sand, pale, brick-warm, slate, cycled per building
+    // with a small hash jitter on top.
+    private static readonly Color[] BuildingTints =
+    {
+        new(0.92f, 0.95f, 1.00f), new(0.85f, 0.95f, 0.95f),
+        new(1.03f, 0.97f, 0.88f), new(0.88f, 0.90f, 0.94f),
+        new(1.02f, 0.90f, 0.84f), new(0.80f, 0.86f, 0.90f)
     };
 
     // Procedural facade (terrain-detail ask): a window grid with lit and
@@ -519,7 +545,7 @@ public partial class RiderDuel
     // material; frames use a second surface of the same mesh with a
     // dark opaque material. Local space: the building box is centered
     // at the mesh origin, so panes ride the collapse scale for free.
-    private static MeshInstance3D MakeGlassPanes(Vector3 size)
+    private static MeshInstance3D MakeGlassPanes(Vector3 size, int seed, float litRatio)
     {
         var verts = new System.Collections.Generic.List<Vector3>();
         var norms = new System.Collections.Generic.List<Vector3>();
@@ -532,6 +558,21 @@ public partial class RiderDuel
             CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             Roughness = 0.06f, Metallic = 0.35f
         };
+        // Lit panes (owner's city references: no two facades
+        // alike) — a seeded share of the panes glow warm or cool
+        // on a third, emissive surface of the same mesh.
+        var litWarm = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.45f, 0.30f, 0.13f),
+            EmissionEnabled = true, Emission = new Color(1.0f, 0.72f, 0.38f), EmissionEnergyMultiplier = 1.3f,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.4f
+        };
+        var litCool = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.16f, 0.24f, 0.32f),
+            EmissionEnabled = true, Emission = new Color(0.62f, 0.82f, 1.0f), EmissionEnergyMultiplier = 1.2f,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.4f
+        };
         // face: outward normal, right axis, half extents (w = face width, h = height)
         var faces = new (Vector3 N, Vector3 R, float W)[]
         {
@@ -542,22 +583,36 @@ public partial class RiderDuel
         };
         var frameIdx = new System.Collections.Generic.List<int>();
         var glassIdx = new System.Collections.Generic.List<int>();
+        var litWarmIdx = new System.Collections.Generic.List<int>();
+        var litCoolIdx = new System.Collections.Generic.List<int>();
+        // The grid itself varies per building (seeded cell size),
+        // a few panes are missing outright, and the lit share is
+        // the caller's (higher in the city, where dusk facades
+        // glow — the owner's screenshots).
+        float cellW = 2.1f + (BrickHash(seed, 7, 1) % 100) / 100f * 0.9f;
+        float cellH = 2.5f + (BrickHash(seed, 3, 11) % 100) / 100f * 0.8f;
+        int faceI = 0;
         foreach (var (n, rgt, w) in faces)
         {
             float half = (Mathf.Abs(n.Z) > 0.5f ? size.Z : size.X) / 2f + 0.04f;
-            int cols = Mathf.Clamp(Mathf.RoundToInt(w / 2.4f), 3, 6);
-            int rows = Mathf.Clamp(Mathf.RoundToInt(size.Y / 2.8f), 2, 4);
+            int cols = Mathf.Clamp(Mathf.RoundToInt(w / cellW), 3, 7);
+            int rows = Mathf.Clamp(Mathf.RoundToInt(size.Y / cellH), 2, 6);
             for (int ri = 0; ri < rows; ri++)
             for (int ci = 0; ci < cols; ci++)
             {
+                int hsh = BrickHash(seed, ci * 3 + faceI * 31, ri * 7 + faceI);
+                if (hsh % 23 == 0) continue; // a missing pane
                 float u = (ci + 0.5f) / cols - 0.5f;         // across the face
                 float v = 0.18f + (ri + 0.5f) / rows * 0.72f; // 0 at sill band..1 top
                 var center = n * half + rgt * (u * w)
                     + Vector3.Up * ((v - 0.5f) * size.Y);
                 float pw = w / cols * 0.52f, ph = size.Y / rows * 0.5f;
                 AddQuad(verts, norms, frameIdx, center - n * 0.02f, rgt, n, pw * 1.18f, ph * 1.18f);
-                AddQuad(verts, norms, glassIdx, center, rgt, n, pw, ph);
+                var dst = (hsh % 100) < (int)(litRatio * 100f)
+                    ? (hsh % 3 == 0 ? litCoolIdx : litWarmIdx) : glassIdx;
+                AddQuad(verts, norms, dst, center, rgt, n, pw, ph);
             }
+            faceI++;
         }
         var arrays = new Godot.Collections.Array();
         arrays.Resize((int)Mesh.ArrayType.Max);
@@ -576,6 +631,26 @@ public partial class RiderDuel
         gArrays[(int)Mesh.ArrayType.Index] = glassIdx.ToArray();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, gArrays);
         mesh.SurfaceSetMaterial(1, glassMat);
+        if (litWarmIdx.Count > 0)
+        {
+            var wArrays = new Godot.Collections.Array(); wArrays.Resize((int)Mesh.ArrayType.Max);
+            wArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+            wArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+            wArrays[(int)Mesh.ArrayType.Index] = litWarmIdx.ToArray();
+            int si = mesh.GetSurfaceCount();
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, wArrays);
+            mesh.SurfaceSetMaterial(si, litWarm);
+        }
+        if (litCoolIdx.Count > 0)
+        {
+            var cArrays = new Godot.Collections.Array(); cArrays.Resize((int)Mesh.ArrayType.Max);
+            cArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+            cArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+            cArrays[(int)Mesh.ArrayType.Index] = litCoolIdx.ToArray();
+            int si = mesh.GetSurfaceCount();
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, cArrays);
+            mesh.SurfaceSetMaterial(si, litCool);
+        }
         return new MeshInstance3D { Mesh = mesh };
     }
 
@@ -618,7 +693,14 @@ public partial class RiderDuel
             for (int i = 0; i < offs.Length; i++)
             {
                 var o = offs[i].Rotated(rot);
-                AddBuilding(new Vector3(pad.X + o.X, 0f, pad.Y + o.Y), sizes[i]);
+                // Per-base size jitter (owner: buildings must not
+                // all look the same) — deterministic per base and
+                // structure, footprints ±10%, heights ±13%.
+                float sx = 1f + ((b * 3 + i) % 4 - 1.5f) * 0.07f;
+                float sy = 1f + ((b + i * 2) % 3 - 1) * 0.13f;
+                var sz = sizes[i];
+                AddBuilding(new Vector3(pad.X + o.X, 0f, pad.Y + o.Y),
+                    new Vector3(sz.X * sx, sz.Y * sy, sz.Z * sx));
             }
             var m = new Vector2(22f, -26f).Rotated(rot);
             AddBuilding(new Vector3(pad.X + m.X, 0f, pad.Y + m.Y), new Vector3(3f, 27f, 3f)); // comms mast
@@ -636,19 +718,24 @@ public partial class RiderDuel
         const float Sink = 2.4f;
         float roofTop = groundY + size.Y - Sink;
         pos.Y = groundY + size.Y / 2f - Sink;
+        int seq = _facadeSeq;
         var mi = new MeshInstance3D();
         mi.Mesh = new BoxMesh { Size = size };
+        float tintJ = 0.94f + (BrickHash(seq, 3, 9) % 13) * 0.01f;
         mi.MaterialOverride = _photo
-            ? PhotoEnv.BuildingMaterial(size)
+            ? PhotoEnv.BuildingMaterial(size, BuildingTints[seq % BuildingTints.Length] * tintJ)
             : new StandardMaterial3D
             {
-                AlbedoTexture = MakeFacadeTexture(_facadeSeq, FacadeBases[_facadeSeq % FacadeBases.Length]),
+                AlbedoTexture = MakeFacadeTexture(seq, FacadeBases[seq % FacadeBases.Length]),
                 Roughness = 0.92f
             };
         _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
-        mi.AddChild(MakeGlassPanes(size));
+        mi.AddChild(MakeGlassPanes(size, seq,
+            WorldConfig.Biome == WorldConfig.BiomeKind.City ? 0.34f : 0.16f));
+        if (WorldConfig.Biome == WorldConfig.BiomeKind.City && seq % 3 == 1 && size.Y >= 12f && size.X >= 8f)
+            AddSign(mi, size, seq);
         _buildingPts.Add(new Vector2(pos.X, pos.Z));
         // Circle colliders: one for near-square footprints, two along the
         // long axis for elongated ones. Radius covers the short side plus a
@@ -688,6 +775,182 @@ public partial class RiderDuel
         // thrusters can land and stand on it. Removed again when
         // the building is destroyed (RemovePropColliders).
         Main.Roofs.Add(new Main.RoofRect { Cx = pos.X, Cz = pos.Z, Hx = size.X / 2f, Hz = size.Z / 2f, Top = roofTop });
+    }
+
+    // ---- City dressing (owner's references): neon signs on the
+    // gameplay buildings, a lit skyline beyond the boundary ----
+
+    private static readonly Color[] SignNeons =
+    {
+        new(0.20f, 0.90f, 1.00f), new(1.00f, 0.35f, 0.80f),
+        new(1.00f, 0.70f, 0.25f), new(0.40f, 1.00f, 0.60f)
+    };
+    private static readonly System.Collections.Generic.Dictionary<int, ImageTexture> _signTex = new();
+
+    private static ImageTexture SignTexture(int variant)
+    {
+        if (_signTex.TryGetValue(variant, out var t)) return t;
+        var neon = SignNeons[variant % SignNeons.Length];
+        var img = Image.Create(256, 128, false, Image.Format.Rgba8);
+        img.Fill(new Color(0.03f, 0.03f, 0.045f));
+        img.FillRect(new Rect2I(4, 4, 248, 120), neon);
+        img.FillRect(new Rect2I(10, 10, 236, 108), new Color(0.03f, 0.03f, 0.045f));
+        // Abstract ad: bright bars of seeded widths + one block.
+        for (int i = 0; i < 4; i++)
+        {
+            int bw = 60 + BrickHash(variant, i, 5) % 150;
+            var c = i % 2 == 0 ? neon : neon.Lightened(0.35f);
+            img.FillRect(new Rect2I(22, 24 + i * 20, bw, 9), c);
+        }
+        img.FillRect(new Rect2I(196, 78, 36, 36), neon.Lightened(0.2f));
+        t = ImageTexture.CreateFromImage(img);
+        _signTex[variant] = t;
+        return t;
+    }
+
+    private static void AddSign(MeshInstance3D building, Vector3 size, int seq)
+    {
+        int variant = seq % SignNeons.Length;
+        var tex = SignTexture(variant);
+        var mat = new StandardMaterial3D
+        {
+            AlbedoTexture = tex,
+            EmissionEnabled = true, EmissionTexture = tex,
+            Emission = new Color(1f, 1f, 1f), EmissionEnergyMultiplier = 1.5f,
+            Roughness = 0.6f
+        };
+        float w = Mathf.Min(size.X * 0.72f, 9f);
+        var sign = new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(w, w * 0.5f) },
+            MaterialOverride = mat
+        };
+        // One face per building, seeded; the sign rides the
+        // building node, so it collapses with it when destroyed.
+        switch (seq % 4)
+        {
+            case 0: sign.Position = new Vector3(0f, size.Y * 0.16f, size.Z / 2f + 0.07f); break;
+            case 1: sign.Position = new Vector3(0f, size.Y * 0.16f, -size.Z / 2f - 0.07f); sign.Rotation = new Vector3(0f, Mathf.Pi, 0f); break;
+            case 2: sign.Position = new Vector3(size.X / 2f + 0.07f, size.Y * 0.16f, 0f); sign.Rotation = new Vector3(0f, Mathf.Pi / 2f, 0f); break;
+            default: sign.Position = new Vector3(-size.X / 2f - 0.07f, size.Y * 0.16f, 0f); sign.Rotation = new Vector3(0f, -Mathf.Pi / 2f, 0f); break;
+        }
+        building.AddChild(sign);
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<int, Material> _skyMats = new();
+
+    private static Material SkylineMaterial(int variant)
+    {
+        if (_skyMats.TryGetValue(variant, out var m)) return m;
+        var img = Image.Create(128, 256, false, Image.Format.Rgba8);
+        img.Fill(new Color(0.045f, 0.055f, 0.075f));
+        for (int ry = 0; ry < 18; ry++)
+        for (int cx = 0; cx < 7; cx++)
+        {
+            int hsh = BrickHash(variant, cx * 5 + 1, ry * 9 + 2);
+            var c = hsh % 100 < 34
+                ? (hsh % 3 == 0 ? new Color(0.60f, 0.80f, 1.00f) : new Color(0.95f, 0.75f, 0.45f))
+                : new Color(0.10f, 0.11f, 0.13f);
+            img.FillRect(new Rect2I(8 + cx * 17, 10 + ry * 13, 11, 8), c);
+        }
+        var tex = ImageTexture.CreateFromImage(img);
+        m = new StandardMaterial3D
+        {
+            AlbedoTexture = tex,
+            EmissionEnabled = true, EmissionTexture = tex,
+            Emission = new Color(1f, 1f, 1f), EmissionEnergyMultiplier = 0.8f,
+            Roughness = 1f
+        };
+        _skyMats[variant] = m;
+        return m;
+    }
+
+    // Beyond the boundary (visual only — no colliders, no
+    // destructibles): a ring of lit towers so the city reads as a
+    // city, in the owner's screenshots' silhouette-and-windows
+    // language. Heights and footprints vary per tower.
+    private void BuildSkyline()
+    {
+        if (WorldConfig.Biome != WorldConfig.BiomeKind.City) return;
+        var rng = new System.Random(0x51C17E);
+        bool mission = WorldConfig.IsMission;
+        int count = mission ? 44 : 30;
+        float half = Main.TerrainSize / 2f;
+        for (int i = 0; i < count; i++)
+        {
+            float a = (float)rng.NextDouble() * Mathf.Tau;
+            float dist = mission
+                ? half + 60f + (float)rng.NextDouble() * 280f
+                : half + 18f + (float)rng.NextDouble() * 75f;
+            float x = Mathf.Cos(a) * dist, z = Mathf.Sin(a) * dist;
+            float w = 12f + (float)rng.NextDouble() * 11f;
+            float d = 12f + (float)rng.NextDouble() * 11f;
+            float hgt = 24f + (float)rng.NextDouble() * 34f;
+            float gx = Mathf.Clamp(x, -half + 2f, half - 2f), gz = Mathf.Clamp(z, -half + 2f, half - 2f);
+            var tower = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(w, hgt, d) },
+                MaterialOverride = SkylineMaterial(i % 3),
+                Position = new Vector3(x, Main.HeightAt(gx, gz) + hgt / 2f - 2.5f, z),
+                Rotation = new Vector3(0f, (float)rng.NextDouble() * Mathf.Tau, 0f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            AddChild(tower);
+        }
+        GD.Print($"CITY skyline: {count} towers beyond the boundary");
+    }
+
+    // City biome: extra gameplay buildings on the same rules as
+    // the arena's and the bases' (destructible, blocking,
+    // standable) — a town center and street clusters in Mission,
+    // blocks between the mesa and the pads in Tournament. Sizes
+    // vary widely (owner: no two alike). Pads, roads and the
+    // mesa stay clear.
+    private void ScatterCity()
+    {
+        var rng = new System.Random(0xC17E11);
+        var clusters = new System.Collections.Generic.List<(Vector2 C, float R, int N)>();
+        if (WorldConfig.IsMission)
+        {
+            clusters.Add((Vector2.Zero, 120f, 7));
+            var p = Main.SpawnPads;
+            for (int leg = 0; leg < 3; leg++)
+            {
+                var a = p[leg]; var b = p[(leg + 1) % 3];
+                var mid = (a + b) / 2f;
+                var perp = new Vector2(b.Y - a.Y, -(b.X - a.X)).Normalized()
+                    * (leg % 2 == 0 ? 48f : -48f);
+                clusters.Add((mid + perp, 65f, 5));
+            }
+        }
+        else clusters.Add((Vector2.Zero, 108f, 12));
+        int placed = 0;
+        foreach (var (cc, cr, cn) in clusters)
+        {
+            int got = 0, tries = 0;
+            while (got < cn && tries++ < 500)
+            {
+                float ang = (float)rng.NextDouble() * Mathf.Tau;
+                float rr = cr * Mathf.Sqrt((float)rng.NextDouble());
+                var pt = cc + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
+                if (!WorldConfig.IsMission && pt.Length() < 33f) continue; // the mesa
+                var size = new Vector3(
+                    9f + (float)rng.NextDouble() * 8f,
+                    11f + (float)rng.NextDouble() * 17f,
+                    9f + (float)rng.NextDouble() * 8f);
+                if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + 2.5f)) continue;
+                if (Main.RoadDistance(pt.X, pt.Y) < 8f) continue;
+                if (TerrainGrade(pt.X, pt.Y) > 0.4f) continue;
+                if (!WorldConfig.IsMission && Main.HeightAt(pt.X, pt.Y) > 9.5f) continue;
+                bool nearPad = false;
+                foreach (var pad in Main.SpawnPads)
+                    if (pt.DistanceTo(pad) < (WorldConfig.IsMission ? 80f : 25f)) { nearPad = true; break; }
+                if (nearPad) continue;
+                AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
+                got++; placed++;
+            }
+        }
+        GD.Print($"CITY scatter: {placed} buildings placed");
     }
 
     // ---------- collisions ----------

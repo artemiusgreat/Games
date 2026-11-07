@@ -349,7 +349,12 @@ public partial class RiderDuel : Node3D
                 ReflectedLightSource = Environment.ReflectionSource.Sky,
                 TonemapMode = Environment.ToneMapper.Aces,
                 FogEnabled = true,
-                FogLightColor = new Color(0.63f, 0.73f, 0.84f),
+                FogLightColor = WorldConfig.Biome switch
+                {
+                    WorldConfig.BiomeKind.Desert => new Color(0.82f, 0.72f, 0.56f),
+                    WorldConfig.BiomeKind.City => new Color(0.45f, 0.54f, 0.62f),
+                    _ => new Color(0.63f, 0.73f, 0.84f)
+                },
                 FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0011f,
                 FogSunScatter = 0.25f
             };
@@ -375,12 +380,15 @@ public partial class RiderDuel : Node3D
         AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
         AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
         if (WorldConfig.IsMission) BuildBases();
+        if (WorldConfig.Biome == WorldConfig.BiomeKind.City) ScatterCity();
         ScatterNature();
+        BuildSkyline();
         if (_photo)
         {
             var propPts = new System.Collections.Generic.List<(Vector2 P, float R)>();
             foreach (var c in _props) propPts.Add((c.P, c.R));
-            PhotoEnv.AddGrassField(this, _buildingPts, propPts);
+            if (WorldConfig.Biome == WorldConfig.BiomeKind.Forest)
+                PhotoEnv.AddGrassField(this, _buildingPts, propPts); // the scanned grass is lush green — forest only
             PhotoEnv.AddBackdrop(this);
         }
 

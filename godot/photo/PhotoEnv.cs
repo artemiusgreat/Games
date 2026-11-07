@@ -73,6 +73,10 @@ uniform sampler2D rock_arm : repeat_enable;
 uniform sampler2D asph_diff : source_color, repeat_enable;
 uniform sampler2D asph_nor : hint_normal, repeat_enable;
 uniform sampler2D asph_arm : repeat_enable;
+uniform vec4 grass_tint : source_color = vec4(1.0);
+uniform vec4 dirt_tint : source_color = vec4(1.0);
+uniform vec4 rock_tint : source_color = vec4(1.0);
+uniform vec4 asph_tint : source_color = vec4(1.0);
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -82,10 +86,10 @@ void fragment() {
     vec2 uv1 = wpos.xz * 0.055;
     vec2 uv2 = wpos.xz * 0.019 + 0.37;
     vec3 alb = vec3(0.0);
-    alb += wg * mix(texture(grass_diff, uv1).rgb, texture(grass_diff, uv2).rgb, 0.45);
-    alb += wb * mix(texture(dirt_diff, uv1).rgb, texture(dirt_diff, uv2).rgb, 0.45);
-    alb += wr * mix(texture(rock_diff, uv1).rgb, texture(rock_diff, uv2).rgb, 0.45);
-    alb += wa * mix(texture(asph_diff, uv1).rgb, texture(asph_diff, uv2).rgb, 0.45);
+    alb += wg * grass_tint.rgb * mix(texture(grass_diff, uv1).rgb, texture(grass_diff, uv2).rgb, 0.45);
+    alb += wb * dirt_tint.rgb * mix(texture(dirt_diff, uv1).rgb, texture(dirt_diff, uv2).rgb, 0.45);
+    alb += wr * rock_tint.rgb * mix(texture(rock_diff, uv1).rgb, texture(rock_diff, uv2).rgb, 0.45);
+    alb += wa * asph_tint.rgb * mix(texture(asph_diff, uv1).rgb, texture(asph_diff, uv2).rgb, 0.45);
     vec3 nrm = vec3(0.5, 0.5, 1.0);
     nrm += wg * (texture(grass_nor, uv1).rgb - vec3(0.5, 0.5, 1.0));
     nrm += wb * (texture(dirt_nor, uv1).rgb - vec3(0.5, 0.5, 1.0));
@@ -144,6 +148,24 @@ void fragment() {
                 float dirt = Mathf.SmoothStep(0.52f, 0.72f, patch) * (1f - rock);
                 float grass = Mathf.Max(0f, 1f - rock - dirt);
                 float road = 1f - Mathf.SmoothStep(2.25f, 3.1f, Main.RoadDistance(x, z));
+                // Biome weights (owner's map types): the desert
+                // runs sand (dirt channel, tinted) with only a
+                // scrub of grass; the city paves its blocks —
+                // asphalt spreads by coarse blocks over flat
+                // ground, grass all but vanishes.
+                if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
+                {
+                    dirt = Mathf.SmoothStep(0.30f, 0.52f, patch) * (1f - rock);
+                    grass = Mathf.Max(0f, 1f - rock - dirt) * 0.35f;
+                }
+                else if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
+                {
+                    float blocks = ValueNoise(x * 0.021f + 9f, z * 0.021f + 3f);
+                    float paved = Mathf.SmoothStep(0.34f, 0.52f, blocks) * (1f - Mathf.SmoothStep(0.5f, 0.8f, slope));
+                    road = Mathf.Max(road, paved * 0.9f);
+                    grass *= 0.12f;
+                    dirt *= 0.5f;
+                }
                 img.SetPixel(i, j, new Color(
                     Mathf.Clamp(rock, 0f, 1f), grass,
                     Mathf.Clamp(dirt, 0f, 1f), road));
@@ -158,6 +180,19 @@ void fragment() {
             Main.TerrainSize.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)) };
         var m = new ShaderMaterial { Shader = sh };
         m.SetShaderParameter("splat", BuildSplat());
+        // Biome tints over the scanned sets: sand over the dirt
+        // and grass channels in the desert; moss-dimmed grass and
+        // lighter concrete in the city; Forest stays neutral.
+        var (gt, dt, rt, at) = WorldConfig.Biome switch
+        {
+            WorldConfig.BiomeKind.Desert => (new Color(1.30f, 1.10f, 0.62f), new Color(1.22f, 1.02f, 0.66f), new Color(1.05f, 0.98f, 0.90f), new Color(1.05f, 0.98f, 0.85f)),
+            WorldConfig.BiomeKind.City => (new Color(0.55f, 0.58f, 0.55f), new Color(0.80f, 0.78f, 0.75f), new Color(1.0f, 1.0f, 1.0f), new Color(1.12f, 1.12f, 1.15f)),
+            _ => (new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f))
+        };
+        m.SetShaderParameter("grass_tint", gt);
+        m.SetShaderParameter("dirt_tint", dt);
+        m.SetShaderParameter("rock_tint", rt);
+        m.SetShaderParameter("asph_tint", at);
         m.SetShaderParameter("grass_diff", Tex("leafy_grass", "diff"));
         m.SetShaderParameter("grass_nor", Tex("leafy_grass", "nor_gl"));
         m.SetShaderParameter("grass_arm", Tex("leafy_grass", "arm"));
@@ -211,10 +246,11 @@ void fragment() {
         return holder;
     }
 
-    public static Material BuildingMaterial(Vector3 size)
+    public static Material BuildingMaterial(Vector3 size, Color tint)
     {
         return new StandardMaterial3D
         {
+            AlbedoColor = tint, // per-building shade (owner: buildings must not all look the same)
             AlbedoTexture = Tex("concrete_block_wall_02", "diff"),
             NormalEnabled = true,
             NormalScale = 0.9f,
@@ -394,8 +430,28 @@ void fragment() {
             parent.AddChild(cone);
         }
 
-        // Forest edge: scanned trees ringing the arena, visual only.
-        // On the Mission front they ring the rim instead (visual).
+        // Backdrop ring by biome: forest keeps its tree ring
+        // (visual only; on the Mission front it rings the rim),
+        // the desert gets bare rock outcrops, the city gets the
+        // skyline RiderDuel.BuildSkyline raises (no ring here).
+        if (WorldConfig.Biome == WorldConfig.BiomeKind.City) return;
+        if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
+        {
+            for (int i = 0; i < 18; i++)
+            {
+                float a2 = rng.RandfRange(0f, Mathf.Tau);
+                float half2 = Main.TerrainSize / 2f;
+                float dist2 = mission ? rng.RandfRange(half2 + 18f, half2 + 95f) : rng.RandfRange(98f, 165f);
+                var pos2 = new Vector3(Mathf.Cos(a2) * dist2, 0f, Mathf.Sin(a2) * dist2);
+                float cl2 = mission ? half2 - 4f : 84f;
+                pos2.Y = Main.HeightAt(Mathf.Clamp(pos2.X, -cl2, cl2), Mathf.Clamp(pos2.Z, -cl2, cl2)) - 0.5f;
+                var rock = MakeRock(new Vector3(rng.RandfRange(3.5f, 6.5f), rng.RandfRange(2.2f, 4.2f), rng.RandfRange(3.5f, 6.5f)));
+                rock.Position = pos2;
+                parent.AddChild(rock);
+            }
+            GD.Print("PHOTO backdrop: apron + peaks + desert rock ring");
+            return;
+        }
         for (int i = 0; i < 44; i++)
         {
             float a = rng.RandfRange(0f, Mathf.Tau);
@@ -426,8 +482,17 @@ void fragment() {
         env.SdfgiMinCellSize = 0.35f;
         env.SsaoEnabled = true;
         env.VolumetricFogEnabled = true;
-        env.VolumetricFogDensity = WorldConfig.IsMission ? 0.00075f : 0.0022f; // probe run 1 white-out: volumetric density is its own dial, and the default buried the scene
-        env.FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0016f; // distance haze; the Mission front hazes out near ~1200u
+        // Fog by biome: warm haze in the desert, a duskier
+        // teal-grey in the city (lit windows and signs carry),
+        // the standing blue-grey in the forest.
+        var (fogC, fogD, volD, sunE) = WorldConfig.Biome switch
+        {
+            WorldConfig.BiomeKind.Desert => (new Color(0.80f, 0.70f, 0.53f), WorldConfig.IsMission ? 0.00050f : 0.0019f, WorldConfig.IsMission ? 0.0009f : 0.0026f, 1.55f),
+            WorldConfig.BiomeKind.City => (new Color(0.42f, 0.52f, 0.60f), WorldConfig.IsMission ? 0.00055f : 0.0021f, WorldConfig.IsMission ? 0.0010f : 0.0028f, 1.15f),
+            _ => (new Color(0.55f, 0.65f, 0.78f), WorldConfig.IsMission ? 0.00042f : 0.0016f, WorldConfig.IsMission ? 0.00075f : 0.0022f, 1.45f)
+        };
+        env.VolumetricFogDensity = volD;
+        env.FogDensity = fogD; // distance haze; the Mission front hazes out near ~1200u
         env.GlowEnabled = true;
         env.GlowIntensity = 0.15f;
         env.GlowStrength = 0.7f;
@@ -441,13 +506,13 @@ void fragment() {
         env.TonemapExposure = 0.94f;
         env.AmbientLightEnergy = 0.30f;
         env.SdfgiEnergy = 0.85f;
-        env.FogLightColor = new Color(0.55f, 0.65f, 0.78f);
-        env.VolumetricFogAlbedo = new Color(0.55f, 0.65f, 0.78f);
+        env.FogLightColor = fogC;
+        env.VolumetricFogAlbedo = fogC;
         env.AdjustmentEnabled = true;
         env.AdjustmentBrightness = 1.0f;
         env.AdjustmentContrast = 1.08f;
         env.AdjustmentSaturation = 1.05f;
-        sun.LightEnergy = 1.45f;
+        sun.LightEnergy = sunE;
         sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? 900f : 520f;
         GD.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }

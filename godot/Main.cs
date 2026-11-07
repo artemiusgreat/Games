@@ -238,26 +238,43 @@ public partial class Main : Node3D
 		float slope = 1f - n.Y; // 0 flat, grows with gradient
 		float patch = Fbm(x / 23f - 47f, z / 23f + 5f, 3) * 0.5f + 0.5f;
 		float grain = Fbm(x / 6.5f + 31f, z / 6.5f - 11f, 3) * 0.5f + 0.5f;
-		var col = new Color(0.185f, 0.36f, 0.145f).Lerp(new Color(0.36f, 0.485f, 0.21f), patch);
-		col = col.Lerp(new Color(0.44f, 0.43f, 0.235f), Mathf.Clamp((patch - 0.60f) * 1.5f, 0f, 0.5f)); // dry patches
+		// Biome palettes (owner's map types): Forest keeps the
+		// original greens; Desert runs sand; City runs urban
+		// concrete with a per-block tint shift.
+		bool desert = WorldConfig.Biome == WorldConfig.BiomeKind.Desert;
+		bool city = WorldConfig.Biome == WorldConfig.BiomeKind.City;
+		var col = desert
+			? new Color(0.70f, 0.565f, 0.335f).Lerp(new Color(0.79f, 0.66f, 0.42f), patch)
+			: city
+				? new Color(0.345f, 0.35f, 0.36f).Lerp(new Color(0.41f, 0.405f, 0.395f),
+					Fbm(Mathf.Floor(x / 26f) * 7.13f, Mathf.Floor(z / 26f) * 3.71f, 1) * 0.5f + 0.5f)
+				: new Color(0.185f, 0.36f, 0.145f).Lerp(new Color(0.36f, 0.485f, 0.21f), patch);
+		if (!desert && !city)
+			col = col.Lerp(new Color(0.44f, 0.43f, 0.235f), Mathf.Clamp((patch - 0.60f) * 1.5f, 0f, 0.5f)); // dry patches
 		float l = 0.88f + 0.24f * grain;
 		col = new Color(col.R * l, col.G * l, col.B * l);
 		float dirtW = Smooth(0.045f, 0.12f, slope + (grain - 0.5f) * 0.05f);
-		col = col.Lerp(new Color(0.40f, 0.315f, 0.205f), dirtW * 0.8f);
+		var dirtC = desert ? new Color(0.60f, 0.46f, 0.29f)
+			: city ? new Color(0.42f, 0.385f, 0.335f) // rubble
+			: new Color(0.40f, 0.315f, 0.205f);
+		col = col.Lerp(dirtC, dirtW * 0.8f);
 		float rockW = Smooth(0.13f, 0.28f, slope + (grain - 0.5f) * 0.06f);
 		var rock = new Color(0.395f, 0.395f, 0.415f);
 		float rl = 0.82f + 0.36f * grain;
 		col = col.Lerp(new Color(rock.R * rl, rock.G * rl, rock.B * rl), rockW);
 		float peakW = Smooth(13.5f, 19f, h + (grain - 0.5f) * 3f);
-		col = col.Lerp(new Color(0.72f, 0.71f, 0.685f), peakW * 0.85f);
+		col = col.Lerp(desert ? new Color(0.84f, 0.75f, 0.57f) : new Color(0.72f, 0.71f, 0.685f), peakW * 0.85f);
 		// Asphalt on the roads, blended over a soft shoulder.
 		float roadD = RoadDistance(x, z);
 		if (roadD < 3.1f)
 		{
 			float rw = 1f - Smooth(2.25f, 3.1f, roadD);
 			float al = 0.85f + 0.3f * grain;
-			var asphalt = new Color(0.16f * al, 0.16f * al, 0.175f * al);
-			if (roadD > 1.85f && roadD < 2.25f) asphalt = asphalt.Lerp(new Color(0.5f, 0.48f, 0.4f), 0.35f); // worn edge line
+			var asphalt = desert ? new Color(0.50f * al, 0.40f * al, 0.27f * al) // packed earth
+				: city ? new Color(0.235f * al, 0.235f * al, 0.25f * al)
+				: new Color(0.16f * al, 0.16f * al, 0.175f * al);
+			if (roadD > 1.85f && roadD < 2.25f)
+				asphalt = asphalt.Lerp(desert ? new Color(0.72f, 0.62f, 0.45f) : new Color(0.5f, 0.48f, 0.4f), 0.35f); // worn edge line
 			col = col.Lerp(asphalt, rw * 0.94f);
 		}
 		return col;
