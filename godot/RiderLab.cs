@@ -432,7 +432,7 @@ public partial class RiderLab : Control
                         float aC = a.Position.X + a.Size.X * 0.5f;
                         float bC = b.Position.X + b.Size.X * 0.5f;
                         if (bC < aC) (a, b) = (b, a);
-                        float need = (a.Size.X + b.Size.X) * 0.5f;
+                        float need = (a.Size.X + b.Size.X) * 0.5f + 12f; // + a clear 12px gap: merely touching reads as overlapping
                         float dist = (b.Position.X + b.Size.X * 0.5f) - (a.Position.X + a.Size.X * 0.5f);
                         if (dist >= need) continue;
                         float push = (need - dist) * 0.5f;
