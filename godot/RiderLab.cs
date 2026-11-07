@@ -337,10 +337,10 @@ public partial class RiderLab : Control
                     maxSide = Mathf.Max(1, Mathf.Max(l, r));
                 }
                 float avail = Mathf.Max(60f, (Size.Y - (maxSide - 1) * 8f) / maxSide);
-                int rowsVisible = avail >= 133f ? 2 : 1;
-                float scrollH = rowsVisible * 44f + (rowsVisible - 1) * 4f;
-                float panelH = rowsVisible == 2 ? 133f : Mathf.Min(85f, avail);
-                if (rowsVisible == 1 && panelH < 85f) scrollH = Mathf.Max(20f, panelH - 41f);
+                int rowsVisible = avail >= 141f ? 2 : 1;
+                float scrollH = rowsVisible * 48f + (rowsVisible - 1) * 4f; // a fitted row = the 40px tile + the row panel's margins
+                float panelH = rowsVisible == 2 ? 141f : Mathf.Min(89f, avail);
+                if (rowsVisible == 1 && panelH < 89f) scrollH = Mathf.Max(20f, panelH - 41f);
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id))
                     {
@@ -869,7 +869,7 @@ public partial class RiderLab : Control
                     textW = Mathf.Max(textW, font.GetStringSize(d.Name, HorizontalAlignment.Left, -1f, 13).X);
                     textW = Mathf.Max(textW, font.GetStringSize(Metrics(d), HorizontalAlignment.Left, -1f, 11).X);
                 }
-                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + 36f + 7f + textW + 4f;
+                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + 40f + 7f + textW + 4f;
             }
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
@@ -893,7 +893,7 @@ public partial class RiderLab : Control
                 var rhb = new HBoxContainer();
                 rhb.AddThemeConstantOverride("separation", 7);
                 rowPanel.AddChild(rhb);
-                var tile = TileVisual(def, 36);
+                var tile = TileVisual(def, 40); // same size as the catalog tiles (owner: the fitted icons read smaller)
                 tile.MouseFilter = MouseFilterEnum.Ignore;
                 rhb.AddChild(tile);
                 // ExpandFill is load-bearing: an HBox gives a
