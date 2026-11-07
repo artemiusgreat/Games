@@ -308,7 +308,9 @@ public partial class RiderDuel
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.97f) });
+            // Some transparency (owner): the game ghosts
+            // through the panel; buttons stay solid.
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.85f) });
             root.AddChild(panel);
 
             var v = new VBoxContainer();
