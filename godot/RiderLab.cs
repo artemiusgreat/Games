@@ -343,7 +343,8 @@ public partial class RiderLab : Control
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id))
                     {
-                        panel.Size = new Vector2(panel.GetCombinedMinimumSize().X, panelH);
+                        float capW = Mathf.Max(200f, Size.X * 0.5f - 6f);
+                        panel.Size = new Vector2(Mathf.Min(panel.GetCombinedMinimumSize().X, capW), panelH);
                         if (panel is SlotPanel sp && sp.Scroll != null)
                             sp.Scroll.CustomMinimumSize = new Vector2(0f, scrollH);
                     }
@@ -578,7 +579,7 @@ public partial class RiderLab : Control
             hb.AddChild(tileCtl);
             var lab = new Label
             {
-                Text = $"{w.Name}   ·   {w.Weight:F0}t   ·   {w.Type}   ·   dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")}   ·   cd {w.Cooldown:F2}s   ·   rng {w.Range:F0}u",
+                Text = $"{w.Name} · {w.Weight:F0}t · {w.Type} · dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")} · cd {w.Cooldown:F2}s · rng {w.Range:F0}u",
                 VerticalAlignment = VerticalAlignment.Center,
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -755,8 +756,8 @@ public partial class RiderLab : Control
     // the catalog rows — repeating it here widened the slot panels
     // until the two pod panels overlapped (owner's screenshot).
     private static string Metrics(WeaponDef d) => d.Type == WeaponSlotType.Missile
-        ? $"{d.Weight:F0}t / {d.Damage} dmg ×{d.Rockets} / {d.Cooldown:0.00}s cd"
-        : $"{d.Weight:F0}t / {d.Damage} dmg / {d.Cooldown:0.00}s cd";
+        ? $"{d.Weight:F0}t · {d.Damage} dmg ×{d.Rockets} · {d.Cooldown:0.00}s cd"
+        : $"{d.Weight:F0}t · {d.Damage} dmg · {d.Cooldown:0.00}s cd";
 
     // Dev measurement: panel centers vs live projected anchors,
     // in viewport pixels — the slot-flip investigation record.
@@ -827,7 +828,7 @@ public partial class RiderLab : Control
                 nm.AddThemeFontSizeOverride("font_size", 13);
                 nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
                 texts.AddChild(nm);
-                var mt = new Label { Text = Metrics(def) };
+                var mt = new Label { Text = Metrics(def), AutowrapMode = TextServer.AutowrapMode.WordSmart };
                 mt.AddThemeFontSizeOverride("font_size", 11);
                 mt.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
                 texts.AddChild(mt);
