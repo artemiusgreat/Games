@@ -12,8 +12,10 @@ public static class WorldConfig
     public static MapMode Mode = InitMode();
 
     // The map type (owner): every map — a tournament arena or a
-    // mission contract's ground — is one of three biomes, picked
-    // on the map screen. Default Forest, which is the game's
+    // mission contract's ground — is one of three biomes,
+    // PREDEFINED by that arena/contract (never a player choice;
+    // EnterLab copies the selected map's biome here). Default
+    // Forest, which is the game's
     // original look, so harness runs and tests build exactly the
     // world they always have. The harness can force AOT_BIOME.
     public enum BiomeKind { Desert, Forest, City }
@@ -57,5 +59,45 @@ public static class WorldConfig
     private static readonly Vector2[] MissionPads =
     {
         new(0f, 620f), new(-537f, -310f), new(537f, -310f)
+    };
+}
+
+// Tournament arenas: fixed maps, each with its own predefined
+// biome (owner's correction). MapScreen displays these;
+// FlowMain.EnterLab applies the picked arena's biome.
+public static class ArenaCatalog
+{
+    public sealed class ArenaDef
+    {
+        public string Name, Sub, Desc;
+        public WorldConfig.BiomeKind Biome;
+    }
+
+    public static readonly ArenaDef[] Arenas =
+    {
+        new ArenaDef
+        {
+            Name = "The Proving Grounds", Biome = WorldConfig.BiomeKind.Forest,
+            Sub = "Forest · Tournament arena · 260u · Three riders · Free-for-all",
+            Desc = "Rolling woodland. Tree crowns stop shells, rocks stop nothing but the eye.\n\n" +
+                   "The Proving Grounds: a 260-unit basin ringed by high ground, with a flat-topped mesa at its heart. " +
+                   "Three pads, three riders, no teams. Last machine standing takes the purse and the ground."
+        },
+        new ArenaDef
+        {
+            Name = "The Dry Basin", Biome = WorldConfig.BiomeKind.Desert,
+            Sub = "Desert · Tournament arena · 260u · Three riders · Free-for-all",
+            Desc = "Sand and rock under a hard sun. Long sight lines, almost no cover but the mesa and the ruins.\n\n" +
+                   "The Dry Basin: a 260-unit desert basin ringed by high ground, with a flat-topped mesa at its heart. " +
+                   "Three pads, three riders, no teams. Last machine standing takes the purse and the ground."
+        },
+        new ArenaDef
+        {
+            Name = "The Ruined Mile", Biome = WorldConfig.BiomeKind.City,
+            Sub = "City · Tournament arena · 260u · Three riders · Free-for-all",
+            Desc = "A dead city of towers and blocks. Streets channel movement, roofs are high ground, every building falls.\n\n" +
+                   "The Ruined Mile: a 260-unit city basin ringed by high ground, with a flat-topped mesa at its heart. " +
+                   "Three pads, three riders, no teams. Last machine standing takes the purse and the ground."
+        }
     };
 }

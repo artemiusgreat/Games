@@ -20,9 +20,9 @@ public partial class FlowMain : Node3D
 {
     public int PlanetIndex = 0;
     public int MissionIndex = 0;
-    public int BiomeIndex = System.Environment.GetEnvironmentVariable("AOT_BIOME") switch
+    public int ArenaIndex = System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
     {
-        "desert" => 0, "city" => 2, _ => 1 // Desert 0, Forest 1, City 2 — Forest is the game's original look
+        "1" => 1, "2" => 2, _ => 0 // harness seed only; arenas carry their own biomes
     };
 
     private CanvasLayer _layer;
@@ -203,7 +203,14 @@ public partial class FlowMain : Node3D
     // the contract; from the bar, the signed contract stands.
     public void EnterLab(bool fromPlanet = false)
     {
-        WorldConfig.Biome = (WorldConfig.BiomeKind)BiomeIndex;
+        // The selected map's PREDEFINED biome (owner: the
+        // player never picks a map type): the contract's ground
+        // on the mission path, the arena's on the tournament
+        // path. AOT_BIOME still overrides for harnesses.
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_BIOME")))
+            WorldConfig.Biome = WorldConfig.IsMission
+                ? WorldConfig.SelectedMission.Biome
+                : ArenaCatalog.Arenas[ArenaIndex].Biome;
         if (WorldConfig.IsMission && (fromPlanet || WorldConfig.SelectedMission == null))
             WorldConfig.SelectedMission = MissionCatalog.Planets[PlanetIndex].Missions[MissionIndex];
         EnterLabScene();
