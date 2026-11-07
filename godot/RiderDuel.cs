@@ -259,6 +259,8 @@ public partial class RiderDuel : Node3D
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
     private TriMark _markLaser, _markAc, _markLrm; // active-weapon triangles at the bar ends
+    private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
+    private ConfirmationDialog _leaveDialog;
     private PanelContainer _panel;
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;

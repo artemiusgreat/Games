@@ -11,6 +11,11 @@ public partial class RiderDuel
         var l = new Label { Text = "" };
         l.AddThemeFontSizeOverride("font_size", fontSize);
         l.AddThemeColorOverride("font_color", col);
+        // Dashboard text carries a hard shadow (owner: HUD text
+        // washed out against bright ground without one).
+        l.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
+        l.AddThemeConstantOverride("shadow_offset_x", 1);
+        l.AddThemeConstantOverride("shadow_offset_y", 1);
         return l;
     }
 
@@ -125,10 +130,15 @@ public partial class RiderDuel
             row.AddThemeConstantOverride("separation", 8);
             var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(74, 0);
+            lab.CustomMinimumSize = new Vector2(84, 0); // fits the longest row text at one width for all rows
             row.AddChild(lab);
             var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(218, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            // Every bar stretches to the row's right edge (owner:
+            // the bars' start and end X must match across rows —
+            // a fixed label width plus an expanding bar leaves no
+            // per-row drift from longer weapon names).
+            bar.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(bar);
             // The active-weapon triangle sits at the END of the
             // bar (owner) — a fixed slot after the bar, so rows
@@ -188,6 +198,20 @@ public partial class RiderDuel
         _feedLabel.OffsetLeft = 18; _feedLabel.OffsetTop = 14;
         _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
         layer.AddChild(_feedLabel);
+
+        // Leave-game confirmation (owner): Esc opens it, the
+        // sim pauses behind it, Leave exits the match.
+        _leaveDialog = new ConfirmationDialog
+        {
+            Title = "Leave the game",
+            DialogText = "Leave this match?",
+            OkButtonText = "Leave",
+            CancelButtonText = "Stay",
+            ProcessMode = ProcessModeEnum.Always
+        };
+        _leaveDialog.Confirmed += OnLeaveConfirmed;
+        _leaveDialog.Canceled += () => { GetTree().Paused = false; };
+        layer.AddChild(_leaveDialog);
 
         // Death banner.
         _banner = MakeLabel(46, Colors.White);
@@ -258,6 +282,18 @@ public partial class RiderDuel
             lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
     }
 
+    private void OnLeaveConfirmed()
+    {
+        GetTree().Paused = false;
+        Input.MouseMode = Input.MouseModeEnum.Visible;
+        if (FlowMain.FromFlow)
+        {
+            FlowMain.StartScreen = null; // back to the front door
+            GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
+        }
+        else GetTree().Quit();
+    }
+
     private void UpdateBaseMarks()
     {
         if (_baseMarks == null) return;
@@ -293,24 +329,46 @@ public partial class RiderDuel
         UpdateBaseMarks();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
         _lblPlayerHp.Text = $"{_playerSpec.Name} — {_hpPlayer:F0} HP";
-        _barEnemy.Visible = !_enemyDead;
-        _lblEnemyHp.Visible = !_enemyDead;
-        _barEnemy.Value = _hpEnemy / _enemySpec.MaxHp;
-        _lblEnemyHp.Text = $"{_enemySpec.Name} — {_hpEnemy:F0} HP";
-        bool foe1Shown = _foe1 != null && !_foe1.Dead;
-        _barFoe1.Visible = foe1Shown;
-        _lblFoe1Hp.Visible = foe1Shown;
-        if (foe1Shown)
-        {
-            _barFoe1.Value = _foe1.Hp / _foe1.Spec.MaxHp;
-            float r1 = new Vector2(_foe1.Walker.RootPos.X - _player.RootPos.X,
-                                   _foe1.Walker.RootPos.Z - _player.RootPos.Z).Length();
-            _lblFoe1Hp.Text = $"{_foe1.Spec.Name} — {_foe1.Hp:F0} HP · {r1:F0} u";
-        }
-
         bool lasDead = !WeaponAlive(0);
         bool acDead = !WeaponAlive(1);
         bool lrmDead = !WeaponAlive(2);
+
+        // ONE active enemy (owner): Tab cycles the living foes,
+        // and the red bar belongs to the active one only — and
+        // even then it appears only while at least one living
+        // weapon group can reach that enemy.
+        var foes = new (RiderSpec Spec, float Hp, bool Dead, RiderWalker W)[]
+        {
+            (_enemySpec, _hpEnemy, _enemyDead, _enemy),
+            _foe1 != null ? (_foe1.Spec, _foe1.Hp, _foe1.Dead, _foe1.Walker) : (null, 0f, true, null)
+        };
+        if (foes[_targetIdx].Dead)
+            for (int i = 0; i < 2; i++)
+                if (!foes[i].Dead) { _targetIdx = i; break; }
+        var tgt = foes[_targetIdx];
+        float tgtRange = tgt.W != null
+            ? new Vector2(tgt.W.RootPos.X - _player.RootPos.X,
+                          tgt.W.RootPos.Z - _player.RootPos.Z).Length()
+            : float.MaxValue;
+        float reach = 0f;
+        if (!lasDead && _defEnergy != null) reach = Mathf.Max(reach, _defEnergy.Range);
+        if (!acDead && _defBallistic != null) reach = Mathf.Max(reach, _defBallistic.Range);
+        if (!lrmDead)
+        {
+            if (_defPodL != null) reach = Mathf.Max(reach, _defPodL.Range);
+            if (_defPodR != null) reach = Mathf.Max(reach, _defPodR.Range);
+        }
+        bool tgtShown = tgt.W != null && !tgt.Dead && tgtRange <= reach;
+        _lblEnemyHp.Visible = tgtShown;
+        _barEnemy.Visible = tgtShown;
+        if (tgtShown)
+        {
+            _lblEnemyHp.Text = $"{tgt.Spec.Name} — {tgt.Hp:F0} HP";
+            _barEnemy.Value = tgt.Hp / tgt.Spec.MaxHp;
+        }
+        // The second foe's own readout is retired — one target only.
+        _lblFoe1Hp.Visible = false;
+        _barFoe1.Visible = false;
         float lrmCd = Mathf.Max(_defPodL?.Cooldown ?? 0f, _defPodR?.Cooldown ?? 0f);
         if (lrmCd <= 0f) lrmCd = 3.5f;
         UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / (_defEnergy?.Cooldown ?? 0.45f), lasDead, _denyLaserT);
@@ -351,9 +409,7 @@ public partial class RiderDuel
         }
 
         // Systems readouts: target range, own speed, leg state.
-        float range = new Vector2(_enemy.RootPos.X - _player.RootPos.X,
-                                  _enemy.RootPos.Z - _player.RootPos.Z).Length();
-        _lblRange.Text = _enemyDead ? "TARGET: DESTROYED" : $"TARGET RANGE: {range:F1} u";
+        _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {tgtRange:F1} u";
         _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " — RUN" : "");
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"

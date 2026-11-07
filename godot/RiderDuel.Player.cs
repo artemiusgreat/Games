@@ -19,6 +19,20 @@ public partial class RiderDuel
             ResetDuel();
             return;
         }
+        if (e is InputEventKey tk && tk.Pressed && !tk.Echo && tk.Keycode == Key.Tab)
+        {
+            // Cycle the ONE active enemy among the living foes
+            // (owner); handled here so Tab never moves UI focus.
+            int next = _targetIdx;
+            for (int i = 0; i < 2; i++)
+            {
+                next = (next + 1) % 2;
+                if (next == 0 ? !_enemyDead : _foe1 != null && !_foe1.Dead) break;
+            }
+            _targetIdx = next;
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
         {
             // Weapon selection: keys 1/2/3, mouse wheel cycles.
@@ -40,9 +54,16 @@ public partial class RiderDuel
             if (Input.MouseMode != Input.MouseModeEnum.Captured)
                 Input.MouseMode = Input.MouseModeEnum.Captured;
         }
-        else if (e is InputEventKey k && k.Pressed && k.Keycode == Key.Escape)
+        else if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
         {
+            // Leave the game (owner): release the mouse, pause
+            // the sim, and ask for confirmation.
             Input.MouseMode = Input.MouseModeEnum.Visible;
+            if (_leaveDialog != null && !_leaveDialog.Visible)
+            {
+                _leaveDialog.PopupCentered();
+                GetTree().Paused = true;
+            }
         }
         else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !_test)
         {
