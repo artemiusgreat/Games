@@ -173,9 +173,8 @@ public partial class RiderDuel
         _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2; _markLrm = rowLrm.Item3;
         var rowThr = CdRow("THRUST");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
-        var hint = MakeLabel(11, new Color(0.6f, 0.66f, 0.72f));
-        hint.Text = "1 / 2 / 3 or wheel — select weapon · LMB — fire · SPACE (hold) — thrusters";
-        midBox.AddChild(hint);
+        // No controls hint line (owner: remove the introductory
+        // text) — the panel ends at the THRUST row.
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         midBox.AddChild(_lblWeaponStatus);
 
