@@ -128,15 +128,14 @@ public static class FlowUi
         return ImageTexture.CreateFromImage(img);
     }
 
-    private static FontFile _headBold, _headReg;
-    public static FontFile HeadFont(bool bold)
-    {
-        if (bold) return _headBold ??= GD.Load<FontFile>("res://assets/fonts/B612Mono-Bold.ttf");
-        return _headReg ??= GD.Load<FontFile>("res://assets/fonts/B612Mono-Regular.ttf");
-    }
+    private static FontFile _headFont;
+    public static FontFile HeadFont(bool bold) =>
+        _headFont ??= GD.Load<FontFile>("res://assets/fonts/IBMPlexMono-Light.ttf");
 
     // Terminal font for HEADINGS only (owner): body text keeps the
-    // built-in font — a mono everywhere broke fixed layouts.
+    // built-in font — a mono everywhere broke fixed layouts. One
+    // weight for every heading: Light (the bold flag is retained
+    // at call sites but no longer changes the face).
     public static void Heading(Control c, bool bold = true) =>
         c.AddThemeFontOverride("font", HeadFont(bold));
 
