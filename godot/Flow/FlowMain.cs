@@ -160,7 +160,7 @@ public partial class FlowMain : Node3D
         center.AddChild(v);
         _loadLabel = FlowUi.MakeLabel("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center);
         v.AddChild(_loadLabel);
-        _loadPct = FlowUi.MakeLabel("Preparing the front…", 14, FlowUi.Dim, HorizontalAlignment.Center);
+        _loadPct = FlowUi.MakeLabel("Loading the front…", 14, FlowUi.Dim, HorizontalAlignment.Center);
         v.AddChild(_loadPct);
     }
 
@@ -224,7 +224,7 @@ public partial class FlowMain : Node3D
             GetTree().ChangeSceneToFile(path);
             return;
         }
-        var progress = new Godot.Collections.Array();
+        var progress = new Godot.Collections.Array(); // status only; no % shown (owner: it was wrong anyway)
         while (true)
         {
             var st = ResourceLoader.LoadThreadedGetStatus(path, progress);
@@ -240,7 +240,6 @@ public partial class FlowMain : Node3D
                 GetTree().ChangeSceneToFile(path);
                 return;
             }
-            _loadPct.Text = $"Loading the front… {(int)((double)progress[0] * 100)}%";
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
     }
