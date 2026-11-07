@@ -18,7 +18,13 @@ API = "https://api.polyhaven.com/files/{}"
 UA = {"User-Agent": "Mozilla/5.0"}
 
 TEXTURES = ["leafy_grass", "forest_floor", "aerial_rocks_02",
-            "aerial_asphalt_01", "concrete_block_wall_02"]
+            "aerial_asphalt_01", "concrete_block_wall_02",
+            # Building skins (owner's photoreal pass, 2026-11-07):
+            # five more wall sets so buildings stop sharing one
+            # concrete block, plus a gravel set for roof faces.
+            "brick_wall_04", "plastered_wall", "concrete_panels",
+            "concrete_tile_facade", "painted_plaster_wall",
+            "gravel_concrete_02"]
 TEX_MAPS = ("Diffuse", "nor_gl", "arm")
 MODELS = ["island_tree_01", "island_tree_02", "island_tree_03",
           "coast_rocks_01", "grass_medium_01"]
