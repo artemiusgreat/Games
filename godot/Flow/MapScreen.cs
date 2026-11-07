@@ -9,14 +9,18 @@ using Godot;
 //     [Enter the arena]
 //   - sidebar sections with one anatomy each: caption, a slideshow
 //     selector carrying the name, a subtitle, and the description
-//     on a desk monitor (bezel + scanlines, scrollable)
+//     on a desk monitor (bezel + scanlines, scrollable).
+//     Tournament mirrors Mission exactly (owner): the top Map
+//     section DISPLAYS the arena (name, subtitle, briefing) and
+//     the bottom Arena section is the chooser, where Mission has
+//     its Contract section.
 //   - the visual panel: the planet disc with drop-site markers
 //     (Mission) or the arena top-down (Tournament)
 public partial class MapScreen : Control
 {
     public FlowMain Flow;
 
-    private Label _nameLabel, _subLabel, _descLabel, _contractName, _contractBody;
+    private Label _nameLabel, _subLabel, _descLabel, _contractName, _contractBody, _arenaName, _arenaBody;
     private ScrollContainer _descScroll, _contractScroll;
     private TextureRect _disc;
     private Control _discHolder;
@@ -129,9 +133,12 @@ public partial class MapScreen : Control
         sideScroll.AddChild(sv);
         mid.AddChild(side);
 
-        // Planet / Map section.
+        // Planet / Map section. In Tournament the top section
+        // only DISPLAYS the arena (same row geometry, no arrows)
+        // — the choosing happens in the Arena section below,
+        // exactly where Mission keeps its Contract chooser.
         sv.AddChild(FlowUi.MakeHeading(IsMission ? "Planet" : "Map", 13, FlowUi.Gold, bold: false));
-        sv.AddChild(Selector(out _nameLabel, 16, StepPlace));
+        sv.AddChild(IsMission ? Selector(out _nameLabel, 16, StepPlace) : DisplayRow(out _nameLabel, 16));
         _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer
@@ -172,6 +179,28 @@ public partial class MapScreen : Control
             contractMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
             sv.AddChild(contractMonitor);
         }
+        else
+        {
+            // Arena section (Tournament): the chooser, built
+            // exactly like the Contract section it replaces.
+            sv.AddChild(new HSeparator());
+            sv.AddChild(FlowUi.MakeHeading("Arena", 13, FlowUi.Gold, bold: false));
+            sv.AddChild(Selector(out _arenaName, 15, StepPlace));
+            var arenaScroll = new ScrollContainer
+            {
+                CustomMinimumSize = new Vector2(0f, 132f),
+                SizeFlagsVertical = SizeFlags.ExpandFill,
+                SizeFlagsStretchRatio = 0.8f,
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+            };
+            _arenaBody = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+            _arenaBody.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            arenaScroll.AddChild(_arenaBody);
+            arenaScroll.Resized += () => FitTextWidth(arenaScroll, _arenaBody);
+            var arenaMonitor = Monitor(arenaScroll);
+            arenaMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
+            sv.AddChild(arenaMonitor);
+        }
 
         // Visual panel.
         var centerPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -204,6 +233,20 @@ public partial class MapScreen : Control
         if (scroll == null || label == null) return;
         float w = scroll.Size.X - 14f;
         if (w > 40f) label.CustomMinimumSize = new Vector2(w, label.CustomMinimumSize.Y);
+    }
+
+    // The selector's row without the arrows: same geometry, the
+    // name centered between two button-width spacers.
+    private HBoxContainer DisplayRow(out Label name, int fontSize)
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        row.AddChild(new Control { CustomMinimumSize = new Vector2(42f, 36f) });
+        name = FlowUi.MakeHeading("", fontSize, FlowUi.Gold, HorizontalAlignment.Center);
+        name.SizeFlagsHorizontal = SizeFlags.Expand;
+        row.AddChild(name);
+        row.AddChild(new Control { CustomMinimumSize = new Vector2(42f, 36f) });
+        return row;
     }
 
     private HBoxContainer Selector(out Label name, int fontSize, System.Action<int> step)
@@ -295,6 +338,11 @@ public partial class MapScreen : Control
             _nameLabel.Text = a.Name;
             _subLabel.Text = a.Sub;
             _descLabel.Text = a.Desc;
+            _arenaName.Text = a.Name;
+            var bt = BiomeText(a.Biome);
+            _arenaBody.Text =
+                $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: 260u\nRiders: Three — free-for-all\n" +
+                $"Purse: Last machine standing\n\n{bt.Desc}";
             _disc.Texture = FlowUi.ArenaTexture(512, (int)a.Biome);
         }
         PositionMarkers();
