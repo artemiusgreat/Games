@@ -215,11 +215,12 @@ public partial class RiderDuel
         {
             if (!On) return;
             var c = Size / 2f;
+            // Points LEFT, at the bar it marks (owner).
             DrawColoredPolygon(new[]
             {
-                new Vector2(c.X - 4f, c.Y - 5f),
-                new Vector2(c.X - 4f, c.Y + 5f),
-                new Vector2(c.X + 5f, c.Y)
+                new Vector2(c.X + 4f, c.Y - 5f),
+                new Vector2(c.X + 4f, c.Y + 5f),
+                new Vector2(c.X - 5f, c.Y)
             }, new Color(1f, 0.95f, 0.6f));
         }
     }
