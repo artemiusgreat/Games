@@ -707,7 +707,9 @@ public partial class RiderLab : Control
         _tonnage.AddThemeFontSizeOverride("font_size", 16);
         _tonnage.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
         root.AddChild(_tonnage);
-        _hint = new Label { Text = "Right-click a hardpoint to empty it." };
+        // No standing instruction text (owner): the line starts
+        // empty — it only speaks as action feedback via SetHint.
+        _hint = new Label();
         _hint.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
         root.AddChild(_hint);
         var btnRow = new HBoxContainer();
