@@ -5,8 +5,8 @@ using Godot;
 //
 // Anatomy, top to bottom:
 //   - a solid menu bar (uniform buttons, no decorative arrows):
-//     Mission [Bar] [Command center] [Back]; Tournament
-//     [Enter the arena] [Back]
+//     Mission [Back] [Command center]; Tournament [Back]
+//     [Enter the arena]
 //   - sidebar sections with one anatomy each: caption, a slideshow
 //     selector carrying the name, a subtitle, and the description
 //     on a desk monitor (bezel + scanlines, scrollable)
@@ -93,12 +93,14 @@ public partial class MapScreen : Control
         }
         else
         {
-            var enter = FlowUi.MakeButton("Enter the arena", 14);
-            enter.Pressed += () => Flow.EnterLab();
-            menu.AddChild(enter);
+            // Back first, then the action (owner, swapped) — the
+            // same order as the Mission menu.
             var back = FlowUi.MakeButton("Back", 14);
             back.Pressed += () => Flow.GoMapType();
             menu.AddChild(back);
+            var enter = FlowUi.MakeButton("Enter the arena", 14);
+            enter.Pressed += () => Flow.EnterLab();
+            menu.AddChild(enter);
         }
 
         // ---- middle: sidebar | visual ----
