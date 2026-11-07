@@ -713,6 +713,20 @@ public partial class RiderLab : Control
         var btnRow = new HBoxContainer();
         btnRow.AddThemeConstantOverride("separation", 12);
         root.AddChild(btnRow);
+        // Back to the briefing / arena screen (owner) — only
+        // when the front-end flow brought the player here; a
+        // standalone duel has nowhere to go back to.
+        if (FlowMain.FromFlow)
+        {
+            var backBtn = new Button { Text = "BACK" };
+            backBtn.Pressed += () =>
+            {
+                FlowMain.StartScreen = WorldConfig.IsMission ? "planet" : "tournament";
+                GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
+            };
+            btnRow.AddChild(backBtn);
+            PadButton(backBtn);
+        }
         var strip = new Button { Text = "STRIP ALL" };
         strip.Pressed += () => { Loadout.Strip(); SetHint("All hardpoints emptied."); Refresh(); };
         btnRow.AddChild(strip);
@@ -725,7 +739,7 @@ public partial class RiderLab : Control
         };
         btnRow.AddChild(_jetsBtn);
         if (!Spec.JumpCapable) _jetsBtn.Visible = false; // this chassis cannot mount thrusters
-        var start = new Button { Text = "DEPLOY  ▶" };
+        var start = new Button { Text = "DEPLOY" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
         btnRow.AddChild(start);
