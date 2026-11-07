@@ -576,7 +576,7 @@ public partial class RiderLab : Control
             hb.AddChild(tileCtl);
             var lab = new Label
             {
-                Text = $"{w.Name}   ·   {w.Weight:F0}t   ·   {w.Type}   ·   dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")}   ·   cd {w.Cooldown:F2}s",
+                Text = $"{w.Name}   ·   {w.Weight:F0}t   ·   {w.Type}   ·   dmg {w.Damage:F0}{(w.Rockets > 0 ? $"/rocket · {w.Rockets}/pod" : "")}   ·   cd {w.Cooldown:F2}s   ·   rng {w.Range:F0}u",
                 VerticalAlignment = VerticalAlignment.Center,
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -749,8 +749,8 @@ public partial class RiderLab : Control
     }
 
     private static string Metrics(WeaponDef d) => d.Type == WeaponSlotType.Missile
-        ? $"{d.Weight:F0}t / {d.Damage} dmg ×{d.Rockets} / {d.Cooldown:0.00}s cd"
-        : $"{d.Weight:F0}t / {d.Damage} dmg / {d.Cooldown:0.00}s cd";
+        ? $"{d.Weight:F0}t / {d.Damage} dmg ×{d.Rockets} / {d.Cooldown:0.00}s cd / rng {d.Range:F0}u"
+        : $"{d.Weight:F0}t / {d.Damage} dmg / {d.Cooldown:0.00}s cd / rng {d.Range:F0}u";
 
     // Dev measurement: panel centers vs live projected anchors,
     // in viewport pixels — the slot-flip investigation record.
