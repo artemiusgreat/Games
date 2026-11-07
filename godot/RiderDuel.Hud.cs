@@ -125,7 +125,7 @@ public partial class RiderDuel
             row.AddThemeConstantOverride("separation", 8);
             var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(74, 0);
+            lab.CustomMinimumSize = new Vector2(96, 0);
             row.AddChild(lab);
             var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(218, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
@@ -216,11 +216,12 @@ public partial class RiderDuel
         lab.AddThemeColorOverride("font_color", destroyed ? CdLabelDead : CdLabelNormal);
     }
 
-    // The selected weapon's panel row carries a pointer marker and, while
-    // the weapon lives, bright text; destroyed rows keep their red.
+    // The selected weapon's panel row carries a pointer marker at
+    // the RIGHT of its text (owner) and, while the weapon lives,
+    // bright text; destroyed rows keep their red.
     private static void SetSelLabel(Label lab, string baseText, bool selected, bool destroyed)
     {
-        lab.Text = (selected ? "▶ " : "") + baseText;
+        lab.Text = baseText + (selected ? " ▶" : "");
         if (selected && !destroyed)
             lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
     }
