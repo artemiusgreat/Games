@@ -593,13 +593,17 @@ public partial class RiderLab : Control
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
             var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true }; // row sized to fit the tile with air around it
-            StyleBoxFlat RowBox(Color c)
+            StyleBoxFlat RowBox()
             {
-                var b = new StyleBoxFlat { BgColor = c, ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
-                b.SetCornerRadiusAll(4);
+                // Same backdrop as the slot panels (owner): one
+                // visual family across the lab — same fill, same
+                // border, same radius.
+                var b = new StyleBoxFlat { BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f), ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
+                b.SetBorderWidthAll(2);
+                b.SetCornerRadiusAll(6);
                 return b;
             }
-            rowPanel.AddThemeStyleboxOverride("panel", RowBox(new Color(0.09f, 0.12f, 0.16f, 0.66f))); // semi-transparent (owner): the scene shows through the weapon list
+            rowPanel.AddThemeStyleboxOverride("panel", RowBox());
             var hb = new HBoxContainer();
             hb.AddThemeConstantOverride("separation", 16); // clear gap between tile and name (owner)
             rowPanel.AddChild(hb);
