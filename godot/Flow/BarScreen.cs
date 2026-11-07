@@ -29,25 +29,15 @@ public partial class BarScreen : Control
         AddChild(pad);
         pad.AddChild(ui);
 
-        // ---- Freelancer-style facility icon bar ----
+        // ---- top bar: a single Back (owner: the facility
+        // tabs and the lab shortcut are gone; bars return as a
+        // game location in a later build) ----
         var icons = new HBoxContainer();
         icons.AddThemeConstantOverride("separation", 10);
         ui.AddChild(icons);
-        var bar = FlowUi.MakeButton("◆ Bar", 15);
-        bar.AddThemeColorOverride("font_color", FlowUi.Gold);
-        icons.AddChild(bar);
-        icons.AddChild(FlowUi.MakeButton("◆ Job offers", 15));
-        var equip = FlowUi.MakeButton("◆ Equipment", 15);
-        equip.Disabled = true;
-        equip.TooltipText = "The equipment dealer opens in a later build.";
-        icons.AddChild(equip);
-        var backTop = FlowUi.MakeButton("Back to orbit", 15);
+        var backTop = FlowUi.MakeButton("Back", 15);
         backTop.Pressed += () => Flow.GoPlanet();
         icons.AddChild(backTop);
-        icons.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.Expand });
-        var lab = FlowUi.MakeButton("Rider lab", 16);
-        lab.Pressed += () => Flow.EnterLab();
-        icons.AddChild(lab);
 
         ui.AddChild(new Control { SizeFlagsVertical = SizeFlags.Expand });
 
@@ -70,7 +60,7 @@ public partial class BarScreen : Control
         RefreshOffers();
     }
 
-    private PlanetDef Planet => MissionCatalog.Planets[Flow.PlanetIndex];
+    private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];
 
     private void RefreshOffers()
     {
@@ -95,7 +85,11 @@ public partial class BarScreen : Control
             tx.AddChild(FlowUi.MakeLabel($"“{m.Pitch}”", 12, FlowUi.Ink, HorizontalAlignment.Left, wrap: true));
             tx.AddChild(FlowUi.MakeLabel($"{m.Name} · {m.Type} · {m.Payment:N0} credits · Threat {FlowUi.ThreatPips(m.Threat)}", 11, FlowUi.Dim));
             bool signed = _signedHere == m || (_signedHere == null && current == m);
-            var b = FlowUi.MakeButton(signed ? "Signed ✓" : "Accept", 13);
+            var b = FlowUi.MakeButton(signed ? "Signed" : "Accept", 13);
+            // One width for every offer button (owner: buttons
+            // align), centered in its row.
+            b.CustomMinimumSize = new Vector2(124f, 0f);
+            b.SizeFlagsVertical = SizeFlags.ShrinkCenter;
             b.Disabled = signed;
             b.Pressed += () =>
             {

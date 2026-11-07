@@ -18,7 +18,6 @@ public partial class MapTypeScreen : Control
         center.AddChild(root);
 
         root.AddChild(FlowUi.MakeHeading("The Age of Titans", 52, FlowUi.Gold, HorizontalAlignment.Center));
-        root.AddChild(FlowUi.MakeLabel("Select game mode", 16, FlowUi.Dim, HorizontalAlignment.Center));
 
         var cards = new HBoxContainer();
         cards.AddThemeConstantOverride("separation", 22);
@@ -37,7 +36,6 @@ public partial class MapTypeScreen : Control
             "Map 1900u · Bases 3 · Contracts 9",
             "Select map", () => OnMission?.Invoke()));
 
-        root.AddChild(FlowUi.MakeLabel("More modes will follow.", 12, FlowUi.Dim, HorizontalAlignment.Center));
     }
 
     private Control Card(string title, string desc, string stats, string cta, System.Action go)

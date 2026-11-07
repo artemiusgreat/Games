@@ -23,8 +23,8 @@ public partial class MapScreen : Control
     private readonly System.Collections.Generic.List<Button> _markers = new();
 
     private bool IsMission => WorldConfig.IsMission;
-    private PlanetDef Planet => MissionCatalog.Planets[Flow.PlanetIndex];
-    private MissionDef Mission => Planet.Missions[Flow.MissionIndex];
+    private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];
+    private MissionDef Mission => Planet.Missions[FlowMain.MissionIndex];
 
     // The map types (owner): every map is one of three biomes,
     // PREDEFINED per arena and per contract — descriptive text
@@ -86,9 +86,10 @@ public partial class MapScreen : Control
             var toLab = FlowUi.MakeButton("Command center", 14);
             toLab.Pressed += () => Flow.EnterLab(fromPlanet: true);
             menu.AddChild(toLab);
-            var toBar = FlowUi.MakeButton("Bar", 14);
-            toBar.Pressed += () => Flow.GoBar();
-            menu.AddChild(toBar);
+            // No Bar button here (owner): the briefing pick IS
+            // the contract — sending the player to sign another
+            // one in the bar contradicted it. Bars return as a
+            // game location in a later build.
         }
         else
         {
@@ -253,13 +254,13 @@ public partial class MapScreen : Control
         if (IsMission)
         {
             int n = MissionCatalog.Planets.Count;
-            Flow.PlanetIndex = (Flow.PlanetIndex + d + n) % n;
-            Flow.MissionIndex = 0;
+            FlowMain.PlanetIndex = (FlowMain.PlanetIndex + d + n) % n;
+            FlowMain.MissionIndex = 0;
         }
         else
         {
             int n = ArenaCatalog.Arenas.Length;
-            Flow.ArenaIndex = (Flow.ArenaIndex + d + n) % n;
+            FlowMain.ArenaIndex = (FlowMain.ArenaIndex + d + n) % n;
         }
         Refresh();
     }
@@ -267,7 +268,7 @@ public partial class MapScreen : Control
     private void StepMission(int d)
     {
         int n = Planet.Missions.Count;
-        Flow.MissionIndex = (Flow.MissionIndex + d + n) % n;
+        FlowMain.MissionIndex = (FlowMain.MissionIndex + d + n) % n;
         Refresh();
     }
 
@@ -288,7 +289,7 @@ public partial class MapScreen : Control
         }
         else
         {
-            var a = ArenaCatalog.Arenas[Flow.ArenaIndex];
+            var a = ArenaCatalog.Arenas[FlowMain.ArenaIndex];
             _nameLabel.Text = a.Name;
             _subLabel.Text = a.Sub;
             _descLabel.Text = a.Desc;
@@ -310,9 +311,9 @@ public partial class MapScreen : Control
         {
             int idx = i;
             var mm = p.Missions[i];
-            var b = new Button { Text = $"◆ {mm.Site}" };
+            var b = new Button { Text = mm.Site };
             b.AddThemeFontSizeOverride("font_size", 12);
-            b.AddThemeColorOverride("font_color", i == Flow.MissionIndex ? FlowUi.Gold : FlowUi.Ink);
+            b.AddThemeColorOverride("font_color", i == FlowMain.MissionIndex ? FlowUi.Gold : FlowUi.Ink);
             b.AddThemeColorOverride("font_focus_color", FlowUi.Gold);
             b.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
             b.AddThemeStyleboxOverride("hover", new StyleBoxEmpty());
@@ -322,7 +323,7 @@ public partial class MapScreen : Control
             b.AddThemeStyleboxOverride("focus", focus);
             var pos = center + new Vector2(mm.SitePos.X * 158f, mm.SitePos.Y * 158f);
             b.Position = pos - new Vector2(60f, 10f);
-            b.Pressed += () => { Flow.MissionIndex = idx; Refresh(); };
+            b.Pressed += () => { FlowMain.MissionIndex = idx; Refresh(); };
             _discHolder.AddChild(b);
             _markers.Add(b);
         }
