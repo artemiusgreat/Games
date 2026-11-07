@@ -20,3 +20,5 @@ project/assembly_name="GodotPoc"
 
 [gui]
 
+theme/custom="res://assets/fonts/game_theme.tres"
+
