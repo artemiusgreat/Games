@@ -708,6 +708,200 @@ public partial class RiderDuel
         GD.Print("MISSION bases built at the three plateaus");
     }
 
+    // ---- Building detail (owner: buildings read as primitives;
+    // they need roofs, doors, balconies, fire escapes) ----
+    // One merged mesh per building, three materials — trim
+    // (parapets, canopies, balcony slabs, cornices: the wall
+    // concrete in the photo scene), metal (rails, fire escapes,
+    // HVAC), dark (doors, storefront glass). Every building gets
+    // a parapet, roof clutter and a front door with a canopy;
+    // taller ones add one seeded character: balcony rows, a
+    // zigzag fire escape, or cornice bands. Visual only — the
+    // pieces hug the walls inside the collider margin, and they
+    // ride the building node when it collapses.
+    private static readonly Dictionary<bool, Material[]> _detailMats = new();
+
+    private static Material[] DetailMats(bool photo)
+    {
+        if (_detailMats.TryGetValue(photo, out var m)) return m;
+        var trim = photo
+            ? PhotoEnv.BuildingMaterial(new Vector3(3f, 3f, 3f), new Color(0.88f, 0.86f, 0.82f))
+            : (Material)new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.53f, 0.50f), Roughness = 0.9f };
+        var metal = new StandardMaterial3D { AlbedoColor = new Color(0.15f, 0.16f, 0.18f), Metallic = 0.55f, Roughness = 0.5f };
+        var dark = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.06f, 0.07f), Metallic = 0.25f, Roughness = 0.35f };
+        m = new[] { trim, metal, dark };
+        _detailMats[photo] = m;
+        return m;
+    }
+
+    private static void AddQuadB(List<Vector3> verts, List<Vector3> norms, List<int> idx,
+        Vector3 center, Vector3 right, Vector3 up, Vector3 normal, float w, float h)
+    {
+        int b0 = verts.Count;
+        verts.Add(center - right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
+        verts.Add(center + right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
+        verts.Add(center + right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
+        verts.Add(center - right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
+        idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
+    }
+
+    // One box (24 verts, flat faces) into a surface list; the
+    // optional basis rotates it (fire-escape stairs tilt).
+    private static void AddBox(List<Vector3> verts, List<Vector3> norms, List<int> idx,
+        Vector3 center, Vector3 size, Basis basis)
+    {
+        var faces = new (Vector3 N, Vector3 R, Vector3 U)[]
+        {
+            (new Vector3(0, 0, 1), new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
+            (new Vector3(0, 0, -1), new Vector3(-1, 0, 0), new Vector3(0, 1, 0)),
+            (new Vector3(1, 0, 0), new Vector3(0, 0, -1), new Vector3(0, 1, 0)),
+            (new Vector3(-1, 0, 0), new Vector3(0, 0, 1), new Vector3(0, 1, 0)),
+            (new Vector3(0, 1, 0), new Vector3(1, 0, 0), new Vector3(0, 0, -1)),
+            (new Vector3(0, -1, 0), new Vector3(1, 0, 0), new Vector3(0, 0, 1))
+        };
+        foreach (var (n, r, u) in faces)
+        {
+            var fc = center + basis * (new Vector3(n.X * size.X, n.Y * size.Y, n.Z * size.Z) / 2f);
+            float fw = Mathf.Abs(r.X) > 0.5f ? size.X : Mathf.Abs(r.Y) > 0.5f ? size.Y : size.Z;
+            float fh = Mathf.Abs(u.X) > 0.5f ? size.X : Mathf.Abs(u.Y) > 0.5f ? size.Y : size.Z;
+            AddQuadB(verts, norms, idx, fc, basis * r, basis * u, basis * n, fw, fh);
+        }
+    }
+
+    private static MeshInstance3D MakeBuildingDetail(Vector3 size, int seq, bool photo)
+    {
+        if (Mathf.Min(size.X, size.Z) < 5f) return null; // the comms mast stays clean
+        int face = BrickHash(seq, 5, 2) % 4;
+        float fw = face % 2 == 0 ? size.X : size.Z;   // front width
+        float fd = face % 2 == 0 ? size.Z : size.X;   // front depth
+        float top = size.Y / 2f;
+        float g = -size.Y / 2f + 2.4f;                // terrain line (AddBuilding's sink)
+        var verts = new List<Vector3>(); var norms = new List<Vector3>();
+        var trimI = new List<int>(); var metalI = new List<int>(); var darkI = new List<int>();
+        var I = Basis.Identity;
+
+        // Parapet rim (trim).
+        AddBox(verts, norms, trimI, new Vector3(0, top - 0.21f, fd / 2f - 0.03f), new Vector3(fw + 0.12f, 0.42f, 0.2f), I);
+        AddBox(verts, norms, trimI, new Vector3(0, top - 0.21f, -fd / 2f + 0.03f), new Vector3(fw + 0.12f, 0.42f, 0.2f), I);
+        AddBox(verts, norms, trimI, new Vector3(fw / 2f - 0.03f, top - 0.21f, 0), new Vector3(0.2f, 0.42f, fd + 0.12f), I);
+        AddBox(verts, norms, trimI, new Vector3(-fw / 2f + 0.03f, top - 0.21f, 0), new Vector3(0.2f, 0.42f, fd + 0.12f), I);
+
+        // Roof clutter: HVAC boxes (metal), a roof hut on some,
+        // an antenna on others.
+        int hvac = 1 + BrickHash(seq, 8, 3) % 2;
+        for (int i = 0; i < hvac; i++)
+        {
+            float ox = (BrickHash(seq, i, 21) % 61 - 30) / 100f * fw * 0.55f;
+            float oz = (BrickHash(seq, i, 33) % 61 - 30) / 100f * fd * 0.55f;
+            AddBox(verts, norms, metalI, new Vector3(ox, top + 0.38f, oz),
+                new Vector3(1.3f + (BrickHash(seq, i, 7) % 10) * 0.13f, 0.76f, 1.0f + (BrickHash(seq, i, 13) % 10) * 0.09f), I);
+        }
+        if (seq % 3 == 0)
+        {
+            var hut = new Vector3(fw * 0.22f, top + 1.0f, -fd * 0.16f);
+            AddBox(verts, norms, trimI, hut, new Vector3(2.1f, 2.0f, 1.9f), I);
+            AddBox(verts, norms, darkI, hut + new Vector3(0, -0.25f, 0.98f), new Vector3(0.9f, 1.5f, 0.1f), I);
+        }
+        if (seq % 4 == 1)
+        {
+            var ant = new Vector3(-fw * 0.30f, top + 1.35f, fd * 0.22f);
+            AddBox(verts, norms, metalI, ant, new Vector3(0.1f, 2.7f, 0.1f), I);
+            AddBox(verts, norms, metalI, ant + new Vector3(0, 1.05f, 0), new Vector3(1.0f, 0.08f, 0.08f), I);
+        }
+
+        // Front door, canopy, step (dark + trim) on the front face.
+        float doorX = (BrickHash(seq, 4, 17) % 51 - 25) / 100f * fw * 0.6f;
+        AddBox(verts, norms, darkI, new Vector3(doorX, g + 1.35f, fd / 2f + 0.04f), new Vector3(1.7f, 2.7f, 0.14f), I);
+        AddBox(verts, norms, trimI, new Vector3(doorX, g + 3.02f, fd / 2f + 0.48f), new Vector3(2.6f, 0.16f, 1.05f), I);
+        AddBox(verts, norms, trimI, new Vector3(doorX, g + 0.11f, fd / 2f + 0.30f), new Vector3(2.4f, 0.22f, 0.66f), I);
+
+        // City storefront: a dark glass band + header at the base.
+        if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
+        {
+            float sw = Mathf.Min(fw * 0.86f, 12f);
+            AddBox(verts, norms, darkI, new Vector3(0, g + 1.5f, fd / 2f + 0.03f), new Vector3(sw, 3.0f, 0.12f), I);
+            AddBox(verts, norms, trimI, new Vector3(0, g + 3.18f, fd / 2f + 0.05f), new Vector3(sw, 0.3f, 0.2f), I);
+        }
+
+        int style = seq % 3;
+        if (style == 0 && size.Y >= 12f && fw >= 8f)
+        {
+            // Balcony rows on the front (trim slabs, metal rails).
+            int cols = Mathf.Clamp(Mathf.FloorToInt(fw / 4.2f), 2, 3);
+            for (float fy = g + 4.4f; fy < top - 1.7f; fy += 2.9f)
+            for (int c = 0; c < cols; c++)
+            {
+                if (BrickHash(seq, c * 7, (int)(fy * 3f)) % 4 == 0) continue;
+                float cx = (c - (cols - 1) / 2f) * (fw / cols) * 0.92f;
+                AddBox(verts, norms, trimI, new Vector3(cx, fy, fd / 2f + 0.40f), new Vector3(2.3f, 0.15f, 0.8f), I);
+                AddBox(verts, norms, metalI, new Vector3(cx, fy + 0.36f, fd / 2f + 0.78f), new Vector3(2.3f, 0.57f, 0.05f), I);
+                AddBox(verts, norms, metalI, new Vector3(cx - 1.13f, fy + 0.36f, fd / 2f + 0.40f), new Vector3(0.05f, 0.57f, 0.8f), I);
+                AddBox(verts, norms, metalI, new Vector3(cx + 1.13f, fy + 0.36f, fd / 2f + 0.40f), new Vector3(0.05f, 0.57f, 0.8f), I);
+            }
+        }
+        else if (style == 1 && size.Y >= 13f)
+        {
+            // Zigzag fire escape on the front (metal).
+            float prevX = 0f, prevY = 0f; bool first = true;
+            int lvl = 0;
+            for (float ly = g + 3.4f; ly < top - 1.3f; ly += 2.9f, lvl++)
+            {
+                float px = lvl % 2 == 0 ? -1.0f : 1.0f;
+                AddBox(verts, norms, metalI, new Vector3(px, ly, fd / 2f + 0.42f), new Vector3(3.6f, 0.13f, 0.85f), I);
+                AddBox(verts, norms, metalI, new Vector3(px, ly + 0.38f, fd / 2f + 0.82f), new Vector3(3.6f, 0.62f, 0.05f), I);
+                AddBox(verts, norms, metalI, new Vector3(px - 1.78f, ly + 0.38f, fd / 2f + 0.42f), new Vector3(0.05f, 0.62f, 0.85f), I);
+                AddBox(verts, norms, metalI, new Vector3(px + 1.78f, ly + 0.38f, fd / 2f + 0.42f), new Vector3(0.05f, 0.62f, 0.85f), I);
+                if (!first)
+                {
+                    float dx = px - prevX, dy = ly - prevY;
+                    float len = Mathf.Sqrt(dx * dx + dy * dy);
+                    var tilt = new Basis(new Vector3(0, 0, 1), Mathf.Atan2(dy, dx));
+                    AddBox(verts, norms, metalI,
+                        new Vector3((px + prevX) / 2f, (ly + prevY) / 2f, fd / 2f + 0.42f),
+                        new Vector3(len, 0.1f, 0.7f), tilt);
+                }
+                if (first)
+                {
+                    // The drop ladder to the ground.
+                    AddBox(verts, norms, metalI, new Vector3(px - 0.35f, g + 1.6f, fd / 2f + 0.5f), new Vector3(0.05f, 3.2f, 0.05f), I);
+                    AddBox(verts, norms, metalI, new Vector3(px + 0.35f, g + 1.6f, fd / 2f + 0.5f), new Vector3(0.05f, 3.2f, 0.05f), I);
+                    for (int r2 = 0; r2 < 4; r2++)
+                        AddBox(verts, norms, metalI, new Vector3(px, g + 0.5f + r2 * 0.75f, fd / 2f + 0.5f), new Vector3(0.7f, 0.05f, 0.05f), I);
+                }
+                prevX = px; prevY = ly; first = false;
+            }
+        }
+        else if (style == 2)
+        {
+            // Cornice bands at every floor line (trim).
+            for (float fy = g + 2.9f; fy < top - 0.9f; fy += 2.9f)
+            {
+                AddBox(verts, norms, trimI, new Vector3(0, fy, fd / 2f + 0.03f), new Vector3(fw + 0.26f, 0.2f, 0.16f), I);
+                AddBox(verts, norms, trimI, new Vector3(0, fy, -fd / 2f - 0.03f), new Vector3(fw + 0.26f, 0.2f, 0.16f), I);
+                AddBox(verts, norms, trimI, new Vector3(fw / 2f + 0.03f, fy, 0), new Vector3(0.16f, 0.2f, fd + 0.26f), I);
+                AddBox(verts, norms, trimI, new Vector3(-fw / 2f - 0.03f, fy, 0), new Vector3(0.16f, 0.2f, fd + 0.26f), I);
+            }
+        }
+
+        var mesh = new ArrayMesh();
+        var mats = DetailMats(photo);
+        var lists = new[] { trimI, metalI, darkI };
+        for (int si = 0; si < 3; si++)
+        {
+            if (lists[si].Count == 0) continue;
+            var arr = new Godot.Collections.Array(); arr.Resize((int)Mesh.ArrayType.Max);
+            arr[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+            arr[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+            arr[(int)Mesh.ArrayType.Index] = lists[si].ToArray();
+            int at = mesh.GetSurfaceCount();
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
+            mesh.SurfaceSetMaterial(at, mats[si]);
+        }
+        var node = new MeshInstance3D { Mesh = mesh };
+        node.Rotation = new Vector3(0, face * Mathf.Pi / 2f, 0);
+        return node;
+    }
+
     private void AddBuilding(Vector3 pos, Vector3 size)
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
@@ -734,6 +928,8 @@ public partial class RiderDuel
         AddChild(mi);
         mi.AddChild(MakeGlassPanes(size, seq,
             WorldConfig.Biome == WorldConfig.BiomeKind.City ? 0.34f : 0.16f));
+        var detailNode = MakeBuildingDetail(size, seq, _photo);
+        if (detailNode != null) mi.AddChild(detailNode);
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City && seq % 3 == 1 && size.Y >= 12f && size.X >= 8f)
             AddSign(mi, size, seq);
         _buildingPts.Add(new Vector2(pos.X, pos.Z));
