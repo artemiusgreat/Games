@@ -23,7 +23,6 @@ public partial class FlowMain : Node3D
 
     private CanvasLayer _layer;
     private Control _host;
-    private MeshInstance3D _planet;
     private string _flowshot;
     private double _shotT;
     private CanvasLayer _loadLayer;
@@ -74,7 +73,6 @@ public partial class FlowMain : Node3D
 
     public override void _Process(double delta)
     {
-        if (_planet != null) _planet.RotateY((float)delta * 0.05f);
         if (_loading)
         {
             _loadT += delta;
@@ -246,42 +244,19 @@ public partial class FlowMain : Node3D
 
     private void BuildBackdrop()
     {
-        var we = new WorldEnvironment
+        // A real orbital photograph behind every menu screen (the
+        // owner's reference shot), cover-fitted to the window. The
+        // screens' translucent panels let it breathe through.
+        var layer = new CanvasLayer { Layer = -2 };
+        AddChild(layer);
+        var bg = new TextureRect
         {
-            Environment = new Environment
-            {
-                BackgroundMode = Environment.BGMode.Sky,
-                Sky = new Sky
-                {
-                    SkyMaterial = new PanoramaSkyMaterial { Panorama = FlowUi.StarTexture() }
-                },
-                AmbientLightSource = Environment.AmbientSource.Sky,
-                AmbientLightEnergy = 0.35f,
-                TonemapMode = Environment.ToneMapper.Aces
-            }
+            Texture = GD.Load<Texture2D>("res://assets/flow/space_bg.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = Control.MouseFilterEnum.Ignore
         };
-        AddChild(we);
-        AddChild(new Camera3D { Position = new Vector3(0f, 0.6f, 9.5f), Fov = 55f });
-        var sun = new DirectionalLight3D
-        {
-            LightEnergy = 1.1f,
-            LightColor = new Color(1f, 0.95f, 0.88f),
-            Rotation = new Vector3(-0.5f, -0.7f, 0f),
-            ShadowEnabled = false
-        };
-        AddChild(sun);
-        var tex = FlowUi.PlanetTexture(MissionCatalog.Planets[0], 512, 1.0f);
-        _planet = new MeshInstance3D
-        {
-            Mesh = new SphereMesh { Radius = 3.1f, Height = 6.2f, RadialSegments = 48, Rings = 24 },
-            MaterialOverride = new StandardMaterial3D
-            {
-                AlbedoTexture = tex, Roughness = 0.85f,
-                EmissionEnabled = true, EmissionTexture = tex,
-                Emission = new Color(0.35f, 0.38f, 0.45f), EmissionEnergyMultiplier = 0.25f
-            },
-            Position = new Vector3(3.4f, 0.9f, -1.5f)
-        };
-        AddChild(_planet);
+        bg.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(bg);
     }
 }
