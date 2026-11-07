@@ -117,7 +117,11 @@ public partial class MapScreen : Control
         // no scrollbar shows and nothing changes.
         var sideScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         side.AddChild(sideScroll);
-        var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var sv = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
         sv.AddThemeConstantOverride("separation", 7);
         sideScroll.AddChild(sv);
         mid.AddChild(side);
@@ -129,7 +133,7 @@ public partial class MapScreen : Control
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0f, 84f),
+            CustomMinimumSize = new Vector2(0f, 150f),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsStretchRatio = 1.25f,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
@@ -151,7 +155,7 @@ public partial class MapScreen : Control
             sv.AddChild(Selector(out _contractName, 15, StepMission));
             var contractScroll = new ScrollContainer
             {
-                CustomMinimumSize = new Vector2(0f, 64f),
+                CustomMinimumSize = new Vector2(0f, 132f),
                 SizeFlagsVertical = SizeFlags.ExpandFill,
                 SizeFlagsStretchRatio = 0.8f,
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
