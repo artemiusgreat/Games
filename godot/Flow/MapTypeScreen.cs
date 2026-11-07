@@ -17,7 +17,16 @@ public partial class MapTypeScreen : Control
         root.AddThemeConstantOverride("separation", 18);
         center.AddChild(root);
 
-        root.AddChild(FlowUi.MakeHeading("The Age of Titans", 52, FlowUi.Gold, HorizontalAlignment.Center));
+        // The title is the owner's promo art itself (the stone
+        // and ember card from the film), luminance-keyed so the
+        // letters sit directly on the orbital backdrop.
+        root.AddChild(new TextureRect
+        {
+            Texture = GD.Load<Texture2D>("res://assets/flow/title_card.png"),
+            CustomMinimumSize = new Vector2(0f, 205f),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
+        });
 
         var cards = new HBoxContainer();
         cards.AddThemeConstantOverride("separation", 22);
