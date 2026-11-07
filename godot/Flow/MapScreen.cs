@@ -134,11 +134,17 @@ public partial class MapScreen : Control
         mid.AddChild(side);
 
         // Planet / Map section. In Tournament the top section
-        // only DISPLAYS the arena (same row geometry, no arrows)
-        // — the choosing happens in the Arena section below,
-        // exactly where Mission keeps its Contract chooser.
+        // only DISPLAYS the arena — the choosing happens in the
+        // Arena section below, exactly where Mission keeps its
+        // Contract chooser — so its heading carries no arrows
+        // and no spacer for them: flush left (owner).
         sv.AddChild(FlowUi.MakeHeading(IsMission ? "Planet" : "Map", 13, FlowUi.Gold, bold: false));
-        sv.AddChild(IsMission ? Selector(out _nameLabel, 16, StepPlace) : DisplayRow(out _nameLabel, 16));
+        if (IsMission) sv.AddChild(Selector(out _nameLabel, 16, StepPlace));
+        else
+        {
+            _nameLabel = FlowUi.MakeHeading("", 16, FlowUi.Gold);
+            sv.AddChild(_nameLabel);
+        }
         _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer
@@ -160,7 +166,6 @@ public partial class MapScreen : Control
         // Contract section (Mission only).
         if (IsMission)
         {
-            sv.AddChild(new HSeparator());
             sv.AddChild(FlowUi.MakeHeading("Contract", 13, FlowUi.Gold, bold: false));
             sv.AddChild(Selector(out _contractName, 15, StepMission));
             var contractScroll = new ScrollContainer
@@ -183,7 +188,6 @@ public partial class MapScreen : Control
         {
             // Arena section (Tournament): the chooser, built
             // exactly like the Contract section it replaces.
-            sv.AddChild(new HSeparator());
             sv.AddChild(FlowUi.MakeHeading("Arena", 13, FlowUi.Gold, bold: false));
             sv.AddChild(Selector(out _arenaName, 15, StepPlace));
             var arenaScroll = new ScrollContainer
@@ -233,20 +237,6 @@ public partial class MapScreen : Control
         if (scroll == null || label == null) return;
         float w = scroll.Size.X - 14f;
         if (w > 40f) label.CustomMinimumSize = new Vector2(w, label.CustomMinimumSize.Y);
-    }
-
-    // The selector's row without the arrows: same geometry, the
-    // name centered between two button-width spacers.
-    private HBoxContainer DisplayRow(out Label name, int fontSize)
-    {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        row.AddChild(new Control { CustomMinimumSize = new Vector2(42f, 36f) });
-        name = FlowUi.MakeHeading("", fontSize, FlowUi.Gold, HorizontalAlignment.Center);
-        name.SizeFlagsHorizontal = SizeFlags.Expand;
-        row.AddChild(name);
-        row.AddChild(new Control { CustomMinimumSize = new Vector2(42f, 36f) });
-        return row;
     }
 
     private HBoxContainer Selector(out Label name, int fontSize, System.Action<int> step)
