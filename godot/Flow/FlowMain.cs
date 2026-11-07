@@ -20,7 +20,10 @@ public partial class FlowMain : Node3D
 {
     public int PlanetIndex = 0;
     public int MissionIndex = 0;
-    public int BiomeIndex = 1; // Desert 0, Forest 1, City 2 — the standing default is the game's original look
+    public int BiomeIndex = System.Environment.GetEnvironmentVariable("AOT_BIOME") switch
+    {
+        "desert" => 0, "city" => 2, _ => 1 // Desert 0, Forest 1, City 2 — Forest is the game's original look
+    };
 
     private CanvasLayer _layer;
     private Control _host;

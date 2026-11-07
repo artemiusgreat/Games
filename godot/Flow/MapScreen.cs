@@ -111,9 +111,18 @@ public partial class MapScreen : Control
 
         var side = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         side.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
-        var sv = new VBoxContainer();
+        // The sections live in a scroll (owner's three-section
+        // sidebar): at short window heights the stack keeps its
+        // natural heights and the sidebar scrolls, instead of
+        // the monitors squeezing below their minimums and their
+        // text painting across the next section (measured at
+        // 648px with the Map section added). When it all fits,
+        // no scrollbar shows and nothing changes.
+        var sideScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        side.AddChild(sideScroll);
+        var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         sv.AddThemeConstantOverride("separation", 7);
-        side.AddChild(sv);
+        sideScroll.AddChild(sv);
         mid.AddChild(side);
 
         // Planet / Map section.
@@ -123,7 +132,7 @@ public partial class MapScreen : Control
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0f, 110f),
+            CustomMinimumSize = new Vector2(0f, 84f),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsStretchRatio = 1.25f,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
@@ -145,7 +154,7 @@ public partial class MapScreen : Control
             sv.AddChild(Selector(out _contractName, 15, StepMission));
             var contractScroll = new ScrollContainer
             {
-                CustomMinimumSize = new Vector2(0f, 84f),
+                CustomMinimumSize = new Vector2(0f, 64f),
                 SizeFlagsVertical = SizeFlags.ExpandFill,
                 SizeFlagsStretchRatio = 0.8f,
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
@@ -172,7 +181,7 @@ public partial class MapScreen : Control
             sv.AddChild(_biomeSub);
             var biomeScroll = new ScrollContainer
             {
-                CustomMinimumSize = new Vector2(0f, 56f),
+                CustomMinimumSize = new Vector2(0f, 48f),
                 SizeFlagsVertical = SizeFlags.ExpandFill,
                 SizeFlagsStretchRatio = 0.55f,
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
@@ -240,14 +249,18 @@ public partial class MapScreen : Control
     // A description on a desk monitor: bezel, dark screen, scanlines.
     private Control Monitor(Control inner)
     {
+        // The bezel fits BOTH children to its rect directly (a
+        // PanelContainer fits every child): the screen, then the
+        // scanlines over it. An intermediate plain Control here
+        // silently zeroed the chain's minimum size — the bezel
+        // collapsed to its own insets (16px, measured) while the
+        // screen kept its natural height and painted across the
+        // next section whenever vertical space ran short.
         var bezel = new PanelContainer();
         bezel.AddThemeStyleboxOverride("panel", FlowUi.MonitorBezel());
-        var host = new Control();
-        bezel.AddChild(host);
         var screen = new PanelContainer();
-        screen.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         screen.AddThemeStyleboxOverride("panel", FlowUi.MonitorScreen());
-        host.AddChild(screen);
+        bezel.AddChild(screen);
         screen.AddChild(inner);
         var scan = new TextureRect
         {
@@ -256,8 +269,7 @@ public partial class MapScreen : Control
             StretchMode = TextureRect.StretchModeEnum.Scale,
             MouseFilter = MouseFilterEnum.Ignore
         };
-        scan.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        host.AddChild(scan);
+        bezel.AddChild(scan);
         return bezel;
     }
 
