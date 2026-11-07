@@ -16,6 +16,13 @@ public sealed class WeaponDef
     public float Cooldown;      // seconds
     public int Rockets;         // missile packs only: rockets per salvo
     public float Splash;        // splash radius, 0 = direct only
+    // Ballistic weapons only: the shell's muzzle velocity (u/s).
+    // THE place to tune bullet speed — the player volley and the
+    // AI gunnery both read it from here. All cannons share the
+    // autocannon's 420 (owner: medium and large match the
+    // smallest cannon); the machine gun keeps its slow 85 u/s
+    // tracer stream (owner's standing exception).
+    public float MuzzleSpeed;
     // Effective range in world units, as shown in the lab. Derived
     // from the firing mechanics, not lore: lasers/PPC are hitscan
     // on the view ray, which the engine caps at 220u (a cannon
@@ -41,11 +48,11 @@ public static class WeaponCatalog
     public static readonly WeaponDef Ppc = new()
     { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 220f };
     public static readonly WeaponDef MachineGun = new()
-    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 240f };
+    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 240f, MuzzleSpeed = 85f };
     public static readonly WeaponDef Autocannon = new()
-    { Id = "autocannon", Name = "Autocannon", Short = "AC", Type = WeaponSlotType.Ballistic, Weight = 12f, Damage = 26f, Cooldown = 0.85f, Range = 900f };
+    { Id = "autocannon", Name = "Autocannon", Short = "AC", Type = WeaponSlotType.Ballistic, Weight = 12f, Damage = 26f, Cooldown = 0.85f, Range = 900f, MuzzleSpeed = 420f };
     public static readonly WeaponDef HeavyCannon = new()
-    { Id = "heavy_cannon", Name = "Heavy Cannon", Short = "HVY", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 40f, Cooldown = 1.6f, Range = 900f };
+    { Id = "heavy_cannon", Name = "Heavy Cannon", Short = "HVY", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 40f, Cooldown = 1.6f, Range = 900f, MuzzleSpeed = 420f };
     // Missile packs are per-pod: a full salvo fires every alive pod's
     // pack. The default fit (LRM in both pods) reproduces the original
     // 8-rocket salvo, 4 with one pod lost.
@@ -57,7 +64,7 @@ public static class WeaponCatalog
     // The Hector's fixed cannon (not player-mountable in the lab list,
     // but its weight still counts for knockdown).
     public static readonly WeaponDef HectorAc20 = new()
-    { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 900f };
+    { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 900f, MuzzleSpeed = 420f };
 
     public static readonly WeaponDef[] All =
     {

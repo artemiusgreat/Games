@@ -255,8 +255,8 @@ public partial class RiderDuel
     // Cannon gunnery, shared: range + line-of-sight gated, leads
     // the target's velocity at time-of-flight, seeded inaccuracy
     // cone (1.2° with sensors, 3.6° once the head is gone). Shell
-    // speed follows the weapon, as the player's does — the Hector's
-    // AC/20 flies at 150 (50 x3, owner 2026-10-29).
+    // speed follows the weapon def (MuzzleSpeed), as the
+    // player's does.
     private void UpdateFoeGunnery(RiderWalker w, RiderParts parts, WeaponDef def, string slot,
         string tag, string targetTag, RiderWalker target, Vector3 targetVel,
         System.Action onFired)
@@ -268,10 +268,7 @@ public partial class RiderDuel
         if (dist > 75f) return;
         var los = _hit.Ray(muzzle, (tp - muzzle).Normalized(), dist, tag);
         if (los.Hit && los.Target != targetTag) return; // blocked: building/terrain
-        // Large cannons (ac20, heavy cannon) fly at the autocannon's
-        // 420 u/s like the player's (owner, 2026-11-06); only the
-        // machine gun keeps its slow tracer stream.
-        float speed = def?.Id == "machine_gun" ? 85f : 420f;
+        float speed = def?.MuzzleSpeed ?? 420f;
         float tof = dist / speed;
         var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
