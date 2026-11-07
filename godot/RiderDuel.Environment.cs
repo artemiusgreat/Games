@@ -603,7 +603,11 @@ public partial class RiderDuel
                 int hsh = BrickHash(seed, ci * 3 + faceI * 31, ri * 7 + faceI);
                 if (hsh % 23 == 0) continue; // a missing pane
                 float u = (ci + 0.5f) / cols - 0.5f;         // across the face
-                float v = 0.18f + (ri + 0.5f) / rows * 0.72f; // 0 at sill band..1 top
+                // The grid starts HIGH (owner: the lowest
+                // windows sat at ground level and buried on
+                // slopes): a windowless ground band takes the
+                // bottom third of the wall.
+                float v = 0.34f + (ri + 0.5f) / rows * 0.58f; // 0 at sill band..1 top
                 var center = n * half + rgt * (u * w)
                     + Vector3.Up * ((v - 0.5f) * size.Y);
                 float pw = w / cols * 0.52f, ph = size.Y / rows * 0.5f;
