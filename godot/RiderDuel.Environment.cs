@@ -405,6 +405,25 @@ public partial class RiderDuel
         return true;
     }
 
+    // A plot can pass the grade check and still sit in a bowl:
+    // the grade samples the center, but if the ground around
+    // the footprint climbs well above the base, the building
+    // reads as sunk into the terrain (owner's screenshot).
+    // Reject bowls, and cliff edges where the far side falls
+    // away beyond what the sink can cover.
+    private static bool TerrainPit(Vector2 p, float r)
+    {
+        float h = Main.HeightAt(p.X, p.Y);
+        for (int k = 0; k < 8; k++)
+        {
+            float a = k * Mathf.Pi / 4f;
+            float rh = Main.HeightAt(p.X + Mathf.Cos(a) * r, p.Y + Mathf.Sin(a) * r);
+            if (rh - h > 4f) return true;
+            if (h - rh > 9f) return true;
+        }
+        return false;
+    }
+
     private static float TerrainGrade(float x, float z)
     {
         const float e = 0.7f;
@@ -1241,6 +1260,7 @@ public partial class RiderDuel
                 17f + (float)rng.NextDouble() * 7f);
             if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + 2.5f)) continue;
             if (TerrainGrade(pt.X, pt.Y) > 0.4f) continue;
+            if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
             AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
             placed++;
         }
@@ -1284,6 +1304,7 @@ public partial class RiderDuel
                 if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + 2.5f)) continue;
                 if (Main.RoadDistance(pt.X, pt.Y) < 8f) continue;
                 if (TerrainGrade(pt.X, pt.Y) > 0.4f) continue;
+                if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
                 if (!WorldConfig.IsMission && Main.HeightAt(pt.X, pt.Y) > 9.5f) continue;
                 bool nearPad = false;
                 foreach (var pad in Main.SpawnPads)
