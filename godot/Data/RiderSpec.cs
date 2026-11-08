@@ -176,6 +176,13 @@ public static class RiderSpecs
 
     public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus };
 
+    // The free-for-all's third rider is drawn from this
+    // priority list: the first entry that is not already the
+    // enemy. Roster data (the two original chassis, in
+    // seniority order) — extending the rotation is a data
+    // edit, never an engine branch.
+    public static readonly RiderSpec[] FfaPartnerPriority = { Hector, Enyo };
+
     public static RiderSpec ById(string id)
     {
         foreach (var s in All) if (s.Id == id) return s;

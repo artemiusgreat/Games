@@ -101,12 +101,20 @@ public partial class RiderDuel
             _hit.Riders.Add(new HitModel.RiderCap { Id = "FOE1", Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
     }
 
-    // Foe 1 (free-for-all): always the chassis foe 0 is NOT — the
-    // match fields a Enyo and an Hector as opponents,
-    // whichever one the legacy enemy slot holds.
+    // Foe 1 (free-for-all): the partner chassis — the first
+    // entry on the roster's partner-priority list that the
+    // enemy slot does not already hold. No chassis names in
+    // engine code; the list is roster data.
+    private static RiderSpec FfaPartner(RiderSpec enemy)
+    {
+        foreach (var s in RiderSpecs.FfaPartnerPriority) if (s.Id != enemy.Id) return s;
+        foreach (var s in RiderSpecs.All) if (s.Id != enemy.Id) return s;
+        return enemy;
+    }
+
     private void BuildFoe1()
     {
-        var spec = _enemySpec.Id == "hector" ? RiderSpecs.Enyo : RiderSpecs.Hector;
+        var spec = FfaPartner(_enemySpec);
         _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
         var pad = Main.SpawnPads[2];
         _foe1.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
@@ -124,7 +132,7 @@ public partial class RiderDuel
 
     private void RebuildFoe1()
     {
-        var want = _enemySpec.Id == "hector" ? RiderSpecs.Enyo : RiderSpecs.Hector;
+        var want = FfaPartner(_enemySpec);
         if (_foe1 != null && _foe1.Spec.Id == want.Id) return;
         var pos = _foe1?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
         float yaw = _foe1?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
@@ -190,7 +198,7 @@ public partial class RiderDuel
             _enemySpec = RiderSpecs.ById(enemySpecId);
             _enemyLoadout = LoadoutState.DefaultFor(_enemySpec);
             RebuildRider(false);
-            if (_foe1 != null) RebuildFoe1(); // the roster stays Enyo + Hector
+            if (_foe1 != null) RebuildFoe1(); // the FFA partner re-picks from the priority data
         }
         GD.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();
