@@ -2332,12 +2332,13 @@ public partial class RiderDuel
 
     // --range-test: per-weapon Range enforcement (owner's rule:
     // a weapon reaches its catalog Range and no further), staged
-    // in the Mission world against the stock Enyo loadout
-    // (Large Laser 220, Autocannon 900, LRM 220):
-    //   A: laser at the enemy 1074u away — no damage (220 < 1074)
-    //   B: laser at 180u — damage lands (180 < 220)
-    //   C: LRM salvo at 600u — rockets clamp to 220, no damage
-    //   D: autocannon at the sky — the shell dies at ~900u along
+    // in the Mission world against the stock Enyo loadout with
+    // the Sarna MW4 ranges (Large Laser 600, Autocannon 600,
+    // LRM 1000):
+    //   A: laser at the enemy 1074u away — no damage (600 < 1074)
+    //   B: laser at 180u — damage lands (180 < 600)
+    //   C: LRM salvo base-to-base at 1074u — clamps to 1000
+    //   D: autocannon at the sky — the shell dies at ~600u along
     // Aiming: the chase axis is iterated onto the enemy's chest
     // from the settled camera (3 passes), so the ray is exact.
     private float _rgT; private int _rgPhase;
@@ -2377,7 +2378,7 @@ public partial class RiderDuel
             AimAxisAt(chest);
             _rgHp0 = _hpEnemy;
             FireLaser(TorsoAimPoint());
-            GD.Print($"RANGE A fired: dist={d0:F0} enemyHp={_rgHp0:F0} (Large Laser range 220 — must NOT reach)");
+            GD.Print($"RANGE A fired: dist={d0:F0} enemyHp={_rgHp0:F0} (Large Laser range 600 — must NOT reach)");
             _rgPhase = 1; _rgT = 0f;
         }
         else if (_rgPhase == 1 && _rgT > 0.6f)
@@ -2396,7 +2397,7 @@ public partial class RiderDuel
             // Stage B on open ground: buildings and trees block
             // lanes at random in the mission world, so teleport
             // the enemy around a fan of spots 180u out until the
-            // game's own cast (at the weapon's own 220 reach)
+            // game's own cast (at the weapon's own 600 reach)
             // confirms a clear line to it, then fire.
             float ang = _rgTry * Mathf.DegToRad(15f);
             var dirE = (_enemy.RootPos - _player.RootPos); dirE.Y = 0f; dirE = dirE.Normalized();
@@ -2404,7 +2405,7 @@ public partial class RiderDuel
             spot.Y = Main.HeightAt(spot.X, spot.Z);
             _enemy.Teleport(spot, RiderWalker.YawOf(-dirE.Rotated(Vector3.Up, ang)));
             AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
-            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 220f, "PLAYER");
+            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 600f, "PLAYER");
             if (!los.Hit || los.Target != "ENEMY")
             {
                 if (++_rgTry > 10) { GD.PrintErr("RANGE FAIL B: no clear lane found for staging"); GetTree().Quit(1); }
@@ -2421,15 +2422,18 @@ public partial class RiderDuel
             if (_hpEnemy > _rgHp0 - 0.01f) { GD.PrintErr("RANGE FAIL B: laser did no damage inside its range"); GetTree().Quit(1); return; }
             GD.Print($"RANGE B PASS: hp {_rgHp0:F0} -> {_hpEnemy:F0}");
             _rgHp0 = _hpEnemy;
-            // Re-stage at 600u for the missile clamp: no lane
-            // search — the salvo just must not arrive.
-            var dirC = (_enemy.RootPos - _player.RootPos); dirC.Y = 0f; dirC = dirC.Normalized();
-            var spotC = _player.RootPos + dirC * 600f;
-            spotC.Y = Main.HeightAt(spotC.X, spotC.Z);
-            _enemy.Teleport(spotC, RiderWalker.YawOf(-dirC));
+            // Re-stage base-to-base (1074u) for the missile
+            // clamp: the LRM's Sarna range is 1000, so from the
+            // home pad the salvo must fall ~74u short of the
+            // enemy base. No lane search — it just must not arrive.
+            var homeC = PadWorld(0); homeC.Y = Main.HeightAt(homeC.X, homeC.Z);
+            var baseC = PadWorld(1); baseC.Y = Main.HeightAt(baseC.X, baseC.Z);
+            var dirC = (baseC - homeC); dirC.Y = 0f; dirC = dirC.Normalized();
+            _player.Teleport(homeC, RiderWalker.YawOf(dirC));
+            _enemy.Teleport(baseC, RiderWalker.YawOf(-dirC));
             AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
             FireLrmSalvo(TorsoAimPoint());
-            GD.Print("RANGE C salvo fired at 600u (LRM range 220 — must fall short)");
+            GD.Print("RANGE C salvo fired base-to-base at 1074u (LRM range 1000 — must fall short)");
             _rgPhase = 4; _rgT = 0f;
         }
         else if (_rgPhase == 4 && _rgT > 6f)
@@ -2443,10 +2447,9 @@ public partial class RiderDuel
             FireAutocannon(TorsoAimPoint());
             if (_shots.Count <= before) { GD.PrintErr("RANGE FAIL D: no shell"); GetTree().Quit(1); return; }
             // The volley also fires the rider's machine guns
-            // (85 u/s, range 240 — the earlier runs tracked one
-            // of those by mistake and watched IT burn out at
-            // 265u of camera-along, exactly its own cap). Track
-            // the fast shell: the autocannon's.
+            // (85 u/s — an early run tracked one of those by
+            // mistake and watched IT burn out at its own cap).
+            // Track the fast shell: the autocannon's.
             _rgShell = null;
             for (int i = before; i < _shots.Count; i++)
                 if (_shots[i].Vel.Length() > 200f) _rgShell = _shots[i];
@@ -2468,8 +2471,8 @@ public partial class RiderDuel
             }
             else
             {
-                GD.Print($"RANGE D: shell end along={_rgLastAlong:F0}u (autocannon range 900)");
-                if (_rgLastAlong < 830f || _rgLastAlong > 990f) { GD.PrintErr("RANGE FAIL D: burnout off the weapon's range"); GetTree().Quit(1); return; }
+                GD.Print($"RANGE D: shell end along={_rgLastAlong:F0}u (autocannon range 600)");
+                if (_rgLastAlong < 540f || _rgLastAlong > 700f) { GD.PrintErr("RANGE FAIL D: burnout off the weapon's range"); GetTree().Quit(1); return; }
                 GD.Print("RANGE TEST DONE");
                 GetTree().Quit(0);
             }
