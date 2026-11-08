@@ -23,16 +23,14 @@ public sealed class WeaponDef
     // smallest cannon); the machine gun keeps its slow 85 u/s
     // tracer stream (owner's standing exception).
     public float MuzzleSpeed;
-    // Effective range in world units, as shown in the lab. Derived
-    // from the firing mechanics, not lore: lasers/PPC are hitscan
-    // on the view ray, which the engine caps at 220u (a cannon
-    // shell flies PAST the aim point — at 277u it still connects,
-    // the laser cannot reach: the owner's repro). Ballistic
-    // shells fly straight with no drop (owner), so cannon range
-    // is a practical figure, not a ballistic one: 900u across a
-    // 260u arena / 1900u front, the machine gun's 240u its
-    // useful tracer reach. Missiles are solved onto the aim
-    // point, itself capped at 220u.
+    // Effective range in world units, as shown in the lab — and
+    // ENFORCED by the firing code (owner): each weapon reaches
+    // exactly its own Range and no further. Lasers/PPC resolve
+    // per weapon on the view ray up to their Range; ballistic
+    // shells burn out at theirs; missile salvos solve onto the
+    // aim point clamped to theirs. Energy ranges step up with
+    // the gun (owner's figures: small 300, large 800, PPC 1200;
+    // medium 500 interpolated on the same progression).
     public float Range;
 
     public float PerRocketWeight => Rockets > 0 ? Weight / Rockets : Weight;
@@ -41,13 +39,13 @@ public sealed class WeaponDef
 public static class WeaponCatalog
 {
     public static readonly WeaponDef SmallLaser = new()
-    { Id = "small_laser", Name = "Small Laser", Short = "S LAS", Type = WeaponSlotType.Energy, Weight = 1f, Damage = 5f, Cooldown = 0.25f, Range = 220f };
+    { Id = "small_laser", Name = "Small Laser", Short = "S LAS", Type = WeaponSlotType.Energy, Weight = 1f, Damage = 5f, Cooldown = 0.25f, Range = 300f };
     public static readonly WeaponDef MediumLaser = new()
-    { Id = "medium_laser", Name = "Medium Laser", Short = "M LAS", Type = WeaponSlotType.Energy, Weight = 3f, Damage = 8f, Cooldown = 0.35f, Range = 220f };
+    { Id = "medium_laser", Name = "Medium Laser", Short = "M LAS", Type = WeaponSlotType.Energy, Weight = 3f, Damage = 8f, Cooldown = 0.35f, Range = 500f };
     public static readonly WeaponDef LargeLaser = new()
-    { Id = "large_laser", Name = "Large Laser", Short = "LAS", Type = WeaponSlotType.Energy, Weight = 5f, Damage = 12f, Cooldown = 0.45f, Range = 220f };
+    { Id = "large_laser", Name = "Large Laser", Short = "LAS", Type = WeaponSlotType.Energy, Weight = 5f, Damage = 12f, Cooldown = 0.45f, Range = 800f };
     public static readonly WeaponDef Ppc = new()
-    { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 220f };
+    { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 1200f };
     public static readonly WeaponDef MachineGun = new()
     { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 240f, MuzzleSpeed = 85f };
     public static readonly WeaponDef Autocannon = new()

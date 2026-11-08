@@ -67,6 +67,11 @@ public partial class RiderDuel
         if (_cdLaser > 0f) return;
         _cdLaser = 0f; foreach (var g in fired) _cdLaser = Mathf.Max(_cdLaser, g.Def.Cooldown);
         var muzzle = MuzzleForSlot(fired[0].Slot, false);
+        // Per-weapon reach (owner): the shared view-ray cast runs
+        // to the LONGEST fitted range; each weapon then hits
+        // only what lies within its own Range.
+        float maxRange = 0f;
+        foreach (var g in fired) maxRange = Mathf.Max(maxRange, g.Def.Range);
         // Round 20 (owner, two repros): the hit resolves on the
         // CAMERA's ray, not on a re-cast from the muzzle. The muzzle
         // re-cast kept disagreeing with the reticle by parallax —
@@ -92,7 +97,7 @@ public partial class RiderDuel
             // the mouse points by construction, so the axis is the
             // truth in play and in tests alike.
             var camDir = AimDirWorld();
-            hit = _hit.Ray(_cam.GlobalPosition, camDir, 220f, "PLAYER", 0.9f);
+            hit = _hit.Ray(_cam.GlobalPosition, camDir, maxRange, "PLAYER", 0.9f);
             bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
@@ -104,38 +109,46 @@ public partial class RiderDuel
                 // harness asked for, the muzzle cast is the truth
                 // there. Live play never takes this branch.
                 var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-                hit = _hit.Ray(muzzle, fbDir, 140f, "PLAYER", 0.9f);
+                hit = _hit.Ray(muzzle, fbDir, maxRange, "PLAYER", 0.9f);
             }
         }
         else
         {
             var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-            hit = _hit.Ray(muzzle, dir, 140f, "PLAYER", 0.9f);
+            hit = _hit.Ray(muzzle, dir, maxRange, "PLAYER", 0.9f);
         }
-        // The beams end where the shot ends (owner): on a hit,
-        // the hit point; on a miss — the sky — the cursor's own
-        // point. Every fitted laser fires its own beam from its
-        // own hardpoint (multi-fit volley); the hit itself was
-        // resolved once, on the camera's line, above.
-        var beamEnd = hit.Hit ? hit.Point : aimPoint;
+        // The beams end where the shot ends (owner): on a hit a
+        // beam ends on the hit when ITS weapon reaches it, else
+        // in mid-air at its own range along the shot line; on a
+        // miss — the sky — every beam ends at the cursor's own
+        // point (the round-20 rule, test-asserted). Every fitted
+        // laser fires its own beam from its own hardpoint
+        // (multi-fit volley); the hit itself was resolved once,
+        // on the camera's line, above.
+        bool anyReach = false;
+        if (hit.Hit) foreach (var g in fired) if (hit.T <= g.Def.Range) { anyReach = true; break; }
         for (int i = 0; i < fired.Count; i++)
         {
             var mz = MuzzleForSlot(fired[i].Slot, false);
             bool ppc = fired[i].Def.Id == "ppc";
+            var beamEnd = !hit.Hit ? aimPoint
+                : hit.T <= fired[i].Def.Range ? hit.Point
+                : camTruth ? _cam.GlobalPosition + AimDirWorld() * fired[i].Def.Range
+                : mz + (aimPoint - mz).Normalized() * fired[i].Def.Range;
             SpawnBeam(mz, beamEnd, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
             if (i == 0) PlaySfx(_sfxLaser, mz, 0f, ppc ? 0.8f : 1f);
             SpawnFlash(mz, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
         }
-        if (hit.Hit)
+        if (anyReach)
         {
             SpawnFlash(hit.Point, new Color(0.7f, 0.95f, 1f), 0.55f, 0.16f);
             SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 16, 6.0f); // electric breaker spray
             SpawnImpactLight(hit.Point, new Color(0.55f, 0.9f, 1f), 2.4f, 10f, 0.3f);
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == "ENEMY") foreach (var g in fired) ApplyDamage(_enemy, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser");
-            else if (hit.Target == "FOE1" && _foe1 != null) foreach (var g in fired) ApplyDamage(_foe1.Walker, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser");
-            else if (hit.Target == "PROP") foreach (var g in fired) DamageProp(hit.Point, g.Def.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
+            if (hit.Target == "ENEMY") foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser"); }
+            else if (hit.Target == "FOE1" && _foe1 != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe1.Walker, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser"); }
+            else if (hit.Target == "PROP") foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -184,7 +197,8 @@ public partial class RiderDuel
             // the crosshair draws is the line the shell flies.
             // (Rockets keep their solved arcs.)
             (float spd, float grav) = (def.MuzzleSpeed, 0f);
-            SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
+            var shell = SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
+            shell.Life = def.Range / spd; // burns out at the weapon's range (owner)
             PlaySfx(_sfxCannon, muzzle, def.Id == "machine_gun" ? -7f : 0f,
                 def.Id == "heavy_cannon" ? 0.72f : def.Id == "machine_gun" ? 1.65f : 1f);
             SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
@@ -215,6 +229,10 @@ public partial class RiderDuel
     private void FireLrmSalvo(Vector3 aimPoint)
     {
         if (_playerDead) return;
+        // Past the close cast, the salvo solves onto the point
+        // the crosshair actually rests on (the far cast's point);
+        // LaunchRocket clamps it to each pack's own Range.
+        if (_aimParallel) aimPoint = _cam.GlobalPosition + _aimDir * _farConverge;
         bool podL = _podGunsL.Count > 0 && _partsPlayer.Alive(_podGunsL[0].Slot);
         bool podR = _podGunsR.Count > 0 && _partsPlayer.Alive(_podGunsR[0].Slot);
         if (!podL && !podR) { DenyWeapon("lrm"); return; }
@@ -271,6 +289,10 @@ public partial class RiderDuel
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
         var toAim = aimPoint - muzzle;
+        // The pack reaches its own Range and no further: a
+        // farther aim point solves onto the max-range point on
+        // the same line (the salvo falls short, honestly).
+        if (toAim.Length() > def.Range) toAim = toAim.Normalized() * def.Range;
         // The lob is solved for the TRUE aim point at any range —
         // what is capped now is the TIME OF FLIGHT, not the range.
         // History: round 7 capped the solved range at 75u because
