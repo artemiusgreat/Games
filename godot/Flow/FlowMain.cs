@@ -20,8 +20,10 @@ public partial class FlowMain : Node3D
 {
     // Flow state is static so it survives the trip to the lab
     // and back (the lab's Back button reloads this scene).
-    public static int PlanetIndex = 0;
-    public static int MissionIndex = 0;
+    public static int PlanetIndex =
+        int.TryParse(System.Environment.GetEnvironmentVariable("AOT_PLANET"), out int pl) ? pl : 0; // harness seed only
+    public static int MissionIndex =
+        int.TryParse(System.Environment.GetEnvironmentVariable("AOT_MISSION"), out int mi) ? mi : 0; // harness seed only
     public static int ArenaIndex = System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
     {
         "1" => 1, "2" => 2, _ => 0 // harness seed only; arenas carry their own biomes
