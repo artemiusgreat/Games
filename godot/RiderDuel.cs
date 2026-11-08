@@ -825,19 +825,28 @@ public partial class RiderDuel : Node3D
                 _warmPoseFrames++;
                 ulong warmEl = Time.GetTicksMsec() - _warmStart;
                 var wc = _player.RootPos + Vector3.Up * 5.6f;
+                // The poses ride on the player's position (owner:
+                // "riders are not visible in the lab"): framed on
+                // the arena origin, in a mission world they stared
+                // at empty terrain 620u from the rider for the
+                // whole sweep, and the lab read as broken. The
+                // rider is in frame at every pose now.
+                var pp = _player.RootPos;
                 switch (_warmPose)
                 {
                     case 0:
-                        _cam.GlobalPosition = new Vector3(58f, 34f, 64f);
-                        _cam.LookAt(new Vector3(-6f, 0f, -6f), Vector3.Up);
+                        _cam.GlobalPosition = pp + new Vector3(58f, 34f, 64f);
+                        _cam.LookAt(pp + Vector3.Up * 2f, Vector3.Up);
                         break;
                     case 1:
-                        _cam.GlobalPosition = new Vector3(-21f, Main.HeightAt(-21f, 0f) + 2.1f, -1f);
-                        _cam.LookAt(_player.RootPos + Vector3.Up * 5.5f, Vector3.Up);
+                        var low = pp + new Vector3(-21f, 0f, -1f);
+                        low.Y = Main.HeightAt(low.X, low.Z) + 2.1f;
+                        _cam.GlobalPosition = low;
+                        _cam.LookAt(pp + Vector3.Up * 5.5f, Vector3.Up);
                         break;
                     case 2:
-                        _cam.GlobalPosition = new Vector3(-88f, 44f, 90f);
-                        _cam.LookAt(new Vector3(12f, 0f, -12f), Vector3.Up);
+                        _cam.GlobalPosition = pp + new Vector3(-88f, 44f, 90f);
+                        _cam.LookAt(pp + Vector3.Up * 2f, Vector3.Up);
                         break;
                     default:
                         _cam.GlobalPosition = wc + new Vector3(10f, 3.4f, 10f);
