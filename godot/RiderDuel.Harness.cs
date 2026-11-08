@@ -39,7 +39,7 @@ public partial class RiderDuel
                     if (lab.TryAssign(spec, "arm_R", WeaponCatalog.Autocannon) != null
                         || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
                     { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
-                    if (Mathf.Abs(LoadoutState.DefaultEnyo().TotalWeaponWeight - 64f) > 0.01f)
+                    if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - 64f) > 0.01f)
                     { GD.PrintErr("DUEL FAIL: default fit tonnage != 64t"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 64t (every slot filled)");
                     // Capacity rule (owner, MW4 model): every chassis'

@@ -181,6 +181,57 @@ public static class RiderSpecs
         foreach (var s in All) if (s.Id == id) return s;
         return Enyo;
     }
+
+    // Default fits (owner's rule: every slot filled) — pure
+    // data, one row per rider: slot id -> weapon ids in fit
+    // order. LoadoutState.DefaultFor builds any rider's factory
+    // loadout from its row; there are no per-rider builder
+    // methods and no id dispatch in the engine.
+    public static readonly System.Collections.Generic.Dictionary<string, (string Slot, string[] Weapons)[]> DefaultFits = new()
+    {
+        ["enyo"] = new[]
+        {
+            ("arm_L", new[] { "large_laser", "medium_laser" }),                    // 8/8t
+            ("arm_R", new[] { "autocannon", "machine_gun", "machine_gun" }),      // 16/25t
+            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
+            ("pod_R", new[] { "lrm", "lrm" }),                                     // 20/21t
+        },
+        ["hector"] = new[]
+        {
+            ("arm_L", new[] { "ppc", "large_laser", "medium_laser" }),             // 17/18t
+            ("gun", new[] { "ac20", "autocannon" }),                               // 28/30t
+            ("arm_R", new[] { "large_laser", "large_laser", "medium_laser" }),     // 13/14t
+            ("torso", new[] { "ppc" }),                                            // 9/10t
+            ("pod_L", new[] { "lrm", "lrm", "srm", "srm" }),                       // 28/28t
+        },
+        ["prometheus"] = new[]
+        {
+            ("arm_L", new[] { "ac20", "machine_gun", "machine_gun", "machine_gun" }), // 22/22t
+            ("arm_R", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser" }), // 23/23t
+            ("torso", new[] { "lrm", "lrm" }),                                     // 20/20t
+        },
+        ["medea"] = new[]
+        {
+            ("torso", new[] { "autocannon", "autocannon", "machine_gun" }),       // 26/26t
+            ("arm_R", new[] { "autocannon", "autocannon" }),                       // 24/24t
+            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),              // 15/15t
+            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/20t
+        },
+        ["demeter"] = new[]
+        {
+            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
+            ("arm_L", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
+            ("torso", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 24/24t
+            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/20t
+        },
+        ["theseus"] = new[]
+        {
+            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
+            ("arm_L", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 24/24t
+            ("torso", new[] { "ppc", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 19/19t
+            ("pod_R", new[] { "lrm", "lrm", "srm" }),                              // 24/24t
+        },
+    };
 }
 
 // The player's current loadout: slot id -> weapon id (absent = empty).
@@ -286,149 +337,18 @@ public sealed class LoadoutState
         }
     }
 
-    public static LoadoutState DefaultFor(RiderSpec spec) =>
-        spec.Id == "hector" ? DefaultHector()
-        : spec.Id == "prometheus" ? DefaultPrometheus()
-        : spec.Id == "medea" ? DefaultMedea()
-        : spec.Id == "demeter" ? DefaultDemeter()
-        : spec.Id == "theseus" ? DefaultTheseus()
-        : DefaultEnyo();
-
-
-
-
-
-
-    public static LoadoutState DefaultMedea()
+    // The generic default-fit builder: any rider's factory
+    // loadout is its row in RiderSpecs.DefaultFits, applied in
+    // order. Thrusters come fitted exactly on the chassis that
+    // can mount them (the old builders set the same values).
+    public static LoadoutState DefaultFor(RiderSpec spec)
     {
         var l = new LoadoutState();
-        l.JumpJets = false; // the chassis cannot mount them
-        // Every slot filled: 85t of 85t.
-        var aj = RiderSpecs.Medea;
-        l.TryAssign(aj, "torso", WeaponCatalog.Autocannon);
-        l.TryAssign(aj, "torso", WeaponCatalog.Autocannon);
-        l.TryAssign(aj, "torso", WeaponCatalog.MachineGun);          // 26/26t
-        l.TryAssign(aj, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(aj, "arm_R", WeaponCatalog.Autocannon);          // 24/24t
-        l.TryAssign(aj, "arm_L", WeaponCatalog.Ppc);
-        l.TryAssign(aj, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(aj, "arm_L", WeaponCatalog.SmallLaser);          // 15/15t
-        l.TryAssign(aj, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(aj, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
-        return l;
-    }
-
-    public static LoadoutState DefaultDemeter()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false; // the chassis cannot mount them
-        // Every slot filled: 100t of 100t.
-        var th = RiderSpecs.Demeter;
-        l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(th, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(th, "arm_R", WeaponCatalog.MachineGun);
-        l.TryAssign(th, "arm_R", WeaponCatalog.MachineGun);          // 28/28t
-        l.TryAssign(th, "arm_L", WeaponCatalog.Autocannon);
-        l.TryAssign(th, "arm_L", WeaponCatalog.Autocannon);
-        l.TryAssign(th, "arm_L", WeaponCatalog.MachineGun);
-        l.TryAssign(th, "arm_L", WeaponCatalog.MachineGun);          // 28/28t
-        l.TryAssign(th, "torso", WeaponCatalog.Ppc);
-        l.TryAssign(th, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(th, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(th, "torso", WeaponCatalog.MediumLaser);
-        l.TryAssign(th, "torso", WeaponCatalog.SmallLaser);
-        l.TryAssign(th, "torso", WeaponCatalog.SmallLaser);          // 24/24t
-        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(th, "pod_L", WeaponCatalog.Lrm);                 // 20/20t
-        return l;
-    }
-
-    public static LoadoutState DefaultTheseus()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false; // the chassis cannot mount them
-        // Every slot filled: 95t of 95t.
-        var le = RiderSpecs.Theseus;
-        l.TryAssign(le, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(le, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(le, "arm_R", WeaponCatalog.MachineGun);
-        l.TryAssign(le, "arm_R", WeaponCatalog.MachineGun);          // 28/28t
-        l.TryAssign(le, "arm_L", WeaponCatalog.Ppc);
-        l.TryAssign(le, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(le, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(le, "arm_L", WeaponCatalog.MediumLaser);
-        l.TryAssign(le, "arm_L", WeaponCatalog.SmallLaser);
-        l.TryAssign(le, "arm_L", WeaponCatalog.SmallLaser);          // 24/24t
-        l.TryAssign(le, "torso", WeaponCatalog.Ppc);
-        l.TryAssign(le, "torso", WeaponCatalog.LargeLaser);
-        l.TryAssign(le, "torso", WeaponCatalog.MediumLaser);
-        l.TryAssign(le, "torso", WeaponCatalog.SmallLaser);
-        l.TryAssign(le, "torso", WeaponCatalog.SmallLaser);          // 19/19t
-        l.TryAssign(le, "pod_R", WeaponCatalog.Lrm);
-        l.TryAssign(le, "pod_R", WeaponCatalog.Lrm);
-        l.TryAssign(le, "pod_R", WeaponCatalog.Srm);                 // 24/24t
-        return l;
-    }
-
-
-
-    public static LoadoutState DefaultPrometheus()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = true; // thrusters fitted by default (owner, 2026-11-04)
-        // Every slot filled (owner, 2026-10-31): 65t of 65t.
-        var pr = RiderSpecs.Prometheus;
-        l.TryAssign(pr, "arm_L", WeaponCatalog.ById("ac20"));
-        l.TryAssign(pr, "arm_L", WeaponCatalog.MachineGun);
-        l.TryAssign(pr, "arm_L", WeaponCatalog.MachineGun);
-        l.TryAssign(pr, "arm_L", WeaponCatalog.MachineGun);        // 22/22t
-        l.TryAssign(pr, "arm_R", WeaponCatalog.Ppc);
-        l.TryAssign(pr, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(pr, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(pr, "arm_R", WeaponCatalog.MediumLaser);
-        l.TryAssign(pr, "arm_R", WeaponCatalog.SmallLaser);        // 23/23t
-        l.TryAssign(pr, "torso", WeaponCatalog.Lrm);
-        l.TryAssign(pr, "torso", WeaponCatalog.Lrm);               // 20/20t
-        return l;
-    }
-
-    public static LoadoutState DefaultHector()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = false; // the chassis cannot mount them
-        // Every slot filled (owner, 2026-10-31): 95t of 100t.
-        var at = RiderSpecs.Hector;
-        l.TryAssign(at, "arm_L", WeaponCatalog.Ppc);
-        l.TryAssign(at, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(at, "arm_L", WeaponCatalog.MediumLaser);       // 17/18t
-        l.TryAssign(at, "gun", WeaponCatalog.ById("ac20"));
-        l.TryAssign(at, "gun", WeaponCatalog.Autocannon);          // 28/30t
-        l.TryAssign(at, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(at, "arm_R", WeaponCatalog.LargeLaser);
-        l.TryAssign(at, "arm_R", WeaponCatalog.MediumLaser);       // 13/14t
-        l.TryAssign(at, "torso", WeaponCatalog.Ppc);               // 9/10t
-        l.TryAssign(at, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(at, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(at, "pod_L", WeaponCatalog.Srm);
-        l.TryAssign(at, "pod_L", WeaponCatalog.Srm);               // 28/28t
-        return l;
-    }
-
-    public static LoadoutState DefaultEnyo()
-    {
-        var l = new LoadoutState();
-        l.JumpJets = true; // default fit: thrusters loaded
-        // Every slot filled (owner, 2026-10-31): 64t of 75t.
-        var tw = RiderSpecs.Enyo;
-        l.TryAssign(tw, "arm_L", WeaponCatalog.LargeLaser);
-        l.TryAssign(tw, "arm_L", WeaponCatalog.MediumLaser);       // 8/8t
-        l.TryAssign(tw, "arm_R", WeaponCatalog.Autocannon);
-        l.TryAssign(tw, "arm_R", WeaponCatalog.MachineGun);
-        l.TryAssign(tw, "arm_R", WeaponCatalog.MachineGun);        // 16/25t
-        l.TryAssign(tw, "pod_L", WeaponCatalog.Lrm);
-        l.TryAssign(tw, "pod_L", WeaponCatalog.Lrm);               // 20/21t
-        l.TryAssign(tw, "pod_R", WeaponCatalog.Lrm);
-        l.TryAssign(tw, "pod_R", WeaponCatalog.Lrm);               // 20/21t
+        l.JumpJets = spec.JumpCapable;
+        if (RiderSpecs.DefaultFits.TryGetValue(spec.Id, out var fit))
+            foreach (var (slot, weapons) in fit)
+                foreach (var wid in weapons)
+                    l.TryAssign(spec, slot, WeaponCatalog.ById(wid));
         return l;
     }
 }

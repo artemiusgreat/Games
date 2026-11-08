@@ -116,8 +116,8 @@ public partial class RiderDuel : Node3D
     // RiderLab loadout (owner): the equipped weapon defs drive damage,
     // cooldowns, salvo composition and knockdown weight. Defaults equal
     // the original fixed fit, so every harness number is unchanged.
-    private LoadoutState _loadout = LoadoutState.DefaultEnyo();
-    private LoadoutState _enemyLoadout = LoadoutState.DefaultHector();
+    private LoadoutState _loadout = LoadoutState.DefaultFor(RiderSpecs.Enyo);
+    private LoadoutState _enemyLoadout = LoadoutState.DefaultFor(RiderSpecs.Hector);
 
     // Free-for-all (owner, 2026-10-31): the match fields TWO AI
     // opponents — a Enyo and an Hector — and every rider
