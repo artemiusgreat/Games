@@ -27,11 +27,12 @@ public sealed class WeaponDef
     // from the firing mechanics, not lore: lasers/PPC are hitscan
     // on the view ray, which the engine caps at 220u (a cannon
     // shell flies PAST the aim point — at 277u it still connects,
-    // the laser cannot reach: the owner's repro). Cannons fire
-    // flat at 420 u/s with gravity 5: drop reaches a rider's
-    // height (~12u) at ~900u. The machine gun (85 u/s, gravity 3)
-    // hits the same drop at ~240u. Missiles are solved onto the
-    // aim point, itself capped at 220u.
+    // the laser cannot reach: the owner's repro). Ballistic
+    // shells fly straight with no drop (owner), so cannon range
+    // is a practical figure, not a ballistic one: 900u across a
+    // 260u arena / 1900u front, the machine gun's 240u its
+    // useful tracer reach. Missiles are solved onto the aim
+    // point, itself capped at 220u.
     public float Range;
 
     public float PerRocketWeight => Rockets > 0 ? Weight / Rockets : Weight;

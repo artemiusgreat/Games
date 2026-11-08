@@ -273,7 +273,7 @@ public partial class RiderDuel
         var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
             parts.Alive("head") ? 1.2f : 3.6f);
-        SpawnProjectile(muzzle, dir * speed, 5f, def?.Damage ?? 18f, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? 16f);
+        SpawnProjectile(muzzle, dir * speed, 0f, def?.Damage ?? 18f, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? 16f); // shells fly straight (owner)
         PlaySfx(_sfxCannon, muzzle, 0f, 0.78f);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
         onFired?.Invoke();

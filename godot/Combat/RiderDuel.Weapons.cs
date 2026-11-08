@@ -169,9 +169,11 @@ public partial class RiderDuel
             var dir = toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             // Shell speed lives on the weapon def (WeaponDef.cs:
             // MuzzleSpeed) — one place to tune it for every
-            // cannon, player and AI alike. Gravity stays per
-            // class: the MG's light stream drops faster.
-            (float spd, float grav) = (def.MuzzleSpeed, def.Id == "machine_gun" ? 3f : 5f);
+            // cannon, player and AI alike. Ballistic shells fly
+            // STRAIGHT (owner): no gravity, no drop — the line
+            // the crosshair draws is the line the shell flies.
+            // (Rockets keep their solved arcs.)
+            (float spd, float grav) = (def.MuzzleSpeed, 0f);
             SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
             PlaySfx(_sfxCannon, muzzle, def.Id == "machine_gun" ? -7f : 0f,
                 def.Id == "heavy_cannon" ? 0.72f : def.Id == "machine_gun" ? 1.65f : 1f);
