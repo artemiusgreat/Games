@@ -69,19 +69,34 @@ public static class MissionCatalog
             LandColor = new Color(0.72f, 0.42f, 0.20f),
             PolarColor = new Color(0.85f, 0.66f, 0.42f)
         };
-        M(ares, "Sweep the Dead Streets", "Old Kestrel", -0.38f, 0.30f,
+        M(ares, "Checkmate at Kestrel Flats", "Kestrel Flats", -0.38f, 0.30f,
+            "Base Assault", "House Asterion", 480000, 4,
+            "Move overland to the Kestrel Flats depot and destroy the Corvane garrison before their relief column arrives. " +
+            "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion — the new contract depends on her signature.",
+            "Colonel Mara Voss", "Asterion needs that depot rubble by dawn. You look like dawn to me.", WorldConfig.BiomeKind.Desert);
+        M(ares, "Resupply Run", "Fort Asterion", 0.34f, -0.18f,
+            "Convoy Escort", "Asterion Logistics", 210000, 2,
+            "A supply convoy crawls from Fort Asterion to the front at first light. Raiders have hit the last two. " +
+            "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
+            "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
+        M(ares, "The Vostok Claim", "Vostok Yards", 0.10f, 0.52f,
+            "Duel Challenge", "Vostok Yards Combine", 350000, 3,
+            "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
+            "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
+            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City);
+        M(ares, "Sweep the Dead Streets", "Old Kestrel", -0.62f, -0.28f,
             "District Sweep", "House Asterion", 480000, 4,
             "Old Kestrel was the capital's first district and its first ruin: dead streets, hollow towers, " +
             "and Corvane holdouts dug into the shells. Sweep it block by block and make the district safe " +
             "for the engineers who follow. Liaison Officer Petra Davion walks the last street with you.",
             "Colonel Mara Voss", "Asterion needs those streets quiet by dawn. You look like dawn to me.", WorldConfig.BiomeKind.City, 0);
-        M(ares, "The Norte Claim", "Ciudad Norte", 0.34f, -0.18f,
+        M(ares, "The Norte Claim", "Ciudad Norte", 0.58f, 0.30f,
             "Duel Challenge", "Norte Yards Combine", 350000, 3,
             "The Combine settles salvage claims the old way: one rider against theirs, among the Norte " +
             "towers, at noon. Their champion rides a Hector-class frame and has never lost a claim. " +
             "The purse says that changes today.",
             "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City, 1);
-        M(ares, "Hold the Rubble", "Fort Asterion Ruins", 0.10f, 0.52f,
+        M(ares, "Hold the Rubble", "Fort Asterion Ruins", -0.05f, -0.52f,
             "Base Defense", "Asterion Relief Command", 430000, 4,
             "Fort Asterion is a ruin that still matters: the relief depot sits in its broken streets and " +
             "Corvane wants it back. Hold the rubble until the relief column arrives — salvage rights on " +
@@ -98,19 +113,34 @@ public static class MissionCatalog
             LandColor = new Color(0.16f, 0.48f, 0.44f),
             PolarColor = new Color(0.75f, 0.88f, 0.90f)
         };
-        M(thalassa, "The Harbor Stacks", "Port Nereid Stacks", -0.30f, -0.34f,
+        M(thalassa, "Hold Port Nereid", "Port Nereid", -0.30f, -0.34f,
+            "Base Defense", "Thalassa Combine", 390000, 4,
+            "Pirates riding out of the storm belt hit Port Nereid at every low tide. Hold the port until the " +
+            "Combine's own lance lands — three days of raids, paid per day held, and the port bar tab is on them.",
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City);
+        M(thalassa, "Platform Nine", "Helix Platforms", 0.42f, 0.22f,
+            "Raid", "House Corvane", 520000, 5,
+            "Helix Platform Nine refines for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
+            "drop the platform's defense riders, and be gone before the response fleet clears the horizon.",
+            "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City);
+        M(thalassa, "Ceto Intercept", "Ceto Refinery", 0.02f, -0.55f,
+            "Convoy Intercept", "Free Captains' League", 260000, 3,
+            "A Combine fuel convoy leaves the Ceto refinery under light escort. The League wants the fuel, not a " +
+            "war: disable the escorts, take the tankers intact, and nobody's House colors get involved.",
+            "Captain Rurik Hale", "Fuel is money that burns, friend. Help me carry some of it away.", WorldConfig.BiomeKind.Forest);
+        M(thalassa, "The Harbor Stacks", "Port Nereid Stacks", -0.60f, 0.28f,
             "Base Defense", "Thalassa Combine", 390000, 4,
             "Port Nereid's harbor stacks rise straight out of the water — ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
             "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4);
-        M(thalassa, "The Machine Quarter", "Helix Xeno Quarter", 0.42f, 0.22f,
+        M(thalassa, "The Machine Quarter", "Helix Xeno Quarter", 0.62f, -0.35f,
             "Raid", "House Corvane", 520000, 5,
             "Beyond the Helix platforms the machines built a quarter of their own — towers no human " +
             "designed, streets that bend wrong. Corvane wants it dark: cross at low tide, drop the " +
             "quarter's defense riders, and be gone before the response fleet clears the horizon.",
             "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City, 7);
-        M(thalassa, "Block by Block", "Ceto Blocks", 0.02f, -0.55f,
+        M(thalassa, "Block by Block", "Ceto Blocks", -0.14f, 0.58f,
             "Salvage Run", "Free Captains' League", 260000, 3,
             "The Ceto blocks took the worst of the last war and never got rebuilt — which makes them " +
             "the League's favorite warehouse district. Walk the blocks, keep the salvage crews covered, " +
@@ -127,19 +157,34 @@ public static class MissionCatalog
             LandColor = new Color(0.82f, 0.88f, 0.94f),
             PolarColor = new Color(0.97f, 0.99f, 1.0f)
         };
-        M(kryos, "The Prefab City", "Ciudad Sur", -0.44f, -0.10f,
+        M(kryos, "Boreas Must Not Fall", "Boreas Station", -0.44f, -0.10f,
+            "Base Defense", "Boreas Research Trust", 430000, 4,
+            "Something is coming down out of the northern ice in numbers the Trust won't say out loud. Hold " +
+            "Boreas Station's perimeter for one night cycle. Salvage rights on everything you drop are yours.",
+            "Dr. Ingrid Halvorsen", "We are scientists, not soldiers. Whatever walks out of that ice, please stop it.", WorldConfig.BiomeKind.Forest);
+        M(kryos, "The Shattered Shelf", "Shattered Shelf", 0.28f, 0.40f,
+            "Recon Sweep", "Boreas Research Trust", 180000, 2,
+            "A Trust survey team went silent on the Shattered Shelf six days ago. Cross the shelf, find their " +
+            "beacon, and bring back the data core — or word of what found them first.",
+            "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
+        M(kryos, "Glacier Gate", "Glacier Gate", 0.48f, -0.42f,
+            "Base Assault", "House Asterion", 560000, 5,
+            "A machine nest has taken the Glacier Gate pass and grows bolder every week. Asterion wants the pass " +
+            "cleared and the nest burned out, whatever it costs in frames. The largest purse on the planet.",
+            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.Forest);
+        M(kryos, "The Prefab City", "Ciudad Sur", -0.10f, -0.58f,
             "City Sweep", "Boreas Research Trust", 240000, 2,
             "Ciudad Sur was dropped on the ice in one piece — a whole prefab colony city, still warm in " +
             "the middle of the freeze. Something has been walking its streets at night and the Trust " +
             "wants a rider to sweep them. Salvage rights on anything you drop are yours.",
             "Dr. Ingrid Halvorsen", "We are scientists, not soldiers. Whatever walks those streets, please stop it.", WorldConfig.BiomeKind.City, 2);
-        M(kryos, "Market Row", "Boreas Market", 0.28f, 0.40f,
+        M(kryos, "Market Row", "Boreas Market", 0.55f, 0.08f,
             "Recon Sweep", "Boreas Market Factorum", 180000, 2,
             "A Trust survey team went silent somewhere in Market Row's covered streets six days ago. " +
             "Walk the row, find their beacon, and bring back the data core — or word of what found " +
             "them first.",
             "Factor Ines Duarte", "Six days of silence. The row keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.City, 3);
-        M(kryos, "Gate City", "Glacier Gate City", 0.48f, -0.42f,
+        M(kryos, "Gate City", "Glacier Gate City", -0.62f, 0.35f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Gate City, the port town under the Glacier Gate pass, and grows " +
             "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
