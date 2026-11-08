@@ -28,9 +28,10 @@ public sealed class WeaponDef
     // exactly its own Range and no further. Lasers/PPC resolve
     // per weapon on the view ray up to their Range; ballistic
     // shells burn out at theirs; missile salvos solve onto the
-    // aim point clamped to theirs. Energy ranges step up with
-    // the gun (owner's figures: small 300, large 800, PPC 1200;
-    // medium 500 interpolated on the same progression).
+    // aim point clamped to theirs. The figures are the ones
+    // specified for the game earlier (energy and missiles 220,
+    // machine gun 240, cannons 900) — not the abstract example
+    // numbers from the range discussion.
     public float Range;
 
     public float PerRocketWeight => Rockets > 0 ? Weight / Rockets : Weight;
@@ -39,13 +40,13 @@ public sealed class WeaponDef
 public static class WeaponCatalog
 {
     public static readonly WeaponDef SmallLaser = new()
-    { Id = "small_laser", Name = "Small Laser", Short = "S LAS", Type = WeaponSlotType.Energy, Weight = 1f, Damage = 5f, Cooldown = 0.25f, Range = 300f };
+    { Id = "small_laser", Name = "Small Laser", Short = "S LAS", Type = WeaponSlotType.Energy, Weight = 1f, Damage = 5f, Cooldown = 0.25f, Range = 220f };
     public static readonly WeaponDef MediumLaser = new()
-    { Id = "medium_laser", Name = "Medium Laser", Short = "M LAS", Type = WeaponSlotType.Energy, Weight = 3f, Damage = 8f, Cooldown = 0.35f, Range = 500f };
+    { Id = "medium_laser", Name = "Medium Laser", Short = "M LAS", Type = WeaponSlotType.Energy, Weight = 3f, Damage = 8f, Cooldown = 0.35f, Range = 220f };
     public static readonly WeaponDef LargeLaser = new()
-    { Id = "large_laser", Name = "Large Laser", Short = "LAS", Type = WeaponSlotType.Energy, Weight = 5f, Damage = 12f, Cooldown = 0.45f, Range = 800f };
+    { Id = "large_laser", Name = "Large Laser", Short = "LAS", Type = WeaponSlotType.Energy, Weight = 5f, Damage = 12f, Cooldown = 0.45f, Range = 220f };
     public static readonly WeaponDef Ppc = new()
-    { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 1200f };
+    { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 220f };
     public static readonly WeaponDef MachineGun = new()
     { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 240f, MuzzleSpeed = 85f };
     public static readonly WeaponDef Autocannon = new()
