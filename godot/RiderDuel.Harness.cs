@@ -2330,6 +2330,147 @@ public partial class RiderDuel
         }
     }
 
+    // --range-test: per-weapon Range enforcement (owner's rule:
+    // a weapon reaches its catalog Range and no further), staged
+    // in the Mission world against the stock Enyo loadout
+    // (Large Laser 800, Autocannon 900, LRM 220):
+    //   A: laser at the enemy 1074u away — no damage (800 < 1074)
+    //   B: laser at 600u — damage lands (600 < 800)
+    //   C: LRM salvo at 600u — rockets clamp to 220, no damage
+    //   D: autocannon at the sky — the shell dies at ~900u along
+    // Aiming: the chase axis is iterated onto the enemy's chest
+    // from the settled camera (3 passes), so the ray is exact.
+    private float _rgT; private int _rgPhase;
+    private float _rgHp0; private Projectile _rgShell; private Vector3 _rgOrigin, _rgDir;
+    private float _rgLastAlong; private int _rgTry;
+    private bool AimAxisAt(Vector3 p)
+    {
+        // Yaw is set by teleport (instant, exact — the walker's
+        // turn rate would lag a SetDrive target); pitch is then
+        // iterated from the settled chase camera, whose boom
+        // rides the aim axis, so three passes converge the axis
+        // onto the point.
+        var pp = _player.RootPos;
+        var flat = new Vector3(p.X - pp.X, 0f, p.Z - pp.Z);
+        _player.Teleport(pp, RiderWalker.YawOf(flat));
+        _playerYaw = RiderWalker.YawOf(flat);
+        _player.TorsoTwist = 0f;
+        for (int i = 0; i < 3; i++)
+        {
+            UpdateCamera(0f);
+            var d = p - _cam.GlobalPosition;
+            _player.AimPitchWide = Mathf.Atan2(d.Y, new Vector2(d.X, d.Z).Length());
+        }
+        UpdateCamera(0f);
+        TorsoAimPoint();
+        return true;
+    }
+    private void UpdateRangeTest(float dt)
+    {
+        _rgT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        var chest = _enemy.RootPos + Vector3.Up * 7.6f;
+        if (_rgPhase == 0 && _rgT > 1.2f)
+        {
+            _camMode = "chase";
+            float d0 = _player.RootPos.DistanceTo(_enemy.RootPos);
+            AimAxisAt(chest);
+            _rgHp0 = _hpEnemy;
+            FireLaser(TorsoAimPoint());
+            GD.Print($"RANGE A fired: dist={d0:F0} enemyHp={_rgHp0:F0} (Large Laser range 800 — must NOT reach)");
+            _rgPhase = 1; _rgT = 0f;
+        }
+        else if (_rgPhase == 1 && _rgT > 0.6f)
+        {
+            if (_hpEnemy < _rgHp0 - 0.01f) { GD.PrintErr($"RANGE FAIL A: laser damaged the enemy past its range ({_rgHp0:F0} -> {_hpEnemy:F0})"); GetTree().Quit(1); return; }
+            GD.Print("RANGE A PASS: no damage beyond range");
+            var home = PadWorld(0);
+            var dirIn = (home - _enemy.RootPos); dirIn.Y = 0f; dirIn = dirIn.Normalized();
+            var spot = _enemy.RootPos + dirIn * 600f;
+            spot.Y = Main.HeightAt(spot.X, spot.Z);
+            _player.Teleport(spot, RiderWalker.YawOf(-dirIn));
+            _rgPhase = 2; _rgT = 0f;
+        }
+        else if (_rgPhase == 2 && _rgT > 0.3f)
+        {
+            // Stage B on open ground: the enemy's own base
+            // buildings block the lane from the 600u spot (the
+            // first staging hit a PROP at 584u — honest occlusion,
+            // wrong stage). Teleport the enemy around a fan of
+            // spots 600u out until the game's own cast confirms a
+            // clear line to it, then fire.
+            float ang = _rgTry * Mathf.DegToRad(15f);
+            var dirE = (_enemy.RootPos - _player.RootPos); dirE.Y = 0f; dirE = dirE.Normalized();
+            var spot = _player.RootPos + dirE.Rotated(Vector3.Up, ang) * 600f;
+            spot.Y = Main.HeightAt(spot.X, spot.Z);
+            _enemy.Teleport(spot, RiderWalker.YawOf(-dirE.Rotated(Vector3.Up, ang)));
+            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
+            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 800f, "PLAYER");
+            if (!los.Hit || los.Target != "ENEMY")
+            {
+                if (++_rgTry > 10) { GD.PrintErr("RANGE FAIL B: no clear lane found for staging"); GetTree().Quit(1); }
+                _rgT = 0f;
+                return;
+            }
+            _rgHp0 = _hpEnemy;
+            FireLaser(TorsoAimPoint());
+            GD.Print($"RANGE B fired at 600u (lane try {_rgTry}), enemyHp={_rgHp0:F0} (must drop)");
+            _rgPhase = 3; _rgT = 0f;
+        }
+        else if (_rgPhase == 3 && _rgT > 0.6f)
+        {
+            if (_hpEnemy > _rgHp0 - 0.01f) { GD.PrintErr("RANGE FAIL B: laser did no damage inside its range"); GetTree().Quit(1); return; }
+            GD.Print($"RANGE B PASS: hp {_rgHp0:F0} -> {_hpEnemy:F0}");
+            _rgHp0 = _hpEnemy;
+            FireLrmSalvo(TorsoAimPoint());
+            GD.Print("RANGE C salvo fired at 600u (LRM range 220 — must fall short)");
+            _rgPhase = 4; _rgT = 0f;
+        }
+        else if (_rgPhase == 4 && _rgT > 6f)
+        {
+            if (_hpEnemy < _rgHp0 - 0.01f) { GD.PrintErr("RANGE FAIL C: rockets reached past their range"); GetTree().Quit(1); return; }
+            if (_rocketsLaunched == 0) { GD.PrintErr("RANGE FAIL C: no rockets launched"); GetTree().Quit(1); return; }
+            GD.Print($"RANGE C PASS: {_rocketsLaunched} rockets, enemy untouched");
+            _player.AimPitchWide = 0.16f; // climbs clear of the proven laser lane — only the range cap may end this flight
+            UpdateCamera(0f);
+            int before = _shots.Count;
+            FireAutocannon(TorsoAimPoint());
+            if (_shots.Count <= before) { GD.PrintErr("RANGE FAIL D: no shell"); GetTree().Quit(1); return; }
+            // The volley also fires the rider's machine guns
+            // (85 u/s, range 240 — the earlier runs tracked one
+            // of those by mistake and watched IT burn out at
+            // 265u of camera-along, exactly its own cap). Track
+            // the fast shell: the autocannon's.
+            _rgShell = null;
+            for (int i = before; i < _shots.Count; i++)
+                if (_shots[i].Vel.Length() > 200f) _rgShell = _shots[i];
+            if (_rgShell == null) { GD.PrintErr("RANGE FAIL D: no autocannon shell in the volley"); GetTree().Quit(1); return; }
+            GD.Print($"RANGE D tracking the autocannon shell (speed {_rgShell.Vel.Length():F0})");
+            _rgOrigin = _cam.GlobalPosition; _rgDir = _aimDir;
+            _rgPhase = 5; _rgT = 0f;
+        }
+        else if (_rgPhase == 5)
+        {
+            // The shared step removes a dead shell the same frame
+            // it dies, so track the last live along-axis reading
+            // and judge the burnout from it.
+            bool gone = _rgShell == null || _rgShell.Dead || !_shots.Contains(_rgShell);
+            if (!gone)
+            {
+                _rgLastAlong = (_rgShell.GlobalPosition - _rgOrigin).Dot(_rgDir);
+                if (_rgT > 20f) { GD.PrintErr("RANGE FAIL D: timeout"); GetTree().Quit(1); }
+            }
+            else
+            {
+                GD.Print($"RANGE D: shell end along={_rgLastAlong:F0}u (autocannon range 900)");
+                if (_rgLastAlong < 830f || _rgLastAlong > 990f) { GD.PrintErr("RANGE FAIL D: burnout off the weapon's range"); GetTree().Quit(1); return; }
+                GD.Print("RANGE TEST DONE");
+                GetTree().Quit(0);
+            }
+        }
+        if (_rgT > 120f && _rgPhase < 5) { GD.PrintErr("RANGE FAIL: phase timeout"); GetTree().Quit(1); }
+    }
+
     private void UpdateMissionTest(float dt)
     {
         _mPhaseT += dt;
