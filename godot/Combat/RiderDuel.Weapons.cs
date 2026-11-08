@@ -166,7 +166,17 @@ public partial class RiderDuel
         {
             var muzzle = MuzzleForSlot(slot, true);
             var toAim = aimPoint - muzzle;
-            var dir = toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
+            // Converge on the aim point when the crosshair has
+            // one within reach. When it rests beyond the cast
+            // (_aimParallel), converge on the point where it
+            // actually rests (the long cast's distance, 1500u
+            // for sky) instead of the 220u far point — shells
+            // then land on the crosshair at any range instead
+            // of crossing the sight line at 220u and sailing
+            // over far targets.
+            var dir = _aimParallel
+                ? (_cam.GlobalPosition + _aimDir * _farConverge - muzzle).Normalized()
+                : toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             // Shell speed lives on the weapon def (WeaponDef.cs:
             // MuzzleSpeed) — one place to tune it for every
             // cannon, player and AI alike. Ballistic shells fly

@@ -24,6 +24,18 @@ public partial class RiderDuel
     // cannot have by construction.
     private Vector3 _aimPoint;
     private Vector3 _aimFrom, _aimDir;
+    // True when the crosshair rests on something BEYOND the
+    // 220u convergence cast (a Mission sightline, open sky):
+    // there is no hit point to converge on, so ballistic shells
+    // must fly PARALLEL to the aim axis instead of converging
+    // on the 220u far point — converging there makes them cross
+    // the sight line at 220u and diverge above it beyond,
+    // sailing over far targets (owner's repro at 500u+).
+    private bool _aimParallel;
+    // Where far shells converge: the distance of whatever the
+    // crosshair rests on, from the long cast below (the same
+    // reach as the HUD rangefinder), or 1500u for open sky.
+    private float _farConverge = 1500f;
     // The one aim direction: the mouse's world yaw and the
     // effective pitch (the wide mouse pitch when the player has
     // taken it past the torso clamp, else the torso's own pitch —
@@ -44,6 +56,7 @@ public partial class RiderDuel
         var from = _player.BoneWorldPos("torso") + dir * 3.2f;
         _aimFrom = from;
         _aimDir = dir;
+        _aimParallel = false;
         _reticlePoint = from + dir * AimDepth;
         // Round 27: converge on the point UNDER THE CROSSHAIR —
         // a ray from the CAMERA along the aim axis (the direction
@@ -59,6 +72,17 @@ public partial class RiderDuel
             var viewHit = _hit.Ray(camPos, dir, 220f, "PLAYER");
             _aimTarget = viewHit.Hit ? viewHit.Target : "";
             _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * 220f;
+            _aimParallel = !viewHit.Hit;
+            if (_aimParallel)
+            {
+                // The crosshair rests past the weapon cast:
+                // find how far it actually rests (1500u cast,
+                // the rangefinder's reach) so far shells can
+                // converge on THAT point and land on the
+                // crosshair at mission ranges.
+                var farHit = _hit.Ray(camPos, dir, 1500f, "PLAYER");
+                _farConverge = farHit.Hit ? farHit.T : 1500f;
+            }
             return _reticlePoint;
         }
         // Fallback (round 11): the chest ray's RIDER/PROP hit within
