@@ -130,7 +130,7 @@ public partial class RiderDuel
         for (int i = 0; i < fired.Count; i++)
         {
             var mz = MuzzleForSlot(fired[i].Slot, false);
-            bool ppc = fired[i].Def.Id == "ppc";
+            bool ppc = fired[i].Def.Beam == BeamKind.Ppc;
             var beamEnd = !hit.Hit ? aimPoint
                 : hit.T <= fired[i].Def.Range ? hit.Point
                 : camTruth ? _cam.GlobalPosition + AimDirWorld() * fired[i].Def.Range
@@ -199,8 +199,7 @@ public partial class RiderDuel
             (float spd, float grav) = (def.MuzzleSpeed, 0f);
             var shell = SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
             shell.Life = def.Range / spd; // burns out at the weapon's range (owner)
-            PlaySfx(_sfxCannon, muzzle, def.Id == "machine_gun" ? -7f : 0f,
-                def.Id == "heavy_cannon" ? 0.72f : def.Id == "machine_gun" ? 1.65f : 1f);
+            PlaySfx(_sfxCannon, muzzle, def.SfxPitch, def.SfxRate);
             SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
             GD.Print($"WPN AC fired {def.Id} dir={dir}");
         }
@@ -308,7 +307,7 @@ public partial class RiderDuel
         // stays exact: the rocket passes through the aim point.
         float dist = Mathf.Max(toAim.Length(), 1f);
         var dir = ApplyInaccuracy(toAim.Normalized(), 1.1f);
-        (float baseSpeed, float grav, float tofMax) = def.Id == "srm" ? (46f, 9f, 1.6f) : (36f, 11f, 2.2f);
+        (float baseSpeed, float grav, float tofMax) = (def.RocketBaseSpeed, def.RocketGravity, def.RocketTofMax);
         float tof = Mathf.Min(dist / baseSpeed, tofMax);
         float speed = dist / tof;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);

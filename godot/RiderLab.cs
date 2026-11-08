@@ -102,7 +102,7 @@ public partial class RiderLab : Control
     public static ImageTexture Icon(WeaponDef w)
     {
         if (_icons.TryGetValue(w.Id, out var cached)) return cached;
-        var accent = w.Id == "ppc" ? new Color(0.45f, 0.72f, 1f)
+        var accent = w.Beam == BeamKind.Ppc ? new Color(0.45f, 0.72f, 1f)
             : w.Type == WeaponSlotType.Energy ? new Color(1f, 0.45f, 0.32f)
             : w.Type == WeaponSlotType.Ballistic ? new Color(1f, 0.8f, 0.35f)
             : new Color(0.95f, 0.6f, 0.3f);

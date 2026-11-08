@@ -5,6 +5,9 @@
 
 public enum WeaponSlotType { Energy, Ballistic, Missile }
 
+// Energy beam look: the PPC's blue bolt vs the lasers' red.
+public enum BeamKind { Laser, Ppc }
+
 public sealed class WeaponDef
 {
     public string Id;
@@ -43,6 +46,15 @@ public sealed class WeaponDef
     // Resolution (ById, loadouts, knockdown weight) never
     // consults it — it only filters the lab's pick list.
     public bool CatalogListed = true;
+    // Presentation and ballistics that used to be per-id
+    // conditionals in the firing code — data now, read
+    // generically like every other field.
+    public BeamKind Beam;          // energy weapons: beam look
+    public float SfxPitch;         // cannon report: pitch offset (semitones)
+    public float SfxRate = 1f;     // cannon report: rate scale
+    public float RocketBaseSpeed;  // missile packs: solver base speed
+    public float RocketGravity;    // missile packs: solver gravity
+    public float RocketTofMax;     // missile packs: time-of-flight cap
 
     public float PerRocketWeight => Rockets > 0 ? Weight / Rockets : Weight;
 }
@@ -56,20 +68,20 @@ public static class WeaponCatalog
     public static readonly WeaponDef LargeLaser = new()
     { Id = "large_laser", Name = "Large Laser", Short = "LAS", Type = WeaponSlotType.Energy, Weight = 5f, Damage = 12f, Cooldown = 0.45f, Range = 600f };
     public static readonly WeaponDef Ppc = new()
-    { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 750f };
+    { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 750f, Beam = BeamKind.Ppc };
     public static readonly WeaponDef MachineGun = new()
-    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 200f, MuzzleSpeed = 85f };
+    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 200f, MuzzleSpeed = 85f, SfxPitch = -7f, SfxRate = 1.65f };
     public static readonly WeaponDef Autocannon = new()
     { Id = "autocannon", Name = "Autocannon", Short = "AC", Type = WeaponSlotType.Ballistic, Weight = 12f, Damage = 26f, Cooldown = 0.85f, Range = 600f, MuzzleSpeed = 420f };
     public static readonly WeaponDef HeavyCannon = new()
-    { Id = "heavy_cannon", Name = "Heavy Cannon", Short = "HVY", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 40f, Cooldown = 1.6f, Range = 450f, MuzzleSpeed = 420f };
+    { Id = "heavy_cannon", Name = "Heavy Cannon", Short = "HVY", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 40f, Cooldown = 1.6f, Range = 450f, MuzzleSpeed = 420f, SfxRate = 0.72f };
     // Missile packs are per-pod: a full salvo fires every alive pod's
     // pack. The default fit (LRM in both pods) reproduces the original
     // 8-rocket salvo, 4 with one pod lost.
     public static readonly WeaponDef Srm = new()
-    { Id = "srm", Name = "SRM Pack", Short = "SRM", Type = WeaponSlotType.Missile, Weight = 4f, Damage = 5f, Cooldown = 2.0f, Rockets = 3, Splash = 2.0f, Range = 250f };
+    { Id = "srm", Name = "SRM Pack", Short = "SRM", Type = WeaponSlotType.Missile, Weight = 4f, Damage = 5f, Cooldown = 2.0f, Rockets = 3, Splash = 2.0f, Range = 250f, RocketBaseSpeed = 46f, RocketGravity = 9f, RocketTofMax = 1.6f };
     public static readonly WeaponDef Lrm = new()
-    { Id = "lrm", Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f, Range = 1000f };
+    { Id = "lrm", Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f, Range = 1000f, RocketBaseSpeed = 36f, RocketGravity = 11f, RocketTofMax = 2.2f };
 
     // The AC/20 is a catalog weapon like any other — it ships
     // fitted in the default fits that carry it (Hector's waist
