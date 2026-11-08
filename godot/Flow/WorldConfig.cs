@@ -34,6 +34,18 @@ public static class WorldConfig
     // Tournament path and in harness runs.
     public static MissionDef SelectedMission;
 
+    // The building kit for City maps (owner): each mission
+    // contract names the kit its city is built from (real
+    // building models converted from the map archives the owner
+    // supplied, assets/citykits/kit<N>/). -1 = the procedural
+    // buildings. EnterLab copies the contract's kit here;
+    // AOT_CITYKIT forces one for harnesses.
+    public static int CityKit = InitCityKit();
+
+    private static int InitCityKit() =>
+        int.TryParse(System.Environment.GetEnvironmentVariable("AOT_CITYKIT"), out var k)
+            ? k : -1;
+
     private static MapMode InitMode() =>
         System.Environment.GetEnvironmentVariable("AOT_MODE") == "mission"
             ? MapMode.Mission : MapMode.Tournament;

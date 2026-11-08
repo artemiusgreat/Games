@@ -229,6 +229,12 @@ public partial class FlowMain : Node3D
             WorldConfig.Biome = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.Biome
                 : ArenaCatalog.Arenas[ArenaIndex].Biome;
+        // The contract's building kit (City contracts only;
+        // tournament arenas keep the procedural buildings).
+        // AOT_CITYKIT, when set, was already applied at startup.
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_CITYKIT")))
+            WorldConfig.CityKit = WorldConfig.IsMission
+                ? WorldConfig.SelectedMission.CityKit : -1;
         FromFlow = true;
         EnterLabScene();
     }

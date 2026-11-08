@@ -958,6 +958,19 @@ public partial class RiderDuel
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
         float groundY = Main.HeightAt(pos.X, pos.Z);
+        // City kits (owner): when the active contract carries a
+        // building kit, the placement instances a real building
+        // model from the kit, uniformly scaled to the requested
+        // height — and `size` becomes the model's scaled AABB,
+        // so the colliders, roof floor and destruction below all
+        // match the model. The comms mast (3u wide) and any
+        // placement the kit can't serve stay procedural.
+        Node3D kitHolder = null;
+        if (WorldConfig.CityKit >= 0 && size.X >= 4f && size.Z >= 4f)
+        {
+            kitHolder = CityKits.Take(WorldConfig.CityKit, _facadeSeq, size.Y, out Vector3 eff);
+            if (kitHolder != null) size = eff;
+        }
         // The big footprints (owner, 2026-10-31: larger buildings)
         // sit on slopes — sink the base well into the grade so no
         // corner hovers; the roof top is the walkable surface.
@@ -966,6 +979,25 @@ public partial class RiderDuel
         pos.Y = groundY + size.Y / 2f - Sink;
         int seq = _facadeSeq;
         var mi = new MeshInstance3D();
+        if (kitHolder != null)
+        {
+            // The container stays a MeshInstance3D (destruction
+            // types it as one) with no mesh of its own; the model
+            // sits with its base at the sunk ground line — the
+            // container's origin is the building's center, so the
+            // holder goes half the height down. A seeded quarter
+            // turn varies the street faces (colliders are
+            // circles, so facing is purely visual).
+            kitHolder.Position = new Vector3(0f, -size.Y / 2f, 0f);
+            kitHolder.Rotation = new Vector3(0f, (seq % 4) * Mathf.Pi / 2f, 0f);
+            mi.AddChild(kitHolder);
+            _facadeSeq++;
+            mi.Position = pos;
+            AddChild(mi);
+            _buildingPts.Add(new Vector2(pos.X, pos.Z));
+            RegisterBuildingShell(pos, size, groundY, Sink, roofTop, pc0, hc0, mi);
+            return;
+        }
         float tintJ = 0.94f + (BrickHash(seq, 3, 9) % 13) * 0.01f;
         // Two-surface box (walls / roof): in the photo scene the
         // walls take one of six photographic sets by sequence and
@@ -992,6 +1024,15 @@ public partial class RiderDuel
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City && seq % 3 == 1 && size.Y >= 12f && size.X >= 8f)
             AddSign(mi, size, seq);
         _buildingPts.Add(new Vector2(pos.X, pos.Z));
+        RegisterBuildingShell(pos, size, groundY, Sink, roofTop, pc0, hc0, mi);
+    }
+
+    // Shared by the procedural and kit paths: collision
+    // circles, hit cylinders, the destructible record and
+    // the walkable roof, all from the effective size.
+    private void RegisterBuildingShell(Vector3 pos, Vector3 size, float groundY,
+        float sink, float roofTop, int pc0, int hc0, MeshInstance3D mi)
+    {
         // Circle colliders: one for near-square footprints, two along the
         // long axis for elongated ones. Radius covers the short side plus a
         // margin; extreme corners can poke slightly past a circle (POC).
@@ -1007,14 +1048,14 @@ public partial class RiderDuel
             if (sx > sz) { a.X -= off; b.X += off; } else { a.Y -= off; b.Y += off; }
             _props.Add(new Circle { P = a, R = r, RoofTop = roofTop });
             _props.Add(new Circle { P = b, R = r, RoofTop = roofTop });
-            _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - Sink, Height = size.Y });
-            _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - Sink, Height = size.Y });
+            _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - sink, Height = size.Y });
+            _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - sink, Height = size.Y });
         }
         else
         {
             float r = Mathf.Max(sx, sz) / 2f + 0.3f;
             _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, RoofTop = roofTop });
-            _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - Sink, Height = size.Y });
+            _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - sink, Height = size.Y });
         }
         var bd = new Destructible
         {
@@ -1031,6 +1072,7 @@ public partial class RiderDuel
         // the building is destroyed (RemovePropColliders).
         Main.Roofs.Add(new Main.RoofRect { Cx = pos.X, Cz = pos.Z, Hx = size.X / 2f, Hz = size.Z / 2f, Top = roofTop });
     }
+
 
     // ---- City dressing (owner's references): neon signs on the
     // gameplay buildings, a lit skyline beyond the boundary ----
