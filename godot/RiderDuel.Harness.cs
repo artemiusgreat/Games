@@ -1157,20 +1157,20 @@ public partial class RiderDuel
         {
             _ffaStaged = true;
             var c = new Vector3(0f, 0f, 0f);
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f),
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 52f), 52f),
                 RiderWalker.YawOf((c - _player.RootPos).Normalized()));
-            _enemy.Teleport(new Vector3(26f, Main.HeightAt(26f, -15f), -15f),
+            _enemy.Teleport(new Vector3(52f, Main.HeightAt(52f, -30f), -30f),
                 RiderWalker.YawOf((c - _enemy.RootPos).Normalized()));
-            _foe.Walker.Teleport(new Vector3(-26f, Main.HeightAt(-26f, -15f), -15f),
+            _foe.Walker.Teleport(new Vector3(-52f, Main.HeightAt(-52f, -30f), -30f),
                 RiderWalker.YawOf((c - _foe.Walker.RootPos).Normalized()));
             _ffaHome0 = _enemy.RootPos;
             _ffaHome1 = _foe.Walker.RootPos;
-            GD.Print("FFATEST staged: three riders, 45u triangle on the mesa");
+            GD.Print("FFATEST staged: three riders, 97u triangle around the mesa");
             return;
         }
         UpdateEnemyAI(dt);
         UpdateFoeAI(dt);
-        if (_ffaT > 25f)
+        if (_ffaT > 40f)
         {
             float moved0 = new Vector2(_enemy.RootPos.X - _ffaHome0.X, _enemy.RootPos.Z - _ffaHome0.Z).Length();
             float moved1 = new Vector2(_foe.Walker.RootPos.X - _ffaHome1.X, _foe.Walker.RootPos.Z - _ffaHome1.Z).Length();
