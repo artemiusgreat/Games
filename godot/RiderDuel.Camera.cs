@@ -34,9 +34,9 @@ public partial class RiderDuel
             GD.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
             // actual view) before quitting — framing proof for cam changes.
-            QueueCapture("res://proof/duel_chase.png", "chase", "chase");
+            QueueCapture("res://proof/duel_chase.png", CamModes.Chase, CamModes.Chase);
         }
-        else if (tag == "chase")
+        else if (tag == CamModes.Chase)
         {
             GetTree().Quit();
         }
@@ -275,7 +275,7 @@ public partial class RiderDuel
             float blockT = boom;
             foreach (float drop in new[] { 0f, 0.35f * _playerSpec.Height })
             {
-                var hit = _hit.Ray(anchor - Vector3.Up * drop, -aimDir, boom, "PLAYER");
+                var hit = _hit.Ray(anchor - Vector3.Up * drop, -aimDir, boom, Roles.Player);
                 if (hit.Hit && hit.T < blockT) blockT = hit.T;
             }
             if (blockT < boom)
@@ -306,7 +306,7 @@ public partial class RiderDuel
                     foreach (var pp in probes)
                     {
                         var to = pp - cand;
-                        if (_hit.Ray(cand, to, to.Length() - 0.3f, "PLAYER").Hit) { cleared = false; break; }
+                        if (_hit.Ray(cand, to, to.Length() - 0.3f, Roles.Player).Hit) { cleared = false; break; }
                     }
                     if (cleared) target = cand;
                 }

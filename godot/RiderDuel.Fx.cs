@@ -363,7 +363,7 @@ public partial class RiderDuel
         if (_simT - _lastHitSfxT > 0.06) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); }
         if (jolt > 0f)
         {
-            RiderWalker shooter = source == "PLAYER" ? _player : source == "ENEMY" ? _enemy : null;
+            RiderWalker shooter = source == Roles.Player ? _player : source == Roles.Enemy ? _enemy : null;
             if (shooter != null && shooter != target)
             {
                 var push = target.RootPos - shooter.RootPos;
@@ -373,7 +373,7 @@ public partial class RiderDuel
         }
         bool onEnemy = target == _enemy;
         SpawnDmgNumber(point, dmg, onEnemy ? new Color(1f, 0.78f, 0.3f) : new Color(1f, 0.38f, 0.3f));
-        if (onEnemy && source == "PLAYER") _cross.Hitmark = 1f;
+        if (onEnemy && source == Roles.Player) _cross.Hitmark = 1f;
         if (!onEnemy) _shake = Mathf.Min(_shake + 0.22f, 0.5f);
     }
 
