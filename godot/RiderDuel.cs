@@ -52,7 +52,11 @@ public partial class RiderDuel : Node3D
     private bool _layoutDumped;
     private int _labShotFrames;
     private bool _hectorCamDone; private float _hectorCamT; private bool _hectorCamFired;
-    private bool _photo; // photoreal probe environment (PhotoEnv / photo/)
+    // Set by the photoreal scene itself (photo/PhotoDuel.tscn
+    // carries PhotoMode = true in its root's scene data): the
+    // scene declares what it is, the engine never sniffs names.
+    [Export] public bool PhotoMode;
+    private bool _photo; // photoreal environment (PhotoEnv / photo/)
     private bool _photoTest; // --photo-test: capture overview + ground frames, print stats, quit
     private bool _grassShot; // TEMP probe: census + capture the grass clump instances
     private bool _boomShot; // TEMP probe: rider visibility across the pitch travel (round 28)
@@ -315,8 +319,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--brake-test") _brakeTest = true;
             if (arg == "--roof-test") _roofTest = true;
         }
-        if (GetTree().CurrentScene != null && GetTree().CurrentScene.Name == "PhotoDuel")
-            _photo = true; // launched from the PhotoDuel scene copy (F6 / editor)
+        if (PhotoMode) _photo = true; // the photoreal scene's own declaration
         _hit = new HitModel();
 
         var sun = new DirectionalLight3D
