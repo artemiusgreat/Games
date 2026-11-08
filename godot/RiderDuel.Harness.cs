@@ -2260,6 +2260,76 @@ public partial class RiderDuel
     // Mission front smoke: world facts (size, pad plateau flatness,
     // base buildings), base + vista captures, then 50 s of AI march
     // — both foes must close real distance toward their targets.
+    // --longshot-test: the owner's 500u+ repro, staged exactly.
+    // The player holds at the home base and fires ONE ballistic
+    // volley along the chase axis (pitched up 2 degrees, nothing
+    // within the 220u convergence cast — the far-target case).
+    // The shell's perpendicular distance to the SIGHT LINE is
+    // measured when its along-axis distance reaches 600u: with
+    // convergence on the 220u far point it must read the muzzle
+    // offset amplified ~2.7x (the sail-over); with parallel fire
+    // it reads the bare muzzle offset.
+    private float _lsT; private int _lsPhase;
+    private Projectile _lsProj; private Vector3 _lsOrigin, _lsDir;
+    private void UpdateLongshotTest(float dt)
+    {
+        _lsT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_lsPhase == 0 && _lsT > 1.2f)
+        {
+            var toEnemy = _enemy.RootPos - _player.RootPos; toEnemy.Y = 0f;
+            _playerYaw = RiderWalker.YawOf(toEnemy);
+            _player.TorsoTwist = 0f;
+            _player.AimPitchWide = 0.035f;
+            _camMode = "chase";
+            GD.Print($"LONGSHOT staged: distToEnemy={toEnemy.Length():F0}u pitch=2deg");
+            _lsPhase = 1; _lsT = 0f;
+        }
+        else if (_lsPhase == 1 && _lsT > 0.4f)
+        {
+            UpdateCamera(0f);
+            var ap = TorsoAimPoint();
+            if (!_aimParallel && _player.AimPitchWide < 0.1f)
+            {
+                // Something pokes into the cast — raise the line
+                // once and retry, the case under test is the
+                // no-hit one.
+                _player.AimPitchWide = 0.09f; _lsT = 0f;
+                GD.Print("LONGSHOT retrying with a higher line (cast was blocked)");
+                return;
+            }
+            int before = _shots.Count;
+            FireAutocannon(ap);
+            if (_shots.Count <= before) { GD.PrintErr("LONGSHOT FAIL: no shell spawned"); GetTree().Quit(1); return; }
+            _lsProj = _shots[_shots.Count - 1];
+            _lsOrigin = _cam.GlobalPosition;
+            _lsDir = _aimDir;
+            var rel0 = _lsProj.GlobalPosition - _lsOrigin;
+            float perp0 = (rel0 - _lsDir * rel0.Dot(_lsDir)).Length();
+            GD.Print($"LONGSHOT fired: parallel={_aimParallel} muzzlePerp={perp0:F2}u");
+            _lsPhase = 2; _lsT = 0f;
+        }
+        else if (_lsPhase == 2)
+        {
+            if (_lsProj == null || _lsProj.Dead || !_shots.Contains(_lsProj))
+            {
+                GD.PrintErr("LONGSHOT FAIL: shell died or vanished before 600u");
+                GetTree().Quit(1); return;
+            }
+            var rel = _lsProj.GlobalPosition - _lsOrigin;
+            float along = rel.Dot(_lsDir);
+            float perp = (rel - _lsDir * along).Length();
+            if (along >= 600f)
+            {
+                GD.Print($"LONGSHOT RESULT along={along:F0}u perp={perp:F2}u");
+                if (perp > 7f) { GD.PrintErr("LONGSHOT FAIL: shell off the sight line"); GetTree().Quit(1); return; }
+                GD.Print("LONGSHOT TEST DONE");
+                GetTree().Quit(0);
+            }
+            if (_lsT > 30f) { GD.PrintErr("LONGSHOT FAIL: timeout"); GetTree().Quit(1); }
+        }
+    }
+
     private void UpdateMissionTest(float dt)
     {
         _mPhaseT += dt;
