@@ -463,6 +463,7 @@ public partial class RiderDuel
     }
 
     private static int _facadeSeq;
+    private static int _kitBuilt, _procBuilt; // placement audit (kit contracts must end procedural-free)
     private static readonly Color[] FacadeBases =
     {
         new(0.62f, 0.60f, 0.58f), new(0.66f, 0.60f, 0.52f),
@@ -706,7 +707,11 @@ public partial class RiderDuel
                     new Vector3(sz.X * sx, sz.Y * sy, sz.Z * sx));
             }
             var m = new Vector2(22f, -26f).Rotated(rot);
-            AddBuilding(new Vector3(pad.X + m.X, 0f, pad.Y + m.Y), new Vector3(3f, 27f, 3f)); // comms mast
+            // Comms mast: on a kit contract it is a kit building
+            // too (owner: no procedural buildings on kit maps),
+            // so the footprint widens past the kit threshold.
+            AddBuilding(new Vector3(pad.X + m.X, 0f, pad.Y + m.Y),
+                WorldConfig.CityKit >= 0 ? new Vector3(5f, 27f, 5f) : new Vector3(3f, 27f, 3f));
         }
         GD.Print("MISSION bases built at the three plateaus");
     }
@@ -963,8 +968,8 @@ public partial class RiderDuel
         // model from the kit, uniformly scaled to the requested
         // height — and `size` becomes the model's scaled AABB,
         // so the colliders, roof floor and destruction below all
-        // match the model. The comms mast (3u wide) and any
-        // placement the kit can't serve stay procedural.
+        // match the model. Any placement the kit can't serve
+        // (it returns null) stays procedural.
         Node3D kitHolder = null;
         if (WorldConfig.CityKit >= 0 && size.X >= 4f && size.Z >= 4f)
         {
@@ -991,6 +996,7 @@ public partial class RiderDuel
             kitHolder.Position = new Vector3(0f, -size.Y / 2f, 0f);
             kitHolder.Rotation = new Vector3(0f, (seq % 4) * Mathf.Pi / 2f, 0f);
             mi.AddChild(kitHolder);
+            _kitBuilt++;
             _facadeSeq++;
             mi.Position = pos;
             AddChild(mi);
@@ -1014,6 +1020,7 @@ public partial class RiderDuel
             ? PhotoEnv.RoofMaterial(size)
             : new StandardMaterial3D { AlbedoColor = new Color(0.13f, 0.12f, 0.11f), Roughness = 1f };
         mi.Mesh = BuildingBoxMesh(size, wallMat, roofMat);
+        _procBuilt++;
         _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
@@ -1286,7 +1293,7 @@ public partial class RiderDuel
                 got++; placed++;
             }
         }
-        GD.Print($"CITY scatter: {placed} buildings placed");
+        GD.Print($"CITY scatter: {placed} buildings placed (world totals: kit {_kitBuilt}, procedural {_procBuilt})");
     }
 
     // ---------- collisions ----------
