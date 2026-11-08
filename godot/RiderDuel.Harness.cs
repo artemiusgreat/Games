@@ -2271,6 +2271,7 @@ public partial class RiderDuel
     // it reads the bare muzzle offset.
     private float _lsT; private int _lsPhase;
     private Projectile _lsProj; private Vector3 _lsOrigin, _lsDir;
+    private float _lsLastAlong, _lsLastPerp, _lsDeathAlong;
     private void UpdateLongshotTest(float dt)
     {
         _lsT += dt;
@@ -2301,7 +2302,15 @@ public partial class RiderDuel
             int before = _shots.Count;
             FireAutocannon(ap);
             if (_shots.Count <= before) { GD.PrintErr("LONGSHOT FAIL: no shell spawned"); GetTree().Quit(1); return; }
-            _lsProj = _shots[_shots.Count - 1];
+            // Track the autocannon shell, not the volley's last
+            // shell: the same slot also fires the rider's machine
+            // guns, whose shells (85 u/s) burn out at their own
+            // 200u range — tracking one of those reads as a
+            // vanish at ~200u. (The range test learned this first.)
+            _lsProj = null;
+            for (int i = before; i < _shots.Count; i++)
+                if (_shots[i].Vel.Length() > 200f) _lsProj = _shots[i];
+            if (_lsProj == null) { GD.PrintErr("LONGSHOT FAIL: no autocannon shell in the volley"); GetTree().Quit(1); return; }
             _lsOrigin = _cam.GlobalPosition;
             _lsDir = _aimDir;
             var rel0 = _lsProj.GlobalPosition - _lsOrigin;
@@ -2311,21 +2320,29 @@ public partial class RiderDuel
         }
         else if (_lsPhase == 2)
         {
-            if (_lsProj == null || _lsProj.Dead || !_shots.Contains(_lsProj))
+            // The shell now burns out at its 600u range (owner's
+            // per-weapon caps), and under llvmpipe a frame can
+            // step ~100u of flight — the shell may die between
+            // the last sub-600 sample and the next. Judge from
+            // the last live sample projected to burnout: death
+            // along = along + speed x remaining life (straight
+            // flight), perp from that same sample.
+            bool gone = _lsProj == null || _lsProj.Dead || !_shots.Contains(_lsProj);
+            if (!gone)
             {
-                GD.PrintErr("LONGSHOT FAIL: shell died or vanished before 600u");
-                GetTree().Quit(1); return;
+                var rel = _lsProj.GlobalPosition - _lsOrigin;
+                _lsLastAlong = rel.Dot(_lsDir);
+                _lsLastPerp = (rel - _lsDir * _lsLastAlong).Length();
+                _lsDeathAlong = _lsLastAlong + _lsProj.Vel.Length() * _lsProj.Life;
             }
-            var rel = _lsProj.GlobalPosition - _lsOrigin;
-            float along = rel.Dot(_lsDir);
-            float perp = (rel - _lsDir * along).Length();
-            if (along >= 600f)
+            if ((!gone && _lsLastAlong >= 600f) || (gone && _lsDeathAlong >= 600f))
             {
-                GD.Print($"LONGSHOT RESULT along={along:F0}u perp={perp:F2}u");
-                if (perp > 7f) { GD.PrintErr("LONGSHOT FAIL: shell off the sight line"); GetTree().Quit(1); return; }
+                GD.Print($"LONGSHOT RESULT along={_lsLastAlong:F0}u (burnout {(_lsDeathAlong):F0}u) perp={_lsLastPerp:F2}u");
+                if (_lsLastPerp > 7f) { GD.PrintErr("LONGSHOT FAIL: shell off the sight line"); GetTree().Quit(1); return; }
                 GD.Print("LONGSHOT TEST DONE");
                 GetTree().Quit(0);
             }
+            if (gone) { GD.PrintErr($"LONGSHOT FAIL: shell died at {_lsDeathAlong:F0}u, before 600u"); GetTree().Quit(1); return; }
             if (_lsT > 30f) { GD.PrintErr("LONGSHOT FAIL: timeout"); GetTree().Quit(1); }
         }
     }
