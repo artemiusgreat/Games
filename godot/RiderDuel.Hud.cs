@@ -543,8 +543,23 @@ public partial class RiderDuel
                 part.Destroyed ? CdLabelDead : new Color(0.75f, 0.8f, 0.85f));
         }
 
-        // Systems readouts: target range, own speed, leg state.
-        _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {tgtRange:F1} u";
+        // Systems readouts. TARGET RANGE is a reticle
+        // rangefinder (owner): the distance from the rider to
+        // whatever the crosshair rests on — building, tree,
+        // enemy, ground — not just the active target. The cast
+        // runs far past weapon reach (1500u) so Mission
+        // sightlines read true; past that it reports the cap.
+        // Non-chase views (harness cameras) keep the old
+        // active-target reading.
+        if (_camMode == "chase" && _cam != null)
+        {
+            var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 1500f, "PLAYER");
+            _lblRange.Text = rHit.Hit
+                ? $"TARGET RANGE: {_player.RootPos.DistanceTo(rHit.Point):F1} u"
+                : "TARGET RANGE: 1500+ u";
+        }
+        else
+            _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {tgtRange:F1} u";
         _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " — RUN" : "");
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
