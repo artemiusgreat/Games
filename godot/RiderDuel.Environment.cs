@@ -1234,12 +1234,12 @@ public partial class RiderDuel
     {
         ResolveOne(_player);
         ResolveOne(_enemy);
-        if (_foe1 != null) ResolveOne(_foe1.Walker);
+        if (_foe != null) ResolveOne(_foe.Walker);
         ResolvePair(_player, _enemy);
-        if (_foe1 != null)
+        if (_foe != null)
         {
-            ResolvePair(_player, _foe1.Walker);
-            ResolvePair(_enemy, _foe1.Walker);
+            ResolvePair(_player, _foe.Walker);
+            ResolvePair(_enemy, _foe.Walker);
         }
     }
 
@@ -1278,7 +1278,7 @@ public partial class RiderDuel
     private void StompCheck()
     {
         var walkers = new System.Collections.Generic.List<RiderWalker> { _player, _enemy };
-        if (_foe1 != null) walkers.Add(_foe1.Walker);
+        if (_foe != null) walkers.Add(_foe.Walker);
         foreach (var w in walkers)
         {
             if (IsDead(w)) continue;

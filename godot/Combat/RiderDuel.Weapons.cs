@@ -147,7 +147,7 @@ public partial class RiderDuel
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == Roles.Enemy) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
-            else if (hit.Target == Roles.Foe1 && _foe1 != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe1.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
+            else if (hit.Target == Roles.Foe && _foe != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
             else if (hit.Target == Roles.Prop) foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
@@ -327,11 +327,11 @@ public partial class RiderDuel
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
         RiderWalker direct = hit.Target == Roles.Player ? _player
-            : hit.Target == Roles.Foe1 && _foe1 != null ? _foe1.Walker
+            : hit.Target == Roles.Foe && _foe != null ? _foe.Walker
             : hit.Target == Roles.Enemy ? _enemy : null;
         if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
         var roster = new System.Collections.Generic.List<(RiderWalker, string)> { (_player, Roles.Player), (_enemy, Roles.Enemy) };
-        if (_foe1 != null) roster.Add((_foe1.Walker, Roles.Foe1));
+        if (_foe != null) roster.Add((_foe.Walker, Roles.Foe));
         foreach (var (w, id) in roster)
         {
             if (w == direct) continue;
@@ -396,20 +396,20 @@ public partial class RiderDuel
         var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
         if (hit.Target == Roles.Player) SpawnScorch(hit.Point, nrm, _player);
         else if (hit.Target == Roles.Enemy) SpawnScorch(hit.Point, nrm, _enemy);
-        else if (hit.Target == Roles.Foe1 && _foe1 != null) SpawnScorch(hit.Point, nrm, _foe1.Walker);
+        else if (hit.Target == Roles.Foe && _foe != null) SpawnScorch(hit.Point, nrm, _foe.Walker);
         else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
         string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
         if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
-        else if (hit.Target == Roles.Foe1 && _foe1 != null) ApplyDamage(_foe1.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
     }
 
     private void ApplyDamage(RiderWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
     {
         bool isPlayer = target == _player;
-        bool isFoe1 = _foe1 != null && target == _foe1.Walker;
-        if (isPlayer ? _playerDead : isFoe1 ? _foe1.Dead : _enemyDead) return;
-        var parts = isPlayer ? _partsPlayer : isFoe1 ? _foe1.Parts : _partsEnemy;
+        bool isFoe = _foe != null && target == _foe.Walker;
+        if (isPlayer ? _playerDead : isFoe ? _foe.Dead : _enemyDead) return;
+        var parts = isPlayer ? _partsPlayer : isFoe ? _foe.Parts : _partsEnemy;
         // Damage routing (owner, 2026-11-03): EVERY hit burns the
         // main pool, whatever part it lands on — arms, legs, head,
         // pods all count. Parts additionally take their own damage
@@ -423,17 +423,17 @@ public partial class RiderDuel
             ? hit.Part
             : parts.AttributePoint(hit.Point);
         if (isPlayer) { _playerDmgEvents++; _playerDmgTotal += dmg; }
-        else if (!isFoe1) { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
+        else if (!isFoe) { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
         float poolDmg = dmg;
         parts.DamagePart(partId, dmg); // torso is pool-owned: a no-op there
         if (poolDmg > 0f)
         {
             if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - poolDmg, 0f);
-            else if (isFoe1) _foe1.Hp = Mathf.Max(_foe1.Hp - poolDmg, 0f);
+            else if (isFoe) _foe.Hp = Mathf.Max(_foe.Hp - poolDmg, 0f);
             else _hpEnemy = Mathf.Max(_hpEnemy - poolDmg, 0f);
         }
-        float hp = isPlayer ? _hpPlayer : isFoe1 ? _foe1.Hp : _hpEnemy;
-        GD.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe1 ? Roles.Foe1 : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
+        float hp = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : _hpEnemy;
+        GD.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe ? Roles.Foe : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
@@ -453,7 +453,7 @@ public partial class RiderDuel
         SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
         var part = parts.GetPart(partId);
         if (parts == _partsPlayer) AddFeed($"WARNING: {part.Display} DESTROYED");
-        else if (_foe1 != null && parts == _foe1.Parts) AddFeed($"{_foe1.Spec.Name}: {part.Display} DESTROYED");
+        else if (_foe != null && parts == _foe.Parts) AddFeed($"{_foe.Spec.Name}: {part.Display} DESTROYED");
         else AddFeed($"{_enemySpec.Name}: {part.Display} DESTROYED");
         ApplyPartConsequences(parts, partId);
     }
@@ -545,7 +545,7 @@ public partial class RiderDuel
         w.Halted = true;
         w.SetDrive(w.LegsYaw, 0f);
         if (w == _player) { _playerDead = true; GD.Print("WPN DEATH PLAYER"); }
-        else if (_foe1 != null && w == _foe1.Walker) { _foe1.Dead = true; GD.Print("WPN DEATH FOE1"); }
+        else if (_foe != null && w == _foe.Walker) { _foe.Dead = true; GD.Print("WPN DEATH FOE"); }
         else { _enemyDead = true; GD.Print("WPN DEATH ENEMY"); }
         OnDeath(w);
     }

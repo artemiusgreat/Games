@@ -406,7 +406,7 @@ public partial class RiderDuel
             _banner.Modulate = new Color(1f, 0.35f, 0.28f);
             _bannerSub.Visible = false;
         }
-        else if (_foe1 != null && _enemyDead && _foe1.Dead)
+        else if (_foe != null && _enemyDead && _foe.Dead)
         {
             // Free-for-all won: both opponents are down.
             _banner.Text = "VICTORY";
@@ -415,7 +415,7 @@ public partial class RiderDuel
         }
         else
         {
-            var spec = _foe1 != null && w == _foe1.Walker ? _foe1.Spec : _enemySpec;
+            var spec = _foe != null && w == _foe.Walker ? _foe.Spec : _enemySpec;
             _banner.Text = $"{spec.Name} DESTROYED";
             _banner.Modulate = new Color(1f, 0.85f, 0.35f);
             _bannerSub.Visible = true;

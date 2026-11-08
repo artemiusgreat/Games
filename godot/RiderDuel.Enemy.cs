@@ -85,7 +85,7 @@ public partial class RiderDuel
         thinkT = 0.75f;
         RiderWalker best = null;
         float bd = float.MaxValue;
-        foreach (var cand in new[] { _player, _enemy, _foe1?.Walker })
+        foreach (var cand in new[] { _player, _enemy, _foe?.Walker })
         {
             if (cand == null || cand == self || IsDead(cand)) continue;
             float d = self.RootPos.DistanceSquaredTo(cand.RootPos);
@@ -96,27 +96,27 @@ public partial class RiderDuel
 
     private bool IsDead(RiderWalker w) =>
         w == _player ? _playerDead
-        : _foe1 != null && w == _foe1.Walker ? _foe1.Dead
+        : _foe != null && w == _foe.Walker ? _foe.Dead
         : _enemyDead;
 
     private Vector3 VelOf(RiderWalker w) =>
         w == _player ? _playerVel
-        : _foe1 != null && w == _foe1.Walker ? _foe1.Vel
+        : _foe != null && w == _foe.Walker ? _foe.Vel
         : _enemyVel;
 
     private string TagOf(RiderWalker w) =>
         w == _player ? Roles.Player
-        : _foe1 != null && w == _foe1.Walker ? Roles.Foe1
+        : _foe != null && w == _foe.Walker ? Roles.Foe
         : Roles.Enemy;
 
     private RiderWalker WalkerOf(RiderParts parts) =>
         parts == _partsPlayer ? _player
-        : _foe1 != null && parts == _foe1.Parts ? _foe1.Walker
+        : _foe != null && parts == _foe.Parts ? _foe.Walker
         : _enemy;
 
     private RiderParts PartsOf(RiderWalker w) =>
         w == _player ? _partsPlayer
-        : _foe1 != null && w == _foe1.Walker ? _foe1.Parts
+        : _foe != null && w == _foe.Walker ? _foe.Parts
         : _partsEnemy;
 
     private void UpdateEnemyAI(float delta)
@@ -143,33 +143,33 @@ public partial class RiderDuel
             ref _enemyYaw, ref _orbitDir, ref _orbitTimer, target, delta);
     }
 
-    private void UpdateFoe1AI(float delta)
+    private void UpdateFoeAI(float delta)
     {
-        if (_foe1.Dead) { _foe1.Walker.SetDrive(_foe1.Yaw, 0f); return; }
+        if (_foe.Dead) { _foe.Walker.SetDrive(_foe.Yaw, 0f); return; }
         if (WorldConfig.IsMission)
         {
-            if (!GuardGate(_foe1.Walker, ref _foe1.Engaged))
+            if (!GuardGate(_foe.Walker, ref _foe.Engaged))
             {
-                _foe1TargetW = null;
-                PatrolMove(_foe1.Walker, _foe1.Parts, PadWorld(2), ref _foe1.Yaw,
-                    ref _foe1.Patrol, ref _foe1.PatrolT, Mathf.Min(_foe1.Spec.MaxSpeed, EnemyMaxSpeed), delta);
+                _foeTargetW = null;
+                PatrolMove(_foe.Walker, _foe.Parts, PadWorld(2), ref _foe.Yaw,
+                    ref _foe.Patrol, ref _foe.PatrolT, Mathf.Min(_foe.Spec.MaxSpeed, EnemyMaxSpeed), delta);
                 return;
             }
-            _foe1TargetW = _player;
-            UpdateFoeMovement(_foe1.Walker, _foe1.Parts,
-                PaceFor(_foe1.Spec, _foe1.Walker.RootPos.DistanceTo(_player.RootPos)),
-                ref _foe1.Yaw, ref _foe1.OrbitDir, ref _foe1.OrbitTimer, _player, delta);
+            _foeTargetW = _player;
+            UpdateFoeMovement(_foe.Walker, _foe.Parts,
+                PaceFor(_foe.Spec, _foe.Walker.RootPos.DistanceTo(_player.RootPos)),
+                ref _foe.Yaw, ref _foe.OrbitDir, ref _foe.OrbitTimer, _player, delta);
             return;
         }
-        var (target, _, _) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, delta);
-        _foe1TargetW = target;
-        float pace = target != null ? PaceFor(_foe1.Spec, _foe1.Walker.RootPos.DistanceTo(target.RootPos))
-            : Mathf.Min(_foe1.Spec.MaxSpeed, EnemyMaxSpeed);
-        UpdateFoeMovement(_foe1.Walker, _foe1.Parts, pace,
-            ref _foe1.Yaw, ref _foe1.OrbitDir, ref _foe1.OrbitTimer, target, delta);
+        var (target, _, _) = PickTarget(_foe.Walker, _foeTargetW, ref _foe.ThinkT, delta);
+        _foeTargetW = target;
+        float pace = target != null ? PaceFor(_foe.Spec, _foe.Walker.RootPos.DistanceTo(target.RootPos))
+            : Mathf.Min(_foe.Spec.MaxSpeed, EnemyMaxSpeed);
+        UpdateFoeMovement(_foe.Walker, _foe.Parts, pace,
+            ref _foe.Yaw, ref _foe.OrbitDir, ref _foe.OrbitTimer, target, delta);
     }
 
-    private RiderWalker _foe1TargetW;
+    private RiderWalker _foeTargetW;
 
     // The range game, shared by both foes: advance beyond 38u,
     // back off inside 26u, orbit in the band; the torso tracks the
@@ -242,14 +242,14 @@ public partial class RiderDuel
             });
     }
 
-    private void UpdateFoe1Gunnery(float dt)
+    private void UpdateFoeGunnery(float dt)
     {
-        if (_foe1.Dead || _foe1.Cd > 0f) return;
-        if (WorldConfig.IsMission && !_foe1.Engaged) return;
-        var (target, vel, tag) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, 0f);
+        if (_foe.Dead || _foe.Cd > 0f) return;
+        if (WorldConfig.IsMission && !_foe.Engaged) return;
+        var (target, vel, tag) = PickTarget(_foe.Walker, _foeTargetW, ref _foe.ThinkT, 0f);
         if (target == null) return;
-        UpdateFoeGunnery(_foe1.Walker, _foe1.Parts, _foe1.DefBallistic, _foe1.BallisticSlot,
-            Roles.Foe1, tag, target, vel, () => { _foe1.Cd = _foe1.DefBallistic?.Cooldown ?? 0.85f; _foe1Shots++; });
+        UpdateFoeGunnery(_foe.Walker, _foe.Parts, _foe.DefBallistic, _foe.BallisticSlot,
+            Roles.Foe, tag, target, vel, () => { _foe.Cd = _foe.DefBallistic?.Cooldown ?? 0.85f; _foeShots++; });
     }
 
     // Cannon gunnery, shared: range + line-of-sight gated, leads

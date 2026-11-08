@@ -733,7 +733,7 @@ public partial class RiderDuel
             _boomPitch = -1.35f;
             _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
-            _foe1.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _hpPlayer = 100000f;
@@ -804,7 +804,7 @@ public partial class RiderDuel
             _lagT = 0f;
             _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
-            _foe1.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _player.TorsoPitch = 0f;
@@ -903,7 +903,7 @@ public partial class RiderDuel
             var bp = _buildingPts[0];
             _player.Teleport(new Vector3(bp.X, Main.HeightAt(bp.X, bp.Y - 14f), bp.Y - 14f), 0f);
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
-            _foe1.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _hpPlayer = 100000f;
@@ -1161,23 +1161,23 @@ public partial class RiderDuel
                 RiderWalker.YawOf((c - _player.RootPos).Normalized()));
             _enemy.Teleport(new Vector3(26f, Main.HeightAt(26f, -15f), -15f),
                 RiderWalker.YawOf((c - _enemy.RootPos).Normalized()));
-            _foe1.Walker.Teleport(new Vector3(-26f, Main.HeightAt(-26f, -15f), -15f),
-                RiderWalker.YawOf((c - _foe1.Walker.RootPos).Normalized()));
+            _foe.Walker.Teleport(new Vector3(-26f, Main.HeightAt(-26f, -15f), -15f),
+                RiderWalker.YawOf((c - _foe.Walker.RootPos).Normalized()));
             _ffaHome0 = _enemy.RootPos;
-            _ffaHome1 = _foe1.Walker.RootPos;
+            _ffaHome1 = _foe.Walker.RootPos;
             GD.Print("FFATEST staged: three riders, 45u triangle on the mesa");
             return;
         }
         UpdateEnemyAI(dt);
-        UpdateFoe1AI(dt);
+        UpdateFoeAI(dt);
         if (_ffaT > 25f)
         {
             float moved0 = new Vector2(_enemy.RootPos.X - _ffaHome0.X, _enemy.RootPos.Z - _ffaHome0.Z).Length();
-            float moved1 = new Vector2(_foe1.Walker.RootPos.X - _ffaHome1.X, _foe1.Walker.RootPos.Z - _ffaHome1.Z).Length();
-            bool dmg = _hpPlayer < _playerSpec.MaxHp || _hpEnemy < _enemySpec.MaxHp || _foe1.Hp < _foe1.Spec.MaxHp
-                || AnyPartDamaged(_partsPlayer) || AnyPartDamaged(_partsEnemy) || AnyPartDamaged(_foe1.Parts);
-            GD.Print($"FFATEST moved foe0={moved0:F1} foe1={moved1:F1} shots foe0={_enemyShots} foe1={_foe1Shots} anyDamage={dmg} hp P={_hpPlayer:F0} E={_hpEnemy:F0} F1={_foe1.Hp:F0}");
-            if (moved0 > 8f && moved1 > 8f && _enemyShots > 0 && _foe1Shots > 0 && dmg)
+            float moved1 = new Vector2(_foe.Walker.RootPos.X - _ffaHome1.X, _foe.Walker.RootPos.Z - _ffaHome1.Z).Length();
+            bool dmg = _hpPlayer < _playerSpec.MaxHp || _hpEnemy < _enemySpec.MaxHp || _foe.Hp < _foe.Spec.MaxHp
+                || AnyPartDamaged(_partsPlayer) || AnyPartDamaged(_partsEnemy) || AnyPartDamaged(_foe.Parts);
+            GD.Print($"FFATEST moved foe0={moved0:F1} foe={moved1:F1} shots foe0={_enemyShots} foe={_foeShots} anyDamage={dmg} hp P={_hpPlayer:F0} E={_hpEnemy:F0} F1={_foe.Hp:F0}");
+            if (moved0 > 8f && moved1 > 8f && _enemyShots > 0 && _foeShots > 0 && dmg)
             {
                 GD.Print("FFATEST PASS both opponents closed, fired, and drew blood in the free-for-all");
                 GetTree().Quit(0);
@@ -2254,7 +2254,7 @@ public partial class RiderDuel
 
     private int _mPhase;
     private float _mPhaseT, _mDistE0, _mDistF0;
-    private Vector3 _mEnemyStart, _mFoe1Start;
+    private Vector3 _mEnemyStart, _mFoeStart;
     private float _mMaxDisp, _mMaxHome, _mMaxHomeF, _mAggroD0;
 
     // Mission front smoke: world facts (size, pad plateau flatness,
@@ -2518,9 +2518,9 @@ public partial class RiderDuel
             }
             GD.Print($"MISSION BUILDINGS pts={_buildingPts.Count} (expect 19: 4 arena + 15 base)");
             _mDistE0 = _enemy.RootPos.DistanceTo(_player.RootPos);
-            _mDistF0 = _foe1 != null ? _foe1.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
-            _mEnemyStart = _enemy.RootPos; _mFoe1Start = _foe1?.Walker.RootPos ?? Vector3.Zero;
-            GD.Print($"MISSION PATROL start: enemy distToPlayer={_mDistE0:F0} foe1 distToPlayer={_mDistF0:F0}");
+            _mDistF0 = _foe != null ? _foe.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
+            _mEnemyStart = _enemy.RootPos; _mFoeStart = _foe?.Walker.RootPos ?? Vector3.Zero;
+            GD.Print($"MISSION PATROL start: enemy distToPlayer={_mDistE0:F0} foe distToPlayer={_mDistF0:F0}");
             QueueCapture("res://proof/mission_base.png", "mbase", "missionBase", () =>
             QueueCapture("res://proof/mission_vista.png", "mvista", "missionVista", () =>
             { _mPhase = 1; _mPhaseT = 0f; }));
@@ -2533,13 +2533,13 @@ public partial class RiderDuel
             // own bases — the old march assertion is inverted.
             _player.SetDrive(_playerYaw, 0f);
             UpdateEnemyAI(dt);                 // test branches drive the AI themselves (cf. FFA test)
-            if (_foe1 != null) UpdateFoe1AI(dt);
+            if (_foe != null) UpdateFoeAI(dt);
             _mMaxDisp = Mathf.Max(_mMaxDisp, _enemy.RootPos.DistanceTo(_mEnemyStart));
             _mMaxHome = Mathf.Max(_mMaxHome, _enemy.RootPos.DistanceTo(PadWorld(1)));
-            if (_foe1 != null) _mMaxHomeF = Mathf.Max(_mMaxHomeF, _foe1.Walker.RootPos.DistanceTo(PadWorld(2)));
+            if (_foe != null) _mMaxHomeF = Mathf.Max(_mMaxHomeF, _foe.Walker.RootPos.DistanceTo(PadWorld(2)));
             if (_mPhaseT > 25f)
             {
-                GD.Print($"MISSION PATROL end: enemy maxDisp={_mMaxDisp:F0}u maxDistFromHome={_mMaxHome:F0}u; foe1 maxDistFromHome={_mMaxHomeF:F0}u");
+                GD.Print($"MISSION PATROL end: enemy maxDisp={_mMaxDisp:F0}u maxDistFromHome={_mMaxHome:F0}u; foe maxDistFromHome={_mMaxHomeF:F0}u");
                 if (_mMaxDisp < 10f) { GD.PrintErr("MISSION FAIL: enemy did not patrol"); GetTree().Quit(1); return; }
                 if (_mMaxHome > 130f || _mMaxHomeF > 130f) { GD.PrintErr("MISSION FAIL: a defender left its base"); GetTree().Quit(1); return; }
                 // Aggro phase: put the player 190u from the enemy
@@ -2559,7 +2559,7 @@ public partial class RiderDuel
         {
             _player.SetDrive(_playerYaw, 0f);
             UpdateEnemyAI(dt);
-            if (_foe1 != null) UpdateFoe1AI(dt);
+            if (_foe != null) UpdateFoeAI(dt);
             if (_mPhaseT > 15f)
             {
                 float dE = _enemy.RootPos.DistanceTo(_player.RootPos);

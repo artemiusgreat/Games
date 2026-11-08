@@ -89,7 +89,7 @@ public partial class RiderDuel
         // weapon reach, else the free 40u point.
         var hit = _hit.Ray(from, dir, 200f, Roles.Player);
         _aimTarget = hit.Hit ? hit.Target : "";
-        if (hit.Hit && hit.T <= 140f && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe1 || hit.Target == Roles.Prop))
+        if (hit.Hit && hit.T <= 140f && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
             return hit.Point;
         return _reticlePoint;
     }

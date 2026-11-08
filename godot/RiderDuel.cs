@@ -126,7 +126,7 @@ public partial class RiderDuel : Node3D
     // Free-for-all (owner, 2026-10-31): the match fields TWO AI
     // opponents — a Enyo and an Hector — and every rider
     // fights every other; there are no teams. The legacy enemy
-    // (foe 0) keeps its fields above; foe 1 is this record. Foe 1
+    // keeps its fields above; the foe is this record. The foe
     // is not built in the precision test modes (duel / weapons /
     // breakable / terrain), whose choreographies assume exactly
     // two riders on the field.
@@ -153,13 +153,13 @@ public partial class RiderDuel : Node3D
         public Vector3 Patrol;
         public float PatrolT;
     }
-    private Foe _foe1;
+    private Foe _foe;
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private bool _ffaTest; // --ffa-test: staged three-way AI probe
     private bool _missionTest; // --mission-test: Mission front smoke (world facts, base/vista captures, AI march)
     private bool _longshotTest; // --longshot-test: shell line vs sight line at 600u (parallel-fire proof)
     private bool _rangeTest; // --range-test: per-weapon Range enforcement proofs (laser reach, LRM clamp, shell burnout)
-    private int _foe1Shots;
+    private int _foeShots;
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
     private bool _viewShot; // --view-shot: hilltop view-pitch proof frames
     private bool _pointTest; // --point-test: can the reticle be put ON a hilltop foe, per range?
@@ -262,8 +262,8 @@ public partial class RiderDuel : Node3D
     private bool _tParked;
 
     private Crosshair _cross;
-    private ProgressBar _barPlayer, _barEnemy, _barFoe1, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
-    private Label _lblFoe1Hp;
+    private ProgressBar _barPlayer, _barEnemy, _barFoe, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
+    private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
     private TriMark _markLaser, _markAc, _markLrm; // active-weapon triangles at the bar ends
@@ -422,17 +422,17 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
-        if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest) BuildFoe1();
+        if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest) BuildFoe();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
         _hit.PartResolver = (id, pt) => id == Roles.Player
             ? _partsPlayer.AttributePoint(pt)
-            : id == Roles.Foe1 && _foe1 != null ? _foe1.Parts.AttributePoint(pt)
+            : id == Roles.Foe && _foe != null ? _foe.Parts.AttributePoint(pt)
             : _partsEnemy.AttributePoint(pt);
         _hit.PartRayCast = (id, from, dir, maxDist) => id == Roles.Player
             ? _partsPlayer.RaycastParts(from, dir, maxDist)
-            : id == Roles.Foe1 && _foe1 != null ? _foe1.Parts.RaycastParts(from, dir, maxDist)
+            : id == Roles.Foe && _foe != null ? _foe.Parts.RaycastParts(from, dir, maxDist)
             : _partsEnemy.RaycastParts(from, dir, maxDist);
         _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
         _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
@@ -496,17 +496,17 @@ public partial class RiderDuel : Node3D
         _partsEnemy.RestoreAll();
         SyncLegConsequences(_player, _partsPlayer);
         SyncLegConsequences(_enemy, _partsEnemy);
-        if (_foe1 != null)
+        if (_foe != null)
         {
-            _foe1.Hp = _foe1.Spec.MaxHp;
-            _foe1.Dead = false;
-            _foe1.Cd = 0f;
-            _foe1.DroopT = 0f;
-            _foe1.Parts.RestoreAll();
-            SyncLegConsequences(_foe1.Walker, _foe1.Parts);
-            _foe1.Walker.Halted = false;
-            _foe1.Walker.Droop = 0f;
-            _foe1.Walker.SetDarkened(false);
+            _foe.Hp = _foe.Spec.MaxHp;
+            _foe.Dead = false;
+            _foe.Cd = 0f;
+            _foe.DroopT = 0f;
+            _foe.Parts.RestoreAll();
+            SyncLegConsequences(_foe.Walker, _foe.Parts);
+            _foe.Walker.Halted = false;
+            _foe.Walker.Droop = 0f;
+            _foe.Walker.SetDarkened(false);
         }
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
         _lastDenied = "";
@@ -536,11 +536,11 @@ public partial class RiderDuel : Node3D
             _enemy.Teleport(PadPos(Main.SpawnPads[1]), SpawnYaw(Main.SpawnPads[1]));
             _playerYaw = SpawnYaw(Main.SpawnPads[0]);
             _enemyYaw = SpawnYaw(Main.SpawnPads[1]);
-            if (_foe1 != null)
+            if (_foe != null)
             {
-                _foe1.Walker.Teleport(PadPos(Main.SpawnPads[2]), SpawnYaw(Main.SpawnPads[2]));
-                _foe1.Yaw = SpawnYaw(Main.SpawnPads[2]);
-                _foe1.Walker.TorsoTwist = 0f;
+                _foe.Walker.Teleport(PadPos(Main.SpawnPads[2]), SpawnYaw(Main.SpawnPads[2]));
+                _foe.Yaw = SpawnYaw(Main.SpawnPads[2]);
+                _foe.Walker.TorsoTwist = 0f;
             }
         }
         else
@@ -592,7 +592,7 @@ public partial class RiderDuel : Node3D
         _cdAc = Mathf.Max(_cdAc - dt, 0f);
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdEnemy = Mathf.Max(_cdEnemy - dt, 0f);
-        if (_foe1 != null) _foe1.Cd = Mathf.Max(_foe1.Cd - dt, 0f);
+        if (_foe != null) _foe.Cd = Mathf.Max(_foe.Cd - dt, 0f);
         _denyLaserT = Mathf.Max(_denyLaserT - dt, 0f);
         _denyAcT = Mathf.Max(_denyAcT - dt, 0f);
         _denyLrmT = Mathf.Max(_denyLrmT - dt, 0f);
@@ -670,7 +670,7 @@ public partial class RiderDuel : Node3D
             else _fx[i] = (_fx[i].Node, life, frames);
         }
         if (!_test && !_terrainTest && !_photoTest && ((!_weaponsTest && !_breakTest) || _enemyMayFire)) UpdateEnemyGunnery(dt);
-        if (_foe1 != null && !_test && !_terrainTest && !_photoTest && !_weaponsTest && !_breakTest) UpdateFoe1Gunnery(dt);
+        if (_foe != null && !_test && !_terrainTest && !_photoTest && !_weaponsTest && !_breakTest) UpdateFoeGunnery(dt);
     }
 
     private static void StepWalker(RiderWalker w, double delta)
@@ -897,7 +897,7 @@ public partial class RiderDuel : Node3D
                 UpdatePlayerInput(dt);
                 MaintainTorsoWorldYaw();
                 UpdateEnemyAI(dt);
-                if (_foe1 != null) UpdateFoe1AI(dt);
+                if (_foe != null) UpdateFoeAI(dt);
                 _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
@@ -914,7 +914,7 @@ public partial class RiderDuel : Node3D
             }
             StepWalker(_player, delta);
             StepWalker(_enemy, delta);
-            if (_foe1 != null && _foe1.Walker.IsReady) StepWalker(_foe1.Walker, delta);
+            if (_foe != null && _foe.Walker.IsReady) StepWalker(_foe.Walker, delta);
             StepSounds();
             ResolveCollisions();
             StompCheck();
@@ -931,19 +931,19 @@ public partial class RiderDuel : Node3D
                 if (ev.Length() > 8f) ev = ev.Normalized() * 8f;
                 _enemyVel = _enemyVel.Lerp(ev, 0.5f);
                 _prevEnemyRoot = _enemy.RootPos;
-                if (_foe1 != null)
+                if (_foe != null)
                 {
-                    var fv = (_foe1.Walker.RootPos - _foe1.PrevRoot) / dt;
+                    var fv = (_foe.Walker.RootPos - _foe.PrevRoot) / dt;
                     if (fv.Length() > 8f) fv = fv.Normalized() * 8f;
-                    _foe1.Vel = _foe1.Vel.Lerp(fv, 0.5f);
-                    _foe1.PrevRoot = _foe1.Walker.RootPos;
+                    _foe.Vel = _foe.Vel.Lerp(fv, 0.5f);
+                    _foe.PrevRoot = _foe.Walker.RootPos;
                 }
             }
             UpdateCombat(dt);
             UpdateDroop(dt);
             _partsPlayer.StepDebris(dt);
             _partsEnemy.StepDebris(dt);
-            if (_foe1 != null) _foe1.Parts.StepDebris(dt);
+            if (_foe != null) _foe.Parts.StepDebris(dt);
         }
         UpdateHud();
         // Player head destroyed: the reticle wanders (sensor loss).

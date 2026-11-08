@@ -189,12 +189,12 @@ public partial class RiderDuel
         _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
         rightBox.AddChild(_barEnemy);
         // Second opponent (free-for-all): a compact readout under
-        // the primary target's. Hidden when foe 1 is not fielded
+        // the primary target's. Hidden when the foe is not fielded
         // (the precision test modes).
-        _lblFoe1Hp = MakeLabel(13, new Color(0.98f, 0.85f, 0.8f));
-        rightBox.AddChild(_lblFoe1Hp);
-        _barFoe1 = MakeBar(new Color(0.88f, 0.45f, 0.24f), new Vector2(300, 12));
-        rightBox.AddChild(_barFoe1);
+        _lblFoeHp = MakeLabel(13, new Color(0.98f, 0.85f, 0.8f));
+        rightBox.AddChild(_lblFoeHp);
+        _barFoe = MakeBar(new Color(0.88f, 0.45f, 0.24f), new Vector2(300, 12));
+        rightBox.AddChild(_barFoe);
         _lblRange = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
         rightBox.AddChild(_lblRange);
         _lblSpeed = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
@@ -475,7 +475,7 @@ public partial class RiderDuel
         var foes = new (RiderSpec Spec, float Hp, bool Dead, RiderWalker W)[]
         {
             (_enemySpec, _hpEnemy, _enemyDead, _enemy),
-            _foe1 != null ? (_foe1.Spec, _foe1.Hp, _foe1.Dead, _foe1.Walker) : (null, 0f, true, null)
+            _foe != null ? (_foe.Spec, _foe.Hp, _foe.Dead, _foe.Walker) : (null, 0f, true, null)
         };
         if (foes[_targetIdx].Dead)
             for (int i = 0; i < 2; i++)
@@ -502,8 +502,8 @@ public partial class RiderDuel
             _barEnemy.Value = tgt.Hp / tgt.Spec.MaxHp;
         }
         // The second foe's own readout is retired — one target only.
-        _lblFoe1Hp.Visible = false;
-        _barFoe1.Visible = false;
+        _lblFoeHp.Visible = false;
+        _barFoe.Visible = false;
         float lrmCd = Mathf.Max(_defPodL?.Cooldown ?? 0f, _defPodR?.Cooldown ?? 0f);
         if (lrmCd <= 0f) lrmCd = 3.5f;
         UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / (_defEnergy?.Cooldown ?? 0.45f), lasDead, _denyLaserT);
@@ -570,8 +570,8 @@ public partial class RiderDuel
         if (_radar != null)
         {
             _radar.EnemyDown = _enemyDead;
-            _radar.Enemy2 = _foe1?.Walker;
-            _radar.Enemy2Down = _foe1?.Dead ?? true;
+            _radar.Enemy2 = _foe?.Walker;
+            _radar.Enemy2Down = _foe?.Dead ?? true;
             _radar.QueueRedraw();
         }
         if (_player.IsKnockedDown)
@@ -616,11 +616,11 @@ public partial class RiderDuel
 
     private void UpdateDroop(float dt)
     {
-        if (_foe1 != null && _foe1.Dead && _foe1.DroopT < 1f)
+        if (_foe != null && _foe.Dead && _foe.DroopT < 1f)
         {
-            _foe1.DroopT = Mathf.Min(_foe1.DroopT + dt / 1.5f, 1f);
-            float t1 = _foe1.DroopT;
-            _foe1.Walker.Droop = t1 * t1 * (3f - 2f * t1) * 0.5f;
+            _foe.DroopT = Mathf.Min(_foe.DroopT + dt / 1.5f, 1f);
+            float t1 = _foe.DroopT;
+            _foe.Walker.Droop = t1 * t1 * (3f - 2f * t1) * 0.5f;
         }
         if (_enemyDead && _enemyDroopT < 1f)
         {

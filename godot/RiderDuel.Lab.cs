@@ -94,14 +94,14 @@ public partial class RiderDuel
 
     private void RefreshHitCaps()
     {
-        _hit.Riders.RemoveAll(m => m.Id == Roles.Player || m.Id == Roles.Enemy || m.Id == Roles.Foe1);
+        _hit.Riders.RemoveAll(m => m.Id == Roles.Player || m.Id == Roles.Enemy || m.Id == Roles.Foe);
         _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Player, Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
         _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Enemy, Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
-        if (_foe1?.Walker != null)
-            _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Foe1, Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
+        if (_foe?.Walker != null)
+            _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Foe, Root = () => _foe.Walker.RootPos, Radius = _foe.Spec.Radius, Height = _foe.Spec.Height });
     }
 
-    // Foe 1 (free-for-all): the partner chassis — the first
+    // The foe (free-for-all): the partner chassis — the first
     // entry on the roster's partner-priority list that the
     // enemy slot does not already hold. No chassis names in
     // engine code; the list is roster data.
@@ -112,43 +112,43 @@ public partial class RiderDuel
         return enemy;
     }
 
-    private void BuildFoe1()
+    private void BuildFoe()
     {
         var spec = FfaPartner(_enemySpec);
-        _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
+        _foe = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
         var pad = Main.SpawnPads[2];
-        _foe1.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
-        _foe1.Yaw = SpawnYaw(pad);
-        _foe1.Parts = new RiderParts(_foe1.Walker, spec.PartsId);
-        _foe1.Parts.OnBreak = (id, c) => OnPartBroken(_foe1.Parts, id, c);
-        _foe1.Walker.RefreshMaterials();
-        _foe1.Hp = spec.MaxHp;
-        _foe1.PrevRoot = _foe1.Walker.RootPos;
+        _foe.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
+        _foe.Yaw = SpawnYaw(pad);
+        _foe.Parts = new RiderParts(_foe.Walker, spec.PartsId);
+        _foe.Parts.OnBreak = (id, c) => OnPartBroken(_foe.Parts, id, c);
+        _foe.Walker.RefreshMaterials();
+        _foe.Hp = spec.MaxHp;
+        _foe.PrevRoot = _foe.Walker.RootPos;
         string eb = SlotOf(spec, WeaponSlotType.Ballistic);
-        _foe1.BallisticSlot = eb;
-        _foe1.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe1.Loadout.WeaponIn(eb));
-        GD.Print($"FFA foe1 built: {spec.Id} at pad 2, ballistic={_foe1.DefBallistic?.Id ?? "none"}");
+        _foe.BallisticSlot = eb;
+        _foe.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe.Loadout.WeaponIn(eb));
+        GD.Print($"FFA foe built: {spec.Id} at pad 2, ballistic={_foe.DefBallistic?.Id ?? "none"}");
     }
 
-    private void RebuildFoe1()
+    private void RebuildFoe()
     {
         var want = FfaPartner(_enemySpec);
-        if (_foe1 != null && _foe1.Spec.Id == want.Id) return;
-        var pos = _foe1?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
-        float yaw = _foe1?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
-        _foe1?.Walker.QueueFree();
+        if (_foe != null && _foe.Spec.Id == want.Id) return;
+        var pos = _foe?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
+        float yaw = _foe?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
+        _foe?.Walker.QueueFree();
         var spec = want;
-        _foe1 = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
-        _foe1.Walker = BuildRider(spec, "Enemy2", pos, yaw);
-        _foe1.Yaw = yaw;
-        _foe1.Parts = new RiderParts(_foe1.Walker, spec.PartsId);
-        _foe1.Parts.OnBreak = (id, c) => OnPartBroken(_foe1.Parts, id, c);
-        _foe1.Walker.RefreshMaterials();
-        _foe1.Hp = spec.MaxHp;
-        _foe1.PrevRoot = _foe1.Walker.RootPos;
+        _foe = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
+        _foe.Walker = BuildRider(spec, "Enemy2", pos, yaw);
+        _foe.Yaw = yaw;
+        _foe.Parts = new RiderParts(_foe.Walker, spec.PartsId);
+        _foe.Parts.OnBreak = (id, c) => OnPartBroken(_foe.Parts, id, c);
+        _foe.Walker.RefreshMaterials();
+        _foe.Hp = spec.MaxHp;
+        _foe.PrevRoot = _foe.Walker.RootPos;
         string eb = SlotOf(spec, WeaponSlotType.Ballistic);
-        _foe1.BallisticSlot = eb;
-        _foe1.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe1.Loadout.WeaponIn(eb));
+        _foe.BallisticSlot = eb;
+        _foe.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe.Loadout.WeaponIn(eb));
         RefreshHitCaps();
     }
 
@@ -198,7 +198,7 @@ public partial class RiderDuel
             _enemySpec = RiderSpecs.ById(enemySpecId);
             _enemyLoadout = LoadoutState.DefaultFor(_enemySpec);
             RebuildRider(false);
-            if (_foe1 != null) RebuildFoe1(); // the FFA partner re-picks from the priority data
+            if (_foe != null) RebuildFoe(); // the FFA partner re-picks from the priority data
         }
         GD.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();

@@ -27,7 +27,7 @@ public partial class RiderDuel
             for (int i = 0; i < 2; i++)
             {
                 next = (next + 1) % 2;
-                if (next == 0 ? !_enemyDead : _foe1 != null && !_foe1.Dead) break;
+                if (next == 0 ? !_enemyDead : _foe != null && !_foe.Dead) break;
             }
             _targetIdx = next;
             GetViewport().SetInputAsHandled();

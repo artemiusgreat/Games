@@ -13,7 +13,7 @@ public static class Roles
 {
     public const string Player = "PLAYER";
     public const string Enemy = "ENEMY";
-    public const string Foe1 = "FOE1";
+    public const string Foe = "FOE";
     public const string Prop = "PROP";
     public const string Terrain = "TERRAIN";
 }
