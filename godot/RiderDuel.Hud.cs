@@ -101,12 +101,12 @@ public partial class RiderDuel
         }
 
         // -- Left: own rider integrity + per-part status grid.
-        var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(372, 0) };
+        var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) }; // the shared dashboard width (owner: all panels match the target block)
         leftBox.AddThemeConstantOverride("separation", 4);
         _panelHealth.AddChild(leftBox);
         _lblPlayerHp = MakeLabel(16, new Color(0.85f, 0.95f, 0.85f));
         leftBox.AddChild(_lblPlayerHp);
-        _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(372, 20));
+        _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(300, 20));
         leftBox.AddChild(_barPlayer);
         var grid = new GridContainer { Columns = 4 };
         grid.AddThemeConstantOverride("h_separation", 10);
@@ -123,7 +123,7 @@ public partial class RiderDuel
             var lab = MakeLabel(10, new Color(0.75f, 0.8f, 0.85f));
             lab.Text = name;
             cell.AddChild(lab);
-            var bar = MakeBar(new Color(0.45f, 0.75f, 0.5f), new Vector2(84, 8));
+            var bar = MakeBar(new Color(0.45f, 0.75f, 0.5f), new Vector2(67, 8)); // 4 cells + gaps = the 300 dashboard width
             cell.AddChild(bar);
             grid.AddChild(cell);
             _partCells[id] = (lab, bar);
@@ -133,7 +133,7 @@ public partial class RiderDuel
         // -- Center: weapons. The selected row is marked with a pointer
         // and bright text (set in UpdateHud); the hint line teaches the
         // switching scheme in-game.
-        var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(308, 0) };
+        var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
         midBox.AddThemeConstantOverride("separation", 4);
         _panelWeapons.AddChild(midBox);
         midBox.AddChild(Title("WEAPONS"));
@@ -200,6 +200,7 @@ public partial class RiderDuel
         // No controls hint line (owner: remove the introductory
         // text) — the panel ends at the THRUST row.
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
+        _lblWeaponStatus.AutowrapMode = TextServer.AutowrapMode.Word;
         midBox.AddChild(_lblWeaponStatus);
 
 
@@ -662,15 +663,19 @@ public partial class RiderDuel
     private void FitCornerPanels()
     {
         if (_panelWeapons == null) return;
+        // One width for every dashboard panel (owner): the
+        // target block's - the narrowest - sets it; heights stay
+        // per panel.
+        float w = _panelTarget.GetCombinedMinimumSize().X;
         var ws = _panelWeapons.GetCombinedMinimumSize();
         _panelWeapons.OffsetLeft = 16; _panelWeapons.OffsetTop = 14;
-        _panelWeapons.OffsetRight = 16 + ws.X; _panelWeapons.OffsetBottom = 14 + ws.Y;
+        _panelWeapons.OffsetRight = 16 + w; _panelWeapons.OffsetBottom = 14 + ws.Y;
         var hs = _panelHealth.GetCombinedMinimumSize();
         _panelHealth.OffsetLeft = 16; _panelHealth.OffsetBottom = -14;
-        _panelHealth.OffsetRight = 16 + hs.X; _panelHealth.OffsetTop = -14 - hs.Y;
+        _panelHealth.OffsetRight = 16 + w; _panelHealth.OffsetTop = -14 - hs.Y;
         var ts = _panelTarget.GetCombinedMinimumSize();
         _panelTarget.OffsetRight = -16; _panelTarget.OffsetBottom = -14;
-        _panelTarget.OffsetLeft = -16 - ts.X; _panelTarget.OffsetTop = -14 - ts.Y;
+        _panelTarget.OffsetLeft = -16 - w; _panelTarget.OffsetTop = -14 - ts.Y;
         if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
     }
 
