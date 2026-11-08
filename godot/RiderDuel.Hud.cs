@@ -143,10 +143,10 @@ public partial class RiderDuel
             row.AddThemeConstantOverride("separation", 8);
             var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(168, 0); // one width for all rows; group compositions are longer than the old type tags
+            lab.CustomMinimumSize = new Vector2(136, 0); // THRUST row: sized so its bar starts on the weapon bars' line (112 name + digit cell)
             lab.ClipText = true;
             row.AddChild(lab);
-            var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(218, 13));
+            var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             // Every bar stretches to the row's right edge (owner:
             // the bars' start and end X must match across rows —
@@ -181,10 +181,10 @@ public partial class RiderDuel
             gcell.HorizontalAlignment = HorizontalAlignment.Center;
             wrow.AddChild(gcell);
             var wlab = MakeLabel(14, CdLabelNormal);
-            wlab.CustomMinimumSize = new Vector2(144, 0);
+            wlab.CustomMinimumSize = new Vector2(112, 0); // tight to the longest name (owner: less space before the bar)
             wlab.ClipText = true;
             wrow.AddChild(wlab);
-            var wbar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(150, 13));
+            var wbar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
             wbar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             wbar.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             wrow.AddChild(wbar);
