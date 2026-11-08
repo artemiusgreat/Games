@@ -28,7 +28,6 @@ public partial class RiderDuel
         public float StartScale = 1f;
         public readonly System.Collections.Generic.List<HitModel.PropCyl> Cyls = new();
         public readonly System.Collections.Generic.List<Vector2> CirclePts = new();
-        public OmniLight3D Light;
     }
     private readonly System.Collections.Generic.List<Destructible> _destructibles = new();
 
