@@ -35,18 +35,28 @@ public partial class RiderDuel
         }
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
         {
-            // Weapon selection: keys 1/2/3, mouse wheel cycles.
+            // Weapon selection (owner's groups): keys 1-6 pick
+            // the group by its lab number, the wheel cycles the
+            // groups that exist.
             if (e is InputEventKey sk && sk.Pressed && !sk.Echo)
             {
-                if (sk.Keycode == Key.Key1) _weaponSel = 0;
-                else if (sk.Keycode == Key.Key2) _weaponSel = 1;
-                else if (sk.Keycode == Key.Key3) _weaponSel = 2;
+                int num = sk.Keycode switch
+                {
+                    Key.Key1 => 1, Key.Key2 => 2, Key.Key3 => 3,
+                    Key.Key4 => 4, Key.Key5 => 5, Key.Key6 => 6,
+                    _ => 0
+                };
+                if (num > 0)
+                {
+                    int gi = _groups.FindIndex(g => g.Num == num);
+                    if (gi >= 0) _weaponSel = gi;
+                }
             }
-            else if (e is InputEventMouseButton wb && wb.Pressed &&
+            else if (e is InputEventMouseButton wb && wb.Pressed && _groups.Count > 0 &&
                      (wb.ButtonIndex == MouseButton.WheelUp || wb.ButtonIndex == MouseButton.WheelDown))
             {
                 int d = wb.ButtonIndex == MouseButton.WheelDown ? 1 : -1;
-                _weaponSel = (_weaponSel + d + 3) % 3;
+                _weaponSel = (_weaponSel + d + _groups.Count) % _groups.Count;
             }
         }
         if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)

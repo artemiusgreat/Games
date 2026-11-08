@@ -59,6 +59,11 @@ public partial class RiderDuel
         _fx.Add((glow, life, 0));
     }
 
+    // Legacy type volleys (FireLaser / FireAutocannon /
+    // FireLrmSalvo) keep their signatures for the test
+    // harnesses; live play fires the player's lab groups
+    // through FireSelected, which runs the same volley bodies
+    // per group subset.
     private void FireLaser(Vector3 aimPoint)
     {
         if (_playerDead) return;
@@ -66,6 +71,11 @@ public partial class RiderDuel
         if (fired.Count == 0) { DenyWeapon("laser"); return; }
         if (_cdLaser > 0f) return;
         _cdLaser = 0f; foreach (var g in fired) _cdLaser = Mathf.Max(_cdLaser, g.Def.Cooldown);
+        FireLaserVolley(aimPoint, fired);
+    }
+
+    private void FireLaserVolley(Vector3 aimPoint, System.Collections.Generic.List<(string Slot, WeaponDef Def)> fired)
+    {
         var muzzle = MuzzleForSlot(fired[0].Slot, false);
         // Per-weapon reach (owner): the shared view-ray cast runs
         // to the LONGEST fitted range; each weapon then hits
@@ -170,6 +180,11 @@ public partial class RiderDuel
         if (fired.Count == 0) { DenyWeapon("ac"); return; }
         if (_cdAc > 0f) return;
         _cdAc = 0f; foreach (var g in fired) _cdAc = Mathf.Max(_cdAc, g.Def.Cooldown);
+        FireCannonVolley(aimPoint, fired);
+    }
+
+    private void FireCannonVolley(Vector3 aimPoint, System.Collections.Generic.List<(string Slot, WeaponDef Def)> fired)
+    {
         // Every fitted cannon fires (multi-fit volley), each from
         // its own hardpoint on the pointer line. No clamp needed:
         // the cannon fires the line directly with no range
@@ -228,21 +243,33 @@ public partial class RiderDuel
     private void FireLrmSalvo(Vector3 aimPoint)
     {
         if (_playerDead) return;
-        // Past the close cast, the salvo solves onto the point
-        // the crosshair actually rests on (the far cast's point);
-        // LaunchRocket clamps it to each pack's own Range.
-        if (_aimParallel) aimPoint = _cam.GlobalPosition + _aimDir * _farConverge;
         bool podL = _podGunsL.Count > 0 && _partsPlayer.Alive(_podGunsL[0].Slot);
         bool podR = _podGunsR.Count > 0 && _partsPlayer.Alive(_podGunsR[0].Slot);
         if (!podL && !podR) { DenyWeapon("lrm"); return; }
         if (_cdLrm > 0f) return;
         _cdLrm = 0f;
-        // Each alive pod fires every pack fitted in it (multi-fit);
+        foreach (var g in _podGunsL) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
+        foreach (var g in _podGunsR) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
+        FireSalvoVolley(aimPoint,
+            podL ? _podGunsL : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>(),
+            podR ? _podGunsR : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>());
+    }
+
+    private void FireSalvoVolley(Vector3 aimPoint,
+        System.Collections.Generic.List<(string Slot, WeaponDef Def)> podLGuns,
+        System.Collections.Generic.List<(string Slot, WeaponDef Def)> podRGuns)
+    {
+        // Past the close cast, the salvo solves onto the point
+        // the crosshair actually rests on (the far cast's point);
+        // LaunchRocket clamps it to each pack's own Range.
+        if (_aimParallel) aimPoint = _cam.GlobalPosition + _aimDir * _farConverge;
+        bool podL = podLGuns.Count > 0, podR = podRGuns.Count > 0;
+        // Each pod fires every pack fitted in it (multi-fit);
         // pods interleave.
         var left = new System.Collections.Generic.List<WeaponDef>();
         var right = new System.Collections.Generic.List<WeaponDef>();
-        if (podL) foreach (var (_, def) in _podGunsL) { _cdLrm = Mathf.Max(_cdLrm, def.Cooldown); for (int i = 0; i < def.Rockets; i++) left.Add(def); }
-        if (podR) foreach (var (_, def) in _podGunsR) { _cdLrm = Mathf.Max(_cdLrm, def.Cooldown); for (int i = 0; i < def.Rockets; i++) right.Add(def); }
+        foreach (var (_, def) in podLGuns) for (int i = 0; i < def.Rockets; i++) left.Add(def);
+        foreach (var (_, def) in podRGuns) for (int i = 0; i < def.Rockets; i++) right.Add(def);
         var ordered = new System.Collections.Generic.List<(bool Left, WeaponDef Def)>();
         int li = 0, ri = 0;
         while (li < left.Count || ri < right.Count)
@@ -487,12 +514,49 @@ public partial class RiderDuel
         return false;
     }
 
-    private bool WeaponAlive(int sel) => sel switch
+    private bool WeaponAlive(int sel)
     {
-        0 => AnyGunAlive(_gunsEnergy),
-        1 => AnyGunAlive(_gunsBallistic),
-        _ => AnyGunAlive(_podGunsL) || AnyGunAlive(_podGunsR),
-    };
+        if (sel < 0 || sel >= _groups.Count) return false;
+        foreach (var g in _groups[sel].Guns)
+            if (_partsPlayer.Alive(g.Slot)) return true;
+        return false;
+    }
+
+    // Live fire (owner's groups): the selected lab group fires
+    // as ONE volley — lasers through the beam path, cannons
+    // through the shell path, pod weapons as a salvo — and the
+    // group cools down by its slowest fired weapon.
+    private void FireSelected(Vector3 aimPoint)
+    {
+        if (_playerDead || _groups.Count == 0) return;
+        var grp = _groups[Mathf.Clamp(_weaponSel, 0, _groups.Count - 1)];
+        var las = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
+        var can = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
+        var podL = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
+        var podR = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
+        foreach (var g in grp.Guns)
+        {
+            if (!_partsPlayer.Alive(g.Slot)) continue;
+            var t = (g.Slot, g.Def);
+            if (g.Path == 0) las.Add(t);
+            else if (g.Path == 1) can.Add(t);
+            else if (g.Path == 2) podL.Add(t);
+            else podR.Add(t);
+        }
+        if (las.Count == 0 && can.Count == 0 && podL.Count == 0 && podR.Count == 0)
+        {
+            grp.DenyT = 0.5f;
+            GD.Print($"WPN DENIED group {grp.Num} (mounting parts destroyed)");
+            return;
+        }
+        if (grp.Cd > 0f) return;
+        grp.Cd = 0f;
+        foreach (var l in new[] { las, can, podL, podR })
+            foreach (var g in l) grp.Cd = Mathf.Max(grp.Cd, g.Def.Cooldown);
+        if (las.Count > 0) FireLaserVolley(aimPoint, las);
+        if (can.Count > 0) FireCannonVolley(aimPoint, can);
+        if (podL.Count > 0 || podR.Count > 0) FireSalvoVolley(aimPoint, podL, podR);
+    }
 
     private Vector3 MuzzleForSlot(string slot, bool ballistic) => MuzzleFor(_player, slot);
 
@@ -500,9 +564,9 @@ public partial class RiderDuel
     private void AutoSwitchWeapon()
     {
         if (_partsPlayer == null || WeaponAlive(_weaponSel)) return;
-        for (int i = 1; i <= 3; i++)
+        for (int i = 1; i <= _groups.Count; i++)
         {
-            int cand = (_weaponSel + i) % 3;
+            int cand = (_weaponSel + i) % _groups.Count;
             if (WeaponAlive(cand)) { _weaponSel = cand; return; }
         }
     }

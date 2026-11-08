@@ -116,7 +116,7 @@ public partial class RiderDuel : Node3D
     private float _hpPlayer = 260f, _hpEnemy = 340f;
     private bool _playerDead, _enemyDead;
     private float _cdLaser, _cdAc, _cdLrm, _cdEnemy;
-    private int _weaponSel; // selected weapon: 0 laser, 1 autocannon, 2 LRM
+    private int _weaponSel; // index into _groups (the player's lab-assigned firing groups)
     // RiderLab loadout (owner): the equipped weapon defs drive damage,
     // cooldowns, salvo composition and knockdown weight. Defaults equal
     // the original fixed fit, so every harness number is unchanged.
@@ -185,7 +185,20 @@ public partial class RiderDuel : Node3D
     private WeaponDef _defEnergy, _defBallistic, _defPodL, _defPodR, _defEnemyBallistic;
     private string _enemyBallisticSlot;
     private readonly System.Collections.Generic.List<(string Slot, WeaponDef Def)> _gunsEnergy = new(), _gunsBallistic = new(), _podGunsL = new(), _podGunsR = new();
-    private readonly string[] _wpnShort = { "1 LAS", "2 AC", "3 LRM" };
+    // Firing groups (owner): the player assigns every fitted
+    // weapon to a group in the lab; the duel fires the selected
+    // group as one volley (each weapon through its own firing
+    // path - beams, shells, or a pod salvo) and the group's
+    // cooldown is its slowest fired weapon's, as volleys always
+    // were. Path: 0 laser, 1 cannon, 2 pod L, 3 pod R.
+    private sealed class WpnGroup
+    {
+        public int Num;
+        public readonly System.Collections.Generic.List<(string Slot, WeaponDef Def, int Path)> Guns = new();
+        public float Cd, DenyT, SlowCd;
+        public string Label = "-";
+    }
+    private readonly System.Collections.Generic.List<WpnGroup> _groups = new();
     private bool _labOpen;
     private RiderLab _lab;
     private CanvasLayer _uiLayer;
@@ -262,14 +275,17 @@ public partial class RiderDuel : Node3D
     private bool _tParked;
 
     private Crosshair _cross;
-    private ProgressBar _barPlayer, _barEnemy, _barFoe, _cdBarLaser, _cdBarAc, _cdBarLrm, _cdBarThr;
+    private ProgressBar _barPlayer, _barEnemy, _barFoe, _cdBarThr;
+    private readonly ProgressBar[] _grpBars = new ProgressBar[LoadoutState.MaxGroup];
+    private readonly Label[] _grpLabels = new Label[LoadoutState.MaxGroup];
+    private readonly TriMark[] _grpMarks = new TriMark[LoadoutState.MaxGroup];
+    private readonly Control[] _grpRows = new Control[LoadoutState.MaxGroup];
     private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
-    private Label _feedLabel, _lblWeaponStatus, _lblCdLaser, _lblCdAc, _lblCdLrm, _lblThr;
-    private TriMark _markLaser, _markAc, _markLrm; // active-weapon triangles at the bar ends
+    private Label _feedLabel, _lblWeaponStatus, _lblThr;
     private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
     private LeaveOverlay _leaveDialog;
-    private PanelContainer _panel;
+    private PanelContainer _panelHealth, _panelWeapons, _panelTarget; // corner blocks (owner: no bottom dashboard)
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;
     private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
@@ -395,7 +411,6 @@ public partial class RiderDuel : Node3D
         if (WorldConfig.IsMission) BuildBases();
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City) ScatterCity();
         ScatterNature();
-        BuildSkyline();
         if (_photo)
         {
             var propPts = new System.Collections.Generic.List<(Vector2 P, float R)>();
@@ -456,7 +471,7 @@ public partial class RiderDuel : Node3D
             // until DEPLOY. Test modes skip straight to the duel.
             _labOpen = true;
             Input.MouseMode = Input.MouseModeEnum.Visible;
-            _panel.Visible = false;
+            SetHudPanelsVisible(false);
             _radar.Visible = false;
             _feedLabel.Visible = false;
             OpenLab();
@@ -513,6 +528,7 @@ public partial class RiderDuel : Node3D
         _feed.Clear();
         _cdLaser = _cdAc = _cdLrm = _cdEnemy = 0f;
         _weaponSel = 0;
+        foreach (var g in _groups) { g.Cd = 0f; g.DenyT = 0f; }
         _lrmQueue.Clear();
         foreach (var p in _shots) p.QueueFree();
         _shots.Clear();
@@ -593,6 +609,11 @@ public partial class RiderDuel : Node3D
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdEnemy = Mathf.Max(_cdEnemy - dt, 0f);
         if (_foe != null) _foe.Cd = Mathf.Max(_foe.Cd - dt, 0f);
+        foreach (var g in _groups)
+        {
+            g.Cd = Mathf.Max(g.Cd - dt, 0f);
+            g.DenyT = Mathf.Max(g.DenyT - dt, 0f);
+        }
         _denyLaserT = Mathf.Max(_denyLaserT - dt, 0f);
         _denyAcT = Mathf.Max(_denyAcT - dt, 0f);
         _denyLrmT = Mathf.Max(_denyLrmT - dt, 0f);
@@ -696,7 +717,7 @@ public partial class RiderDuel : Node3D
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
-            _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
+            SetHudPanelsVisible(true); _radar.Visible = true; _feedLabel.Visible = true;
             _pointHector = true;
             GD.Print("POINTTEST selected Hector at start (lab path)");
         }
@@ -705,7 +726,7 @@ public partial class RiderDuel : Node3D
             // Frame the exit popup over the live duel (proof only;
             // the pause itself is the Esc path's business).
             _leaveShotDone = true;
-            _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
+            SetHudPanelsVisible(true); _radar.Visible = true; _feedLabel.Visible = true;
             _leaveDialog.Open();
         }
         if (_leaveShot && _leaveShotDone && !_leaveShotSaved)
@@ -727,7 +748,7 @@ public partial class RiderDuel : Node3D
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
-            _panel.Visible = true; _radar.Visible = true; _feedLabel.Visible = true;
+            SetHudPanelsVisible(true); _radar.Visible = true; _feedLabel.Visible = true;
             GD.Print("HECTORCAM swapped player to Hector and deployed");
         }
         if (_hectorCam && _hectorCamDone && !_labOpen)
@@ -914,11 +935,7 @@ public partial class RiderDuel : Node3D
                     // weapon (1/2/3 or wheel to switch — see the panel).
                     var aim = _aimPoint;
                     if (Input.IsMouseButtonPressed(MouseButton.Left))
-                    {
-                        if (_weaponSel == 0) FireLaser(aim);
-                        else if (_weaponSel == 1) FireAutocannon(aim);
-                        else FireLrmSalvo(aim);
-                    }
+                        FireSelected(aim);
                 }
             }
             StepWalker(_player, delta);

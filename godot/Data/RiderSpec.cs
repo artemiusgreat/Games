@@ -252,6 +252,43 @@ public sealed class LoadoutState
     // the real limit now, exactly like the MW4 lab.
     public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> Equipped = new();
 
+    // Firing groups (owner): every fitted weapon belongs to a
+    // group the PLAYER picks in the lab (the G-button on each
+    // fitted row) — the duel fires a group as one volley and the
+    // HUD lists groups, not weapon types. Stored parallel to
+    // Equipped (same slot, same index). A weapon fitted without
+    // an explicit pick takes the type default, which reproduces
+    // the old type grouping (energy 1, ballistic 2, missile 3).
+    public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>> GroupMap = new();
+    public const int MaxGroup = 6;
+
+    public static int DefaultGroupFor(WeaponDef def) =>
+        def == null ? 1
+        : def.Type == WeaponSlotType.Energy ? 1
+        : def.Type == WeaponSlotType.Ballistic ? 2 : 3;
+
+    public int GroupAt(string slotId, int index)
+    {
+        if (GroupMap.TryGetValue(slotId, out var g) && index >= 0 && index < g.Count)
+            return g[index];
+        var ids = WeaponsIn(slotId);
+        return index >= 0 && index < ids.Count
+            ? DefaultGroupFor(WeaponCatalog.ById(ids[index])) : 1;
+    }
+
+    public void SetGroup(string slotId, int index, int group)
+    {
+        var ids = WeaponsIn(slotId);
+        if (index < 0 || index >= ids.Count) return;
+        if (!GroupMap.TryGetValue(slotId, out var g))
+        {
+            g = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < ids.Count; i++) g.Add(DefaultGroupFor(WeaponCatalog.ById(ids[i])));
+            GroupMap[slotId] = g;
+        }
+        g[index] = group < 1 ? 1 : group > MaxGroup ? MaxGroup : group;
+    }
+
     // Jump jets (thrusters) fitted. Only meaningful on a JumpCapable
     // chassis; the duel's effective rule is spec.JumpCapable && JumpJets.
     public bool JumpJets;
@@ -297,6 +334,9 @@ public sealed class LoadoutState
         if (!Equipped.TryGetValue(slotId, out var l))
             Equipped[slotId] = l = new System.Collections.Generic.List<string>();
         l.Add(weapon.Id);
+        if (!GroupMap.TryGetValue(slotId, out var g))
+            GroupMap[slotId] = g = new System.Collections.Generic.List<int>();
+        g.Add(DefaultGroupFor(weapon));
         return null;
     }
 
@@ -307,7 +347,8 @@ public sealed class LoadoutState
         if (!Equipped.TryGetValue(slotId, out var l) || l.Count == 0) return false;
         removedId = l[l.Count - 1];
         l.RemoveAt(l.Count - 1);
-        if (l.Count == 0) Equipped.Remove(slotId);
+        if (GroupMap.TryGetValue(slotId, out var g) && g.Count == l.Count + 1) g.RemoveAt(g.Count - 1);
+        if (l.Count == 0) { Equipped.Remove(slotId); GroupMap.Remove(slotId); }
         return true;
     }
 
@@ -318,15 +359,17 @@ public sealed class LoadoutState
         if (!Equipped.TryGetValue(slotId, out var l) || index < 0 || index >= l.Count) return false;
         removedId = l[index];
         l.RemoveAt(index);
-        if (l.Count == 0) Equipped.Remove(slotId);
+        if (GroupMap.TryGetValue(slotId, out var g) && index < g.Count) g.RemoveAt(index);
+        if (l.Count == 0) { Equipped.Remove(slotId); GroupMap.Remove(slotId); }
         return true;
     }
 
-    public void Clear(string slotId) => Equipped.Remove(slotId);
+    public void Clear(string slotId) { Equipped.Remove(slotId); GroupMap.Remove(slotId); }
 
     public void Strip()
     {
         Equipped.Clear();
+        GroupMap.Clear();
     }
 
     public float TotalWeaponWeight

@@ -523,7 +523,7 @@ public partial class RiderLab : Control
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
-        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint — or click the icon, then click a hardpoint. A hardpoint fits as many weapons of its type as its tonnage allows. Click an occupied hardpoint with nothing selected to remove its last weapon; right-click empties it." };
+        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint — or click the icon, then click a hardpoint. A hardpoint fits as many weapons of its type as its tonnage allows. Click an occupied hardpoint with nothing selected to remove its last weapon; right-click empties it. The G-button on a fitted weapon sets its firing group (keys 1-6 in the duel)." };
         sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
@@ -871,7 +871,7 @@ public partial class RiderLab : Control
                     textW = Mathf.Max(textW, font.GetStringSize(d.Name, HorizontalAlignment.Left, -1f, 13).X);
                     textW = Mathf.Max(textW, font.GetStringSize(Metrics(d), HorizontalAlignment.Left, -1f, 11).X);
                 }
-                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + 40f + 7f + textW + 4f;
+                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + 40f + 7f + textW + 7f + 38f + 4f;
             }
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
@@ -918,10 +918,29 @@ public partial class RiderLab : Control
                 mt.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
                 texts.AddChild(mt);
                 rhb.AddChild(texts);
+                // Firing-group pick (owner): the G-button cycles
+                // this weapon's group 1..6; the duel fires the
+                // group as one volley and the dashboard lists
+                // groups, not types.
+                var grpBtn = new Button
+                {
+                    Text = $"G{Loadout.GroupAt(sid, idx)}",
+                    CustomMinimumSize = new Vector2(38, 40),
+                    TooltipText = "Firing group — click to change"
+                };
+                grpBtn.AddThemeFontSizeOverride("font_size", 12);
+                grpBtn.Pressed += () =>
+                {
+                    int n = Loadout.GroupAt(sid, idx);
+                    Loadout.SetGroup(sid, idx, n % LoadoutState.MaxGroup + 1);
+                    Refresh();
+                };
+                rhb.AddChild(grpBtn);
                 rowPanel.GuiInput += (InputEvent e) =>
                 {
                     if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
                     {
+                        if (grpBtn.GetGlobalRect().HasPoint(mb.GlobalPosition)) return; // the G-button's click is not a removal
                         if (Loadout.RemoveAt(sid, idx, out var rid))
                             SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
                         Refresh();

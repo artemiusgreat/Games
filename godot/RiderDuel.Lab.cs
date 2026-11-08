@@ -59,7 +59,7 @@ public partial class RiderDuel
             _labOpen = false;
             _cross.Visible = true; // the target cursor returns on deploy (owner: it must not show in the lab)
             if (_labLight != null) _labLight.Visible = false;
-            _panel.Visible = true;
+            SetHudPanelsVisible(true);
             _radar.Visible = true;
             _feedLabel.Visible = true;
             Input.MouseMode = Input.MouseModeEnum.Captured;
@@ -221,18 +221,37 @@ public partial class RiderDuel
         // _def* fields stay as each group's representative (the
         // slowest-cooldown weapon) for HUD bars and labels.
         _gunsEnergy.Clear(); _gunsBallistic.Clear(); _podGunsL.Clear(); _podGunsR.Clear();
+        _groups.Clear();
         int missileIdx = 0;
         foreach (var slot in _playerSpec.Slots)
         {
-            var bucket = slot.Type == WeaponSlotType.Energy ? _gunsEnergy
-                : slot.Type == WeaponSlotType.Ballistic ? _gunsBallistic
-                : missileIdx++ == 0 ? _podGunsL : _podGunsR; // missile slots in order: left pod, right pod
-            foreach (var wid in _loadout.WeaponsIn(slot.Id))
+            int path = slot.Type == WeaponSlotType.Energy ? 0
+                : slot.Type == WeaponSlotType.Ballistic ? 1
+                : missileIdx++ == 0 ? 2 : 3; // missile slots in order: left pod, right pod
+            var bucket = path == 0 ? _gunsEnergy : path == 1 ? _gunsBallistic
+                : path == 2 ? _podGunsL : _podGunsR;
+            var fitted = _loadout.WeaponsIn(slot.Id);
+            for (int fi = 0; fi < fitted.Count; fi++)
             {
-                var def = WeaponCatalog.ById(wid);
-                if (def != null) bucket.Add((slot.Id, def));
+                var def = WeaponCatalog.ById(fitted[fi]);
+                if (def == null) continue;
+                bucket.Add((slot.Id, def));
+                // The player's lab-assigned firing group for this
+                // exact fitted weapon (owner).
+                int num = _loadout.GroupAt(slot.Id, fi);
+                var grp = _groups.Find(g => g.Num == num);
+                if (grp == null) { grp = new WpnGroup { Num = num }; _groups.Add(grp); }
+                grp.Guns.Add((slot.Id, def, path));
             }
         }
+        _groups.Sort((x, y) => x.Num.CompareTo(y.Num));
+        foreach (var grp in _groups)
+        {
+            grp.SlowCd = 0f;
+            foreach (var g in grp.Guns) grp.SlowCd = Mathf.Max(grp.SlowCd, g.Def.Cooldown);
+            grp.Label = GroupComposition(grp);
+        }
+        if (_weaponSel >= _groups.Count) _weaponSel = 0;
         _defEnergy = Slowest(_gunsEnergy);
         _defBallistic = Slowest(_gunsBallistic);
         _defPodL = Slowest(_podGunsL);
@@ -240,9 +259,6 @@ public partial class RiderDuel
         string eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
         _enemyBallisticSlot = eb;
         _defEnemyBallistic = eb == null ? null : WeaponCatalog.ById(_enemyLoadout.WeaponIn(eb));
-        _wpnShort[0] = "1 " + GroupLabel(_gunsEnergy);
-        _wpnShort[1] = "2 " + GroupLabel(_gunsBallistic);
-        _wpnShort[2] = "3 " + GroupLabel(_podGunsL, _podGunsR);
         GD.Print($"LAB loadout energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"} total={_loadout.TotalWeaponWeight:F0}t");
     }
 
@@ -253,11 +269,28 @@ public partial class RiderDuel
         return best;
     }
 
-    private static string GroupLabel(params System.Collections.Generic.List<(string Slot, WeaponDef Def)>[] groups)
+    // A group's dashboard label: its distinct weapons in
+    // fitting order with counts - "LL x2 + AC" for a mixed
+    // group the player built in the lab.
+    private static string GroupComposition(WpnGroup grp)
     {
-        int n = 0; string first = null;
-        foreach (var g in groups) foreach (var gun in g) { if (first == null) first = gun.Def.Short; n++; }
-        return first == null ? "—" : n > 1 ? $"{first} ×{n}" : first;
+        var parts = new System.Collections.Generic.List<string>();
+        var counts = new System.Collections.Generic.List<int>();
+        foreach (var g in grp.Guns)
+        {
+            int i = parts.IndexOf(g.Def.Short);
+            if (i < 0) { parts.Add(g.Def.Short); counts.Add(1); }
+            else counts[i]++;
+        }
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < parts.Count; i++)
+        {
+            if (i > 0) sb.Append(" + ");
+            sb.Append(parts[i]);
+            if (counts[i] > 1) sb.Append(" x").Append(counts[i]);
+        }
+        return parts.Count == 0 ? "-" : sb.ToString();
     }
+
 
 }
