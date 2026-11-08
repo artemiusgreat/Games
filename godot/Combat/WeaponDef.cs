@@ -39,6 +39,10 @@ public sealed class WeaponDef
     // and the LBX AC 20's 300), Machine Gun the Clan Machine
     // Gun Array's 200 (over the IS array's 150).
     public float Range;
+    // True when the RiderLab offers this weapon for mounting.
+    // Resolution (ById, loadouts, knockdown weight) never
+    // consults it — it only filters the lab's pick list.
+    public bool CatalogListed = true;
 
     public float PerRocketWeight => Rockets > 0 ? Weight / Rockets : Weight;
 }
@@ -67,22 +71,24 @@ public static class WeaponCatalog
     public static readonly WeaponDef Lrm = new()
     { Id = "lrm", Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f, Range = 1000f };
 
-    // The Hector's fixed cannon (not player-mountable in the lab list,
-    // but its weight still counts for knockdown).
-    public static readonly WeaponDef HectorAc20 = new()
-    { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 300f, MuzzleSpeed = 420f };
+    // The AC/20 is a catalog weapon like any other — it ships
+    // fitted in the default fits that carry it (Hector's waist
+    // gun, Prometheus's arm). It is excluded only from the
+    // lab's mount list (CatalogListed = false), never from
+    // resolution: no per-rider special cases in the engine.
+    public static readonly WeaponDef Ac20 = new()
+    { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 300f, MuzzleSpeed = 420f, CatalogListed = false };
 
     public static readonly WeaponDef[] All =
     {
         SmallLaser, MediumLaser, LargeLaser, Ppc,
-        MachineGun, Autocannon, HeavyCannon,
+        MachineGun, Autocannon, HeavyCannon, Ac20,
         Srm, Lrm
     };
 
     public static WeaponDef ById(string id)
     {
         foreach (var w in All) if (w.Id == id) return w;
-        if (id == HectorAc20.Id) return HectorAc20; // fixed enemy cannon: resolvable, just not catalog-listed
         return null;
     }
 }

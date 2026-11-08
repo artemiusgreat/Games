@@ -592,7 +592,7 @@ public partial class RiderLab : Control
             rowsBox.AddChild(gh);
             foreach (var w in WeaponCatalog.All)
             {
-            if (w.Type != gType) continue;
+            if (w.Type != gType || !w.CatalogListed) continue;
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
             var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true }; // row sized to fit the tile with air around it
