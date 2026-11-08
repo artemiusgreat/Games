@@ -51,24 +51,31 @@ public partial class RiderDuel
                 _baseMarks[i] = l;
             }
         }
-        // ---- Cockpit control panel: one console strip along the bottom
-        // holding rider integrity, per-part status, weapon charge with the
-        // selected weapon marked, and target/system readouts.
-        _panel = new PanelContainer();
-        _panel.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-        _panel.OffsetLeft = 16; _panel.OffsetRight = -16;
-        _panel.OffsetTop = -172; _panel.OffsetBottom = -14;
-        var pbg = new StyleBoxFlat
+        // ---- Cockpit info blocks in the screen corners (owner:
+        // no more bottom dashboard): weapon groups top-left, own
+        // integrity bottom-left, target/systems bottom-right,
+        // radar top-right. Each block is its own panel, fitted to
+        // its content every frame (FitCornerPanels).
+        PanelContainer CornerPanel(Control.LayoutPreset preset)
         {
-            BgColor = new Color(0.055f, 0.075f, 0.105f, 0.58f),
-            BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.55f),
-            ContentMarginLeft = 16, ContentMarginRight = 16,
-            ContentMarginTop = 10, ContentMarginBottom = 10,
-        };
-        pbg.SetBorderWidthAll(2);
-        pbg.SetCornerRadiusAll(8);
-        _panel.AddThemeStyleboxOverride("panel", pbg);
-        layer.AddChild(_panel);
+            var p = new PanelContainer();
+            p.SetAnchorsPreset(preset);
+            var sb = new StyleBoxFlat
+            {
+                BgColor = new Color(0.055f, 0.075f, 0.105f, 0.58f),
+                BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.55f),
+                ContentMarginLeft = 16, ContentMarginRight = 16,
+                ContentMarginTop = 10, ContentMarginBottom = 10,
+            };
+            sb.SetBorderWidthAll(2);
+            sb.SetCornerRadiusAll(8);
+            p.AddThemeStyleboxOverride("panel", sb);
+            layer.AddChild(p);
+            return p;
+        }
+        _panelWeapons = CornerPanel(Control.LayoutPreset.TopLeft);
+        _panelHealth = CornerPanel(Control.LayoutPreset.BottomLeft);
+        _panelTarget = CornerPanel(Control.LayoutPreset.BottomRight);
 
         // Radar scope, top-right (owner): player-centered, north-up.
         _radar = new RadarView
@@ -77,7 +84,6 @@ public partial class RiderDuel
             Enemy = _enemy,
             CustomMinimumSize = new Vector2(168f, 168f)
         };
-        _radar.Buildings.AddRange(_buildingPts);
         _radar.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         _radar.OffsetLeft = -184f;
         _radar.OffsetTop = 16f;
@@ -86,9 +92,6 @@ public partial class RiderDuel
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
         layer.AddChild(_radar);
 
-        var hbox = new HBoxContainer();
-        hbox.AddThemeConstantOverride("separation", 20);
-        _panel.AddChild(hbox);
 
         Label Title(string t)
         {
@@ -100,7 +103,7 @@ public partial class RiderDuel
         // -- Left: own rider integrity + per-part status grid.
         var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(372, 0) };
         leftBox.AddThemeConstantOverride("separation", 4);
-        hbox.AddChild(leftBox);
+        _panelHealth.AddChild(leftBox);
         _lblPlayerHp = MakeLabel(16, new Color(0.85f, 0.95f, 0.85f));
         leftBox.AddChild(_lblPlayerHp);
         _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(372, 20));
@@ -126,14 +129,13 @@ public partial class RiderDuel
             _partCells[id] = (lab, bar);
         }
 
-        hbox.AddChild(new VSeparator());
 
         // -- Center: weapons. The selected row is marked with a pointer
         // and bright text (set in UpdateHud); the hint line teaches the
         // switching scheme in-game.
         var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(308, 0) };
         midBox.AddThemeConstantOverride("separation", 4);
-        hbox.AddChild(midBox);
+        _panelWeapons.AddChild(midBox);
         midBox.AddChild(Title("WEAPONS"));
         (Label, ProgressBar, TriMark) CdRow(string name)
         {
@@ -141,7 +143,8 @@ public partial class RiderDuel
             row.AddThemeConstantOverride("separation", 8);
             var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(84, 0); // fits the longest row text at one width for all rows
+            lab.CustomMinimumSize = new Vector2(168, 0); // one width for all rows; group compositions are longer than the old type tags
+            lab.ClipText = true;
             row.AddChild(lab);
             var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(218, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
@@ -165,12 +168,15 @@ public partial class RiderDuel
             midBox.AddChild(row);
             return (lab, bar, mark);
         }
-        var rowLaser = CdRow("1 LAS");
-        _lblCdLaser = rowLaser.Item1; _cdBarLaser = rowLaser.Item2; _markLaser = rowLaser.Item3;
-        var rowAc = CdRow("2 AC");
-        _lblCdAc = rowAc.Item1; _cdBarAc = rowAc.Item2; _markAc = rowAc.Item3;
-        var rowLrm = CdRow("3 LRM");
-        _lblCdLrm = rowLrm.Item1; _cdBarLrm = rowLrm.Item2; _markLrm = rowLrm.Item3;
+        // One row per lab firing group (owner): the groups the
+        // player actually built — UpdateHud fills and shows
+        // only the rows that exist.
+        for (int gi = 0; gi < LoadoutState.MaxGroup; gi++)
+        {
+            var row = CdRow("—");
+            _grpLabels[gi] = row.Item1; _grpBars[gi] = row.Item2; _grpMarks[gi] = row.Item3;
+            _grpRows[gi] = row.Item1.GetParent() as Control;
+        }
         var rowThr = CdRow("THRUST");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         // No controls hint line (owner: remove the introductory
@@ -178,12 +184,11 @@ public partial class RiderDuel
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         midBox.AddChild(_lblWeaponStatus);
 
-        hbox.AddChild(new VSeparator());
 
         // -- Right: target + own systems readouts.
         var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
         rightBox.AddThemeConstantOverride("separation", 4);
-        hbox.AddChild(rightBox);
+        _panelTarget.AddChild(rightBox);
         _lblEnemyHp = MakeLabel(16, new Color(0.98f, 0.85f, 0.8f));
         rightBox.AddChild(_lblEnemyHp);
         _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
@@ -432,7 +437,7 @@ public partial class RiderDuel
     private void UpdateBaseMarks()
     {
         if (_baseMarks == null) return;
-        bool show = _panel.Visible && !_labOpen && _cam != null;
+        bool show = _panelHealth.Visible && !_labOpen && _cam != null;
         var vp = GetViewport().GetVisibleRect().Size;
         for (int i = 0; i < _baseMarks.Length; i++)
         {
@@ -464,9 +469,10 @@ public partial class RiderDuel
         UpdateBaseMarks();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
         _lblPlayerHp.Text = $"{_playerSpec.Name} — {_hpPlayer:F0} HP";
-        bool lasDead = !WeaponAlive(0);
-        bool acDead = !WeaponAlive(1);
-        bool lrmDead = !WeaponAlive(2);
+        // Group aliveness (owner's lab groups): a group is
+        // dead when every mounting part that carries it is lost.
+        var grpDead = new bool[_groups.Count];
+        for (int gi = 0; gi < _groups.Count; gi++) grpDead[gi] = !WeaponAlive(gi);
 
         // ONE active enemy (owner): Tab cycles the living foes,
         // and the red bar belongs to the active one only — and
@@ -486,12 +492,12 @@ public partial class RiderDuel
                           tgt.W.RootPos.Z - _player.RootPos.Z).Length()
             : float.MaxValue;
         float reach = 0f;
-        if (!lasDead && _defEnergy != null) reach = Mathf.Max(reach, _defEnergy.Range);
-        if (!acDead && _defBallistic != null) reach = Mathf.Max(reach, _defBallistic.Range);
-        if (!lrmDead)
+        for (int gi = 0; gi < _groups.Count; gi++)
         {
-            if (_defPodL != null) reach = Mathf.Max(reach, _defPodL.Range);
-            if (_defPodR != null) reach = Mathf.Max(reach, _defPodR.Range);
+            if (grpDead[gi]) continue;
+            foreach (var g in _groups[gi].Guns)
+                if (_partsPlayer.Alive(g.Slot))
+                    reach = Mathf.Max(reach, g.Def.Range);
         }
         bool tgtShown = tgt.W != null && !tgt.Dead && tgtRange <= reach;
         _lblEnemyHp.Visible = tgtShown;
@@ -504,11 +510,16 @@ public partial class RiderDuel
         // The second foe's own readout is retired — one target only.
         _lblFoeHp.Visible = false;
         _barFoe.Visible = false;
-        float lrmCd = Mathf.Max(_defPodL?.Cooldown ?? 0f, _defPodR?.Cooldown ?? 0f);
-        if (lrmCd <= 0f) lrmCd = 3.5f;
-        UpdateCdRow(_cdBarLaser, _lblCdLaser, 1f - _cdLaser / (_defEnergy?.Cooldown ?? 0.45f), lasDead, _denyLaserT);
-        UpdateCdRow(_cdBarAc, _lblCdAc, 1f - _cdAc / (_defBallistic?.Cooldown ?? 0.85f), acDead, _denyAcT);
-        UpdateCdRow(_cdBarLrm, _lblCdLrm, 1f - _cdLrm / lrmCd, lrmDead, _denyLrmT);
+        for (int gi = 0; gi < LoadoutState.MaxGroup; gi++)
+        {
+            bool exists = gi < _groups.Count;
+            if (_grpRows[gi] != null) _grpRows[gi].Visible = exists;
+            if (!exists) continue;
+            var grp = _groups[gi];
+            float frac = grp.SlowCd > 0f ? 1f - grp.Cd / grp.SlowCd : 1f;
+            UpdateCdRow(_grpBars[gi], _grpLabels[gi], frac, grpDead[gi], grp.DenyT);
+            SetSelLabel(_grpLabels[gi], _grpMarks[gi], $"{grp.Num} {grp.Label}", _weaponSel == gi, grpDead[gi]);
+        }
         // Thrusters (owner): charge readout alongside the weapon
         // cooldowns — teal when the full jump charge is ready.
         if (_cdBarThr != null)
@@ -521,9 +532,6 @@ public partial class RiderDuel
             _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
             _lblThr.Text = !fitted ? "THRUST —" : _player.Airborne ? "THRUST ▲" : "THRUST";
         }
-        SetSelLabel(_lblCdLaser, _markLaser, _wpnShort[0], _weaponSel == 0, lasDead);
-        SetSelLabel(_lblCdAc, _markAc, _wpnShort[1], _weaponSel == 1, acDead);
-        SetSelLabel(_lblCdLrm, _markLrm, _wpnShort[2], _weaponSel == 2, lrmDead);
 
         // Per-part status cells (player rider).
         foreach (var (id, cell) in _partCells)
@@ -581,8 +589,8 @@ public partial class RiderDuel
         }
 
         var status = new System.Collections.Generic.List<string>();
-        if (lasDead && _defEnergy != null) status.Add("ENERGY WEAPONS DESTROYED — ALL MOUNTS LOST");
-        if (acDead && _defBallistic != null) status.Add("BALLISTIC WEAPONS DESTROYED — ALL MOUNTS LOST");
+        for (int gi = 0; gi < _groups.Count; gi++)
+            if (grpDead[gi]) status.Add($"GROUP {_groups[gi].Num} DESTROYED — ALL MOUNTS LOST");
         // Pod status: only for pods the chassis actually HAS (the
         // Hector carries a single rack — an absent right pod is not
         // a "lost" one). Wording follows the equipped pod weapon.
@@ -591,10 +599,8 @@ public partial class RiderDuel
         int podRocketsL = 0, podRocketsR = 0;
         foreach (var g in _podGunsL) podRocketsL += g.Def.Rockets;
         foreach (var g in _podGunsR) podRocketsR += g.Def.Rockets;
-        if (lrmDead && (_defPodL != null || _defPodR != null))
-            status.Add(hasPodL && hasPodR ? $"{podName} DESTROYED — BOTH PODS LOST" : $"{podName} DESTROYED — POD LOST");
-        else if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L")) status.Add($"{podName} DEGRADED — LEFT POD LOST ({podRocketsL} ROCKETS)");
-        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R")) status.Add($"{podName} DEGRADED — RIGHT POD LOST ({podRocketsR} ROCKETS)");
+        if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L") && (podRocketsR > 0 || !hasPodR)) status.Add($"{podName} DEGRADED — LEFT POD LOST ({podRocketsL} ROCKETS)");
+        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R") && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED — RIGHT POD LOST ({podRocketsR} ROCKETS)");
         if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED — CROSSHAIR SWAY");
         _lblWeaponStatus.Text = string.Join("\n", status);
 
@@ -606,12 +612,39 @@ public partial class RiderDuel
         float alpha = 1f;
         if (_hudFlickerT > 0f)
             alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
-        foreach (var c in new Control[] { _panel, _feedLabel, _cross })
+        foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _feedLabel, _cross })
         {
             var m = c.Modulate;
             m.A = alpha;
             c.Modulate = m;
         }
+        FitCornerPanels();
+    }
+
+    private void SetHudPanelsVisible(bool v)
+    {
+        if (_panelHealth != null) _panelHealth.Visible = v;
+        if (_panelWeapons != null) _panelWeapons.Visible = v;
+        if (_panelTarget != null) _panelTarget.Visible = v;
+    }
+
+    // Corner blocks hug their content: widths and heights come
+    // from the panels' combined minimum sizes, re-fitted as
+    // group rows and status lines come and go. The event feed
+    // rides under the weapons block.
+    private void FitCornerPanels()
+    {
+        if (_panelWeapons == null) return;
+        var ws = _panelWeapons.GetCombinedMinimumSize();
+        _panelWeapons.OffsetLeft = 16; _panelWeapons.OffsetTop = 14;
+        _panelWeapons.OffsetRight = 16 + ws.X; _panelWeapons.OffsetBottom = 14 + ws.Y;
+        var hs = _panelHealth.GetCombinedMinimumSize();
+        _panelHealth.OffsetLeft = 16; _panelHealth.OffsetBottom = -14;
+        _panelHealth.OffsetRight = 16 + hs.X; _panelHealth.OffsetTop = -14 - hs.Y;
+        var ts = _panelTarget.GetCombinedMinimumSize();
+        _panelTarget.OffsetRight = -16; _panelTarget.OffsetBottom = -14;
+        _panelTarget.OffsetLeft = -16 - ts.X; _panelTarget.OffsetTop = -14 - ts.Y;
+        if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
     }
 
     private void UpdateDroop(float dt)
