@@ -387,19 +387,28 @@ public partial class RiderDuel
 
     private bool ScatterFree(Vector2 p, float clearR)
     {
-        // lanes (x0, x1, z0, z1)
-        if (p.X > -5.5f && p.X < 5.5f && p.Y > -23f && p.Y < 37f) return false;
-        if (p.X > 16f && p.X < 28f && p.Y > -23f && p.Y < 31f) return false;
-        if (p.X > 2f && p.X < 10.5f && p.Y > 9f && p.Y < 33f) return false;
-        var pads = new (float X, float Z, float R)[]
+        // The lanes and pads below are TOURNAMENT test
+        // choreography around the arena origin. In Mission mode
+        // they are meaningless — the riders spawn 620u out — and
+        // they sat exactly on the city district, silently eating
+        // a third of its plots (measured: 13 plots + 46 block
+        // slots rejected). Mission keeps only the prop spacing.
+        if (!WorldConfig.IsMission)
         {
-            (0f, 30f, 7f), (0f, -16f, 7f), (0f, 18f, 7f), (0f, -12f, 7f),
-            (0f, 20f, 7f), (0f, -10f, 7f), (22f, 24f, 7f), (22f, -16f, 7f),
-            (-38f, 38f, 7.5f), (0f, 24f, 7f), (20f, 2f, 6f), (6f, 27f, 5.5f),
-            (0f, 10f, 6f), (0f, -2f, 6f)
-        };
-        foreach (var pad in pads)
-            if (p.DistanceTo(new Vector2(pad.X, pad.Z)) < pad.R + clearR) return false;
+            // lanes (x0, x1, z0, z1)
+            if (p.X > -5.5f && p.X < 5.5f && p.Y > -23f && p.Y < 37f) return false;
+            if (p.X > 16f && p.X < 28f && p.Y > -23f && p.Y < 31f) return false;
+            if (p.X > 2f && p.X < 10.5f && p.Y > 9f && p.Y < 33f) return false;
+            var pads = new (float X, float Z, float R)[]
+            {
+                (0f, 30f, 7f), (0f, -16f, 7f), (0f, 18f, 7f), (0f, -12f, 7f),
+                (0f, 20f, 7f), (0f, -10f, 7f), (22f, 24f, 7f), (22f, -16f, 7f),
+                (-38f, 38f, 7.5f), (0f, 24f, 7f), (20f, 2f, 6f), (6f, 27f, 5.5f),
+                (0f, 10f, 6f), (0f, -2f, 6f)
+            };
+            foreach (var pad in pads)
+                if (p.DistanceTo(new Vector2(pad.X, pad.Z)) < pad.R + clearR) return false;
+        }
         foreach (var c in _props)
             if (p.DistanceTo(c.P) < c.R + clearR + 2.0f) return false;
         return true;
@@ -1251,16 +1260,81 @@ public partial class RiderDuel
         {
             if (i == 0 && j == 0) continue; // the plaza
             if (rng.NextDouble() < 0.10) continue;
-            var pt = new Vector2(
+            var c = new Vector2(
                 i * p + (float)(rng.NextDouble() - 0.5) * 3f,
                 j * p + (float)(rng.NextDouble() - 0.5) * 3f);
-            var size = new Vector3(
-                17f + (float)rng.NextDouble() * 7f,
-                22f + (float)rng.NextDouble() * 16f,
-                17f + (float)rng.NextDouble() * 7f);
-            if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + 2.5f)) continue;
-            if (TerrainGrade(pt.X, pt.Y) > 0.4f) continue;
+            if (!ScatterFree(c, 14f)) continue;
+            if (TerrainGrade(c.X, c.Y) > 0.4f) continue;
+            PlaceCityBlock(rng, c, ref placed);
+        }
+    }
+
+    private readonly System.Collections.Generic.List<(Vector2 C, Vector2 H)> _districtBoxes = new();
+
+    // District blocks pack tighter than the generic circle
+    // spacing allows: a square's registered circle radius is
+    // its half-diagonal, so the circle test demands ~40% more
+    // room than the boxes need and killed half the block slots
+    // (measured). Blocks test true box overlap against the
+    // district's own placements instead, plus the nature-prop
+    // circles (buildings register RoofTop circles; trees and
+    // rocks don't).
+    private bool BlockFree(Vector2 pt, Vector3 size)
+    {
+        var h = new Vector2(size.X, size.Z) / 2f;
+        foreach (var b in _districtBoxes)
+            if (Mathf.Abs(pt.X - b.C.X) < h.X + b.H.X + 1.5f &&
+                Mathf.Abs(pt.Y - b.C.Y) < h.Y + b.H.Y + 1.5f)
+                return false;
+        foreach (var c in _props)
+        {
+            if (c.RoofTop > 0f) continue; // building circles are not nature props
+            if (pt.DistanceTo(c.P) < c.R + Mathf.Max(h.X, h.Y) + 2f) return false;
+        }
+        _districtBoxes.Add((pt, h));
+        return true;
+    }
+
+    // One district plot becomes a city block in the owner's
+    // reference image: several buildings of MIXED heights on a
+    // single block — low podiums beside a tower — with the gaps
+    // between blocks reading as streets. 2x2 sub-plots, 2-4
+    // filled; every block carries at least one low building
+    // (9-16u) and one tall one (26-39u).
+    private void PlaceCityBlock(System.Random rng, Vector2 c, ref int placed)
+    {
+        var slots = new System.Collections.Generic.List<Vector2>
+        {
+            new(-8.5f, -8.5f), new(8.5f, -8.5f), new(-8.5f, 8.5f), new(8.5f, 8.5f)
+        };
+        for (int i = slots.Count - 1; i > 0; i--)
+        { int j = rng.Next(i + 1); (slots[i], slots[j]) = (slots[j], slots[i]); }
+        int n = 2 + (rng.NextDouble() < 0.65 ? 1 : 0)
+                  + (rng.NextDouble() < 0.40 ? 1 : 0);
+        var heights = new System.Collections.Generic.List<float>
+        {
+            9f + (float)rng.NextDouble() * 7f,
+            26f + (float)rng.NextDouble() * 13f
+        };
+        for (int i = 2; i < n; i++)
+            heights.Add(rng.NextDouble() < 0.5
+                ? 9f + (float)rng.NextDouble() * 9f
+                : 17f + (float)rng.NextDouble() * 12f);
+        for (int i = heights.Count - 1; i > 0; i--)
+        { int j = rng.Next(i + 1); (heights[i], heights[j]) = (heights[j], heights[i]); }
+        for (int k = 0; k < n; k++)
+        {
+            var pt = c + slots[k] + new Vector2(
+                (float)(rng.NextDouble() * 3 - 1.5),
+                (float)(rng.NextDouble() * 3 - 1.5));
+            // Footprints stay slim (10-13u): at the old 11-15u
+            // the four boxes of a block genuinely overlapped at
+            // 16u slot spacing and the overlap test ate them.
+            float fw = 10f + (float)rng.NextDouble() * 3f;
+            var size = new Vector3(fw, heights[k],
+                fw * (0.8f + (float)rng.NextDouble() * 0.35f));
             if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
+            if (!BlockFree(pt, size)) continue;
             AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
             placed++;
         }
