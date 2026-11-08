@@ -471,8 +471,9 @@ void fragment() {
 
         // Backdrop ring by biome: forest keeps its tree ring
         // (visual only; on the Mission front it rings the rim),
-        // the desert gets bare rock outcrops, the city gets the
-        // skyline RiderDuel.BuildSkyline raises (no ring here).
+        // the desert gets bare rock outcrops; the city gets no
+        // ring (owner: no procedural buildings outside the map —
+        // every city building is a gameplay building inside it).
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City) return;
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
         {
