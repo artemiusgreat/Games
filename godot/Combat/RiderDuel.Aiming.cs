@@ -35,7 +35,7 @@ public partial class RiderDuel
     // Where far shells converge: the distance of whatever the
     // crosshair rests on, from the long cast below (the same
     // reach as the HUD rangefinder), or 1500u for open sky.
-    private float _farConverge = 1500f;
+    private float _farConverge = Aim.FarRange;
     // The one aim direction: the mouse's world yaw and the
     // effective pitch (the wide mouse pitch when the player has
     // taken it past the torso clamp, else the torso's own pitch —
@@ -66,12 +66,12 @@ public partial class RiderDuel
         // shot converges on the far point of the axis itself.
         // Live play always runs the chase camera; harness proof
         // poses keep the chest logic below.
-        if (_camMode == "chase")
+        if (_camMode == CamModes.Chase)
         {
             var camPos = _cam.GlobalPosition;
-            var viewHit = _hit.Ray(camPos, dir, 220f, "PLAYER");
+            var viewHit = _hit.Ray(camPos, dir, Aim.ConvergenceRange, Roles.Player);
             _aimTarget = viewHit.Hit ? viewHit.Target : "";
-            _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * 220f;
+            _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * Aim.ConvergenceRange;
             _aimParallel = !viewHit.Hit;
             if (_aimParallel)
             {
@@ -80,16 +80,16 @@ public partial class RiderDuel
                 // the rangefinder's reach) so far shells can
                 // converge on THAT point and land on the
                 // crosshair at mission ranges.
-                var farHit = _hit.Ray(camPos, dir, 1500f, "PLAYER");
-                _farConverge = farHit.Hit ? farHit.T : 1500f;
+                var farHit = _hit.Ray(camPos, dir, Aim.FarRange, Roles.Player);
+                _farConverge = farHit.Hit ? farHit.T : Aim.FarRange;
             }
             return _reticlePoint;
         }
         // Fallback (round 11): the chest ray's RIDER/PROP hit within
         // weapon reach, else the free 40u point.
-        var hit = _hit.Ray(from, dir, 200f, "PLAYER");
+        var hit = _hit.Ray(from, dir, 200f, Roles.Player);
         _aimTarget = hit.Hit ? hit.Target : "";
-        if (hit.Hit && hit.T <= 140f && (hit.Target == "ENEMY" || hit.Target == "FOE1" || hit.Target == "PROP"))
+        if (hit.Hit && hit.T <= 140f && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe1 || hit.Target == Roles.Prop))
             return hit.Point;
         return _reticlePoint;
     }

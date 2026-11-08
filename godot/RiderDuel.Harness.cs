@@ -282,7 +282,7 @@ public partial class RiderDuel
                     _playerYaw = 0f; _enemyYaw = Mathf.Pi;
                     _playerVel = Vector3.Zero;
                     _prevPlayerRoot = _player.RootPos;
-                    _camMode = "chase";
+                    _camMode = CamModes.Chase;
                     // Project through the camera the capture will use:
                     // run one camera update now, otherwise the reticle
                     // measurements use last phase's camera pose.
@@ -316,7 +316,7 @@ public partial class RiderDuel
                     var aimWide = TorsoAimPoint();
                     var scrW = _cam.UnprojectPosition(aimWide);
                     var vpW = GetViewport().GetVisibleRect().Size;
-                    if (_aimTarget != "TERRAIN" || aimWide.DistanceTo(_player.RootPos) > 30f || scrW.DistanceTo(vpW * 0.5f) > 10f)
+                    if (_aimTarget != Roles.Terrain || aimWide.DistanceTo(_player.RootPos) > 30f || scrW.DistanceTo(vpW * 0.5f) > 10f)
                     { GD.PrintErr($"DUEL FAIL: wide aim cannot reach the feet (target='{_aimTarget}' dist={aimWide.DistanceTo(_player.RootPos):F1} scr=({scrW.X:F0},{scrW.Y:F0}) center=({vpW.X * 0.5f:F0},{vpW.Y * 0.5f:F0})"); GetTree().Quit(1); break; }
                     if (_player.TorsoPitch < -0.33f)
                     { GD.PrintErr("DUEL FAIL: torso pitch escaped its clamp"); GetTree().Quit(1); break; }
@@ -363,7 +363,7 @@ public partial class RiderDuel
                         _player.TorsoPitch = tp;
                         UpdateCamera(0f);
                         _aimPoint = TorsoAimPoint();
-                        if (_aimTarget == "ENEMY") { onFoe = true; break; }
+                        if (_aimTarget == Roles.Enemy) { onFoe = true; break; }
                     }
                     if (!onFoe)
                     { GD.PrintErr("DUEL FAIL: no pitch puts the crosshair on the Hector"); GetTree().Quit(1); break; }
@@ -503,7 +503,7 @@ public partial class RiderDuel
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
                         _aimStep = 5;
-                        QueueCapture("res://proof/duel_aim.png", "aim", "chase", () =>
+                        QueueCapture("res://proof/duel_aim.png", "aim", CamModes.Chase, () =>
                         {
                             QueueCapture("res://proof/duel_collision_rider.png", "rider", "riderSide");
                             SetPhase(7);
@@ -578,8 +578,8 @@ public partial class RiderDuel
             for (int ix = _lrmImpactBase; ix < _lrmImpacts.Count; ix++)
             {
                 var (target, point) = _lrmImpacts[ix];
-                if (target == "ENEMY") onTarget++;
-                else if (target == "TERRAIN")
+                if (target == Roles.Enemy) onTarget++;
+                else if (target == Roles.Terrain)
                 {
                     onTerrain++;
                     horiz += new Vector2(point.X - _lrmAim.X, point.Z - _lrmAim.Z).Length();
@@ -757,7 +757,7 @@ public partial class RiderDuel
             if (_boomStage == 0)
             {
                 string cap = Mathf.Abs(_boomPitch + 1.35f) < 0.01f ? "down" : Mathf.Abs(_boomPitch) < 0.01f ? "level" : Mathf.Abs(_boomPitch - 1.35f) < 0.01f ? "up" : null;
-                if (cap != null) QueueCapture($"res://proof/boom_{cap}.png", $"boom{cap}", "chase");
+                if (cap != null) QueueCapture($"res://proof/boom_{cap}.png", $"boom{cap}", CamModes.Chase);
             }
             _boomPitch += 0.15f;
             if (_boomPitch > 1.36f)
@@ -923,13 +923,13 @@ public partial class RiderDuel
             var feet = _cam.UnprojectPosition(_player.RootPos);
             GD.Print($"BOOMCHECK city pitch={pitch:F2} camPos={_cam.GlobalPosition} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) viewport={vp}");
             var anch = _player.RootPos + Vector3.Up * (_playerSpec.Height * 1.15f);
-            var blk = _hit.Ray(anch, -AimDirWorld(), 26f, "PLAYER");
+            var blk = _hit.Ray(anch, -AimDirWorld(), 26f, Roles.Player);
             GD.Print($"BOOMDBG root={_player.RootPos} anchor={anch} terrainAtCam={Main.HeightAt(_cam.GlobalPosition.X, _cam.GlobalPosition.Z):F1} blockHit={blk.Hit} blockT={blk.T:F1} blockTarget={blk.Target}");
             foreach (var pc in _hit.Props) if (new Vector2(pc.P.X - _buildingPts[0].X, pc.P.Y - _buildingPts[0].Y).Length() < 12f)
                 GD.Print($"BOOMDBG cyl P={pc.P} R={pc.R:F1} base={pc.BaseY:F1} top={pc.BaseY + pc.Height:F1}");
             int st = _boomCheckStage;
             _boomCheckStage++;
-            QueueCapture($"res://proof/boom_city{st}.png", $"boomcity{st}", "chase");
+            QueueCapture($"res://proof/boom_city{st}.png", $"boomcity{st}", CamModes.Chase);
         }
         else if (_boomCheckStage == 2)
         {
@@ -942,7 +942,7 @@ public partial class RiderDuel
                 _player.AimPitchWide = 0f;
                 _player.TorsoPitch = 0f;
                 UpdateCamera(0f);
-                QueueCapture("res://proof/boom_photo_level.png", "boomphotolevel", "chase",
+                QueueCapture("res://proof/boom_photo_level.png", "boomphotolevel", CamModes.Chase,
                     () => { GD.Print("BOOMCHECK DONE"); GetTree().Quit(); });
             }
             else { GD.Print("BOOMCHECK DONE"); GetTree().Quit(); }
@@ -976,7 +976,7 @@ public partial class RiderDuel
             _viewStage = 1;
             var scr = _cam.UnprojectPosition(chest);
             GD.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) center=({ctr.X:F0},{ctr.Y:F0})");
-            QueueCapture("res://proof/view_hilltop_before.png", "vbefore", "chase", () =>
+            QueueCapture("res://proof/view_hilltop_before.png", "vbefore", CamModes.Chase, () =>
             {
                 _viewPitch = -1.35f;
                 _viewBest = 1e9f;
@@ -1014,7 +1014,7 @@ public partial class RiderDuel
         else if (_viewStage == 3 && _viewT > 0.4f)
         {
             _viewStage = 4;
-            QueueCapture("res://proof/view_hilltop.png", "vafter", "chase", () => GetTree().Quit());
+            QueueCapture("res://proof/view_hilltop.png", "vafter", CamModes.Chase, () => GetTree().Quit());
         }
     }
 
@@ -1144,7 +1144,7 @@ public partial class RiderDuel
                     GD.Print($"ROOF WALK walked={walked:F1}u sole={_player.SoleLevel:F2} err={soleErr:F2}");
                     GD.Print(ok ? "ROOF WALK PASS walked across the roof at roof level" : "ROOF WALK FAIL could not walk on the roof");
                     _roofStage = 4;
-                    QueueCapture("res://proof/roof_stand.png", "roof", "chase", () => GetTree().Quit());
+                    QueueCapture("res://proof/roof_stand.png", "roof", CamModes.Chase, () => GetTree().Quit());
                 }
                 break;
         }
@@ -1442,11 +1442,11 @@ public partial class RiderDuel
                     var dummy = new HitModel.Result
                     {
                         Hit = true,
-                        Target = "PLAYER",
+                        Target = Roles.Player,
                         Zone = "torso",
                         Point = _player.RootPos + Vector3.Up * 8f
                     };
-                    ApplyDamage(_player, 9999f, dummy, "ENEMY");
+                    ApplyDamage(_player, 9999f, dummy, Roles.Enemy);
                     if (!_playerDead) WFail("player death flag not set");
                     if (!_banner.Visible || _banner.Text != "RIDER DESTROYED — press R to reset")
                         WFail($"player banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
@@ -1509,9 +1509,9 @@ public partial class RiderDuel
                     var bc = _wEnvB.Center;
                     var from = _player.RootPos + Vector3.Up * 8f;
                     var aimB = new Vector3(bc.X, bc.Y + 2f, bc.Z);
-                    var ray = _hit.Ray(from, (aimB - from).Normalized(), 30f, "PLAYER");
+                    var ray = _hit.Ray(from, (aimB - from).Normalized(), 30f, Roles.Player);
                     float distB = from.DistanceTo(aimB);
-                    if (ray.Target == "PROP" && ray.T < distB + 2f) { WFail("rubble still blocks shots"); return; }
+                    if (ray.Target == Roles.Prop && ray.T < distB + 2f) { WFail("rubble still blocks shots"); return; }
                     GD.Print("ENVTEST BUILDING PASS collapsed to rubble, colliders removed, shots pass through");
                     // Move to the tree: ONE hit of any kind destroys
                     // it, and its shot-blocking cylinder is gone from
@@ -1546,7 +1546,7 @@ public partial class RiderDuel
                         conv = TorsoAimPoint();
                         // Any PROP along the view line is not enough —
                         // the convergence must be ON this tree's crown.
-                        if (_aimTarget == "PROP" && conv.DistanceTo(crownCtr) < 3.5f) { onCrown = true; break; }
+                        if (_aimTarget == Roles.Prop && conv.DistanceTo(crownCtr) < 3.5f) { onCrown = true; break; }
                     }
                     if (!onCrown) { WFail("no pitch puts the cursor on the crown"); return; }
                     _wEnvChunks0 = _envChunks.Count; // re-baseline at the shot: building pieces dissolve on their own clock (round 21) and must not pollute the splinter delta
@@ -1554,8 +1554,8 @@ public partial class RiderDuel
                     if (_wEnvT.State != 3) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * 8f;
                     var aimT = new Vector3(tc.X, tc.Y + 2f, tc.Z);
-                    var rayT = _hit.Ray(fromT, (aimT - fromT).Normalized(), 30f, "PLAYER");
-                    if (rayT.Target == "PROP" && rayT.T < fromT.DistanceTo(aimT) + 2f) { WFail("destroyed tree still blocks shots"); return; }
+                    var rayT = _hit.Ray(fromT, (aimT - fromT).Normalized(), 30f, Roles.Player);
+                    if (rayT.Target == Roles.Prop && rayT.T < fromT.DistanceTo(aimT) + 2f) { WFail("destroyed tree still blocks shots"); return; }
                     if (_envFxEvents <= _wEnvFx0) { WFail("tree died with NO destruction FX"); return; }
                     int splinters = _envChunks.Count - _wEnvChunks0;
                     if (splinters < 5) { WFail($"tree threw only {splinters} splinters (want 5)"); return; }
@@ -1589,7 +1589,7 @@ public partial class RiderDuel
                     // line silently ran on the chest fallback (the
                     // far Hector passed through it, masking the fact).
                     // Live play is always chase; restore it here.
-                    _camMode = "chase";
+                    _camMode = CamModes.Chase;
                     // FAR TARGET (owner, round 13): at 85u the old
                     // 60u convergence cap rejected the cursor's hit
                     // and shots fell back to the free point — in the
@@ -1608,7 +1608,7 @@ public partial class RiderDuel
                     {
                         _player.TorsoPitch = pp;
                         convF = TorsoAimPoint();
-                        if (_aimTarget == "ENEMY") { onFar = true; break; }
+                        if (_aimTarget == Roles.Enemy) { onFar = true; break; }
                     }
                     if (!onFar) { WFail("no pitch puts the cursor on the far Hector"); return; }
                     _cdLaser = 0f;
@@ -1653,7 +1653,7 @@ public partial class RiderDuel
                             {
                                 _player.TorsoPitch = pp;
                                 convH = TorsoAimPoint();
-                                if (_aimTarget == "TERRAIN" && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
+                                if (_aimTarget == Roles.Terrain && convH.DistanceTo(_player.RootPos) > 60f) { onHill = true; break; }
                             }
                         }
                     }
@@ -1719,11 +1719,11 @@ public partial class RiderDuel
         var hit = new HitModel.Result
         {
             Hit = true,
-            Target = target == _player ? "PLAYER" : "ENEMY",
+            Target = target == _player ? Roles.Player : Roles.Enemy,
             Zone = "torso",
             Point = parts.PartAimPoint(partId)
         };
-        ApplyDamage(target, dmg, hit, target == _player ? "ENEMY" : "PLAYER", weaponWeight);
+        ApplyDamage(target, dmg, hit, target == _player ? Roles.Enemy : Roles.Player, weaponWeight);
     }
 
     // Craft via a real HitModel ray: needed for the TW head, whose
@@ -1745,14 +1745,14 @@ public partial class RiderDuel
             from = aim + Vector3.Up * 5f + fwd * 7f;
         }
         else from = aim + Vector3.Up * 15f;
-        var res = _hit.Ray(from, (aim - from).Normalized(), 40f, target == _player ? "ENEMY" : "PLAYER");
+        var res = _hit.Ray(from, (aim - from).Normalized(), 40f, target == _player ? Roles.Enemy : Roles.Player);
         GD.Print($"BRK CRAFTRAY {partId} hit={res.Hit} target={res.Target} part={res.Part} point={res.Point}");
         if (!res.Hit || res.Part != partId)
         {
             BFail($"craft ray for {partId} attributed '{res.Part}'");
             return;
         }
-        ApplyDamage(target, dmg, res, target == _player ? "ENEMY" : "PLAYER");
+        ApplyDamage(target, dmg, res, target == _player ? Roles.Enemy : Roles.Player);
     }
 
     private void UpdateBreakTest(float dt)
@@ -2281,7 +2281,7 @@ public partial class RiderDuel
             _playerYaw = RiderWalker.YawOf(toEnemy);
             _player.TorsoTwist = 0f;
             _player.AimPitchWide = 0.035f;
-            _camMode = "chase";
+            _camMode = CamModes.Chase;
             GD.Print($"LONGSHOT staged: distToEnemy={toEnemy.Length():F0}u pitch=2deg");
             _lsPhase = 1; _lsT = 0f;
         }
@@ -2373,7 +2373,7 @@ public partial class RiderDuel
         var chest = _enemy.RootPos + Vector3.Up * 7.6f;
         if (_rgPhase == 0 && _rgT > 1.2f)
         {
-            _camMode = "chase";
+            _camMode = CamModes.Chase;
             float d0 = _player.RootPos.DistanceTo(_enemy.RootPos);
             AimAxisAt(chest);
             _rgHp0 = _hpEnemy;
@@ -2405,8 +2405,8 @@ public partial class RiderDuel
             spot.Y = Main.HeightAt(spot.X, spot.Z);
             _enemy.Teleport(spot, RiderWalker.YawOf(-dirE.Rotated(Vector3.Up, ang)));
             AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
-            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 600f, "PLAYER");
-            if (!los.Hit || los.Target != "ENEMY")
+            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 600f, Roles.Player);
+            if (!los.Hit || los.Target != Roles.Enemy)
             {
                 if (++_rgTry > 10) { GD.PrintErr("RANGE FAIL B: no clear lane found for staging"); GetTree().Quit(1); }
                 _rgT = 0f;

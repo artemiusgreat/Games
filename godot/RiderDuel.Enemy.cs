@@ -105,9 +105,9 @@ public partial class RiderDuel
         : _enemyVel;
 
     private string TagOf(RiderWalker w) =>
-        w == _player ? "PLAYER"
-        : _foe1 != null && w == _foe1.Walker ? "FOE1"
-        : "ENEMY";
+        w == _player ? Roles.Player
+        : _foe1 != null && w == _foe1.Walker ? Roles.Foe1
+        : Roles.Enemy;
 
     private RiderWalker WalkerOf(RiderParts parts) =>
         parts == _partsPlayer ? _player
@@ -235,7 +235,7 @@ public partial class RiderDuel
         var (target, vel, tag) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, 0f);
         if (target == null) return;
         UpdateFoeGunnery(_enemy, _partsEnemy, _defEnemyBallistic, _enemyBallisticSlot,
-            "ENEMY", tag, target, vel, () =>
+            Roles.Enemy, tag, target, vel, () =>
             {
                 _cdEnemy = _defEnemyBallistic?.Cooldown ?? 2.4f;
                 _enemyShots++;
@@ -249,7 +249,7 @@ public partial class RiderDuel
         var (target, vel, tag) = PickTarget(_foe1.Walker, _foe1TargetW, ref _foe1.ThinkT, 0f);
         if (target == null) return;
         UpdateFoeGunnery(_foe1.Walker, _foe1.Parts, _foe1.DefBallistic, _foe1.BallisticSlot,
-            "FOE1", tag, target, vel, () => { _foe1.Cd = _foe1.DefBallistic?.Cooldown ?? 0.85f; _foe1Shots++; });
+            Roles.Foe1, tag, target, vel, () => { _foe1.Cd = _foe1.DefBallistic?.Cooldown ?? 0.85f; _foe1Shots++; });
     }
 
     // Cannon gunnery, shared: range + line-of-sight gated, leads

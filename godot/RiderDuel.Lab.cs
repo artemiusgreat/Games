@@ -94,11 +94,11 @@ public partial class RiderDuel
 
     private void RefreshHitCaps()
     {
-        _hit.Riders.RemoveAll(m => m.Id == "PLAYER" || m.Id == "ENEMY" || m.Id == "FOE1");
-        _hit.Riders.Add(new HitModel.RiderCap { Id = "PLAYER", Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
-        _hit.Riders.Add(new HitModel.RiderCap { Id = "ENEMY", Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
+        _hit.Riders.RemoveAll(m => m.Id == Roles.Player || m.Id == Roles.Enemy || m.Id == Roles.Foe1);
+        _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Player, Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
+        _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Enemy, Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
         if (_foe1?.Walker != null)
-            _hit.Riders.Add(new HitModel.RiderCap { Id = "FOE1", Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
+            _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Foe1, Root = () => _foe1.Walker.RootPos, Radius = _foe1.Spec.Radius, Height = _foe1.Spec.Height });
     }
 
     // Foe 1 (free-for-all): the partner chassis — the first

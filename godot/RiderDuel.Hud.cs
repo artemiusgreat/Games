@@ -551,12 +551,12 @@ public partial class RiderDuel
         // sightlines read true; past that it reports the cap.
         // Non-chase views (harness cameras) keep the old
         // active-target reading.
-        if (_camMode == "chase" && _cam != null)
+        if (_camMode == CamModes.Chase && _cam != null)
         {
-            var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 1500f, "PLAYER");
+            var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, Roles.Player);
             _lblRange.Text = rHit.Hit
                 ? $"TARGET RANGE: {_player.RootPos.DistanceTo(rHit.Point):F1} u"
-                : "TARGET RANGE: 1500+ u";
+                : $"TARGET RANGE: {Aim.FarRange:0}+ u";
         }
         else
             _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {tgtRange:F1} u";

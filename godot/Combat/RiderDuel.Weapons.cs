@@ -25,8 +25,8 @@ public partial class RiderDuel
     // upper torso, arm slots from their elbows.
     private Vector3 MuzzleFor(RiderWalker w, string slot)
     {
-        if (slot == "gun") return TorsoGunMuzzle(w);
-        if (slot == "torso")
+        if (slot == SlotIds.Gun) return TorsoGunMuzzle(w);
+        if (slot == SlotIds.Torso)
         {
             var t = w.BoneWorldPos("torso");
             return t + Vector3.Up * 2.0f + RiderWalker.HeadingVec(w.TorsoYawWorld) * 1.6f;
@@ -46,7 +46,7 @@ public partial class RiderDuel
         return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
     }
 
-    private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? "arm_R");
+    private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? SlotIds.ArmR);
 
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
@@ -85,7 +85,7 @@ public partial class RiderDuel
         // fallback on a camera miss: they aim by explicit points
         // from posed cameras.)
         HitModel.Result hit;
-        bool camTruth = _camMode == "chase" && !_labOpen;
+        bool camTruth = _camMode == CamModes.Chase && !_labOpen;
         if (camTruth)
         {
             // The view line is the camera's axis — AimDirWorld,
@@ -97,7 +97,7 @@ public partial class RiderDuel
             // the mouse points by construction, so the axis is the
             // truth in play and in tests alike.
             var camDir = AimDirWorld();
-            hit = _hit.Ray(_cam.GlobalPosition, camDir, maxRange, "PLAYER", 0.9f);
+            hit = _hit.Ray(_cam.GlobalPosition, camDir, maxRange, Roles.Player, 0.9f);
             bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
@@ -109,13 +109,13 @@ public partial class RiderDuel
                 // harness asked for, the muzzle cast is the truth
                 // there. Live play never takes this branch.
                 var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-                hit = _hit.Ray(muzzle, fbDir, maxRange, "PLAYER", 0.9f);
+                hit = _hit.Ray(muzzle, fbDir, maxRange, Roles.Player, 0.9f);
             }
         }
         else
         {
             var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-            hit = _hit.Ray(muzzle, dir, maxRange, "PLAYER", 0.9f);
+            hit = _hit.Ray(muzzle, dir, maxRange, Roles.Player, 0.9f);
         }
         // The beams end where the shot ends (owner): on a hit a
         // beam ends on the hit when ITS weapon reaches it, else
@@ -146,9 +146,9 @@ public partial class RiderDuel
             SpawnImpactLight(hit.Point, new Color(0.55f, 0.9f, 1f), 2.4f, 10f, 0.3f);
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == "ENEMY") foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser"); }
-            else if (hit.Target == "FOE1" && _foe1 != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe1.Walker, g.Def.Damage, hit, "PLAYER", g.Def.Weight, "laser"); }
-            else if (hit.Target == "PROP") foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
+            if (hit.Target == Roles.Enemy) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
+            else if (hit.Target == Roles.Foe1 && _foe1 != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe1.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
+            else if (hit.Target == Roles.Prop) foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
     }
@@ -197,7 +197,7 @@ public partial class RiderDuel
             // the crosshair draws is the line the shell flies.
             // (Rockets keep their solved arcs.)
             (float spd, float grav) = (def.MuzzleSpeed, 0f);
-            var shell = SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, "PLAYER", rocket: false, weaponWeight: def.Weight);
+            var shell = SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, Roles.Player, rocket: false, weaponWeight: def.Weight);
             shell.Life = def.Range / spd; // burns out at the weapon's range (owner)
             PlaySfx(_sfxCannon, muzzle, def.SfxPitch, def.SfxRate);
             SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
@@ -260,7 +260,7 @@ public partial class RiderDuel
     {
         // Rig-true: rockets leave from the pod part's actual center —
         // a chassis may carry a single rack, on either shoulder.
-        string id = left ? "pod_L" : "pod_R";
+        string id = left ? SlotIds.PodL : SlotIds.PodR;
         if (_partsPlayer != null && _partsPlayer.Has(id))
             return _partsPlayer.PartCenterWorld(id) + Vector3.Up * 0.3f;
         var torso = _player.BoneWorldPos("torso");
@@ -311,7 +311,7 @@ public partial class RiderDuel
         float tof = Mathf.Min(dist / baseSpeed, tofMax);
         float speed = dist / tof;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
-        SpawnProjectile(muzzle, vel, grav, def.Damage, def.Splash, "PLAYER", rocket: true, weaponWeight: def.PerRocketWeight);
+        SpawnProjectile(muzzle, vel, grav, def.Damage, def.Splash, Roles.Player, rocket: true, weaponWeight: def.PerRocketWeight);
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
     }
 
@@ -326,12 +326,12 @@ public partial class RiderDuel
 
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
     {
-        RiderWalker direct = hit.Target == "PLAYER" ? _player
-            : hit.Target == "FOE1" && _foe1 != null ? _foe1.Walker
-            : hit.Target == "ENEMY" ? _enemy : null;
+        RiderWalker direct = hit.Target == Roles.Player ? _player
+            : hit.Target == Roles.Foe1 && _foe1 != null ? _foe1.Walker
+            : hit.Target == Roles.Enemy ? _enemy : null;
         if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
-        var roster = new System.Collections.Generic.List<(RiderWalker, string)> { (_player, "PLAYER"), (_enemy, "ENEMY") };
-        if (_foe1 != null) roster.Add((_foe1.Walker, "FOE1"));
+        var roster = new System.Collections.Generic.List<(RiderWalker, string)> { (_player, Roles.Player), (_enemy, Roles.Enemy) };
+        if (_foe1 != null) roster.Add((_foe1.Walker, Roles.Foe1));
         foreach (var (w, id) in roster)
         {
             if (w == direct) continue;
@@ -382,7 +382,7 @@ public partial class RiderDuel
             SpawnBurst(hit.Point, FireParticleMat, 54, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
             SpawnBurst(hit.Point, SmokeParticleMat, 22, 2.6f, 1.4f, 3f, new Vector3(0f, 1.3f, 0f), 0.55f, 1.5f, 2.6f);
             ExplodeSplash(hit, p);
-            if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
+            if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
             return;
         }
         SpawnFlash(hit.Point, new Color(1f, 0.72f, 0.35f), 0.62f, 0.18f);
@@ -391,17 +391,17 @@ public partial class RiderDuel
         SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.13f, 0.6f, 1.1f);
         SpawnBurst(hit.Point, SmokeParticleMat, 9, 1.6f, 1f, 2.2f, new Vector3(0f, 1.2f, 0f), 0.5f, 1.2f, 2f);
         SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
-        if (hit.Target == "PROP") DamageProp(hit.Point, p.Damage);
+        if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
         // Cannon shells scorch what they hit.
         var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
-        if (hit.Target == "PLAYER") SpawnScorch(hit.Point, nrm, _player);
-        else if (hit.Target == "ENEMY") SpawnScorch(hit.Point, nrm, _enemy);
-        else if (hit.Target == "FOE1" && _foe1 != null) SpawnScorch(hit.Point, nrm, _foe1.Walker);
+        if (hit.Target == Roles.Player) SpawnScorch(hit.Point, nrm, _player);
+        else if (hit.Target == Roles.Enemy) SpawnScorch(hit.Point, nrm, _enemy);
+        else if (hit.Target == Roles.Foe1 && _foe1 != null) SpawnScorch(hit.Point, nrm, _foe1.Walker);
         else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
         string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
-        if (hit.Target == "PLAYER") ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
-        else if (hit.Target == "ENEMY") ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
-        else if (hit.Target == "FOE1" && _foe1 != null) ApplyDamage(_foe1.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        else if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        else if (hit.Target == Roles.Foe1 && _foe1 != null) ApplyDamage(_foe1.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
     }
 
     private void ApplyDamage(RiderWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
@@ -433,7 +433,7 @@ public partial class RiderDuel
             else _hpEnemy = Mathf.Max(_hpEnemy - poolDmg, 0f);
         }
         float hp = isPlayer ? _hpPlayer : isFoe1 ? _foe1.Hp : _hpEnemy;
-        GD.Print($"WPN DMG target={(isPlayer ? "PLAYER" : isFoe1 ? "FOE1" : "ENEMY")} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
+        GD.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe1 ? Roles.Foe1 : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
@@ -524,13 +524,13 @@ public partial class RiderDuel
         {
             w.SpeedFactor = 0.25f;
             w.LimpRoll = 0f;
-            GD.Print($"BRK {(w == _player ? "PLAYER" : "ENEMY")} both legs wrecked -> CRAWL (speedFactor 0.25)");
+            GD.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} both legs wrecked -> CRAWL (speedFactor 0.25)");
         }
         else if (lDead || rDead)
         {
             w.SpeedFactor = 0.55f;
             w.LimpRoll = lDead ? 0.10f : -0.10f;
-            GD.Print($"BRK {(w == _player ? "PLAYER" : "ENEMY")} leg wrecked -> LIMP (speedFactor 0.55)");
+            GD.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} leg wrecked -> LIMP (speedFactor 0.55)");
         }
         else
         {

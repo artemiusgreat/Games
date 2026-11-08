@@ -22,7 +22,7 @@ public sealed class HitModel
         public bool Hit;
         public float T;
         public Vector3 Point;
-        public string Target;   // rider id ("PLAYER"/"ENEMY"), "PROP", "TERRAIN", "" = nothing
+        public string Target;   // rider id (Roles.Player/Roles.Enemy), Roles.Prop, Roles.Terrain, "" = nothing
         public string Zone;     // rider hits only: "legs" / "torso" / "head"
         public float ZoneFrac;  // rider hits only: 0 at the sole, 1 at the top
         public string Part;     // rider hits only: breakable part id (via PartResolver), "" if unset
@@ -65,11 +65,11 @@ public sealed class HitModel
         dir = dir.Normalized();
         var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
         float tt = RayTerrain(from, dir, maxDist);
-        if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = "TERRAIN"; }
+        if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = Roles.Terrain; }
         foreach (var p in Props)
         {
             float t = RayCylinder(from, dir, p.P, p.R + inflateProps, p.BaseY, p.Height, best.T);
-            if (t >= 0f) { best.Hit = true; best.T = t; best.Target = "PROP"; }
+            if (t >= 0f) { best.Hit = true; best.T = t; best.Target = Roles.Prop; }
         }
         foreach (var m in Riders)
         {

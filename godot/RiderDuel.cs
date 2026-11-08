@@ -87,7 +87,7 @@ public partial class RiderDuel : Node3D
 
     // capture state
     private bool _frozen, _capturing;
-    private string _pendingPath, _pendingTag, _camMode = "chase";
+    private string _pendingPath, _pendingTag, _camMode = CamModes.Chase;
     private System.Action _afterCapture;
 
     // test choreography
@@ -426,13 +426,13 @@ public partial class RiderDuel : Node3D
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
-        _hit.PartResolver = (id, pt) => id == "PLAYER"
+        _hit.PartResolver = (id, pt) => id == Roles.Player
             ? _partsPlayer.AttributePoint(pt)
-            : id == "FOE1" && _foe1 != null ? _foe1.Parts.AttributePoint(pt)
+            : id == Roles.Foe1 && _foe1 != null ? _foe1.Parts.AttributePoint(pt)
             : _partsEnemy.AttributePoint(pt);
-        _hit.PartRayCast = (id, from, dir, maxDist) => id == "PLAYER"
+        _hit.PartRayCast = (id, from, dir, maxDist) => id == Roles.Player
             ? _partsPlayer.RaycastParts(from, dir, maxDist)
-            : id == "FOE1" && _foe1 != null ? _foe1.Parts.RaycastParts(from, dir, maxDist)
+            : id == Roles.Foe1 && _foe1 != null ? _foe1.Parts.RaycastParts(from, dir, maxDist)
             : _partsEnemy.RaycastParts(from, dir, maxDist);
         _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
         _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
@@ -740,12 +740,12 @@ public partial class RiderDuel : Node3D
                 FireLaser(_enemy.RootPos + Vector3.Up * 6f);
                 FireLrmSalvo(_enemy.RootPos);
             }
-            if (_hectorCamT > 2.5f && _camMode == "chase")
+            if (_hectorCamT > 2.5f && _camMode == CamModes.Chase)
             {
                 var back = -RiderWalker.HeadingVec(_player.TorsoYawWorld);
                 var camRel = _cam.GlobalPosition - _player.RootPos;
                 GD.Print($"HECTORCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
-                QueueCapture("res://proof/hector_player_chase.png", "hectorP", "chase", () => GetTree().Quit());
+                QueueCapture("res://proof/hector_player_chase.png", "hectorP", CamModes.Chase, () => GetTree().Quit());
                 _hectorCamT = -999f;
             }
         }
