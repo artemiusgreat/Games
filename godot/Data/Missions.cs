@@ -79,11 +79,11 @@ public static class MissionCatalog
             "A supply convoy crawls from Fort Asterion to the front at first light. Raiders have hit the last two. " +
             "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
             "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
-        M(ares, "The Vostok Claim", "Vostok Yards", 0.10f, 0.52f,
-            "Duel Challenge", "Vostok Yards Combine", 350000, 3,
-            "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
-            "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
-            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City);
+        M(ares, "The Shattered Shelf", "Shattered Shelf", 0.28f, 0.40f,
+            "Recon Sweep", "Boreas Research Trust", 180000, 2,
+            "A Trust survey team went silent on the Shattered Shelf six days ago. Cross the shelf, find their " +
+            "beacon, and bring back the data core — or word of what found them first.",
+            "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         var thalassa = new PlanetDef
         {
             Name = "Thalassa",
@@ -105,17 +105,23 @@ public static class MissionCatalog
             "Helix Platform Nine refines for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
             "drop the platform's defense riders, and be gone before the response fleet clears the horizon.",
             "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City);
-        M(thalassa, "Ceto Intercept", "Ceto Refinery", 0.02f, -0.55f,
-            "Convoy Intercept", "Free Captains' League", 260000, 3,
-            "A Combine fuel convoy leaves the Ceto refinery under light escort. The League wants the fuel, not a " +
-            "war: disable the escorts, take the tankers intact, and nobody's House colors get involved.",
-            "Captain Rurik Hale", "Fuel is money that burns, friend. Help me carry some of it away.", WorldConfig.BiomeKind.Forest);
+        M(thalassa, "The Vostok Claim", "Vostok Yards", 0.10f, 0.52f,
+            "Duel Challenge", "Vostok Yards Combine", 350000, 3,
+            "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
+            "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
+            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City);
         M(thalassa, "The Harbor Stacks", "Port Nereid Stacks", -0.60f, 0.28f,
             "Base Defense", "Thalassa Combine", 390000, 4,
             "Port Nereid's harbor stacks rise straight out of the water — ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
             "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4);
+        M(thalassa, "Gate City", "Glacier Gate City", 0.58f, -0.42f,
+            "Base Assault", "House Asterion", 560000, 5,
+            "A machine nest has taken Gate City, a walled port town on the trade lane, and grows " +
+            "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
+            "costs in frames. The largest purse on the planet.",
+            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8);
         var kryos = new PlanetDef
         {
             Name = "Kryos",
@@ -132,22 +138,16 @@ public static class MissionCatalog
             "Something is coming down out of the northern ice in numbers the Trust won't say out loud. Hold " +
             "Boreas Station's perimeter for one night cycle. Salvage rights on everything you drop are yours.",
             "Dr. Ingrid Halvorsen", "We are scientists, not soldiers. Whatever walks out of that ice, please stop it.", WorldConfig.BiomeKind.Forest);
-        M(kryos, "The Shattered Shelf", "Shattered Shelf", 0.28f, 0.40f,
-            "Recon Sweep", "Boreas Research Trust", 180000, 2,
-            "A Trust survey team went silent on the Shattered Shelf six days ago. Cross the shelf, find their " +
-            "beacon, and bring back the data core — or word of what found them first.",
-            "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         M(kryos, "Glacier Gate", "Glacier Gate", 0.48f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken the Glacier Gate pass and grows bolder every week. Asterion wants the pass " +
             "cleared and the nest burned out, whatever it costs in frames. The largest purse on the planet.",
             "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.Forest);
-        M(kryos, "Gate City", "Glacier Gate City", -0.62f, 0.35f,
-            "Base Assault", "House Asterion", 560000, 5,
-            "A machine nest has taken Gate City, the port town under the Glacier Gate pass, and grows " +
-            "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
-            "costs in frames. The largest purse on the planet.",
-            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8);
+        M(kryos, "Ceto Intercept", "Ceto Refinery", 0.02f, -0.55f,
+            "Convoy Intercept", "Free Captains' League", 260000, 3,
+            "A Combine fuel convoy leaves the Ceto refinery under light escort. The League wants the fuel, not a " +
+            "war: disable the escorts, take the tankers intact, and nobody's House colors get involved.",
+            "Captain Rurik Hale", "Fuel is money that burns, friend. Help me carry some of it away.", WorldConfig.BiomeKind.Forest);
 
         return new List<PlanetDef> { ares, thalassa, kryos };
     }
