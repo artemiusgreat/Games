@@ -37,33 +37,65 @@ public partial class MapTypeScreen : Control
             "Arena duel on a compact battlefield. Three riders enter — one leaves. " +
             "The classic test of machine and pilot, fought around the mesa under tournament rules.",
             "Map 260u · Riders 3 · Free-for-all",
-            "Select map", () => OnTournament?.Invoke()));
+            () => OnTournament?.Invoke()));
         cards.AddChild(Card(
             "Mission",
             "Planetary operations on a full-scale front. Pick a world in orbit, sign a " +
             "contract in the bar, then deploy from your base and march on the enemy.",
             "Map 1900u · Bases 3 · Contracts 9",
-            "Select map", () => OnMission?.Invoke()));
+            () => OnMission?.Invoke()));
 
     }
 
-    private Control Card(string title, string desc, string stats, string cta, System.Action go)
+    // The whole card is the button (owner): no separate
+    // "Select map" control — the square itself clicks, hovers
+    // and takes the gold focus frame like any other button.
+    private Control Card(string title, string desc, string stats, System.Action go)
     {
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(430f, 300f) };
-        panel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
+        var card = new Button { CustomMinimumSize = new Vector2(430f, 300f) };
+        card.AddThemeStyleboxOverride("normal", FlowUi.Panel(FlowUi.Navy));
+        var hover = FlowUi.Panel(FlowUi.NavySoft);
+        hover.BorderColor = FlowUi.GoldDim;
+        card.AddThemeStyleboxOverride("hover", hover);
+        card.AddThemeStyleboxOverride("pressed",
+            FlowUi.Panel(new Color(0.23f, 0.19f, 0.08f, 0.98f)));
+        var focus = FlowUi.ButtonBox(new Color(0, 0, 0, 0));
+        focus.DrawCenter = false;
+        focus.BorderColor = FlowUi.Gold;
+        focus.SetBorderWidthAll(3);
+        card.AddThemeStyleboxOverride("focus", focus);
+        card.Pressed += () => go();
+
+        var margin = new MarginContainer();
+        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        margin.AddThemeConstantOverride("margin_left", 18);
+        margin.AddThemeConstantOverride("margin_right", 18);
+        margin.AddThemeConstantOverride("margin_top", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 12);
+        card.AddChild(margin);
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 12);
-        panel.AddChild(v);
+        margin.AddChild(v);
         v.AddChild(FlowUi.MakeHeading(title, 30, FlowUi.Gold));
         var d = FlowUi.MakeLabel(desc, 14, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
         d.CustomMinimumSize = new Vector2(394f, 92f);
         v.AddChild(d);
-        v.AddChild(FlowUi.MakeLabel(stats, 13, FlowUi.Dim));
         var spacer = new Control { SizeFlagsVertical = SizeFlags.Expand };
         v.AddChild(spacer);
-        var b = FlowUi.MakeButton(cta, 16);
-        b.Pressed += () => go();
-        v.AddChild(b);
-        return panel;
+        v.AddChild(FlowUi.MakeLabel(stats, 13, FlowUi.Dim));
+        // Labels and layout containers must not eat the click:
+        // the whole subtree passes input through to the button.
+        SetIgnoreMouse(card);
+        return card;
+    }
+
+    private static void SetIgnoreMouse(Control c)
+    {
+        foreach (var child in c.GetChildren())
+            if (child is Control cc)
+            {
+                cc.MouseFilter = MouseFilterEnum.Ignore;
+                SetIgnoreMouse(cc);
+            }
     }
 }
