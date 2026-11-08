@@ -1211,13 +1211,43 @@ public partial class RiderDuel
     // blocks between the mesa and the pads in Tournament. Sizes
     // vary widely (owner: no two alike). Pads, roads and the
     // mesa stay clear.
+    // Kit contracts: the town is a real street grid — blocks of
+    // kit buildings on the level district plateau (Main), with
+    // the ground between the plots colored as streets. One
+    // central plot stays empty as a plaza; a few plots skip at
+    // random so the blocks are not a perfect lattice.
+    private void PlaceCityGrid(System.Random rng, ref int placed)
+    {
+        float p = CityGrid.Pitch;
+        int hb = CityGrid.HalfBlocks;
+        for (int i = -hb; i <= hb; i++)
+        for (int j = -hb; j <= hb; j++)
+        {
+            if (i == 0 && j == 0) continue; // the plaza
+            if (rng.NextDouble() < 0.10) continue;
+            var pt = new Vector2(
+                i * p + (float)(rng.NextDouble() - 0.5) * 3f,
+                j * p + (float)(rng.NextDouble() - 0.5) * 3f);
+            var size = new Vector3(
+                17f + (float)rng.NextDouble() * 7f,
+                22f + (float)rng.NextDouble() * 16f,
+                17f + (float)rng.NextDouble() * 7f);
+            if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + 2.5f)) continue;
+            if (TerrainGrade(pt.X, pt.Y) > 0.4f) continue;
+            AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
+            placed++;
+        }
+    }
+
     private void ScatterCity()
     {
         var rng = new System.Random(0xC17E11);
         var clusters = new System.Collections.Generic.List<(Vector2 C, float R, int N)>();
+        bool grid = false;
         if (WorldConfig.IsMission)
         {
-            clusters.Add((Vector2.Zero, 120f, 7));
+            if (WorldConfig.CityKit >= 0) grid = true;
+            else clusters.Add((Vector2.Zero, 120f, 7));
             var p = Main.SpawnPads;
             for (int leg = 0; leg < 3; leg++)
             {
@@ -1230,6 +1260,7 @@ public partial class RiderDuel
         }
         else clusters.Add((Vector2.Zero, 108f, 12));
         int placed = 0;
+        if (grid) PlaceCityGrid(rng, ref placed);
         foreach (var (cc, cr, cn) in clusters)
         {
             int got = 0, tries = 0;

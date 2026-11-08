@@ -118,6 +118,20 @@ public partial class Main : Node3D
 				h = Mathf.Lerp(h, padH, Smooth(flatR, flatR * 0.44f, d));
 			}
 		}
+		// City district plateau (owner: Harbor Stacks should
+		// read as actual streets and blocks): on a kit contract
+		// the map center levels into a building platform — the
+		// dome and the relief blend out across the district, so
+		// the street grid sits flat.
+		if (WorldConfig.IsMission && WorldConfig.CityKit >= 0)
+		{
+			float r = Mathf.Sqrt(x * x + z * z);
+			if (r < CityGrid.PlateauR)
+			{
+				float h0 = BaseHeight(0f, 0f) - DomeHeight(0f, 0f);
+				h = Mathf.Lerp(h, h0, Smooth(CityGrid.PlateauR, CityGrid.PlateauR * 0.62f, r));
+			}
+		}
 		return h;
 	}
 
@@ -230,6 +244,22 @@ public partial class Main : Node3D
 		return Mathf.Min(Mathf.Abs(z - 6f), Mathf.Abs(x + 14f));
 	}
 
+	// Street grid of the city district (kit contracts): lanes
+	// run between the building plots. Distance to the nearest
+	// lane centerline; a large number outside the district or
+	// off a kit contract.
+	public static float DistrictStreetDistance(float x, float z)
+	{
+		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return 1e6f;
+		float p = CityGrid.Pitch;
+		float ext = p * (CityGrid.HalfBlocks + 0.5f) + 8f;
+		if (Mathf.Abs(x) > ext || Mathf.Abs(z) > ext) return 1e6f;
+		float yx = x / p - 0.5f, yz = z / p - 0.5f;
+		float dx = Mathf.Abs(yx - Mathf.Round(yx)) * p;
+		float dz = Mathf.Abs(yz - Mathf.Round(yz)) * p;
+		return Mathf.Min(dx, dz);
+	}
+
 	// Ground color without any texture image: grass tones varied by two
 	// noise fields (patchiness + fine breakup), dirt on mid slopes, rock
 	// on steep faces, pale summits up high.
@@ -276,6 +306,15 @@ public partial class Main : Node3D
 			if (roadD > 1.85f && roadD < 2.25f)
 				asphalt = asphalt.Lerp(desert ? new Color(0.72f, 0.62f, 0.45f) : new Color(0.5f, 0.48f, 0.4f), 0.35f); // worn edge line
 			col = col.Lerp(asphalt, rw * 0.94f);
+		}
+		// District streets: the same dark asphalt on the grid
+		// lanes between the building plots.
+		float streetD = DistrictStreetDistance(x, z);
+		if (streetD < 8f)
+		{
+			float sw = 1f - Smooth(5.5f, 8f, streetD);
+			float al = 0.85f + 0.3f * grain;
+			col = col.Lerp(new Color(0.235f * al, 0.235f * al, 0.25f * al), sw * 0.94f);
 		}
 		return col;
 	}

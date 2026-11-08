@@ -148,6 +148,8 @@ void fragment() {
                 float dirt = Mathf.SmoothStep(0.52f, 0.72f, patch) * (1f - rock);
                 float grass = Mathf.Max(0f, 1f - rock - dirt);
                 float road = 1f - Mathf.SmoothStep(2.25f, 3.1f, Main.RoadDistance(x, z));
+                float street = 1f - Mathf.SmoothStep(5.5f, 8f, Main.DistrictStreetDistance(x, z));
+                road = Mathf.Max(road, street);
                 // Biome weights (owner's map types): the desert
                 // runs sand (dirt channel, tinted) with only a
                 // scrub of grass; the city paves its blocks —
@@ -165,6 +167,17 @@ void fragment() {
                     road = Mathf.Max(road, paved * 0.9f);
                     grass *= 0.12f;
                     dirt *= 0.5f;
+                }
+                // City district (kit contracts): the plots are
+                // paved and the lanes between them are full
+                // asphalt — no grass or dirt inside the blocks.
+                float sd = Main.DistrictStreetDistance(x, z);
+                if (sd < 1e5f)
+                {
+                    float lane = 1f - Mathf.SmoothStep(5.5f, 8f, sd);
+                    road = Mathf.Lerp(road * 0.25f, 1f, lane);
+                    dirt = Mathf.Lerp(Mathf.Max(dirt, 0.85f), 0f, lane);
+                    grass *= 1f - Mathf.Max(lane, 0.8f);
                 }
                 img.SetPixel(i, j, new Color(
                     Mathf.Clamp(rock, 0f, 1f), grass,
@@ -186,7 +199,7 @@ void fragment() {
         var (gt, dt, rt, at) = WorldConfig.Biome switch
         {
             WorldConfig.BiomeKind.Desert => (new Color(1.30f, 1.10f, 0.62f), new Color(1.22f, 1.02f, 0.66f), new Color(1.05f, 0.98f, 0.90f), new Color(1.05f, 0.98f, 0.85f)),
-            WorldConfig.BiomeKind.City => (new Color(0.55f, 0.58f, 0.55f), new Color(0.80f, 0.78f, 0.75f), new Color(1.0f, 1.0f, 1.0f), new Color(1.12f, 1.12f, 1.15f)),
+            WorldConfig.BiomeKind.City => (new Color(0.55f, 0.58f, 0.55f), new Color(0.80f, 0.78f, 0.75f), new Color(1.0f, 1.0f, 1.0f), new Color(0.78f, 0.78f, 0.82f)),
             _ => (new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f))
         };
         m.SetShaderParameter("grass_tint", gt);

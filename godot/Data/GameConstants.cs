@@ -55,3 +55,15 @@ public static class SlotIds
     public const string PodL = "pod_L";
     public const string PodR = "pod_R";
 }
+
+// The city district built at the center of a kit contract's
+// mission map (Harbor Stacks, Gate City): a street grid of
+// building plots on a level plateau. Shared by the heightfield
+// (Main), both ground colorings (Main.TerrainColor, PhotoEnv)
+// and the building placement (RiderDuel ScatterCity).
+public static class CityGrid
+{
+    public const float Pitch = 38f;      // plot pitch; streets run between plots
+    public const int HalfBlocks = 3;     // plots span -3..3 on each axis
+    public const float PlateauR = 190f;  // plateau blend-out radius
+}
