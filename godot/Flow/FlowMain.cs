@@ -237,6 +237,9 @@ public partial class FlowMain : Node3D
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_CITYKIT")))
             WorldConfig.CityKit = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.CityKit : -1;
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_FLAT")))
+            WorldConfig.FlatWorld = WorldConfig.IsMission
+                && WorldConfig.SelectedMission.FlatTerrain;
         FromFlow = true;
         EnterLabScene();
     }

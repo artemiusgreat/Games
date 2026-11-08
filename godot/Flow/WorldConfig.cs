@@ -46,6 +46,15 @@ public static class WorldConfig
         int.TryParse(System.Environment.GetEnvironmentVariable("AOT_CITYKIT"), out var k)
             ? k : -1;
 
+    // Flat maps (owner): a contract whose streets must all be
+    // level — The Harbor Stacks — skips the height map entirely;
+    // its world builds at height 0 everywhere. EnterLab copies
+    // the contract's flag here; AOT_FLAT=1 forces it.
+    public static bool FlatWorld = InitFlat();
+
+    private static bool InitFlat() =>
+        System.Environment.GetEnvironmentVariable("AOT_FLAT") == "1";
+
     private static MapMode InitMode() =>
         System.Environment.GetEnvironmentVariable("AOT_MODE") == "mission"
             ? MapMode.Mission : MapMode.Tournament;

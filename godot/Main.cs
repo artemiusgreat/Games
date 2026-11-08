@@ -100,6 +100,9 @@ public partial class Main : Node3D
 
 	private static float RawHeight(float x, float z)
 	{
+		// Flat maps (owner: The Harbor Stacks) use no height map
+		// at all — every street, road and base on one level plane.
+		if (WorldConfig.FlatWorld) return 0f;
 		float h = BaseHeight(x, z);
 		// Flatten each spawn pad toward its own center height, so
 		// a rider starts on level ground in its hollow.

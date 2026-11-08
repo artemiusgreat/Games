@@ -35,6 +35,9 @@ public sealed class MissionDef
     // to assets/citykits/kit<N>/). -1 = procedural buildings.
     // City contracts only.
     public int CityKit = -1;
+    // Flat maps (owner): the contract's world builds with no
+    // height map at all — every street level. The Harbor Stacks.
+    public bool FlatTerrain;
     public PlanetDef Planet;
 }
 
@@ -44,13 +47,15 @@ public static class MissionCatalog
 
     private static MissionDef M(PlanetDef p, string name, string site, float sx, float sy,
         string type, string employer, long pay, int threat, string briefing,
-        string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1)
+        string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
+        bool flat = false)
     {
         var m = new MissionDef
         {
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
-            Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit, Planet = p
+            Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
+            FlatTerrain = flat, Planet = p
         };
         p.Missions.Add(m);
         return m;
@@ -115,7 +120,7 @@ public static class MissionCatalog
             "Port Nereid's harbor stacks rise straight out of the water — ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: true);
         M(thalassa, "Gate City", "Glacier Gate City", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Gate City, a walled port town on the trade lane, and grows " +
