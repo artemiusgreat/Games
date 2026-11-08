@@ -1001,8 +1001,28 @@ public partial class RiderDuel
         Node3D kitHolder = null;
         if (WorldConfig.CityKit >= 0 && size.X >= 4f && size.Z >= 4f)
         {
+            var req = size;
             kitHolder = CityKits.Take(WorldConfig.CityKit, _facadeSeq, size.Y, out Vector3 eff);
-            if (kitHolder != null) size = eff;
+            if (kitHolder != null)
+            {
+                size = eff;
+                // Small requests are dense-city slots: a wide
+                // model scaled to the slot's height can sprawl
+                // far past the slot and swallow its neighbours.
+                // Clamp the footprint to the request (+5%),
+                // scaling the model down uniformly with it.
+                if (Mathf.Max(req.X, req.Z) <= 14f)
+                {
+                    float capF = Mathf.Max(req.X, req.Z) * 1.05f;
+                    float m = Mathf.Max(size.X, size.Z);
+                    if (m > capF)
+                    {
+                        float k = capF / m;
+                        size *= k;
+                        kitHolder.Scale *= k;
+                    }
+                }
+            }
         }
         // The big footprints (owner, 2026-10-31: larger buildings)
         // sit on slopes — sink the base well into the grade so no
@@ -1253,17 +1273,22 @@ public partial class RiderDuel
     // random so the blocks are not a perfect lattice.
     private void PlaceCityGrid(System.Random rng, ref int placed)
     {
+        // The dense city (owner: "so dense the rider can have
+        // space to walk only between the houses or jump on their
+        // roofs — no open space"): every plot in the disc is
+        // built, no plaza, no gap plots; the lanes between the
+        // blocks are the only ground left open. No ScatterFree —
+        // the pads and bases sit 600u+ away, and the pad roads
+        // ARE these streets now.
         float p = CityGrid.Pitch;
-        int hb = CityGrid.HalfBlocks;
+        int hb = Mathf.CeilToInt(CityGrid.Radius / p);
         for (int i = -hb; i <= hb; i++)
         for (int j = -hb; j <= hb; j++)
         {
-            if (i == 0 && j == 0) continue; // the plaza
-            if (rng.NextDouble() < 0.10) continue;
             var c = new Vector2(
-                i * p + (float)(rng.NextDouble() - 0.5) * 3f,
-                j * p + (float)(rng.NextDouble() - 0.5) * 3f);
-            if (!ScatterFree(c, 14f)) continue;
+                i * p + (float)(rng.NextDouble() - 0.5) * 2f,
+                j * p + (float)(rng.NextDouble() - 0.5) * 2f);
+            if (c.Length() > CityGrid.Radius) continue;
             if (TerrainGrade(c.X, c.Y) > 0.4f) continue;
             PlaceCityBlock(rng, c, ref placed);
         }
@@ -1281,10 +1306,10 @@ public partial class RiderDuel
     // rocks don't).
     private bool BlockFree(Vector2 pt, Vector3 size)
     {
-        var h = new Vector2(size.X, size.Z) / 2f;
+        var h = new Vector2(size.X, size.Z) / 2f + new Vector2(0.15f, 0.15f);
         foreach (var b in _districtBoxes)
-            if (Mathf.Abs(pt.X - b.C.X) < h.X + b.H.X + 1.5f &&
-                Mathf.Abs(pt.Y - b.C.Y) < h.Y + b.H.Y + 1.5f)
+            if (Mathf.Abs(pt.X - b.C.X) < h.X + b.H.X + 0.1f &&
+                Mathf.Abs(pt.Y - b.C.Y) < h.Y + b.H.Y + 0.1f)
                 return false;
         foreach (var c in _props)
         {
@@ -1305,34 +1330,37 @@ public partial class RiderDuel
     {
         var slots = new System.Collections.Generic.List<Vector2>
         {
-            new(-8.5f, -8.5f), new(8.5f, -8.5f), new(-8.5f, 8.5f), new(8.5f, 8.5f)
+            new(-5.5f, -5.5f), new(5.5f, -5.5f), new(-5.5f, 5.5f), new(5.5f, 5.5f)
         };
         for (int i = slots.Count - 1; i > 0; i--)
         { int j = rng.Next(i + 1); (slots[i], slots[j]) = (slots[j], slots[i]); }
-        int n = 2 + (rng.NextDouble() < 0.65 ? 1 : 0)
-                  + (rng.NextDouble() < 0.40 ? 1 : 0);
+        int n = 3 + (rng.NextDouble() < 0.55 ? 1 : 0);
         var heights = new System.Collections.Generic.List<float>
         {
             9f + (float)rng.NextDouble() * 7f,
             26f + (float)rng.NextDouble() * 13f
         };
         for (int i = 2; i < n; i++)
-            heights.Add(rng.NextDouble() < 0.5
-                ? 9f + (float)rng.NextDouble() * 9f
-                : 17f + (float)rng.NextDouble() * 12f);
+        {
+            double hr = rng.NextDouble();
+            heights.Add(hr < 0.45 ? 9f + (float)rng.NextDouble() * 8f
+                : hr < 0.80 ? 17f + (float)rng.NextDouble() * 10f
+                : 27f + (float)rng.NextDouble() * 12f);
+        }
         for (int i = heights.Count - 1; i > 0; i--)
         { int j = rng.Next(i + 1); (heights[i], heights[j]) = (heights[j], heights[i]); }
         for (int k = 0; k < n; k++)
         {
             var pt = c + slots[k] + new Vector2(
-                (float)(rng.NextDouble() * 3 - 1.5),
-                (float)(rng.NextDouble() * 3 - 1.5));
-            // Footprints stay slim (10-13u): at the old 11-15u
-            // the four boxes of a block genuinely overlapped at
-            // 16u slot spacing and the overlap test ate them.
-            float fw = 10f + (float)rng.NextDouble() * 3f;
+                (float)(rng.NextDouble() * 1.6 - 0.8),
+                (float)(rng.NextDouble() * 1.6 - 0.8));
+            // Footprints ~10u on 11u slot spacing: the block
+            // fills its plot and the lane left between blocks is
+            // ~10u wall to wall — a rider fits between the
+            // houses, or goes over the roofs.
+            float fw = 9.8f + (float)rng.NextDouble() * 0.8f;
             var size = new Vector3(fw, heights[k],
-                fw * (0.8f + (float)rng.NextDouble() * 0.35f));
+                fw * (0.8f + (float)rng.NextDouble() * 0.2f));
             if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
             if (!BlockFree(pt, size)) continue;
             AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
@@ -1350,7 +1378,7 @@ public partial class RiderDuel
             if (WorldConfig.CityKit >= 0) grid = true;
             else clusters.Add((Vector2.Zero, 120f, 7));
             var p = Main.SpawnPads;
-            for (int leg = 0; leg < 3; leg++)
+            for (int leg = 0; leg < (grid ? 0 : 3); leg++)
             {
                 var a = p[leg]; var b = p[(leg + 1) % 3];
                 var mid = (a + b) / 2f;

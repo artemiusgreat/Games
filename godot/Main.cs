@@ -255,8 +255,8 @@ public partial class Main : Node3D
 	{
 		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return 1e6f;
 		float p = CityGrid.Pitch;
-		float ext = p * (CityGrid.HalfBlocks + 0.5f) + 8f;
-		if (Mathf.Abs(x) > ext || Mathf.Abs(z) > ext) return 1e6f;
+		float ext = CityGrid.Radius + p;
+		if (x * x + z * z > ext * ext) return 1e6f;
 		float yx = x / p - 0.5f, yz = z / p - 0.5f;
 		float dx = Mathf.Abs(yx - Mathf.Round(yx)) * p;
 		float dz = Mathf.Abs(yz - Mathf.Round(yz)) * p;

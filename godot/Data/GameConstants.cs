@@ -63,7 +63,7 @@ public static class SlotIds
 // and the building placement (RiderDuel ScatterCity).
 public static class CityGrid
 {
-    public const float Pitch = 38f;      // plot pitch; streets run between plots
-    public const int HalfBlocks = 3;     // plots span -3..3 on each axis
-    public const float PlateauR = 190f;  // plateau blend-out radius
+    public const float Pitch = 32f;      // plot pitch; streets run between plots
+    public const float Radius = 280f;    // plot centers fill a disc of this radius
+    public const float PlateauR = 320f;  // plateau blend-out radius
 }
