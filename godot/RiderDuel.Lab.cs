@@ -241,16 +241,10 @@ public partial class RiderDuel
                 int num = _loadout.GroupAt(slot.Id, fi);
                 var grp = _groups.Find(g => g.Num == num);
                 if (grp == null) { grp = new WpnGroup { Num = num }; _groups.Add(grp); }
-                grp.Guns.Add((slot.Id, def, path));
+                grp.Guns.Add(new WpnGun { Slot = slot.Id, Def = def, Path = path });
             }
         }
         _groups.Sort((x, y) => x.Num.CompareTo(y.Num));
-        foreach (var grp in _groups)
-        {
-            grp.SlowCd = 0f;
-            foreach (var g in grp.Guns) grp.SlowCd = Mathf.Max(grp.SlowCd, g.Def.Cooldown);
-            grp.Label = GroupComposition(grp);
-        }
         if (_weaponSel >= _groups.Count) _weaponSel = 0;
         _defEnergy = Slowest(_gunsEnergy);
         _defBallistic = Slowest(_gunsBallistic);
@@ -267,29 +261,6 @@ public partial class RiderDuel
         WeaponDef best = null;
         foreach (var g in guns) if (best == null || g.Def.Cooldown > best.Cooldown) best = g.Def;
         return best;
-    }
-
-    // A group's dashboard label: its distinct weapons in
-    // fitting order with counts - "LL x2 + AC" for a mixed
-    // group the player built in the lab.
-    private static string GroupComposition(WpnGroup grp)
-    {
-        var parts = new System.Collections.Generic.List<string>();
-        var counts = new System.Collections.Generic.List<int>();
-        foreach (var g in grp.Guns)
-        {
-            int i = parts.IndexOf(g.Def.Short);
-            if (i < 0) { parts.Add(g.Def.Short); counts.Add(1); }
-            else counts[i]++;
-        }
-        var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < parts.Count; i++)
-        {
-            if (i > 0) sb.Append(" + ");
-            sb.Append(parts[i]);
-            if (counts[i] > 1) sb.Append(" x").Append(counts[i]);
-        }
-        return parts.Count == 0 ? "-" : sb.ToString();
     }
 
 

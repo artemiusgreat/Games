@@ -191,12 +191,23 @@ public partial class RiderDuel : Node3D
     // path - beams, shells, or a pod salvo) and the group's
     // cooldown is its slowest fired weapon's, as volleys always
     // were. Path: 0 laser, 1 cannon, 2 pod L, 3 pod R.
+    // One fitted weapon inside a group. Cooldowns are PER
+    // WEAPON (owner): the dashboard shows a bar per weapon, so
+    // a group volley fires whichever of its weapons are ready
+    // and each fired weapon cools down on its own clock - the
+    // old group-cools-by-its-slowest rule is gone.
+    private sealed class WpnGun
+    {
+        public string Slot;
+        public WeaponDef Def;
+        public int Path;
+        public float Cd;
+    }
     private sealed class WpnGroup
     {
         public int Num;
-        public readonly System.Collections.Generic.List<(string Slot, WeaponDef Def, int Path)> Guns = new();
-        public float Cd, DenyT, SlowCd;
-        public string Label = "-";
+        public readonly System.Collections.Generic.List<WpnGun> Guns = new();
+        public float DenyT;
     }
     private readonly System.Collections.Generic.List<WpnGroup> _groups = new();
     private bool _labOpen;
@@ -276,10 +287,14 @@ public partial class RiderDuel : Node3D
 
     private Crosshair _cross;
     private ProgressBar _barPlayer, _barEnemy, _barFoe, _cdBarThr;
-    private readonly ProgressBar[] _grpBars = new ProgressBar[LoadoutState.MaxGroup];
-    private readonly Label[] _grpLabels = new Label[LoadoutState.MaxGroup];
-    private readonly TriMark[] _grpMarks = new TriMark[LoadoutState.MaxGroup];
-    private readonly Control[] _grpRows = new Control[LoadoutState.MaxGroup];
+    // The weapons panel lists EVERY fitted weapon (owner,
+    // MW4-style): a row per weapon instance, pooled here.
+    private const int MaxWeaponRows = 18;
+    private readonly ProgressBar[] _wpnBars = new ProgressBar[MaxWeaponRows];
+    private readonly Label[] _wpnLabels = new Label[MaxWeaponRows];
+    private readonly Label[] _wpnGroupCells = new Label[MaxWeaponRows];
+    private readonly TriMark[] _wpnMarks = new TriMark[MaxWeaponRows];
+    private readonly Control[] _wpnRows = new Control[MaxWeaponRows];
     private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblThr;
@@ -528,7 +543,11 @@ public partial class RiderDuel : Node3D
         _feed.Clear();
         _cdLaser = _cdAc = _cdLrm = _cdEnemy = 0f;
         _weaponSel = 0;
-        foreach (var g in _groups) { g.Cd = 0f; g.DenyT = 0f; }
+        foreach (var grp in _groups)
+        {
+            grp.DenyT = 0f;
+            foreach (var g in grp.Guns) g.Cd = 0f;
+        }
         _lrmQueue.Clear();
         foreach (var p in _shots) p.QueueFree();
         _shots.Clear();
@@ -609,10 +628,10 @@ public partial class RiderDuel : Node3D
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdEnemy = Mathf.Max(_cdEnemy - dt, 0f);
         if (_foe != null) _foe.Cd = Mathf.Max(_foe.Cd - dt, 0f);
-        foreach (var g in _groups)
+        foreach (var grp in _groups)
         {
-            g.Cd = Mathf.Max(g.Cd - dt, 0f);
-            g.DenyT = Mathf.Max(g.DenyT - dt, 0f);
+            grp.DenyT = Mathf.Max(grp.DenyT - dt, 0f);
+            foreach (var g in grp.Guns) g.Cd = Mathf.Max(g.Cd - dt, 0f);
         }
         _denyLaserT = Mathf.Max(_denyLaserT - dt, 0f);
         _denyAcT = Mathf.Max(_denyAcT - dt, 0f);

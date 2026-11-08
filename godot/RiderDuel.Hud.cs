@@ -168,14 +168,32 @@ public partial class RiderDuel
             midBox.AddChild(row);
             return (lab, bar, mark);
         }
-        // One row per lab firing group (owner): the groups the
-        // player actually built — UpdateHud fills and shows
-        // only the rows that exist.
-        for (int gi = 0; gi < LoadoutState.MaxGroup; gi++)
+        // One row per fitted WEAPON (owner, MW4-style): the
+        // group number cell, the weapon's name, and its own
+        // cooldown bar. Rows are pooled; UpdateHud fills them
+        // in group order.
+        for (int wi = 0; wi < MaxWeaponRows; wi++)
         {
-            var row = CdRow("—");
-            _grpLabels[gi] = row.Item1; _grpBars[gi] = row.Item2; _grpMarks[gi] = row.Item3;
-            _grpRows[gi] = row.Item1.GetParent() as Control;
+            var wrow = new HBoxContainer();
+            wrow.AddThemeConstantOverride("separation", 6);
+            var gcell = MakeLabel(14, new Color(0.62f, 0.85f, 0.95f));
+            gcell.CustomMinimumSize = new Vector2(20, 0);
+            gcell.HorizontalAlignment = HorizontalAlignment.Center;
+            wrow.AddChild(gcell);
+            var wlab = MakeLabel(14, CdLabelNormal);
+            wlab.CustomMinimumSize = new Vector2(144, 0);
+            wlab.ClipText = true;
+            wrow.AddChild(wlab);
+            var wbar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(150, 13));
+            wbar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            wbar.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            wrow.AddChild(wbar);
+            var wmark = new TriMark { CustomMinimumSize = new Vector2(16, 13) };
+            wmark.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            wrow.AddChild(wmark);
+            midBox.AddChild(wrow);
+            _wpnGroupCells[wi] = gcell; _wpnLabels[wi] = wlab;
+            _wpnBars[wi] = wbar; _wpnMarks[wi] = wmark; _wpnRows[wi] = wrow;
         }
         var rowThr = CdRow("THRUST");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
@@ -411,17 +429,6 @@ public partial class RiderDuel
         lab.AddThemeColorOverride("font_color", destroyed ? CdLabelDead : CdLabelNormal);
     }
 
-    // The selected weapon's row shows its triangle at the end of
-    // the cooldown bar (owner) and, while the weapon lives,
-    // bright text; destroyed rows keep their red.
-    private static void SetSelLabel(Label lab, TriMark mark, string baseText, bool selected, bool destroyed)
-    {
-        lab.Text = baseText;
-        if (mark.On != selected) { mark.On = selected; mark.QueueRedraw(); }
-        if (selected && !destroyed)
-            lab.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
-    }
-
     private void OnLeaveConfirmed()
     {
         GetTree().Paused = false;
@@ -510,16 +517,36 @@ public partial class RiderDuel
         // The second foe's own readout is retired — one target only.
         _lblFoeHp.Visible = false;
         _barFoe.Visible = false;
-        for (int gi = 0; gi < LoadoutState.MaxGroup; gi++)
+        // Per-weapon rows (owner, MW4-style): group number,
+        // name, and the weapon's OWN cooldown bar; a destroyed
+        // mount's weapons read red and empty. The selection
+        // triangle rides the selected group's first live row.
+        int wi = 0;
+        bool markPlaced = false;
+        for (int gi = 0; gi < _groups.Count && wi < MaxWeaponRows; gi++)
         {
-            bool exists = gi < _groups.Count;
-            if (_grpRows[gi] != null) _grpRows[gi].Visible = exists;
-            if (!exists) continue;
             var grp = _groups[gi];
-            float frac = grp.SlowCd > 0f ? 1f - grp.Cd / grp.SlowCd : 1f;
-            UpdateCdRow(_grpBars[gi], _grpLabels[gi], frac, grpDead[gi], grp.DenyT);
-            SetSelLabel(_grpLabels[gi], _grpMarks[gi], $"{grp.Num} {grp.Label}", _weaponSel == gi, grpDead[gi]);
+            foreach (var gun in grp.Guns)
+            {
+                if (wi >= MaxWeaponRows) break;
+                bool dead = !_partsPlayer.Alive(gun.Slot);
+                bool sel = _weaponSel == gi;
+                _wpnRows[wi].Visible = true;
+                _wpnGroupCells[wi].Text = grp.Num.ToString();
+                _wpnGroupCells[wi].AddThemeColorOverride("font_color",
+                    sel ? new Color(1f, 0.85f, 0.3f) : new Color(0.62f, 0.85f, 0.95f));
+                _wpnLabels[wi].Text = gun.Def.Name;
+                float wfrac = gun.Def.Cooldown > 0f ? 1f - gun.Cd / gun.Def.Cooldown : 1f;
+                UpdateCdRow(_wpnBars[wi], _wpnLabels[wi], wfrac, dead, grp.DenyT);
+                if (sel && !dead)
+                    _wpnLabels[wi].AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
+                bool mark = sel && !markPlaced;
+                if (_wpnMarks[wi].On != mark) { _wpnMarks[wi].On = mark; _wpnMarks[wi].QueueRedraw(); }
+                if (mark) markPlaced = true;
+                wi++;
+            }
         }
+        for (; wi < MaxWeaponRows; wi++) _wpnRows[wi].Visible = false;
         // Thrusters (owner): charge readout alongside the weapon
         // cooldowns — teal when the full jump charge is ready.
         if (_cdBarThr != null)

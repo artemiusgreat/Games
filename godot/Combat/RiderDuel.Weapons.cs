@@ -523,9 +523,10 @@ public partial class RiderDuel
     }
 
     // Live fire (owner's groups): the selected lab group fires
-    // as ONE volley — lasers through the beam path, cannons
-    // through the shell path, pod weapons as a salvo — and the
-    // group cools down by its slowest fired weapon.
+    // as ONE volley - lasers through the beam path, cannons
+    // through the shell path, pod weapons as a salvo. Cooldowns
+    // are per weapon (owner): a weapon still cooling sits the
+    // volley out; every fired weapon starts its own clock.
     private void FireSelected(Vector3 aimPoint)
     {
         if (_playerDead || _groups.Count == 0) return;
@@ -534,28 +535,31 @@ public partial class RiderDuel
         var can = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
         var podL = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
         var podR = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
+        var firedGuns = new System.Collections.Generic.List<WpnGun>();
+        bool anyAlive = false;
         foreach (var g in grp.Guns)
         {
             if (!_partsPlayer.Alive(g.Slot)) continue;
+            anyAlive = true;
+            if (g.Cd > 0f) continue; // still cooling: sits this volley out
+            firedGuns.Add(g);
             var t = (g.Slot, g.Def);
             if (g.Path == 0) las.Add(t);
             else if (g.Path == 1) can.Add(t);
             else if (g.Path == 2) podL.Add(t);
             else podR.Add(t);
         }
-        if (las.Count == 0 && can.Count == 0 && podL.Count == 0 && podR.Count == 0)
+        if (!anyAlive)
         {
             grp.DenyT = 0.5f;
             GD.Print($"WPN DENIED group {grp.Num} (mounting parts destroyed)");
             return;
         }
-        if (grp.Cd > 0f) return;
-        grp.Cd = 0f;
-        foreach (var l in new[] { las, can, podL, podR })
-            foreach (var g in l) grp.Cd = Mathf.Max(grp.Cd, g.Def.Cooldown);
+        if (firedGuns.Count == 0) return; // alive but all cooling
         if (las.Count > 0) FireLaserVolley(aimPoint, las);
         if (can.Count > 0) FireCannonVolley(aimPoint, can);
         if (podL.Count > 0 || podR.Count > 0) FireSalvoVolley(aimPoint, podL, podR);
+        foreach (var g in firedGuns) g.Cd = g.Def.Cooldown;
     }
 
     private Vector3 MuzzleForSlot(string slot, bool ballistic) => MuzzleFor(_player, slot);
