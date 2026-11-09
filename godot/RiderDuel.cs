@@ -300,6 +300,7 @@ public partial class RiderDuel : Node3D
     private Label _feedLabel, _lblWeaponStatus, _lblThr;
     private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
     private LeaveOverlay _leaveDialog;
+    private CanvasLayer _labLoad; // loading cover held over the lab until the warmup settles (owner)
     private PanelContainer _panelHealth, _panelWeapons, _panelTarget; // corner blocks (owner: no bottom dashboard)
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;
@@ -485,6 +486,7 @@ public partial class RiderDuel : Node3D
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
             _labOpen = true;
+            BuildLabLoadOverlay();
             Input.MouseMode = Input.MouseModeEnum.Visible;
             SetHudPanelsVisible(false);
             _radar.Visible = false;
@@ -842,6 +844,10 @@ public partial class RiderDuel : Node3D
 
         if (_labOpen)
         {
+            // The loading cover stays up until the warmup sweep
+            // has run (owner): the lab is revealed only in its
+            // settled showroom framing, never mid-sweep.
+            if (_labLoad != null) _labLoad.Visible = _photo && _warmPose < 4;
             // The duel waits behind the RiderLab: a showroom view
             // (owner, MW4-style) — the rider stands front three-
             // quarter in the paperdoll area, lit by a lab fill, so

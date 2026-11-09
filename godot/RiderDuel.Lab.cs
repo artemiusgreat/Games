@@ -38,6 +38,29 @@ public partial class RiderDuel
         return sp;
     }
 
+    // The lab's loading cover (owner): styled like the front
+    // door's loading screen, it stays over the lab while the
+    // photo-mode warmup sweep compiles shaders and settles the
+    // world behind it, so the lab never flickers through its
+    // translucent panels mid-load. _Process lifts it when the
+    // sweep completes (_warmPose reaches 4).
+    private void BuildLabLoadOverlay()
+    {
+        _labLoad = new CanvasLayer { Layer = 5, Visible = _photo };
+        AddChild(_labLoad);
+        var rect = new ColorRect { Color = new Color(0.015f, 0.02f, 0.035f, 0.98f) };
+        rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _labLoad.AddChild(rect);
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _labLoad.AddChild(center);
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 10);
+        center.AddChild(v);
+        v.AddChild(FlowUi.MakeHeading("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center));
+        v.AddChild(FlowUi.MakeLabel("Building the world…", 14, FlowUi.Dim, HorizontalAlignment.Center));
+    }
+
     private void OpenLab()
     {
         if (_lab != null) { _lab.QueueFree(); _lab = null; }
@@ -57,6 +80,7 @@ public partial class RiderDuel
             lab.QueueFree();
             if (_lab == lab) _lab = null;
             _labOpen = false;
+            if (_labLoad != null) _labLoad.Visible = false;
             _cross.Visible = true; // the target cursor returns on deploy (owner: it must not show in the lab)
             if (_labLight != null) _labLight.Visible = false;
             SetHudPanelsVisible(true);
