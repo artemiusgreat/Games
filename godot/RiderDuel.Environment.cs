@@ -1633,8 +1633,12 @@ public partial class RiderDuel
         // are composed to be looked AT, so turn the composition
         // to -Z (the direction of advance on most maps).
         env.SkyRotation = new Vector3(0f, 180f, 0f);
-        env.AmbientLightEnergy = 0.42f;
-        sun.LightEnergy = 0.85f;
+        env.BackgroundEnergyMultiplier = 0.48f; // painted sky darker than the lit scene (owner); 0.48 nets ~0.6 after the 1.25 exposure lift
+        env.AmbientLightSource = Environment.AmbientSource.Color; // decouple ambient from the darkened sky, else the scene dims with it
+        env.AmbientLightColor = new Color(0.62f, 0.72f, 0.95f); // bright moonlight ambient (owner: game brighter)
+        env.TonemapExposure = 1.25f; // overall scene lift; the sky stays darker via BackgroundEnergyMultiplier 0.7 (net 0.88)
+        env.AmbientLightEnergy = 0.9f;
+        sun.LightEnergy = 1.1f;
         sun.LightColor = new Color(0.62f, 0.72f, 1.0f);
         env.FogLightColor = new Color(0.10f, 0.14f, 0.24f);
         // The painting carries its own atmosphere: distance fog
