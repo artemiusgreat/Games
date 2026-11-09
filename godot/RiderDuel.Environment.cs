@@ -1615,4 +1615,36 @@ public partial class RiderDuel
         }
     }
 
+    // A map's painted sky (owner: supplied images on City maps,
+    // the darker/colder ones). WorldConfig.SkyTex names an
+    // equirect texture; it replaces the procedural sky, and the
+    // light follows the painting: a dim blue "sun" (moonlight
+    // energy), sky-sourced ambient off the panorama itself, and
+    // dark blue haze so the city sits IN the night instead of
+    // under it. No SkyTex = the standing day setup, untouched.
+    private void ApplyMapSky(Environment env, DirectionalLight3D sun)
+    {
+        var path = WorldConfig.SkyTex;
+        if (string.IsNullOrEmpty(path)) return;
+        var tex = ResourceLoader.Load<Texture2D>(path);
+        if (tex == null) { GD.PrintErr($"SKY texture missing: {path}"); return; }
+        env.Sky = new Sky { SkyMaterial = new PanoramaSkyMaterial { Panorama = tex } };
+        // Godot maps the panorama's center to +Z; the paintings
+        // are composed to be looked AT, so turn the composition
+        // to -Z (the direction of advance on most maps).
+        env.SkyRotation = new Vector3(0f, 180f, 0f);
+        env.AmbientLightEnergy = 0.30f;
+        sun.LightEnergy = 0.55f;
+        sun.LightColor = new Color(0.62f, 0.72f, 1.0f);
+        env.FogLightColor = new Color(0.10f, 0.14f, 0.24f);
+        // The painting carries its own atmosphere: distance fog
+        // must not wash the sky itself out (at mission far-plane
+        // depths the exponential fog would otherwise replace
+        // ~80% of the painting with flat fog color). Fog still
+        // applies to terrain and buildings normally.
+        env.FogSkyAffect = 0f;
+        env.VolumetricFogAlbedo = new Color(0.10f, 0.14f, 0.24f);
+        GD.Print($"SKY map panorama applied: {path}");
+    }
+
 }

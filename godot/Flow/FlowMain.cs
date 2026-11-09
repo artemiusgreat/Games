@@ -240,6 +240,10 @@ public partial class FlowMain : Node3D
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_FLAT")))
             WorldConfig.FlatWorld = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.FlatTerrain;
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SKY")))
+            WorldConfig.SkyTex = WorldConfig.IsMission
+                ? WorldConfig.SelectedMission.SkyTex
+                : ArenaCatalog.Arenas[ArenaIndex].SkyTex;
         FromFlow = true;
         EnterLabScene();
     }

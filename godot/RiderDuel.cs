@@ -404,6 +404,7 @@ public partial class RiderDuel : Node3D
                 FogSunScatter = 0.25f
             };
         if (_photo) PhotoEnv.Tune(duelEnv, sun);
+        ApplyMapSky(duelEnv, sun);
         AddChild(new WorldEnvironment { Environment = duelEnv });
 
         BuildTerrain();

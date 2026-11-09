@@ -46,6 +46,18 @@ public static class WorldConfig
         int.TryParse(System.Environment.GetEnvironmentVariable("AOT_CITYKIT"), out var k)
             ? k : -1;
 
+    // The picked map's painted sky (owner: supplied images on
+    // City maps). EnterLab copies the contract's / arena's
+    // SkyTex here; AOT_SKY=<file name in assets/skies/> forces
+    // one for harnesses. "" = the procedural sky.
+    public static string SkyTex = InitSky();
+
+    private static string InitSky()
+    {
+        var f = System.Environment.GetEnvironmentVariable("AOT_SKY");
+        return string.IsNullOrEmpty(f) ? "" : "res://assets/skies/" + f;
+    }
+
     // Flat maps (owner): a contract whose streets must all be
     // level — The Harbor Stacks — skips the height map entirely;
     // its world builds at height 0 everywhere. EnterLab copies
@@ -92,6 +104,8 @@ public static class ArenaCatalog
     {
         public string Name, Sub, Desc;
         public WorldConfig.BiomeKind Biome;
+        // Painted panorama sky (see MissionDef.SkyTex). "" = procedural.
+        public string SkyTex = "";
     }
 
     public static readonly ArenaDef[] Arenas =
@@ -115,6 +129,7 @@ public static class ArenaCatalog
         new ArenaDef
         {
             Name = "The Ruined Mile", Biome = WorldConfig.BiomeKind.City,
+            SkyTex = "res://assets/skies/sky_jungle.jpg",
             Sub = "City · Tournament arena · 260u · Three riders · Free-for-all",
             Desc = "A dead city of towers and blocks. Streets channel movement, roofs are high ground, every building falls.\n\n" +
                    "The Ruined Mile: a 260-unit city basin ringed by high ground, with a flat-topped mesa at its heart. " +

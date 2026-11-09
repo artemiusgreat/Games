@@ -35,6 +35,10 @@ public sealed class MissionDef
     // to assets/citykits/kit<N>/). -1 = procedural buildings.
     // City contracts only.
     public int CityKit = -1;
+    // A painted sky for the map (owner: supplied images, the
+    // darker/colder ones) as a res:// path to an equirect
+    // texture in assets/skies/. "" = the procedural sky.
+    public string SkyTex = "";
     // Flat maps (owner): the contract's world builds with no
     // height map at all — every street level. The Harbor Stacks.
     public bool FlatTerrain;
@@ -48,14 +52,14 @@ public static class MissionCatalog
     private static MissionDef M(PlanetDef p, string name, string site, float sx, float sy,
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
-        bool flat = false)
+        bool flat = false, string sky = "")
     {
         var m = new MissionDef
         {
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
-            FlatTerrain = flat, Planet = p
+            FlatTerrain = flat, SkyTex = sky, Planet = p
         };
         p.Missions.Add(m);
         return m;
@@ -104,29 +108,29 @@ public static class MissionCatalog
             "Base Defense", "Thalassa Combine", 390000, 4,
             "Pirates riding out of the storm belt hit Port Nereid at every low tide. Hold the port until the " +
             "Combine's own lance lands — three days of raids, paid per day held, and the port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
         M(thalassa, "Platform Nine", "Helix Platforms", 0.42f, 0.22f,
             "Raid", "House Corvane", 520000, 5,
             "Helix Platform Nine refines for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
             "drop the platform's defense riders, and be gone before the response fleet clears the horizon.",
-            "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City);
+            "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
         M(thalassa, "The Vostok Claim", "Vostok Yards", 0.10f, 0.52f,
             "Duel Challenge", "Vostok Yards Combine", 350000, 3,
             "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
             "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
-            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City);
+            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
         M(thalassa, "The Harbor Stacks", "Port Nereid Stacks", -0.60f, 0.28f,
             "Base Defense", "Thalassa Combine", 390000, 4,
             "Port Nereid's harbor stacks rise straight out of the water — ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: true);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: true, sky: "res://assets/skies/sky_coast.jpg");
         M(thalassa, "Gate City", "Glacier Gate City", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Gate City, a walled port town on the trade lane, and grows " +
             "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
             "costs in frames. The largest purse on the planet.",
-            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8);
+            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8, sky: "res://assets/skies/sky_ice.jpg");
         var kryos = new PlanetDef
         {
             Name = "Kryos",
