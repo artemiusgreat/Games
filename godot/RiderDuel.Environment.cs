@@ -1633,8 +1633,8 @@ public partial class RiderDuel
         // are composed to be looked AT, so turn the composition
         // to -Z (the direction of advance on most maps).
         env.SkyRotation = new Vector3(0f, 180f, 0f);
-        env.AmbientLightEnergy = 0.30f;
-        sun.LightEnergy = 0.55f;
+        env.AmbientLightEnergy = 0.42f;
+        sun.LightEnergy = 0.85f;
         sun.LightColor = new Color(0.62f, 0.72f, 1.0f);
         env.FogLightColor = new Color(0.10f, 0.14f, 0.24f);
         // The painting carries its own atmosphere: distance fog
