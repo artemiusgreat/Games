@@ -70,7 +70,7 @@ public static class WeaponCatalog
     public static readonly WeaponDef Ppc = new()
     { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 750f, Beam = BeamKind.Ppc };
     public static readonly WeaponDef MachineGun = new()
-    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 200f, MuzzleSpeed = 85f, SfxPitch = -7f, SfxRate = 1.65f };
+    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 200f, MuzzleSpeed = 420f, SfxPitch = -7f, SfxRate = 1.65f };
     public static readonly WeaponDef Autocannon = new()
     { Id = "autocannon", Name = "Autocannon", Short = "AC", Type = WeaponSlotType.Ballistic, Weight = 12f, Damage = 26f, Cooldown = 0.85f, Range = 600f, MuzzleSpeed = 420f };
     public static readonly WeaponDef HeavyCannon = new()

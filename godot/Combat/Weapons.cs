@@ -97,35 +97,40 @@ public static class WeaponFx
         return mi;
     }
 
-    // Autocannon tracer: a DARK slug with an emissive halo (owner:
-    // the old flat unshaded orange washed out in daylight — too
-    // bright to see against a bright sky). The near-black core is a
-    // lit material, so it silhouettes against sky and ground in the
-    // day; its orange emission plus the translucent halo shell carry
-    // it at night. Axis = -Z fwd; the projectile node LookAts along
-    // its velocity.
+    // Bullet (owner: the old tracer read as a yellow ball): a
+    // slim metal slug - cylindrical body plus a conical nose,
+    // dark brass so it silhouettes like the old core - wrapped
+    // in a THIN tracer halo stretched along the flight line
+    // instead of the fat glow ellipsoid. Axis = -Z fwd; the
+    // projectile node LookAts along its velocity.
     public static Node3D MakeTracer()
     {
         _tracerCoreMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.05f, 0.04f, 0.03f),
-            Metallic = 0.55f,
-            Roughness = 0.35f,
+            AlbedoColor = new Color(0.23f, 0.16f, 0.07f),
+            Metallic = 0.8f,
+            Roughness = 0.32f,
             EmissionEnabled = true,
             Emission = new Color(1f, 0.38f, 0.06f),
-            EmissionEnergyMultiplier = 0.7f
+            EmissionEnergyMultiplier = 0.35f
         };
-        _tracerGlowMat ??= Unshaded(new Color(1f, 0.5f, 0.1f, 0.38f), alpha: true);
+        _tracerGlowMat ??= Unshaded(new Color(1f, 0.5f, 0.1f, 0.3f), alpha: true);
         var root = new Node3D();
-        var core = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        core.Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f };
-        core.MaterialOverride = _tracerCoreMat;
-        core.Scale = new Vector3(1f, 1f, 3.2f);
-        root.AddChild(core);
+        var body = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        body.Mesh = new CylinderMesh { TopRadius = 0.075f, BottomRadius = 0.075f, Height = 0.62f, RadialSegments = 8 };
+        body.MaterialOverride = _tracerCoreMat;
+        body.RotationDegrees = new Vector3(90f, 0f, 0f); // cylinder Y axis -> Z
+        root.AddChild(body);
+        var tip = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        tip.Mesh = new CylinderMesh { TopRadius = 0f, BottomRadius = 0.075f, Height = 0.3f, RadialSegments = 8 };
+        tip.MaterialOverride = _tracerCoreMat;
+        tip.RotationDegrees = new Vector3(-90f, 0f, 0f); // point toward -Z (rocket tip pattern)
+        tip.Position = new Vector3(0f, 0f, -0.46f);
+        root.AddChild(tip);
         var glow = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        glow.Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f };
+        glow.Mesh = new SphereMesh { Radius = 0.09f, Height = 0.18f, RadialSegments = 8, Rings = 4 };
         glow.MaterialOverride = _tracerGlowMat;
-        glow.Scale = new Vector3(2.1f, 2.1f, 3.8f);
+        glow.Scale = new Vector3(1f, 1f, 8f); // slim streak: 0.18 wide, 1.44 long
         root.AddChild(glow);
         return root;
     }
