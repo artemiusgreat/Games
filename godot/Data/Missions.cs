@@ -42,6 +42,9 @@ public sealed class MissionDef
     // Flat maps (owner): the contract's world builds with no
     // height map at all — every street level. The Harbor Stacks.
     public bool FlatTerrain;
+    // Snow-covered ground (owner): the map's ground matches
+    // a snowy painted sky (Gate City under the ice panorama).
+    public bool SnowGround;
     public PlanetDef Planet;
 }
 
@@ -52,14 +55,14 @@ public static class MissionCatalog
     private static MissionDef M(PlanetDef p, string name, string site, float sx, float sy,
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
-        bool flat = false, string sky = "")
+        bool flat = false, string sky = "", bool snow = false)
     {
         var m = new MissionDef
         {
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
-            FlatTerrain = flat, SkyTex = sky, Planet = p
+            FlatTerrain = flat, SkyTex = sky, SnowGround = snow, Planet = p
         };
         p.Missions.Add(m);
         return m;
@@ -130,7 +133,7 @@ public static class MissionCatalog
             "A machine nest has taken Gate City, a walled port town on the trade lane, and grows " +
             "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
             "costs in frames. The largest purse on the planet.",
-            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8, sky: "res://assets/skies/sky_ice.jpg");
+            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8, sky: "res://assets/skies/sky_ice.jpg", snow: true);
         var kryos = new PlanetDef
         {
             Name = "Kryos",

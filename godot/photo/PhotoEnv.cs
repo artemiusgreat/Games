@@ -202,6 +202,14 @@ void fragment() {
             WorldConfig.BiomeKind.City => (new Color(0.55f, 0.58f, 0.55f), new Color(0.80f, 0.78f, 0.75f), new Color(1.0f, 1.0f, 1.0f), new Color(0.78f, 0.78f, 0.82f)),
             _ => (new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f))
         };
+        if (WorldConfig.SnowGround)
+        {
+            // Snow cover (owner): the ground matches a snowy
+            // sky — every channel lifts to blue-white snow,
+            // asphalt stays a paler plowed grey.
+            gt = new Color(1.55f, 1.65f, 1.95f); dt = new Color(1.45f, 1.55f, 1.85f);
+            rt = new Color(1.35f, 1.45f, 1.75f); at = new Color(1.05f, 1.12f, 1.30f);
+        }
         m.SetShaderParameter("grass_tint", gt);
         m.SetShaderParameter("dirt_tint", dt);
         m.SetShaderParameter("rock_tint", rt);

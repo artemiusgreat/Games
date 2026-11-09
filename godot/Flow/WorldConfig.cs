@@ -52,6 +52,14 @@ public static class WorldConfig
     // one for harnesses. "" = the procedural sky.
     public static string SkyTex = InitSky();
 
+    // Snow-covered ground (owner): the terrain wears snow
+    // where the map's painted sky is a snowscape. EnterLab
+    // copies the contract's flag here; AOT_SNOW=1 forces it.
+    public static bool SnowGround = InitSnow();
+
+    private static bool InitSnow() =>
+        System.Environment.GetEnvironmentVariable("AOT_SNOW") == "1";
+
     private static string InitSky()
     {
         var f = System.Environment.GetEnvironmentVariable("AOT_SKY");
