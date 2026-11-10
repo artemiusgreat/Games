@@ -775,6 +775,49 @@ public partial class RiderDuel
         }
     }
 
+    // --flipbook-test (Freelancer explosion prototype): stage the
+    // player on the flats, fire one rocket-sized and one death-sized
+    // flipbook fireball ahead of the chase camera, capture mid-boil
+    // (t=0.30s) and late (t=0.75s, orange/red + smoke), then quit.
+    private int _flipStage = -1;
+    private float _flipT;
+    private void UpdateFlipbookTest(float dt)
+    {
+        _aimPoint = TorsoAimPoint();
+        _flipT += dt;
+        if (_flipStage < 0)
+        {
+            _flipStage = 0;
+            _flipT = 0f;
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = 0f;
+            _player.AimPitchWide = 0f;
+            _player.TorsoPitch = 0f;
+            _hpPlayer = 100000f;
+            float gy = Main.HeightAt(0f, 67f);
+            SpawnFlipbookFireball(new Vector3(-4f, gy + 4f, 67f), 3.4f, 0.9f);
+            SpawnFlipbookFireball(new Vector3(5f, gy + 5f, 62f), 10f, 1.2f);
+            GD.Print("FLIPBOOK staged: rocket + death fireballs ahead of the player");
+            return;
+        }
+        if (_pendingPath != null || _capturing) return;
+        if (_flipStage == 0 && _flipT >= 0.30f)
+        {
+            _flipStage = 1;
+            UpdateCamera(0f);
+            QueueCapture("res://proof/flipbook_mid.png", "flipmid", CamModes.Chase);
+        }
+        else if (_flipStage == 1 && _flipT >= 0.75f)
+        {
+            _flipStage = 2;
+            UpdateCamera(0f);
+            QueueCapture("res://proof/flipbook_late.png", "fliplate", CamModes.Chase, () => GetTree().Quit());
+        }
+    }
+
     // --boom-check (round 28 follow-up, owner repeated "the
     // player's rider should be always visible" after the boom
     // shipped): stage the live-play cases the static sweep did
@@ -2527,12 +2570,12 @@ public partial class RiderDuel
             {
                 var back5 = TestRampFoot - TestRampDir * 10f;
                 _player.Teleport(new Vector3(back5.X, Main.HeightAt(back5.X, back5.Y), back5.Y), RiderWalker.YawOf(new Vector3(TestRampDir.X, 0f, TestRampDir.Y)));
-                _xPhase = 5; _xPhaseT = 0f; _dwMin = 99f; _dwLeg = 0; _dwOnDeck = false; return;
+                _xPhase = 5; _xPhaseT = 0f; _dwMin = 0f; _dwLeg = 0; _dwOnDeck = false; return;
             }
             if (start == "6")
             {
                 _player.Teleport(new Vector3(128f, 0f, 32f), RiderWalker.YawOf(Vector3.Right));
-                _xPhase = 6; _xPhaseT = 0f; return;
+                _xPhase = 6; _xPhaseT = 0f; _bkMaxRoot = 0f; _bkOnDeck = false; return;
             }
             var back = TestRampFoot - TestRampDir * 10f + new Vector2(0f, 0f);
             var spot = new Vector3(back.X, Main.HeightAt(back.X, back.Y), back.Y);
@@ -2543,7 +2586,7 @@ public partial class RiderDuel
         {
             if (((int)_xPhaseT) % 5 == 0 && _xPhaseT - Mathf.Floor(_xPhaseT) < dt * 1.5f)
                 GD.Print($"TERRACE P1 pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
-            var target = TestRampFoot + TestRampDir * 44f;
+            var target = TestRampFoot + TestRampDir * (TestRampRun + 12f);
             var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
             _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
             if (_player.SoleLevel >= TestRampHi - 1f)
@@ -2553,7 +2596,7 @@ public partial class RiderDuel
                 _player.Teleport(pad, 0f);
                 _xPhase = 2; _xPhaseT = 0f;
             }
-            else if (_xPhaseT > 30f) { GD.PrintErr($"TERRACE FAIL: ramp climb stalled sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
+            else if (_xPhaseT > 45f) { GD.PrintErr($"TERRACE FAIL: ramp climb stalled sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
         }
         else if (_xPhase == 2)
         {
@@ -2591,7 +2634,7 @@ public partial class RiderDuel
         // diagonals the boundary is a staircase, and its corner
         // notches belong to the NEIGHBOUR band's footprint (open
         // under-deck ground), not to this band's walking surface.
-        foreach (var (rr, top, refY) in new[] { (124f, 16f, 17.5f), (140f, 16f, 17.5f), (156f, 16f, 17.5f), (44f, 32f, 33.5f), (56f, 32f, 33.5f), (66f, 32f, 33.5f) })
+        foreach (var (rr, top, refY) in new[] { (140f, TerraceL1, TerraceL1 + 1.5f), (160f, TerraceL1, TerraceL1 + 1.5f), (180f, TerraceL1, TerraceL1 + 1.5f), (40f, TerraceL2, TerraceL2 + 1.5f), (56f, TerraceL2, TerraceL2 + 1.5f) })
         {
             for (float a = 0f; a < 360f; a += 1.0f)
             {
@@ -2601,51 +2644,65 @@ public partial class RiderDuel
                 if (g < top - 0.1f) { bad++; if (worst.Length < 300) worst += $" ({x:F0},{z:F0})={g:F1}"; }
             }
         }
-        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: deck bands fully tiled at sole height"); GetTree().Quit(0); }
+        // The moat ring between the decks stays open ground
+        // (bridge/ramps crossing it are excluded by their rect).
+        for (float a = 0f; a < 360f; a += 1.0f)
+        {
+            float rad = Mathf.DegToRad(a);
+            float x = Mathf.Cos(rad) * 104f, z = Mathf.Sin(rad) * 104f;
+            bool onRamp = false;
+            foreach (var r in Main.Ramps) { Main.RampHeightAt(r, x, z, out bool ins); if (ins) { onRamp = true; break; } }
+            if (onRamp) continue;
+            float g = Main.GroundAt(x, z, 1.5f);
+            if (g > 0.6f) { bad++; if (worst.Length < 300) worst += $" moat({x:F0},{z:F0})={g:F1}"; }
+        }
+        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: ring decks fully tiled, moat open"); GetTree().Quit(0); }
         else { GD.PrintErr($"TERRACE SEAMSCAN FAIL: {bad} holes:{worst}"); GetTree().Quit(1); }
     }
 
     private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
-    private void UpdateDeckWalkTest(float dt) // phases 5/6: deck-seam walk + thruster ledge landing (owner regressions, 2026-11-10)
+    private float _bkMaxRoot; private bool _bkOnDeck;
+    private void UpdateDeckWalkTest(float dt) // phases 5/6: diagonal ramp drive + ceiling bonk (owner regressions, 2026-11-10)
     {
         if (_xPhase == 6)
         {
-            if (_xPhaseT < 2.2f) { _player.SetThrust(true); _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f); }
-            else
+            // BONK (owner: collision both ways): burn straight
+            // up UNDER a +22 deck for 7s. The rider must bonk
+            // at the underside (19.8) minus head room, never
+            // reach the deck, and settle back on the ground.
+            if (_xPhaseT < 7f) { _player.SetThrust(true); _player.SetDrive(0f, 0f); }
+            else _player.SetThrust(false);
+            _bkMaxRoot = Mathf.Max(_bkMaxRoot, _player.RootPos.Y);
+            if (_player.SoleLevel >= TerraceL1 - 1f) _bkOnDeck = true;
+            if (_xPhaseT > 12f)
             {
-                _player.SetThrust(false); _player.SetDrive(0f, 0f);
-                if (_xPhaseT > 3.5f && _player.SoleLevel >= 15f)
-                { GD.Print($"TERRACE LEDGE PASS sole={_player.SoleLevel:F1} root=({_player.RootPos.X:F0},{_player.RootPos.Z:F0})"); GetTree().Quit(0); }
-                else if (_xPhaseT > 10f) { GD.PrintErr($"TERRACE LEDGE FAIL sole={_player.SoleLevel:F1}"); GetTree().Quit(1); }
+                float headRoom = Mathf.Max(1.5f, _playerSpec.Height - 10.5f + 0.5f);
+                float cap = TerraceL1 - 2.2f - headRoom + 0.75f;
+                GD.Print($"BONK maxRoot={_bkMaxRoot:F1} cap={cap:F1} onDeck={_bkOnDeck} settleSole={_player.SoleLevel:F1}");
+                if (!_bkOnDeck && _bkMaxRoot <= cap && _player.SoleLevel <= 0.7f)
+                { GD.Print("TERRACE BONK PASS: flight stops at the deck underside"); GetTree().Quit(0); return; }
+                GD.PrintErr("TERRACE BONK FAIL"); GetTree().Quit(1);
             }
             return;
         }
-        // Phase 5: ride the test ramp up (phase 1's route),
-        // then walk STRAIGHT across the deck for 25s — the run
-        // crosses several plot seams; the sole must never dip
-        // (the fall-through regression was jittered plot centres
-        // leaving slits between deck rects).
-        if (!_dwOnDeck)
+        // Phase 5: climb the test ramp on a DIAGONAL line
+        // (aim 5u off the corridor centre) and track the worst
+        // dip of the sole below the ramp's analytic height —
+        // the owner's fall-through: feet leaving a narrow
+        // corridor and grounding far below.
+        var perp = new Vector2(-TestRampDir.Y, TestRampDir.X);
+        var target = TestRampFoot + TestRampDir * (TestRampRun + 10f) + perp * 5f;
+        var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
+        _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
+        float exp = Main.RampHeightAt(TestRampRect, _player.RootPos.X, _player.RootPos.Z, out bool inside);
+        if (inside) _dwMin = Mathf.Max(_dwMin, exp - _player.SoleLevel);
+        if (_player.SoleLevel >= TestRampHi - 1f)
         {
-            var target = TestRampFoot + TestRampDir * 44f;
-            var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
-            _dwYaw = RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y));
-            _player.SetDrive(_dwYaw, 3.2f);
-            if (_player.SoleLevel >= TestRampHi - 1f) { _dwOnDeck = true; _xPhaseT = 0f; _udStart = _player.RootPos; GD.Print($"DECKWALK on deck at ({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) yaw={_dwYaw:F2}"); }
-            else if (_xPhaseT > 30f) { GD.PrintErr("DECKWALK FAIL: never reached the deck"); GetTree().Quit(1); }
-            return;
+            GD.Print($"RAMPWALK done maxDip={_dwMin:F2} sole={_player.SoleLevel:F1}");
+            if (_dwMin <= 1.6f) { GD.Print("TERRACE RAMPWALK PASS"); GetTree().Quit(0); return; }
+            GD.PrintErr($"TERRACE RAMPWALK FAIL maxDip={_dwMin:F2}"); GetTree().Quit(1);
         }
-        _dwMin = Mathf.Min(_dwMin, _player.SoleLevel);
-        _player.SetDrive(_dwYaw, 3.2f);
-        if (_xPhaseT > 25f)
-        {
-            var d = _player.RootPos - _udStart;
-            float disp = new Vector2(d.X, d.Z).Length();
-            GD.Print($"DECKWALK run done disp={disp:F0} minSole={_dwMin:F1} final={_player.SoleLevel:F1} pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0})");
-            if (_dwMin >= 14f && _player.SoleLevel >= 14f && disp >= 15f) { GD.Print("TERRACE DECKWALK PASS"); GetTree().Quit(0); }
-            if (disp < 15f) { GD.PrintErr("DECKWALK INCONCLUSIVE: walker wedged (building?) — adjudicate from trace"); GetTree().Quit(2); }
-            GD.PrintErr($"TERRACE DECKWALK FAIL minSole={_dwMin:F1}"); GetTree().Quit(1);
-        }
+        else if (_xPhaseT > 45f) { GD.PrintErr($"RAMPWALK FAIL: stalled sole={_player.SoleLevel:F1} maxDip={_dwMin:F2}"); GetTree().Quit(1); }
     }
 
     private void UpdateMissionTest(float dt)
