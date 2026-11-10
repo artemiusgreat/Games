@@ -2497,6 +2497,76 @@ public partial class RiderDuel
         if (_rgT > 120f && _rgPhase < 5) { GD.PrintErr("RANGE FAIL: phase timeout"); GetTree().Quit(1); }
     }
 
+    private int _xPhase;
+    private float _xPhaseT;
+
+    // Terrace test (AOT_TERRATEST=1 on a terraced mission):
+    // drive the player up a ramp, ride a lift, cross the
+    // bridge to the island — sole levels are the verdicts.
+    private void UpdateTerraceTest(float dt)
+    {
+        _xPhaseT += dt;
+        if (_xPhase == 0 && _xPhaseT > 1.5f)
+        {
+            if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
+            GD.Print($"TERRACE ramp foot=({TestRampFoot.X:F0},{TestRampFoot.Y:F0}) {TestRampLo:F0}->{TestRampHi:F0}; lift pad=({TestLiftPad.X:F0},{TestLiftPad.Y:F0}) {TestLiftLo:F0}->{TestLiftHi:F0}");
+            string start = System.Environment.GetEnvironmentVariable("AOT_TERRATEST");
+            if (start == "2")
+            {
+                _player.Teleport(new Vector3(TestLiftPad.X, TestLiftLo, TestLiftPad.Y), 0f);
+                _xPhase = 2; _xPhaseT = 0f; return;
+            }
+            if (start == "3")
+            {
+                _player.Teleport(new Vector3(272f, 0f, 0f), RiderWalker.YawOf(Vector3.Right));
+                _xPhase = 3; _xPhaseT = 0f; return;
+            }
+            var back = TestRampFoot - TestRampDir * 10f + new Vector2(0f, 0f);
+            var spot = new Vector3(back.X, Main.HeightAt(back.X, back.Y), back.Y);
+            _player.Teleport(spot, RiderWalker.YawOf(new Vector3(TestRampDir.X, 0f, TestRampDir.Y)));
+            _xPhase = 1; _xPhaseT = 0f;
+        }
+        else if (_xPhase == 1)
+        {
+            if (((int)_xPhaseT) % 5 == 0 && _xPhaseT - Mathf.Floor(_xPhaseT) < dt * 1.5f)
+                GD.Print($"TERRACE P1 pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
+            var target = TestRampFoot + TestRampDir * 44f;
+            var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
+            _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
+            if (_player.SoleLevel >= TestRampHi - 1f)
+            {
+                GD.Print($"TERRACE RAMP PASS sole={_player.SoleLevel:F1} (target {TestRampHi:F0})");
+                var pad = new Vector3(TestLiftPad.X, TestLiftLo, TestLiftPad.Y);
+                _player.Teleport(pad, 0f);
+                _xPhase = 2; _xPhaseT = 0f;
+            }
+            else if (_xPhaseT > 30f) { GD.PrintErr($"TERRACE FAIL: ramp climb stalled sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
+        }
+        else if (_xPhase == 2)
+        {
+            _player.SetDrive(0f, 0f);
+            if (_player.SoleLevel >= TestLiftHi - 1f)
+            {
+                GD.Print($"TERRACE LIFT PASS sole={_player.SoleLevel:F1} (target {TestLiftHi:F0})");
+                _player.Teleport(new Vector3(272f, 0f, 0f), RiderWalker.YawOf(Vector3.Right));
+                _xPhase = 3; _xPhaseT = 0f;
+            }
+            else if (_xPhaseT > 16f) { GD.PrintErr($"TERRACE FAIL: lift did not rise sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
+        }
+        else if (_xPhase == 3)
+        {
+            var to = new Vector2(430f - _player.RootPos.X, 0f - _player.RootPos.Z);
+            _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
+            if (_player.RootPos.X > 384f && _player.SoleLevel >= IslandTop - 1f)
+            {
+                GD.Print($"TERRACE BRIDGE PASS pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
+                GD.Print("TERRACE TEST DONE");
+                GetTree().Quit(0);
+            }
+            else if (_xPhaseT > 75f) { GD.PrintErr($"TERRACE FAIL: bridge crossing pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
+        }
+    }
+
     private void UpdateMissionTest(float dt)
     {
         _mPhaseT += dt;
