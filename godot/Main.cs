@@ -200,7 +200,11 @@ public partial class Main : Node3D
 	// Building roofs a rider can stand on (owner, 2026-10-31):
 	// registered by RiderDuel's AddBuilding, removed when the
 	// building is destroyed. Axis-aligned rectangles with a top.
-	public struct RoofRect { public float Cx, Cz, Hx, Hz, Top; }
+	// Under: the surface's underside height when the space
+	// below it is open (terrace decks, lift pads, the island
+	// bridge slab) — thruster flight bonks against it (owner:
+	// collision works both ways). 0 = solid / no underside.
+	public struct RoofRect { public float Cx, Cz, Hx, Hz, Top, Under; }
 	public static readonly System.Collections.Generic.List<RoofRect> Roofs = new();
 
 	// Sloped walkable surfaces (owner: Harbor terraces): the
@@ -210,7 +214,7 @@ public partial class Main : Node3D
 	public static readonly System.Collections.Generic.List<RampRect> Ramps = new();
 
 	// Round standable tops (the Harbor island deck).
-	public struct DiscRoof { public float Cx, Cz, R, Top; }
+	public struct DiscRoof { public float Cx, Cz, R, Top, Under; }
 	public static readonly System.Collections.Generic.List<DiscRoof> DiscRoofs = new();
 
 	// Axis-aligned walls with a top (terrace platform sides,
@@ -262,6 +266,31 @@ public partial class Main : Node3D
 			if (inside && h > g && refY >= h - 2.5f) g = h;
 		}
 		return g;
+	}
+
+	// The lowest underside strictly above aboveY in this
+	// column (owner: platforms collide from below too — a
+	// thrustering rider must not pass through a deck). Counts
+	// deck/pad undersides and ramp wedge undersides (the wedge
+	// box is 3.5 thick, its top face on the slope line, so the
+	// underside runs ~3.3 below the walking height). Returns
+	// float.MaxValue when the column is open to the sky.
+	public static float CeilingAt(float x, float z, float aboveY)
+	{
+		float c = float.MaxValue;
+		foreach (var r in Roofs)
+			if (r.Under > aboveY && r.Under < c && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
+				c = r.Under;
+		foreach (var d in DiscRoofs)
+			if (d.Under > aboveY && d.Under < c &&
+				(x - d.Cx) * (x - d.Cx) + (z - d.Cz) * (z - d.Cz) <= d.R * d.R)
+				c = d.Under;
+		foreach (var r in Ramps)
+		{
+			float h = RampHeightAt(r, x, z, out bool inside);
+			if (inside && h - 3.3f > aboveY && h - 3.3f < c) c = h - 3.3f;
+		}
+		return c;
 	}
 
 	private static Vector3 GridNormal(int i, int j, float step)

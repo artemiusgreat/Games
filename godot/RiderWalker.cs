@@ -609,6 +609,25 @@ public partial class RiderWalker : Node3D
             _jumpH += _jumpVel * h;
             if (_jumpH <= 0f) { _jumpH = 0f; _jumpVel = 0f; }
         }
+        // Ceilings (owner: platforms collide from below too):
+        // a thrustering rider under a deck bonks against its
+        // underside instead of passing through it. The head
+        // room derives from the chassis height against the
+        // sole-to-root span (10.5) the gait uses throughout.
+        if (_jumpH > 0f)
+        {
+            float ceil = Main.CeilingAt(_rootPos.X, _rootPos.Z, _groundY + 0.5f);
+            if (ceil < float.MaxValue)
+            {
+                float headRoom = Mathf.Max(1.5f, _cfg.TargetHeight - 10.5f + 0.5f);
+                float maxH = ceil - headRoom - _groundY;
+                if (_jumpH > maxH)
+                {
+                    _jumpH = Mathf.Max(0f, maxH);
+                    if (_jumpVel > 0f) _jumpVel = 0f;
+                }
+            }
+        }
         if (!_thrustHeld && JumpCharge < 1f)
             JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released — ground or air (owner round 22) — and a held key on empty tanks stays dead instead of sputtering
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
