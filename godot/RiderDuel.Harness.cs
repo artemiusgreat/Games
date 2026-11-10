@@ -2506,6 +2506,7 @@ public partial class RiderDuel
     private void UpdateTerraceTest(float dt)
     {
         _xPhaseT += dt;
+        if (_xPhase == 5 || _xPhase == 6) { UpdateDeckWalkTest(dt); return; }
         if (_xPhase == 0 && _xPhaseT > 1.5f)
         {
             if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
@@ -2520,6 +2521,18 @@ public partial class RiderDuel
             {
                 _player.Teleport(new Vector3(272f, 0f, 0f), RiderWalker.YawOf(Vector3.Right));
                 _xPhase = 3; _xPhaseT = 0f; return;
+            }
+            if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
+            if (start == "5")
+            {
+                var back5 = TestRampFoot - TestRampDir * 10f;
+                _player.Teleport(new Vector3(back5.X, Main.HeightAt(back5.X, back5.Y), back5.Y), RiderWalker.YawOf(new Vector3(TestRampDir.X, 0f, TestRampDir.Y)));
+                _xPhase = 5; _xPhaseT = 0f; _dwMin = 99f; _dwLeg = 0; _dwOnDeck = false; return;
+            }
+            if (start == "6")
+            {
+                _player.Teleport(new Vector3(128f, 0f, 32f), RiderWalker.YawOf(Vector3.Right));
+                _xPhase = 6; _xPhaseT = 0f; return;
             }
             var back = TestRampFoot - TestRampDir * 10f + new Vector2(0f, 0f);
             var spot = new Vector3(back.X, Main.HeightAt(back.X, back.Y), back.Y);
@@ -2564,6 +2577,74 @@ public partial class RiderDuel
                 GetTree().Quit(0);
             }
             else if (_xPhaseT > 75f) { GD.PrintErr($"TERRACE FAIL: bridge crossing pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
+        }
+    }
+
+    // Phase 7: deck tiling invariant — sample GroundAt on
+    // circles inside each deck band; every sample must read
+    // the band's deck top (no holes, no slits). Instant (one
+    // frame at world build), unlike a driven walk.
+    private void RunSeamScan()
+    {
+        int bad = 0; string worst = "";
+        // Radii stay ~25u clear of the band boundaries: at the
+        // diagonals the boundary is a staircase, and its corner
+        // notches belong to the NEIGHBOUR band's footprint (open
+        // under-deck ground), not to this band's walking surface.
+        foreach (var (rr, top, refY) in new[] { (124f, 16f, 17.5f), (140f, 16f, 17.5f), (156f, 16f, 17.5f), (44f, 32f, 33.5f), (56f, 32f, 33.5f), (66f, 32f, 33.5f) })
+        {
+            for (float a = 0f; a < 360f; a += 1.0f)
+            {
+                float rad = Mathf.DegToRad(a);
+                float x = Mathf.Cos(rad) * rr, z = Mathf.Sin(rad) * rr;
+                float g = Main.GroundAt(x, z, refY);
+                if (g < top - 0.1f) { bad++; if (worst.Length < 300) worst += $" ({x:F0},{z:F0})={g:F1}"; }
+            }
+        }
+        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: deck bands fully tiled at sole height"); GetTree().Quit(0); }
+        else { GD.PrintErr($"TERRACE SEAMSCAN FAIL: {bad} holes:{worst}"); GetTree().Quit(1); }
+    }
+
+    private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
+    private void UpdateDeckWalkTest(float dt) // phases 5/6: deck-seam walk + thruster ledge landing (owner regressions, 2026-11-10)
+    {
+        if (_xPhase == 6)
+        {
+            if (_xPhaseT < 2.2f) { _player.SetThrust(true); _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f); }
+            else
+            {
+                _player.SetThrust(false); _player.SetDrive(0f, 0f);
+                if (_xPhaseT > 3.5f && _player.SoleLevel >= 15f)
+                { GD.Print($"TERRACE LEDGE PASS sole={_player.SoleLevel:F1} root=({_player.RootPos.X:F0},{_player.RootPos.Z:F0})"); GetTree().Quit(0); }
+                else if (_xPhaseT > 10f) { GD.PrintErr($"TERRACE LEDGE FAIL sole={_player.SoleLevel:F1}"); GetTree().Quit(1); }
+            }
+            return;
+        }
+        // Phase 5: ride the test ramp up (phase 1's route),
+        // then walk STRAIGHT across the deck for 25s — the run
+        // crosses several plot seams; the sole must never dip
+        // (the fall-through regression was jittered plot centres
+        // leaving slits between deck rects).
+        if (!_dwOnDeck)
+        {
+            var target = TestRampFoot + TestRampDir * 44f;
+            var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
+            _dwYaw = RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y));
+            _player.SetDrive(_dwYaw, 3.2f);
+            if (_player.SoleLevel >= TestRampHi - 1f) { _dwOnDeck = true; _xPhaseT = 0f; _udStart = _player.RootPos; GD.Print($"DECKWALK on deck at ({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) yaw={_dwYaw:F2}"); }
+            else if (_xPhaseT > 30f) { GD.PrintErr("DECKWALK FAIL: never reached the deck"); GetTree().Quit(1); }
+            return;
+        }
+        _dwMin = Mathf.Min(_dwMin, _player.SoleLevel);
+        _player.SetDrive(_dwYaw, 3.2f);
+        if (_xPhaseT > 25f)
+        {
+            var d = _player.RootPos - _udStart;
+            float disp = new Vector2(d.X, d.Z).Length();
+            GD.Print($"DECKWALK run done disp={disp:F0} minSole={_dwMin:F1} final={_player.SoleLevel:F1} pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0})");
+            if (_dwMin >= 14f && _player.SoleLevel >= 14f && disp >= 15f) { GD.Print("TERRACE DECKWALK PASS"); GetTree().Quit(0); }
+            if (disp < 15f) { GD.PrintErr("DECKWALK INCONCLUSIVE: walker wedged (building?) — adjudicate from trace"); GetTree().Quit(2); }
+            GD.PrintErr($"TERRACE DECKWALK FAIL minSole={_dwMin:F1}"); GetTree().Quit(1);
         }
     }
 

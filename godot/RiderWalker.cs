@@ -156,7 +156,9 @@ public partial class RiderWalker : Node3D
 
     // Foot ground: terrain, or a building roof the soles are
     // already level with (standing on it, falling onto it).
-    private float GroundHere(float x, float z) => Main.GroundAt(x, z, SoleLevel + 1.5f);
+    private float GroundHere(float x, float z) => Airborne
+        ? Main.GroundAt(x, z, SoleLevel + 1.5f, _rootPos.Y, 4.0f)
+        : Main.GroundAt(x, z, SoleLevel + 1.5f);
     public float LegsYaw => _legsYaw;
     public float CollisionRadius => _cfg.CollisionRadius;
     public Vector3 RootPos => _rootPos;

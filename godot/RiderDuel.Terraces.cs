@@ -61,9 +61,11 @@ public partial class RiderDuel
         for (int i = -hb; i <= hb; i++)
         for (int j = -hb; j <= hb; j++)
         {
-            var c = new Vector2(
-                i * p + (float)(rng.NextDouble() - 0.5) * 2f,
-                j * p + (float)(rng.NextDouble() - 0.5) * 2f);
+            // NO position jitter here (owner: riders fell
+            // through the decks): platforms must TILE — jittered
+            // centres left 1-2u slits between deck rects that the
+            // visuals bridged but the ground data did not.
+            var c = new Vector2(i * p, j * p);
             if (c.Length() > CityGrid.Radius) continue;
             if (TerrainGrade(c.X, c.Y) > 0.4f) continue;
             float l = TerraceLevel(c.Length());
@@ -159,7 +161,7 @@ public partial class RiderDuel
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         AddChild(trim);
-        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 15.95f, Hz = 15.95f, Top = lvlTop });
+        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop });
     }
 
     // A sloped deck wedge between two points at two heights:

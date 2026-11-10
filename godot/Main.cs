@@ -236,14 +236,21 @@ public partial class Main : Node3D
 	// it, while a walker on the ground beside the building, whose
 	// refY sits far below the top, keeps the terrain and is still
 	// stopped by the walls.
-	public static float GroundAt(float x, float z, float refY)
+	public static float GroundAt(float x, float z, float refY, float ledgeRootY = float.NaN, float ledgeSlack = 0f)
 	{
+		// Ledge adoption (owner: thruster landings on the Harbor
+		// decks): an AIRBORNE walker whose hips are already above
+		// a top and whose soles hang within ledgeSlack below it
+		// grounds on it — he clambers up the last few units. A
+		// walker UNDER the same deck (hips below the top) never
+		// adopts it, so decks stay walkable from underneath.
+		bool Ledge(float top) => ledgeSlack > 0f && ledgeRootY > top && refY >= top - ledgeSlack;
 		float g = HeightAt(x, z);
 		foreach (var r in Roofs)
-			if (r.Top > g && refY >= r.Top && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
+			if (r.Top > g && (refY >= r.Top || Ledge(r.Top)) && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				g = r.Top;
 		foreach (var d in DiscRoofs)
-			if (d.Top > g && refY >= d.Top &&
+			if (d.Top > g && (refY >= d.Top || Ledge(d.Top)) &&
 				(x - d.Cx) * (x - d.Cx) + (z - d.Cz) * (z - d.Cz) <= d.R * d.R)
 				g = d.Top;
 		// Ramps adopt with a step-up allowance: a walker
