@@ -94,7 +94,8 @@ public partial class FlowMain : Node3D
         if (_loading)
         {
             _loadT += delta;
-            _loadLabel.Text = "Loading" + new string('.', 1 + (int)(_loadT * 3.0) % 3);
+            // Static heading (owner): "Loading" with no dots.
+            _loadLabel.Text = "Loading";
         }
         if (_navTest)
         {
@@ -176,7 +177,7 @@ public partial class FlowMain : Node3D
         center.AddChild(v);
         _loadLabel = FlowUi.MakeHeading("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center);
         v.AddChild(_loadLabel);
-        _loadPct = FlowUi.MakeLabel("Loading the front…", 14, FlowUi.Dim, HorizontalAlignment.Center);
+        _loadPct = FlowUi.MakeLabel("Composing the views...", 14, FlowUi.Dim, HorizontalAlignment.Center);
         v.AddChild(_loadPct);
     }
 
