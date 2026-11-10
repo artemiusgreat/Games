@@ -113,24 +113,44 @@ public partial class RiderDuel
             else BuildLift(bestEdge, bestDir, bestLo, bestHi);
             }
         }
+        // The citadel clears the center: no buildings on the
+        // plots under its deck or in its ramp strip.
+        _skipRects.Add(new Main.RoofRect { Cx = 0f, Cz = 0f, Hx = 40f, Hz = 40f, Top = 0f });
+        _skipRects.Add(new Main.RoofRect { Cx = 0f, Cz = 44.5f, Hx = 5.5f, Hz = 15f, Top = 0f });
         foreach (var (c, l) in plots)
         {
             if (l > 0f) BuildPlatform(c, l);
             PlaceCityBlock(rng, c, ref placed, l);
         }
+        BuildCitadel();
         BuildIsland(rng, ref placed);
         GD.Print($"TERRACES built: {_lifts.Count} lifts, platforms+ramps+island registered (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
     }
 
     private void BuildPlatform(Vector2 c, float lvlTop)
     {
+        // A deck slab on columns (owner: platforms stand on
+        // pillars, not solid blocks) — the space under a deck
+        // is open ground a rider can walk through; the corner
+        // columns are the only obstacles down there.
         var mi = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(31.9f, lvlTop + 2.4f, 31.9f) },
+            Mesh = new BoxMesh { Size = new Vector3(31.9f, 2.2f, 31.9f) },
             MaterialOverride = DeckMat(),
-            Position = new Vector3(c.X, (lvlTop - 2.4f) / 2f, c.Y)
+            Position = new Vector3(c.X, lvlTop - 1.1f, c.Y)
         };
         AddChild(mi);
+        foreach (var s2 in new[] { new Vector2(13.5f, 13.5f), new Vector2(-13.5f, 13.5f), new Vector2(13.5f, -13.5f), new Vector2(-13.5f, -13.5f) })
+        {
+            var col = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(1.7f, lvlTop - 2.2f, 1.7f) },
+                MaterialOverride = DeckMat(),
+                Position = new Vector3(c.X + s2.X, (lvlTop - 2.2f) / 2f, c.Y + s2.Y)
+            };
+            AddChild(col);
+            _props.Add(new Circle { P = c + s2, R = 1.15f, RoofTop = lvlTop });
+        }
         var trim = new MeshInstance3D
         {
             Mesh = new BoxMesh { Size = new Vector3(32.5f, 0.55f, 32.5f) },
@@ -140,7 +160,6 @@ public partial class RiderDuel
         };
         AddChild(trim);
         Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 15.95f, Hz = 15.95f, Top = lvlTop });
-        Main.Walls.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 15.95f, Hz = 15.95f, Top = lvlTop });
     }
 
     // A sloped deck wedge between two points at two heights:
@@ -285,6 +304,125 @@ public partial class RiderDuel
         }
     }
 
+    private Material TierMat(Vector3 size, int seq) => _photo
+        ? PhotoEnv.BuildingMaterial(size, BuildingTints[seq % BuildingTints.Length], seq)
+        : new StandardMaterial3D { AlbedoColor = new Color(0.4f, 0.42f, 0.48f), Roughness = 0.9f };
+
+    // A composed landmark (owner: the seat of leadership):
+    // stacked tiers with lit rings, corner spires and a
+    // central spire, registered as one destructible building
+    // through the same shell as every other building.
+    private void BuildLandmark(Vector2 c, float deckTop, float w, float h, float hp, bool banners)
+    {
+        int pc0 = _props.Count, hc0 = _hit.Props.Count;
+        const float Sink = 2.4f;
+        var size = new Vector3(w, h, w);
+        var pos = new Vector3(c.X, deckTop + h / 2f - Sink, c.Y);
+        var mi = new MeshInstance3D { Position = pos };
+        void Tier(float tw, float th, float yBase, int seq)
+        {
+            var t = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(tw, th, tw) },
+                MaterialOverride = TierMat(new Vector3(tw, th, tw), seq),
+                Position = new Vector3(0f, yBase + th / 2f - h / 2f, 0f)
+            };
+            mi.AddChild(t);
+            var ring = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(tw + 1.2f, 0.5f, tw + 1.2f) },
+                MaterialOverride = TrimMat(),
+                Position = new Vector3(0f, yBase + th - h / 2f, 0f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            mi.AddChild(ring);
+        }
+        Tier(w, h * 0.24f, 0f, 7);
+        Tier(w * 0.72f, h * 0.34f, h * 0.24f, 8);
+        Tier(w * 0.48f, h * 0.26f, h * 0.58f, 9);
+        var spire = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(w * 0.13f, h * 0.16f, w * 0.13f) },
+            MaterialOverride = DeckMat(),
+            Position = new Vector3(0f, h * 0.92f - h / 2f, 0f)
+        };
+        mi.AddChild(spire);
+        foreach (var cs in new[] { new Vector2(1, 1), new Vector2(-1, 1), new Vector2(1, -1), new Vector2(-1, -1) })
+        {
+            var csp = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(w * 0.10f, h * 0.38f, w * 0.10f) },
+                MaterialOverride = DeckMat(),
+                Position = new Vector3(cs.X * (w / 2f - w * 0.07f), h * 0.19f - h / 2f, cs.Y * (w / 2f - w * 0.07f))
+            };
+            mi.AddChild(csp);
+        }
+        if (banners)
+        {
+            var bmat = new StandardMaterial3D { AlbedoColor = new Color(0.45f, 0.08f, 0.10f), Roughness = 0.85f };
+            foreach (float f in new[] { 1f, -1f })
+            {
+                var bp = new MeshInstance3D
+                {
+                    Mesh = new PlaneMesh { Size = new Vector2(w * 0.30f, h * 0.30f) },
+                    MaterialOverride = bmat,
+                    Position = new Vector3(0f, h * 0.38f - h / 2f, f * (w * 0.36f + 0.06f)),
+                    Rotation = new Vector3(0f, f > 0f ? 0f : Mathf.Pi, 0f)
+                };
+                mi.AddChild(bp);
+            }
+        }
+        AddChild(mi);
+        _buildingPts.Add(c);
+        RegisterBuildingShell(pos, size, deckTop, Sink, deckTop + h - Sink, pc0, hc0, mi);
+        _destructibles[_destructibles.Count - 1].Hp = hp;
+    }
+
+    // The central citadel deck (owner): one platform at the
+    // center above the top deck, carrying the leadership
+    // landmark, reached by a single ramp from the +32 deck.
+    private void BuildCitadel()
+    {
+        const float top = TerraceL2 + 8f; // 40
+        var slab = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 33f, BottomRadius = 34f, Height = 2.2f, RadialSegments = 36 },
+            MaterialOverride = DeckMat(),
+            Position = new Vector3(0f, top - 1.1f, 0f)
+        };
+        AddChild(slab);
+        var rim = new MeshInstance3D
+        {
+            Mesh = new TorusMesh { InnerRadius = 32.5f, OuterRadius = 33.9f, Rings = 36, RingSegments = 6 },
+            MaterialOverride = TrimMat(),
+            Position = new Vector3(0f, top - 0.1f, 0f),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+        };
+        AddChild(rim);
+        for (int k = 0; k < 6; k++)
+        {
+            float a2 = k / 6f * Mathf.Tau;
+            var col = new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 1.1f, BottomRadius = 1.1f, Height = top - TerraceL2 - 1.2f, RadialSegments = 10 },
+                MaterialOverride = DeckMat(),
+                Position = new Vector3(Mathf.Cos(a2) * 29f, TerraceL2 - 1.0f + (top - TerraceL2 - 1.2f) / 2f, Mathf.Sin(a2) * 29f)
+            };
+            AddChild(col);
+        }
+        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = 0f, Cz = 0f, R = 33f, Top = top });
+        _props.Add(new Circle { P = Vector2.Zero, R = 32.6f, RoofTop = top });
+        var s0 = new Vector2(0f, 58f); var s1 = new Vector2(0f, 31f);
+        Main.Ramps.Add(new Main.RampRect
+        {
+            Cx = 0f, Cz = 44.5f, DirX = 0f, DirZ = -1f,
+            HalfLen = 13.5f, HalfWid = 4.5f, H0 = TerraceL2, H1 = top
+        });
+        AddRampWedge(s0, TerraceL2, s1, top, 9f);
+        BuildLandmark(Vector2.Zero, top, 30f, 52f, 200f, true);
+        GD.Print($"TERRACE CITADEL deck top={top:F0} at the center, landmark 30x52");
+    }
+
     private void BuildIsland(System.Random rng, ref int placed)
     {
         // Island deck: a round terrace across the water.
@@ -305,6 +443,18 @@ public partial class RiderDuel
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         AddChild(rim);
+        // The island deck stands on columns in the water.
+        for (int k = 0; k < 8; k++)
+        {
+            float a3 = k / 8f * Mathf.Tau + 0.2f;
+            var col = new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 1.3f, BottomRadius = 1.3f, Height = IslandTop + 1f, RadialSegments = 10 },
+                MaterialOverride = DeckMat(),
+                Position = new Vector3(IslandC.X + Mathf.Cos(a3) * 56f, (IslandTop - 2f) / 2f, IslandC.Y + Mathf.Sin(a3) * 56f)
+            };
+            AddChild(col);
+        }
         Main.DiscRoofs.Add(new Main.DiscRoof { Cx = IslandC.X, Cz = IslandC.Y, R = IslandR, Top = IslandTop });
         _props.Add(new Circle { P = IslandC, R = IslandR + 0.4f, RoofTop = IslandTop });
         // The water: a still, dark sheet around the island.
@@ -349,12 +499,42 @@ public partial class RiderDuel
             };
             AddChild(rail);
         }
-        // Island blocks on the deck, clear of the bridge landing.
+        // The island's own dais (owner: the island was too
+        // primitive): a second, smaller deck at +12 carrying
+        // a landmark spire, up a ramp from the island deck.
+        const float daisTop = IslandTop + 6f;
+        var dais = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 30f, BottomRadius = 31f, Height = daisTop - IslandTop + 1f, RadialSegments = 30 },
+            MaterialOverride = DeckMat(),
+            Position = new Vector3(IslandC.X, (IslandTop + daisTop) / 2f - 0.5f, IslandC.Y)
+        };
+        AddChild(dais);
+        var daisRim = new MeshInstance3D
+        {
+            Mesh = new TorusMesh { InnerRadius = 29.5f, OuterRadius = 30.9f, Rings = 30, RingSegments = 6 },
+            MaterialOverride = TrimMat(),
+            Position = new Vector3(IslandC.X, daisTop - 0.1f, IslandC.Y),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+        };
+        AddChild(daisRim);
+        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = IslandC.X, Cz = IslandC.Y, R = 30f, Top = daisTop });
+        _props.Add(new Circle { P = IslandC, R = 29.6f, RoofTop = daisTop });
+        Main.Ramps.Add(new Main.RampRect
+        {
+            Cx = IslandC.X - 43f, Cz = 0f, DirX = 1f, DirZ = 0f,
+            HalfLen = 13f, HalfWid = 4f, H0 = IslandTop, H1 = daisTop
+        });
+        AddRampWedge(new Vector2(IslandC.X - 56f, 0f), IslandTop, new Vector2(IslandC.X - 30f, 0f), daisTop, 8f);
+        BuildLandmark(IslandC, daisTop, 20f, 34f, 120f, false);
+        // Island blocks on the deck, clear of the bridge
+        // landing (west) and the dais.
         for (int gx = -1; gx <= 1; gx++)
         for (int gz = -1; gz <= 1; gz++)
         {
             var c = IslandC + new Vector2(gx * CityGrid.Pitch, gz * CityGrid.Pitch);
             if (c.DistanceTo(IslandC) > 46f) continue;
+            if (c.DistanceTo(IslandC) < 34f) continue;
             if (c.X > 384f && Mathf.Abs(c.Y) < 20f) continue;
             PlaceCityBlock(rng, c, ref placed, IslandTop);
         }
