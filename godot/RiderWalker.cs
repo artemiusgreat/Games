@@ -655,6 +655,19 @@ public partial class RiderWalker : Node3D
         }
         AdvanceLeg(_legL, h);
         AdvanceLeg(_legR, h);
+        // Dynamic ground (owner: Harbor lift pads): a surface
+        // moving under a planted foot carries the foot with
+        // it — up always, down when the gap is small (a
+        // descending pad). Static ground re-samples identical,
+        // so ordinary walking is untouched.
+        foreach (var leg in new[] { _legL, _legR })
+        {
+            if (!leg.Planted) continue;
+            float g = GroundHere(leg.SoleTarget.X, leg.SoleTarget.Z);
+            float diff = g - leg.SoleTarget.Y;
+            if (diff > 0.01f || diff < -0.01f && diff > -2.0f)
+                leg.SoleTarget = new Vector3(leg.SoleTarget.X, g, leg.SoleTarget.Z);
+        }
         // A wrecked leg steps like any other (see the state comment
         // above): no drag override — its stride shortens naturally
         // with the rider's throttled speed.
