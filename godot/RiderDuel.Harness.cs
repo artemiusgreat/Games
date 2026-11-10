@@ -2562,7 +2562,8 @@ public partial class RiderDuel
             }
             if (start == "3")
             {
-                _player.Teleport(new Vector3(272f, 0f, 0f), RiderWalker.YawOf(Vector3.Right));
+                var st3 = IslandAbs + new Vector2(-85f, 0f);
+                _player.Teleport(new Vector3(st3.X, Main.HeightAt(st3.X, st3.Y), st3.Y), RiderWalker.YawOf(Vector3.Right));
                 _xPhase = 3; _xPhaseT = 0f; return;
             }
             if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
@@ -2574,7 +2575,7 @@ public partial class RiderDuel
             }
             if (start == "6")
             {
-                _player.Teleport(new Vector3(128f, 0f, 32f), RiderWalker.YawOf(Vector3.Right));
+                _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
                 _xPhase = 6; _xPhaseT = 0f; _bkMaxRoot = 0f; _bkOnDeck = false; return;
             }
             var back = TestRampFoot - TestRampDir * 10f + new Vector2(0f, 0f);
@@ -2604,16 +2605,17 @@ public partial class RiderDuel
             if (_player.SoleLevel >= TestLiftHi - 1f)
             {
                 GD.Print($"TERRACE LIFT PASS sole={_player.SoleLevel:F1} (target {TestLiftHi:F0})");
-                _player.Teleport(new Vector3(272f, 0f, 0f), RiderWalker.YawOf(Vector3.Right));
+                var st3 = IslandAbs + new Vector2(-85f, 0f);
+                _player.Teleport(new Vector3(st3.X, Main.HeightAt(st3.X, st3.Y), st3.Y), RiderWalker.YawOf(Vector3.Right));
                 _xPhase = 3; _xPhaseT = 0f;
             }
             else if (_xPhaseT > 16f) { GD.PrintErr($"TERRACE FAIL: lift did not rise sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
         }
         else if (_xPhase == 3)
         {
-            var to = new Vector2(430f - _player.RootPos.X, 0f - _player.RootPos.Z);
+            var to = new Vector2(IslandAbs.X - _player.RootPos.X, IslandAbs.Y - _player.RootPos.Z);
             _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
-            if (_player.RootPos.X > 384f && _player.SoleLevel >= IslandTop - 1f)
+            if (new Vector2(_player.RootPos.X, _player.RootPos.Z).DistanceTo(IslandAbs) < 40f && _player.SoleLevel >= IslandTop - 1f)
             {
                 GD.Print($"TERRACE BRIDGE PASS pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
                 GD.Print("TERRACE TEST DONE");
@@ -2623,40 +2625,39 @@ public partial class RiderDuel
         }
     }
 
-    // Phase 7: deck tiling invariant — sample GroundAt on
-    // circles inside each deck band; every sample must read
-    // the band's deck top (no holes, no slits). Instant (one
-    // frame at world build), unlike a driven walk.
+    // Phase 7: platform tiling invariant — sample GroundAt
+    // on a grid inside every valley-0 platform rect; every
+    // sample must read the platform top (no holes, no slits).
+    // The plaza and the ground under the top platform must
+    // stay open. Instant (one frame at world build).
     private void RunSeamScan()
     {
         int bad = 0; string worst = "";
-        // Radii stay ~25u clear of the band boundaries: at the
-        // diagonals the boundary is a staircase, and its corner
-        // notches belong to the NEIGHBOUR band's footprint (open
-        // under-deck ground), not to this band's walking surface.
-        foreach (var (rr, top, refY) in new[] { (140f, TerraceL1, TerraceL1 + 1.5f), (160f, TerraceL1, TerraceL1 + 1.5f), (180f, TerraceL1, TerraceL1 + 1.5f), (40f, TerraceL2, TerraceL2 + 1.5f), (56f, TerraceL2, TerraceL2 + 1.5f) })
+        foreach (var (c, h, top) in TestPlatforms)
         {
-            for (float a = 0f; a < 360f; a += 1.0f)
+            for (float gx = -h.X + 3f; gx <= h.X - 3f; gx += 6f)
+            for (float gz = -h.Y + 3f; gz <= h.Y - 3f; gz += 6f)
             {
-                float rad = Mathf.DegToRad(a);
-                float x = Mathf.Cos(rad) * rr, z = Mathf.Sin(rad) * rr;
-                float g = Main.GroundAt(x, z, refY);
-                if (g < top - 0.1f) { bad++; if (worst.Length < 300) worst += $" ({x:F0},{z:F0})={g:F1}"; }
+                float x = c.X + gx, z = c.Y + gz;
+                float g = Main.GroundAt(x, z, top + 1.5f);
+                if (g < top - 0.1f) { bad++; if (worst.Length < 300) worst += $" ({x:F0},{z:F0})={g:F1}<{top:F0}"; }
             }
         }
-        // The moat ring between the decks stays open ground
-        // (bridge/ramps crossing it are excluded by their rect).
-        for (float a = 0f; a < 360f; a += 1.0f)
+        var pad0 = Main.SpawnPads[0];
+        for (int k = 0; k < 8; k++)
         {
-            float rad = Mathf.DegToRad(a);
-            float x = Mathf.Cos(rad) * 104f, z = Mathf.Sin(rad) * 104f;
-            bool onRamp = false;
-            foreach (var r in Main.Ramps) { Main.RampHeightAt(r, x, z, out bool ins); if (ins) { onRamp = true; break; } }
-            if (onRamp) continue;
+            float rad = k / 8f * Mathf.Tau;
+            float x = pad0.X + Mathf.Cos(rad) * 12f, z = pad0.Y + Mathf.Sin(rad) * 12f;
             float g = Main.GroundAt(x, z, 1.5f);
-            if (g > 0.6f) { bad++; if (worst.Length < 300) worst += $" moat({x:F0},{z:F0})={g:F1}"; }
+            if (g > 1.8f) { bad++; if (worst.Length < 300) worst += $" plaza({x:F0},{z:F0})={g:F1}"; }
         }
-        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: ring decks fully tiled, moat open"); GetTree().Quit(0); }
+        if (TestPlatforms.Count > 6)
+        {
+            var gc = TestPlatforms[6].C;
+            float g = Main.GroundAt(gc.X, gc.Y, 1.5f);
+            if (g > 1.8f) { bad++; worst += $" underG={g:F1}"; }
+        }
+        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: valley platforms fully tiled, plaza + under-deck open"); GetTree().Quit(0); }
         else { GD.PrintErr($"TERRACE SEAMSCAN FAIL: {bad} holes:{worst}"); GetTree().Quit(1); }
     }
 
