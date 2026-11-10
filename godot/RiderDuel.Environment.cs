@@ -987,10 +987,12 @@ public partial class RiderDuel
         return mesh;
     }
 
-    private void AddBuilding(Vector3 pos, Vector3 size)
+    private void AddBuilding(Vector3 pos, Vector3 size, float baseY = float.NaN)
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
-        float groundY = Main.HeightAt(pos.X, pos.Z);
+        // Terrace decks (owner: Harbor levels): buildings can
+        // stand on a platform top instead of the terrain.
+        float groundY = float.IsNaN(baseY) ? Main.HeightAt(pos.X, pos.Z) : baseY;
         // City kits (owner): when the active contract carries a
         // building kit, the placement instances a real building
         // model from the kit, uniformly scaled to the requested
@@ -1202,6 +1204,9 @@ public partial class RiderDuel
     // random so the blocks are not a perfect lattice.
     private void PlaceCityGrid(System.Random rng, ref int placed)
     {
+        // Terraced city (owner: Harbor's three levels) builds
+        // its own plots, platforms, ramps, lifts and island.
+        if (WorldConfig.TerracedCity) { BuildTerracedCity(rng, ref placed); return; }
         // The dense city (owner: "so dense the rider can have
         // space to walk only between the houses or jump on their
         // roofs — no open space"): every plot in the disc is
@@ -1255,7 +1260,19 @@ public partial class RiderDuel
     // between blocks reading as streets. 2x2 sub-plots, 2-4
     // filled; every block carries at least one low building
     // (9-16u) and one tall one (26-39u).
-    private void PlaceCityBlock(System.Random rng, Vector2 c, ref int placed)
+    // Rects where terrace works (ramps, lift pads) displace
+    // buildings: block slots landing inside are skipped.
+    private readonly System.Collections.Generic.List<Main.RoofRect> _skipRects = new();
+
+    private bool InSkipRect(Vector2 pt)
+    {
+        foreach (var r in _skipRects)
+            if (Mathf.Abs(pt.X - r.Cx) <= r.Hx + 6f && Mathf.Abs(pt.Y - r.Cz) <= r.Hz + 6f)
+                return true;
+        return false;
+    }
+
+    private void PlaceCityBlock(System.Random rng, Vector2 c, ref int placed, float baseY = float.NaN)
     {
         var slots = new System.Collections.Generic.List<Vector2>
         {
@@ -1291,8 +1308,9 @@ public partial class RiderDuel
             var size = new Vector3(fw, heights[k],
                 fw * (0.8f + (float)rng.NextDouble() * 0.2f));
             if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
+            if (InSkipRect(pt)) continue;
             if (!BlockFree(pt, size)) continue;
-            AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
+            AddBuilding(new Vector3(pt.X, 0f, pt.Y), size, baseY);
             placed++;
         }
     }
@@ -1428,11 +1446,40 @@ public partial class RiderDuel
         }
     }
 
+    // Push a point out of an axis-aligned rect expanded by r:
+    // along the separating axis when outside, along the least
+    // penetration axis when the point is already inside.
+    private static Vector2 PushOutRect(Vector2 p, float r, Main.RoofRect rc)
+    {
+        float dx = p.X - Mathf.Clamp(p.X, rc.Cx - rc.Hx, rc.Cx + rc.Hx);
+        float dz = p.Y - Mathf.Clamp(p.Y, rc.Cz - rc.Hz, rc.Cz + rc.Hz);
+        float d2 = dx * dx + dz * dz;
+        if (d2 > 1e-9f)
+        {
+            float d = Mathf.Sqrt(d2);
+            if (d >= r) return p;
+            return p + new Vector2(dx, dz) / d * (r - d);
+        }
+        float px = rc.Hx - Mathf.Abs(p.X - rc.Cx);
+        float pz = rc.Hz - Mathf.Abs(p.Y - rc.Cz);
+        if (px < pz) p.X = rc.Cx + (p.X >= rc.Cx ? rc.Hx + r : -rc.Hx - r);
+        else p.Y = rc.Cz + (p.Y >= rc.Cz ? rc.Hz + r : -rc.Hz - r);
+        return p;
+    }
+
     private void ResolveOne(RiderWalker w)
     {
         var p = new Vector2(w.RootPos.X, w.RootPos.Z);
         for (int iter = 0; iter < 2; iter++)
         {
+            // Terrace walls (owner: Harbor levels): rect sides
+            // with a top — a walker below the top is pushed out,
+            // a walker at deck level walks on freely.
+            foreach (var wl in Main.Walls)
+            {
+                if (w.SoleLevel + 1.5f >= wl.Top) continue;
+                p = PushOutRect(p, w.CollisionRadius, wl);
+            }
             foreach (var c in _props)
             {
                 // A building's walls stop a rider on the ground —

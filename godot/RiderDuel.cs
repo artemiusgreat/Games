@@ -409,6 +409,7 @@ public partial class RiderDuel : Node3D
 
         BuildTerrain();
         Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
+        Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.Walls.Clear();
         // Round-1 props (same spots as Main) + a few more for a fuller map.
         AddTree(new Vector3(-12f, 0f, -8f));
         AddTree(new Vector3(14f, 0f, -18f));
@@ -935,6 +936,7 @@ public partial class RiderDuel : Node3D
             else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
+            else if (_missionTest && !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRATEST")) && WorldConfig.TerracedCity) UpdateTerraceTest(dt);
             else if (_missionTest) UpdateMissionTest(dt);
             else if (_longshotTest) UpdateLongshotTest(dt);
             else if (_rangeTest) UpdateRangeTest(dt);
@@ -968,6 +970,7 @@ public partial class RiderDuel : Node3D
             StepWalker(_enemy, delta);
             if (_foe != null && _foe.Walker.IsReady) StepWalker(_foe.Walker, delta);
             StepSounds();
+            UpdateLifts((float)delta);
             ResolveCollisions();
             StompCheck();
             if (dt > 0f)

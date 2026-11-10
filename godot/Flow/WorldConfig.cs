@@ -65,6 +65,13 @@ public static class WorldConfig
     private static bool InitPeaks() =>
         System.Environment.GetEnvironmentVariable("AOT_PEAKS") != "0";
 
+    // Terraced city (owner: Harbor's three levels): EnterLab
+    // copies the contract's flag; AOT_TERRACES=1 forces it.
+    public static bool TerracedCity = InitTerraces();
+
+    private static bool InitTerraces() =>
+        System.Environment.GetEnvironmentVariable("AOT_TERRACES") == "1";
+
     private static bool InitSnow() =>
         System.Environment.GetEnvironmentVariable("AOT_SNOW") == "1";
 
