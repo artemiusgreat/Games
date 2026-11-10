@@ -57,6 +57,14 @@ public static class WorldConfig
     // copies the contract's flag here; AOT_SNOW=1 forces it.
     public static bool SnowGround = InitSnow();
 
+    // Procedural backdrop peaks (PhotoEnv ring of cones):
+    // a painted horizon replaces them where the contract
+    // says so. AOT_PEAKS=0 forces them off for harnesses.
+    public static bool BackdropPeaks = InitPeaks();
+
+    private static bool InitPeaks() =>
+        System.Environment.GetEnvironmentVariable("AOT_PEAKS") != "0";
+
     private static bool InitSnow() =>
         System.Environment.GetEnvironmentVariable("AOT_SNOW") == "1";
 

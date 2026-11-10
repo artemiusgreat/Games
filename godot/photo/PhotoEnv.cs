@@ -431,7 +431,7 @@ void fragment() {
         var apronMat = new StandardMaterial3D
         {
             AlbedoTexture = Tex("leafy_grass", "diff"),
-            AlbedoColor = new Color(0.52f, 0.55f, 0.5f),
+            AlbedoColor = WorldConfig.SnowGround ? new Color(1.35f, 1.45f, 1.75f) : new Color(0.52f, 0.55f, 0.5f),
             Roughness = 1f,
             Uv1Scale = new Vector3(220f, 220f, 1f)
         };
@@ -456,7 +456,7 @@ void fragment() {
             Uv1Scale = new Vector3(0.03f, 0.03f, 0.03f)
         };
         var rng = new RandomNumberGenerator { Seed = 90210 };
-        for (int i = 0; i < 12; i++)
+        for (int i = 0; i < (WorldConfig.BackdropPeaks ? 12 : 0); i++)
         {
             float a = i / 12f * Mathf.Tau + rng.RandfRange(-0.14f, 0.14f);
             float dist = rng.RandfRange(330f, 520f) * (mission ? bs * 0.55f : 1f);
