@@ -203,6 +203,32 @@ public partial class Main : Node3D
 	public struct RoofRect { public float Cx, Cz, Hx, Hz, Top; }
 	public static readonly System.Collections.Generic.List<RoofRect> Roofs = new();
 
+	// Sloped walkable surfaces (owner: Harbor terraces): the
+	// height varies linearly along (DirX, DirZ) from H0 at the
+	// -Dir end to H1 at the +Dir end, across a HalfWid corridor.
+	public struct RampRect { public float Cx, Cz, DirX, DirZ, HalfLen, HalfWid, H0, H1; }
+	public static readonly System.Collections.Generic.List<RampRect> Ramps = new();
+
+	// Round standable tops (the Harbor island deck).
+	public struct DiscRoof { public float Cx, Cz, R, Top; }
+	public static readonly System.Collections.Generic.List<DiscRoof> DiscRoofs = new();
+
+	// Axis-aligned walls with a top (terrace platform sides,
+	// the island bridge under-deck): RiderDuel's ResolveOne
+	// pushes walkers out while their soles are below Top, in
+	// the same spirit as the building circles' RoofTop gate.
+	public static readonly System.Collections.Generic.List<RoofRect> Walls = new();
+
+	public static float RampHeightAt(RampRect r, float x, float z, out bool inside)
+	{
+		float dx = x - r.Cx, dz = z - r.Cz;
+		float along = dx * r.DirX + dz * r.DirZ;
+		float perp = -dx * r.DirZ + dz * r.DirX;
+		inside = Mathf.Abs(along) <= r.HalfLen && Mathf.Abs(perp) <= r.HalfWid;
+		float t = Mathf.Clamp((along + r.HalfLen) / (2f * r.HalfLen), 0f, 1f);
+		return Mathf.Lerp(r.H0, r.H1, t);
+	}
+
 	// Ground height for a walker at (x, z): the terrain, or a
 	// roof's top when the walker's soles are already at that level
 	// — refY is the sole level plus a small step tolerance, so a
@@ -216,6 +242,18 @@ public partial class Main : Node3D
 		foreach (var r in Roofs)
 			if (r.Top > g && refY >= r.Top && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				g = r.Top;
+		foreach (var d in DiscRoofs)
+			if (d.Top > g && refY >= d.Top &&
+				(x - d.Cx) * (x - d.Cx) + (z - d.Cz) * (z - d.Cz) <= d.R * d.R)
+				g = d.Top;
+		// Ramps adopt with a step-up allowance: a walker
+		// climbing plants its next foot up to ~2.5u above its
+		// current sole (a stride's rise on a 28-degree ramp).
+		foreach (var r in Ramps)
+		{
+			float h = RampHeightAt(r, x, z, out bool inside);
+			if (inside && h > g && refY >= h - 2.5f) g = h;
+		}
 		return g;
 	}
 
