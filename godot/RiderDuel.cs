@@ -64,6 +64,7 @@ public partial class RiderDuel : Node3D
     private float _leaveShotT;
     private bool _boomCheck; // TEMP probe: boom vs buildings + photo level frame (round 28 follow-up)
     private bool _lagCheck; // TEMP probe: camera lag + rock/tree movement rules (round 29)
+    private bool _flipbookTest; // TEMP probe: Freelancer flipbook fireball (explosion prototype)
     private bool _grassStaged;
     private Vector3 _grassPos;
     private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
@@ -330,6 +331,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--grass-shot") { _photo = true; _grassShot = true; }
             if (arg == "--boom-shot") _boomShot = true;
+            if (arg == "--flipbook-test") _flipbookTest = true;
             if (arg == "--leave-shot") _leaveShot = true;
             if (arg == "--boom-check") _boomCheck = true;
             if (arg == "--lag-check") _lagCheck = true;
@@ -483,7 +485,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -947,6 +949,7 @@ public partial class RiderDuel : Node3D
             else if (_grassShot) UpdateGrassShot(dt);
             else if (_boomShot) UpdateBoomShot(dt);
             else if (_boomCheck) UpdateBoomCheck(dt);
+            else if (_flipbookTest) UpdateFlipbookTest(dt);
             else if (_lagCheck) UpdateLagCheck(dt);
             else if (_test) UpdateTest(dt);
             else

@@ -283,11 +283,61 @@ public partial class RiderDuel
         }
     }
 
+    // Flipbook fireball (Freelancer-style prototype): one camera-facing
+    // quad playing a pre-rendered 8x8 frame sheet (white-hot -> yellow
+    // -> orange -> deep red -> smoke), layered over the existing
+    // flash/sparks/puffs. The sheet is baked by
+    // tools/make_explosion_flipbook.py; the frames carry the boiling
+    // motion the static flame sprite cannot. Per instance: random
+    // start frame, flip and scale, so repeats do not read as canned.
+    private static SpriteFrames _flipbookFrames;
+    private static SpriteFrames FlipbookFrames()
+    {
+        if (_flipbookFrames != null) return _flipbookFrames;
+        var sheet = GD.Load<Texture2D>("res://assets/textures/explosion_fireball.png");
+        if (sheet == null) { GD.Print("FLIPBOOK sheet missing: res://assets/textures/explosion_fireball.png"); return null; }
+        var sf = new SpriteFrames();
+        sf.AddAnimation("boom");
+        sf.SetAnimationSpeed("boom", 64f); // 64 frames = 1.0s at speed 1
+        sf.SetAnimationLoopMode("boom", SpriteFrames.LoopMode.None);
+        for (int f = 0; f < 64; f++)
+        {
+            int row = f / 8, col = f % 8;
+            sf.AddFrame("boom", new AtlasTexture { Atlas = sheet, Region = new Rect2(col * 128, row * 128, 128, 128) });
+        }
+        _flipbookFrames = sf;
+        return sf;
+    }
+
+    private void SpawnFlipbookFireball(Vector3 point, float size, float seconds)
+    {
+        var frames = FlipbookFrames();
+        if (frames == null) return;
+        var s = new AnimatedSprite3D
+        {
+            SpriteFrames = frames,
+            Animation = "boom",
+            PixelSize = size / 128f,
+            Shaded = false,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            Modulate = new Color(1.5f, 1.5f, 1.5f, 1f),
+            SpeedScale = 1.0f / seconds,
+            FlipH = _fxRng.Randf() < 0.5f,
+            FlipV = _fxRng.Randf() < 0.5f,
+        };
+        AddChild(s);
+        s.GlobalPosition = point;
+        s.Play();
+        s.SetFrameAndProgress(_fxRng.RandiRange(0, 6), 0f);
+        _timedFx.Add((s, seconds + 0.1f, false));
+    }
+
     // Rocket impact bundle: core flash, fireball and smoke — the
     // mini-explosion the owner asked for.
     private void SpawnExplosionFx(Vector3 point)
     {
         _fxBooms++;
+        SpawnFlipbookFireball(point, 3.4f, 0.9f);
         SpawnFlash(point, new Color(1f, 0.55f, 0.18f), 1.15f, 0.22f);
         SpawnFlash(point, new Color(1f, 0.9f, 0.65f), 0.5f, 0.12f);
         SpawnSparks(point, new Color(1f, 0.62f, 0.25f), 5, 3.8f);
@@ -389,6 +439,7 @@ public partial class RiderDuel
         SpawnFlash(center, new Color(1f, 0.95f, 0.72f), 1.5f, 0.25f);
         SpawnFlash(center + Vector3.Up * 2.2f, new Color(1f, 0.5f, 0.18f), 1.9f, 0.55f);
         SpawnExplosionFx(center + Vector3.Up * 1.5f);
+        SpawnFlipbookFireball(center + Vector3.Up * 1.5f, 10f, 1.2f);
         _fxBooms--; // the death bundle is not a rocket hit; keep counters honest
         SpawnBurst(center, FireParticleMat, 70, 1.6f, 5f, 12f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2.1f);
         SpawnBurst(center, SmokeParticleMat, 40, 3.6f, 1.6f, 3.6f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.4f);
