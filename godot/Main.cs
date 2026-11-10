@@ -98,10 +98,51 @@ public partial class Main : Node3D
 		return 34f * Mathf.Exp(-(rr * rr) / (2f * 30f * 30f));
 	}
 
+	// Canyon country for the terraced city (owner: the map's
+	// edge reads as canyon / mountains, with several valleys
+	// connected by pathways — each valley hosts its multilevel
+	// city): ridged mountains everywhere, a walkable pass
+	// carved along each base-to-base road, and a flat basin
+	// floor at each base for its city.
+	private static float ValleyHeight(float x, float z)
+	{
+		float n = Fbm(x / 170f + 3.1f, z / 170f - 8.2f, 4) * 0.5f + 0.5f;
+		float rg = 1f - Mathf.Abs(Fbm(x / 67f - 5.3f, z / 67f + 11.1f, 4));
+		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
+		float h = 12f + n * 30f + rg * rg * 48f + Smooth(680f, 930f, sq) * 60f;
+		var p = new Vector2(x, z);
+		for (int a = 0; a < SpawnPads.Length; a++)
+		for (int b = a + 1; b < SpawnPads.Length; b++)
+		{
+			var pa = SpawnPads[a]; var pb = SpawnPads[b];
+			var ab = pb - pa;
+			float t = Mathf.Clamp((p - pa).Dot(ab) / ab.LengthSquared(), 0f, 1f);
+			float d = (pa + ab * t).DistanceTo(p);
+			if (d < 64f)
+			{
+				// Max(0, ...): Sin(Pi * 1) in floats is a tiny
+				// NEGATIVE, and Pow(neg, 0.8) is NaN — that
+				// poisoned the heightfield (and both AI spawns)
+				// beyond the pb endpoints before this guard.
+				float passH = 3f + 23f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Mathf.Pi * t)), 0.8f);
+				h = Mathf.Lerp(h, Mathf.Min(h, passH), Smooth(64f, 22f, d));
+			}
+		}
+		foreach (var pad in SpawnPads)
+		{
+			float d = p.DistanceTo(pad);
+			if (d < 440f) h = Mathf.Lerp(h, 0f, Smooth(440f, 305f, d));
+		}
+		return h;
+	}
+
 	private static float RawHeight(float x, float z)
 	{
-		// Flat maps (owner: The Harbor Stacks) use no height map
-		// at all — every street, road and base on one level plane.
+		// The terraced-city contract gets the canyon/valley
+		// terrain (basins at the bases, passes on the roads).
+		if (WorldConfig.TerracedCity) return ValleyHeight(x, z);
+		// Flat maps use no height map at all — every street,
+		// road and base on one level plane.
 		if (WorldConfig.FlatWorld) return 0f;
 		float h = BaseHeight(x, z);
 		// Flatten each spawn pad toward its own center height, so
@@ -329,6 +370,22 @@ public partial class Main : Node3D
 	{
 		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return 1e6f;
 		float p = CityGrid.Pitch;
+		// Terraced city: the street lattice repeats per valley.
+		if (WorldConfig.TerracedCity)
+		{
+			float best = 1e6f;
+			float extV = CityGrid.Radius + p;
+			foreach (var pad in SpawnPads)
+			{
+				float lx = x - pad.X, lz = z - pad.Y;
+				if (lx * lx + lz * lz > extV * extV) continue;
+				float vx = lx / p - 0.5f, vz = lz / p - 0.5f;
+				float ddx = Mathf.Abs(vx - Mathf.Round(vx)) * p;
+				float ddz = Mathf.Abs(vz - Mathf.Round(vz)) * p;
+				best = Mathf.Min(best, Mathf.Min(ddx, ddz));
+			}
+			return best;
+		}
 		float ext = CityGrid.Radius + p;
 		if (x * x + z * z > ext * ext) return 1e6f;
 		float yx = x / p - 0.5f, yz = z / p - 0.5f;
