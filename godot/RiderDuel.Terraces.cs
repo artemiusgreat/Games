@@ -1,12 +1,13 @@
 using Godot;
 using System.Collections.Generic;
 
-// Harbor terraces (owner): the flat kit city rebuilt on three
-// deck levels — ground, +16u, +32u by radius band — as
-// standable mega-platforms carrying the kit buildings, with
-// futuristic edge-light trim. Levels connect by wide ramps
-// (sloped surfaces in Main.Ramps) and lift pads at the band
-// boundaries; an island district floats across a water
+// Harbor terraces (owner): the flat kit city rebuilt as two
+// wide deck RINGS — +22 and +44 — around an open centre
+// plaza, split by a ground-level moat ring, as standable
+// mega-platforms carrying the kit buildings, with futuristic
+// edge-light trim. Levels connect by wide ramps (sloped
+// surfaces in Main.Ramps), lift pads at the ring edges and
+// bridge-ramps across the moat; an island district floats across a water
 // channel east of the city, reached by a single bridge.
 // Everything registers through the standing surface system —
 // Main.Roofs / Walls / Ramps / DiscRoofs — so grounding,
@@ -15,7 +16,11 @@ using System.Collections.Generic;
 // Harbor Stacks contract); every other map is untouched.
 public partial class RiderDuel
 {
-    private const float TerraceL1 = 16f, TerraceL2 = 32f;
+    // Deck heights (owner, 2026-11-10): tall enough that a
+    // rider walking UNDER a platform — chase camera included —
+    // fits beneath it: the +22 deck's underside is 19.8, above
+    // the tallest rider (14) and its camera anchor (~16).
+    private const float TerraceL1 = 22f, TerraceL2 = 44f;
     private const float IslandTop = 6f;
     private static readonly Vector2 IslandC = new(430f, 0f);
     private const float IslandR = 64f;
@@ -29,13 +34,19 @@ public partial class RiderDuel
 
     // Harness hooks: the first ramp and lift built.
     public Vector2 TestRampFoot, TestRampDir;
-    public float TestRampLo, TestRampHi;
+    public float TestRampLo, TestRampHi, TestRampRun;
+    public Main.RampRect TestRampRect;
     public Vector2 TestLiftPad;
     public float TestLiftLo, TestLiftHi;
     public bool HasTestRamp, HasTestLift;
     public bool HasTerraceTest => HasTestRamp && HasTestLift;
 
-    private static float TerraceLevel(float r) => r < 92f ? TerraceL2 : r < 184f ? TerraceL1 : 0f;
+    // The decks form RINGS, not a solid filled disc (owner):
+    // a wide +44 ring around a small open plaza at the centre
+    // (the citadel stands over it), a ground-level moat ring,
+    // then the wide +22 ring, then ordinary ground city.
+    private static float TerraceLevel(float r) =>
+        r < 26f ? 0f : r < 88f ? TerraceL2 : r < 120f ? 0f : r < 200f ? TerraceL1 : 0f;
 
     // Snow-dusted deck tone (proof frame: the first tone
     // read near-black against the snowfields).
@@ -71,24 +82,17 @@ public partial class RiderDuel
             float l = TerraceLevel(c.Length());
             plots.Add((c, l)); ctr[(i, j)] = c; lvl[(i, j)] = l;
         }
-        // Crossings: PER BAND boundary — for each target
-        // azimuth, the band-straddling plot pair whose shared
-        // edge sits closest to it. The outer boundary takes
-        // ramps at 45/225 and lifts at 135/315; the inner
-        // boundary takes the complementary set, so every deck
-        // connects at four points, alternating ramp and lift.
+        // Crossings. Ground <-> +22 ring: for each target
+        // azimuth, the level-straddling plot pair whose shared
+        // edge sits closest to it — OUTER edges (ground side)
+        // take ramps at 45/225 and lifts at 135/315; the INNER
+        // edges (moat side) take the complementary set.
         var used = new HashSet<(int, int, int, int)>();
-        var targets = new (float Az, bool Ramp)[]
-            { (45f, true), (225f, true), (135f, false), (315f, false) };
-        for (int band = 0; band < 2; band++)
+        void Crossing(float azDeg, bool isRamp, bool outer)
         {
-            float bandLo = band == 0 ? 0f : TerraceL1;
-            foreach (var (azDeg, isRamp0) in targets)
-            {
-            bool isRamp = band == 0 ? isRamp0 : !isRamp0;
             float az = Mathf.DegToRad(azDeg);
             (int, int, int, int) bestKey = default; Vector2 bestEdge = default, bestDir = default;
-            float bestLo = 0f, bestHi = 0f, bestScore = float.MaxValue;
+            float bestScore = float.MaxValue;
             foreach (var ((i, j), c) in ctr)
             {
                 foreach (var (di, dj) in new[] { (1, 0), (0, 1) })
@@ -96,24 +100,50 @@ public partial class RiderDuel
                     var k2 = (i + di, j + dj);
                     if (!lvl.TryGetValue(k2, out float l2)) continue;
                     float l1 = lvl[(i, j)];
-                    if (Mathf.Abs(l1 - l2) != TerraceL1) continue;
-                    if (Mathf.Min(l1, l2) != bandLo) continue;
+                    if (Mathf.Abs(l1 - l2) != TerraceL1 || Mathf.Min(l1, l2) != 0f) continue;
                     var edge = (c + ctr[k2]) / 2f;
+                    if ((edge.Length() > 155f) != outer) continue;
                     float ea = Mathf.Atan2(edge.Y, edge.X);
                     float da = Mathf.Abs(Mathf.Wrap(ea - az, -Mathf.Pi, Mathf.Pi));
                     if (da > 0.6f || da >= bestScore) continue;
                     bestScore = da; bestKey = (i, j, k2.Item1, k2.Item2);
                     bestEdge = edge;
-                    bool firstIsLower = l1 < l2;
-                    bestDir = firstIsLower ? (c - ctr[k2]).Normalized() : (ctr[k2] - c).Normalized();
-                    bestLo = Mathf.Min(l1, l2); bestHi = Mathf.Max(l1, l2);
+                    bestDir = (l1 < l2 ? c - ctr[k2] : ctr[k2] - c).Normalized();
                 }
             }
-            if (bestScore == float.MaxValue || used.Contains(bestKey)) continue;
+            if (bestScore == float.MaxValue || used.Contains(bestKey)) return;
             used.Add(bestKey);
-            if (isRamp) BuildRamp(bestEdge, bestDir, bestLo, bestHi);
-            else BuildLift(bestEdge, bestDir, bestLo, bestHi);
+            if (isRamp) BuildRamp(bestEdge, bestDir, 0f, TerraceL1, TerraceL1 * 2f);
+            else BuildLift(bestEdge, bestDir, 0f, TerraceL1);
+        }
+        Crossing(45f, true, true); Crossing(225f, true, true);
+        Crossing(135f, false, true); Crossing(315f, false, true);
+        Crossing(135f, true, false); Crossing(315f, true, false);
+        Crossing(45f, false, false); Crossing(225f, false, false);
+        // Ring <-> ring: BRIDGE-RAMPS at the four cardinal
+        // azimuths (owner: bridges / ramps connecting the
+        // rings) — a long ramp from the +22 deck across the
+        // moat up to the +44 ring's edge.
+        foreach (var dir in new[] { new Vector2(1, 0), new Vector2(-1, 0), new Vector2(0, 1), new Vector2(0, -1) })
+        {
+            Vector2 l2c = default; float l2p = -1f;
+            Vector2 l1c = default; float l1p = float.MaxValue;
+            foreach (var ((i, j), c) in ctr)
+            {
+                if (Mathf.Abs(c.X * dir.Y - c.Y * dir.X) > 1f) continue; // on the axis row
+                float proj = c.X * dir.X + c.Y * dir.Y;
+                if (lvl[(i, j)] == TerraceL2 && proj > l2p) { l2p = proj; l2c = c; }
             }
+            foreach (var ((i, j), c) in ctr)
+            {
+                if (Mathf.Abs(c.X * dir.Y - c.Y * dir.X) > 1f) continue;
+                float proj = c.X * dir.X + c.Y * dir.Y;
+                if (lvl[(i, j)] == TerraceL1 && proj > l2p && proj < l1p) { l1p = proj; l1c = c; }
+            }
+            if (l2p < 0f || l1p == float.MaxValue) continue;
+            var edge = l2c + dir * (CityGrid.Pitch / 2f);
+            BuildRamp(edge, dir, TerraceL1, TerraceL2, (TerraceL2 - TerraceL1) * 2f);
+            GD.Print($"TERRACE BRIDGE {TerraceL1:F0}->{TerraceL2:F0} at ({edge.X:F0},{edge.Y:F0})");
         }
         // The citadel clears the center: no buildings on the
         // plots under its deck or in its ramp strip.
@@ -161,7 +191,7 @@ public partial class RiderDuel
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         AddChild(trim);
-        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop });
+        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - 2.2f });
     }
 
     // A sloped deck wedge between two points at two heights:
@@ -172,8 +202,13 @@ public partial class RiderDuel
         var mid = (s0 + s1) / 2f;
         var d = s1 - s0;
         float run = d.Length();
-        float len = Mathf.Sqrt(run * run + (h1 - h0) * (h1 - h0)) + 5f;
-        var holder = new Node3D { Position = new Vector3(mid.X, (h0 + h1) / 2f - 1.55f, mid.Y) };
+        // The box's top face lies exactly ON the slope line
+        // (holder at mid-height minus half the box) and extends
+        // only 1u past each end — a longer nose poked ~1.1u
+        // above the upper deck at the lip and read as the
+        // rider sinking into the ramp (owner fall report).
+        float len = Mathf.Sqrt(run * run + (h1 - h0) * (h1 - h0)) + 2f;
+        var holder = new Node3D { Position = new Vector3(mid.X, (h0 + h1) / 2f - 1.75f, mid.Y) };
         // Local +Z runs up-slope: yaw maps +Z onto (s1 - s0),
         // pitch lifts it by the slope angle (negative X
         // rotation raises +Z in Godot's YXZ euler order).
@@ -189,26 +224,32 @@ public partial class RiderDuel
         AddChild(holder);
     }
 
-    private void BuildRamp(Vector2 edgeMid, Vector2 dirOut, float lo, float hi)
+    private void BuildRamp(Vector2 edgeMid, Vector2 dirOut, float lo, float hi, float run)
     {
-        var s0 = edgeMid + dirOut * 30f;   // foot, on the lower deck
-        var s1 = edgeMid - dirOut * 2f;   // lip, at the upper deck's edge
-        Main.Ramps.Add(new Main.RampRect
+        var s0 = edgeMid + dirOut * (run - 2f); // foot, on the lower surface
+        var s1 = edgeMid - dirOut * 2f;         // lip, at the upper deck's edge
+        // Corridor 13 wide (owner fell "through" the 9-wide
+        // ramps: a turning rider's stepping foot left the
+        // corridor and grounded on the surface far below,
+        // dropping the root mid-ramp).
+        var rect = new Main.RampRect
         {
             Cx = (s0.X + s1.X) / 2f, Cz = (s0.Y + s1.Y) / 2f,
             DirX = -dirOut.X, DirZ = -dirOut.Y,
-            HalfLen = 16f, HalfWid = 4.5f, H0 = lo, H1 = hi
-        });
-        AddRampWedge(s0, lo, s1, hi, 9f);
+            HalfLen = run / 2f, HalfWid = 6.5f, H0 = lo, H1 = hi
+        };
+        Main.Ramps.Add(rect);
+        AddRampWedge(s0, lo, s1, hi, 13f);
         _skipRects.Add(new Main.RoofRect
         {
             Cx = (s0.X + s1.X) / 2f, Cz = (s0.Y + s1.Y) / 2f,
-            Hx = Mathf.Abs(dirOut.X) > 0.5f ? 16.5f : 5.5f,
-            Hz = Mathf.Abs(dirOut.Y) > 0.5f ? 16.5f : 5.5f, Top = 0f
+            Hx = Mathf.Abs(dirOut.X) > 0.5f ? run / 2f + 0.5f : 7.5f,
+            Hz = Mathf.Abs(dirOut.Y) > 0.5f ? run / 2f + 0.5f : 7.5f, Top = 0f
         });
         if (!HasTestRamp)
         {
             TestRampFoot = s0; TestRampDir = -dirOut; TestRampLo = lo; TestRampHi = hi;
+            TestRampRect = rect; TestRampRun = run;
             HasTestRamp = true;
         }
         GD.Print($"TERRACE RAMP {lo:F0}->{hi:F0} at ({edgeMid.X:F0},{edgeMid.Y:F0})");
@@ -244,7 +285,7 @@ public partial class RiderDuel
             AddChild(post);
         }
         int roofIdx = Main.Roofs.Count;
-        Main.Roofs.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = 4.2f, Hz = 4.2f, Top = lo });
+        Main.Roofs.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = 4.2f, Hz = 4.2f, Top = lo, Under = lo - 0.6f });
         _skipRects.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = 5.4f, Hz = 5.4f, Top = 0f });
         _lifts.Add(new Lift
         {
@@ -282,7 +323,7 @@ public partial class RiderDuel
                     lf.State = lf.Target == lf.Hi ? 2 : 0;
                     lf.Dwell = 0f; lf.Empty = 0f;
                 }
-                var r = Main.Roofs[lf.RoofIdx]; r.Top = lf.Top; Main.Roofs[lf.RoofIdx] = r;
+                var r = Main.Roofs[lf.RoofIdx]; r.Top = lf.Top; r.Under = lf.Top - 0.6f; Main.Roofs[lf.RoofIdx] = r;
                 lf.Pad.Position = new Vector3(lf.C.X, lf.Top - 0.3f, lf.C.Y);
             }
             else if (lf.State == 0)
@@ -412,15 +453,15 @@ public partial class RiderDuel
             };
             AddChild(col);
         }
-        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = 0f, Cz = 0f, R = 33f, Top = top });
+        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = 0f, Cz = 0f, R = 33f, Top = top, Under = top - 2.2f });
         _props.Add(new Circle { P = Vector2.Zero, R = 32.6f, RoofTop = top });
         var s0 = new Vector2(0f, 58f); var s1 = new Vector2(0f, 31f);
         Main.Ramps.Add(new Main.RampRect
         {
             Cx = 0f, Cz = 44.5f, DirX = 0f, DirZ = -1f,
-            HalfLen = 13.5f, HalfWid = 4.5f, H0 = TerraceL2, H1 = top
+            HalfLen = 13.5f, HalfWid = 6.5f, H0 = TerraceL2, H1 = top
         });
-        AddRampWedge(s0, TerraceL2, s1, top, 9f);
+        AddRampWedge(s0, TerraceL2, s1, top, 13f);
         BuildLandmark(Vector2.Zero, top, 30f, 52f, 200f, true);
         GD.Print($"TERRACE CITADEL deck top={top:F0} at the center, landmark 30x52");
     }
@@ -478,13 +519,13 @@ public partial class RiderDuel
         Main.Ramps.Add(new Main.RampRect
         {
             Cx = 293f, Cz = 0f, DirX = 1f, DirZ = 0f,
-            HalfLen = 13f, HalfWid = 4.2f, H0 = 0f, H1 = IslandTop
+            HalfLen = 13f, HalfWid = 5.5f, H0 = 0f, H1 = IslandTop
         });
-        AddRampWedge(new Vector2(280f, 0f), 0f, new Vector2(306f, 0f), IslandTop, 8.6f);
-        Main.Roofs.Add(new Main.RoofRect { Cx = 336f, Cz = 0f, Hx = 30f, Hz = 4.2f, Top = IslandTop });
+        AddRampWedge(new Vector2(280f, 0f), 0f, new Vector2(306f, 0f), IslandTop, 11f);
+        Main.Roofs.Add(new Main.RoofRect { Cx = 336f, Cz = 0f, Hx = 30f, Hz = 5.5f, Top = IslandTop, Under = IslandTop - 1.2f });
         var deckFlat = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(60f, 1.2f, 8.6f) },
+            Mesh = new BoxMesh { Size = new Vector3(60f, 1.2f, 11f) },
             MaterialOverride = DeckMat(),
             Position = new Vector3(336f, IslandTop - 0.6f, 0f)
         };
@@ -525,9 +566,9 @@ public partial class RiderDuel
         Main.Ramps.Add(new Main.RampRect
         {
             Cx = IslandC.X - 43f, Cz = 0f, DirX = 1f, DirZ = 0f,
-            HalfLen = 13f, HalfWid = 4f, H0 = IslandTop, H1 = daisTop
+            HalfLen = 13f, HalfWid = 5.5f, H0 = IslandTop, H1 = daisTop
         });
-        AddRampWedge(new Vector2(IslandC.X - 56f, 0f), IslandTop, new Vector2(IslandC.X - 30f, 0f), daisTop, 8f);
+        AddRampWedge(new Vector2(IslandC.X - 56f, 0f), IslandTop, new Vector2(IslandC.X - 30f, 0f), daisTop, 11f);
         BuildLandmark(IslandC, daisTop, 20f, 34f, 120f, false);
         // Island blocks on the deck, clear of the bridge
         // landing (west) and the dais.
