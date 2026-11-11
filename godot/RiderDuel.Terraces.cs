@@ -252,6 +252,7 @@ public partial class RiderDuel
             };
             AddChild(rail);
         }
+        AddCeilingLight(new Vector3(mid.X, top - 1.35f, mid.Y), 17f);
         _skipRects.Add(new Main.RoofRect
         {
             Cx = mid.X, Cz = mid.Y,
@@ -302,6 +303,40 @@ public partial class RiderDuel
         }
     }
 
+    // Ceiling lights under a deck (owner, 2026-11-11: 'when
+    // I am under the platform, I can't see rider — add some
+    // lights at the ceiling'): a glowing fixture strip on the
+    // underside plus ONE shadowless omni per deck/bridge,
+    // ranged to its own footprint so the ground underneath is
+    // lit without washing the level above. One light per deck
+    // (25 decks/bridges across the three valleys + the island
+    // span) keeps the forward+ cluster cheap.
+    private void AddCeilingLight(Vector3 centre, float range)
+    {
+        var fix = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(6f, 0.3f, 1.2f) },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.10f, 0.13f, 0.14f),
+                EmissionEnabled = true, Emission = new Color(0.55f, 0.80f, 0.95f),
+                EmissionEnergyMultiplier = 2.2f, Roughness = 0.5f
+            },
+            Position = centre,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+        };
+        AddChild(fix);
+        var omni = new OmniLight3D
+        {
+            LightColor = new Color(0.55f, 0.75f, 0.95f),
+            LightEnergy = 1.15f,
+            OmniRange = range,
+            ShadowEnabled = false,
+            Position = centre + new Vector3(0f, -1.2f, 0f)
+        };
+        AddChild(omni);
+    }
+
     private void BuildPlatform(Vector2 c, float lvlTop)
     {
         // A deck slab on columns (owner: platforms stand on
@@ -335,6 +370,7 @@ public partial class RiderDuel
         };
         AddChild(trim);
         Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - 2.2f });
+        AddCeilingLight(new Vector3(c.X, lvlTop - 2.35f, c.Y), 21f);
     }
 
     // A sloped deck wedge between two points at two heights:
@@ -665,12 +701,20 @@ public partial class RiderDuel
         AddRampWedge(new Vector2(ic.X - 50f, ic.Y), IslandTop, new Vector2(ic.X - 24f, ic.Y), daisTop, 11f);
         BuildLandmark(ic, daisTop, 20f, 34f, 120f, false);
         // Island blocks on the deck, clear of the bridge
-        // landing (west) and the dais.
+        // landing (west) and the dais. The ring plots sit at
+        // 32-45u out, but a block's corner slots reach ~8u
+        // past the plot centre and a building ~7u past its
+        // slot — plots that passed the old centre test still
+        // planted buildings over the rim, floating past the
+        // disc edge (owner: 'sticks coming out of the round
+        // platform, floating in the air', 2026-11-11). A plot
+        // now serves only when its WHOLE block — corner slot
+        // plus building half-diagonal — fits inside the disc.
         for (int gx = -1; gx <= 1; gx++)
         for (int gz = -1; gz <= 1; gz++)
         {
             var c = ic + new Vector2(gx * CityGrid.Pitch, gz * CityGrid.Pitch);
-            if (c.DistanceTo(ic) > IslandR - 6f) continue;
+            if (c.DistanceTo(ic) + 15.5f > IslandR) continue;
             if (c.DistanceTo(ic) < 30f) continue;
             if (c.X < ic.X - 16f && Mathf.Abs(c.Y - ic.Y) < 20f) continue;
             PlaceCityBlock(rng, c, ref placed, IslandTop);
