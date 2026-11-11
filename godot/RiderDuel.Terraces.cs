@@ -655,7 +655,7 @@ public partial class RiderDuel
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         AddChild(daisRim);
-        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = ic.X, Cz = ic.Y, R = 24f, Top = daisTop });
+        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = ic.X, Cz = ic.Y, R = 24f, Top = daisTop, Under = IslandTop });
         _props.Add(new Circle { P = ic, R = 23.6f, RoofTop = daisTop });
         Main.Ramps.Add(new Main.RampRect
         {

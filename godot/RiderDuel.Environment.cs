@@ -1127,7 +1127,7 @@ public partial class RiderDuel
         // The roof is a floor (owner, 2026-10-31): a rider with
         // thrusters can land and stand on it. Removed again when
         // the building is destroyed (RemovePropColliders).
-        Main.Roofs.Add(new Main.RoofRect { Cx = pos.X, Cz = pos.Z, Hx = size.X / 2f, Hz = size.Z / 2f, Top = roofTop });
+        Main.Roofs.Add(new Main.RoofRect { Cx = pos.X, Cz = pos.Z, Hx = size.X / 2f, Hz = size.Z / 2f, Top = roofTop, Under = groundY - sink });
     }
 
 

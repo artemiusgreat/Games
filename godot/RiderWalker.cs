@@ -422,6 +422,17 @@ public partial class RiderWalker : Node3D
     public void Teleport(Vector3 pos, float legsYaw)
     {
         _rootPos = pos;
+        // A teleport that asks for height (staging a rider ON
+        // a deck) must ground against that height: the feet
+        // plant via GroundHere, which keys on the CURRENT sole
+        // level, so without this the deck under the spot is
+        // never adopted and the rider ends up standing on the
+        // terrain UNDER the platform. (Found by the deck-shot
+        // harness: an enemy "teleported" onto a deck stood
+        // beneath it, root Y -0.6 instead of 22.)
+        if (pos.Y > SoleLevel)
+            foreach (var leg in new[] { _legL, _legR })
+                leg.SoleTarget = new Vector3(leg.SoleTarget.X, pos.Y, leg.SoleTarget.Z);
         _legsYaw = legsYaw;
         _prevYaw = legsYaw;
         _speed = 0f;

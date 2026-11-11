@@ -66,6 +66,13 @@ public sealed class HitModel
         var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
         float tt = RayTerrain(from, dir, maxDist);
         if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = Roles.Terrain; }
+        // Built surfaces (owner: platforms must collide with
+        // weapons — beams and shells were ending at the terrain
+        // behind/under a deck while the reticle rested on it):
+        // deck tops, undersides and side bands, island discs and
+        // ramp slopes, competing by distance like everything else.
+        float ts = RaySurfaces(from, dir, best.T);
+        if (ts >= 0f) { best.Hit = true; best.T = ts; best.Target = Roles.Terrain; }
         foreach (var p in Props)
         {
             float t = RayCylinder(from, dir, p.P, p.R + inflateProps, p.BaseY, p.Height, best.T);
@@ -75,7 +82,12 @@ public sealed class HitModel
         {
             if (m.Id == ignoreId) continue;
             var root = m.Root();
-            float baseY = Main.HeightAt(root.X, root.Z);
+            // The capsule stands on the rider's LIVE sole level
+            // (its root), not the terrain: on a deck the root is
+            // at deck height while HeightAt still says ground —
+            // the capsule used to stay buried under the platform
+            // and shots at the visible rider sailed over it.
+            float baseY = root.Y;
             float t = RayCylinder(from, dir, new Vector2(root.X, root.Z), m.Radius, baseY, m.Height, best.T);
             string boxPart = null;
             if (PartRayCast != null)
@@ -160,6 +172,119 @@ public sealed class HitModel
         return -1f;
     }
 
+    // Ray vs the built surfaces registered in Main: roof rects
+    // (decks and building roofs — top plane, underside plane and
+    // the side band between them), island discs (same three) and
+    // ramp slopes (the inclined plane inside the ramp rect).
+    // Returns the nearest t within maxT, or -1.
+    private static float RaySurfaces(Vector3 from, Vector3 dir, float maxT)
+    {
+        float best = -1f;
+        void Take(float t)
+        {
+            if (t >= 0f && t <= maxT && (best < 0f || t < best)) best = t;
+        }
+        foreach (var r in Main.Roofs)
+        {
+            // Top and underside planes.
+            if (Mathf.Abs(dir.Y) > 1e-7f)
+            {
+                float tT = (r.Top - from.Y) / dir.Y;
+                if (tT >= 0f && tT <= maxT)
+                {
+                    float px = from.X + dir.X * tT, pz = from.Z + dir.Z * tT;
+                    if (Mathf.Abs(px - r.Cx) <= r.Hx && Mathf.Abs(pz - r.Cz) <= r.Hz) Take(tT);
+                }
+                float tU = (r.Under - from.Y) / dir.Y;
+                if (tU >= 0f && tU <= maxT && tU != tT)
+                {
+                    float px = from.X + dir.X * tU, pz = from.Z + dir.Z * tU;
+                    if (Mathf.Abs(px - r.Cx) <= r.Hx && Mathf.Abs(pz - r.Cz) <= r.Hz) Take(tU);
+                }
+            }
+            // Side band: entry into the XZ rect at a height
+            // between Under and Top.
+            float tE = RectEntry(from, dir, r.Cx, r.Cz, r.Hx, r.Hz);
+            if (tE >= 0f)
+            {
+                float y = from.Y + dir.Y * tE;
+                if (y >= r.Under - 0.001f && y <= r.Top + 0.001f) Take(tE);
+            }
+        }
+        foreach (var d in Main.DiscRoofs)
+        {
+            if (Mathf.Abs(dir.Y) > 1e-7f)
+            {
+                for (int k = 0; k < 2; k++)
+                {
+                    float lvl = k == 0 ? d.Top : d.Under;
+                    float t = (lvl - from.Y) / dir.Y;
+                    if (t < 0f || t > maxT) continue;
+                    float px = from.X + dir.X * t - d.Cx, pz = from.Z + dir.Z * t - d.Cz;
+                    if (px * px + pz * pz <= d.R * d.R) Take(t);
+                }
+            }
+            float a = dir.X * dir.X + dir.Z * dir.Z;
+            if (a > 1e-8f)
+            {
+                float ox = from.X - d.Cx, oz = from.Z - d.Cz;
+                float b = ox * dir.X + oz * dir.Z;
+                float cc = ox * ox + oz * oz - d.R * d.R;
+                float disc = b * b - a * cc;
+                if (disc >= 0f)
+                {
+                    float t = (-b - Mathf.Sqrt(disc)) / a;
+                    if (t < 0f && cc < 0f) t = 0f;
+                    if (t >= 0f)
+                    {
+                        float y = from.Y + dir.Y * t;
+                        if (y >= d.Under - 0.001f && y <= d.Top + 0.001f) Take(t);
+                    }
+                }
+            }
+        }
+        foreach (var r in Main.Ramps)
+        {
+            float slope = (r.H1 - r.H0) / (2f * r.HalfLen);
+            float hMid = (r.H0 + r.H1) * 0.5f;
+            float along0 = (from.X - r.Cx) * r.DirX + (from.Z - r.Cz) * r.DirZ;
+            float f0 = from.Y - slope * along0 - hMid;
+            float df = dir.Y - slope * (dir.X * r.DirX + dir.Z * r.DirZ);
+            if (Mathf.Abs(df) < 1e-7f) continue;
+            float t = -f0 / df;
+            if (t < 0f || t > maxT) continue;
+            var p = from + dir * t;
+            float along = (p.X - r.Cx) * r.DirX + (p.Z - r.Cz) * r.DirZ;
+            float perp = -(p.X - r.Cx) * r.DirZ + (p.Z - r.Cz) * r.DirX;
+            if (Mathf.Abs(along) <= r.HalfLen && Mathf.Abs(perp) <= r.HalfWid) Take(t);
+        }
+        return best;
+    }
+
+    // Entry distance of a ray into an axis-aligned XZ rect
+    // (0 when the origin is already inside), -1 when it misses.
+    private static float RectEntry(Vector3 from, Vector3 dir, float cx, float cz, float hx, float hz)
+    {
+        float tmin = 0f, tmax = float.MaxValue;
+        if (Mathf.Abs(dir.X) < 1e-8f) { if (Mathf.Abs(from.X - cx) > hx) return -1f; }
+        else
+        {
+            float t1 = (cx - hx - from.X) / dir.X, t2 = (cx + hx - from.X) / dir.X;
+            if (t1 > t2) (t1, t2) = (t2, t1);
+            tmin = Mathf.Max(tmin, t1); tmax = Mathf.Min(tmax, t2);
+            if (tmin > tmax) return -1f;
+        }
+        if (Mathf.Abs(dir.Z) < 1e-8f) { if (Mathf.Abs(from.Z - cz) > hz) return -1f; }
+        else
+        {
+            float t1 = (cz - hz - from.Z) / dir.Z, t2 = (cz + hz - from.Z) / dir.Z;
+            if (t1 > t2) (t1, t2) = (t2, t1);
+            tmin = Mathf.Max(tmin, t1); tmax = Mathf.Min(tmax, t2);
+            if (tmin > tmax) return -1f;
+        }
+        return tmin;
+    }
+
     // Distance from a point to a rider's capsule surface (0 when touching):
     // point-to-axis-segment distance minus the radius. Used for splash.
     public float DistanceToRiderSurface(Vector3 point, string id)
@@ -168,7 +293,7 @@ public sealed class HitModel
         {
             if (m.Id != id) continue;
             var root = m.Root();
-            float baseY = Main.HeightAt(root.X, root.Z);
+            float baseY = root.Y; // live sole level, as in Ray (decks)
             var a = new Vector3(root.X, baseY, root.Z);
             var b = new Vector3(root.X, baseY + m.Height, root.Z);
             var ab = b - a;
