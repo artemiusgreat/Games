@@ -109,8 +109,25 @@ public partial class Main : Node3D
 		float n = Fbm(x / 170f + 3.1f, z / 170f - 8.2f, 4) * 0.5f + 0.5f;
 		float rg = 1f - Mathf.Abs(Fbm(x / 67f - 5.3f, z / 67f + 11.1f, 4));
 		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-		float h = 12f + n * 30f + rg * rg * 48f + Smooth(680f, 930f, sq) * 60f;
+		float h = 12f + n * 34f + rg * rg * 62f + Smooth(640f, 920f, sq) * 85f;
 		var p = new Vector2(x, z);
+		// Valley rims (owner: "looks like you removed canyon" —
+		// the basins were flat discs in low rolling ground, so
+		// from inside a valley nothing read as canyon): a ridge
+		// ring just outside each basin puts every valley in a
+		// visible bowl, 22-38u of relief starting beyond the
+		// city (r 452) and fading by r 880. The pass carve
+		// below cuts the road notches through it; the basin
+		// flatten (r <= 440) is untouched.
+		float rim = 0f;
+		foreach (var pad in SpawnPads)
+		{
+			float d = p.DistanceTo(pad);
+			float rimN = Fbm(x / 90f + 17.7f, z / 90f - 4.2f, 3) * 0.5f + 0.5f;
+			rim = Mathf.Max(rim, Smooth(452f, 565f, d)
+				* (1f - Smooth(720f, 880f, d)) * (22f + rimN * 16f));
+		}
+		h += rim;
 		for (int a = 0; a < SpawnPads.Length; a++)
 		for (int b = a + 1; b < SpawnPads.Length; b++)
 		{
