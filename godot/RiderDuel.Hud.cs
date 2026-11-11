@@ -84,9 +84,10 @@ public partial class RiderDuel
         };
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
         _panelRadar.AddChild(_radar);
-        _radarFrame = new CornerFrame { MouseFilter = Control.MouseFilterEnum.Ignore };
-        _radarFrame.SetAnchorsPreset(Control.LayoutPreset.TopRight);
-        layer.AddChild(_radarFrame);
+        // No outer corner-bracket frame around the radar
+        // (owner, 2026-11-11 round 4: 'remove one external
+        // border around radar') — the panel's own border is
+        // the only frame now.
         _targetFrame = new TargetFrame { MouseFilter = Control.MouseFilterEnum.Ignore };
         _targetFrame.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(_targetFrame);
@@ -696,7 +697,6 @@ public partial class RiderDuel
         if (_panelWeapons != null) _panelWeapons.Visible = v;
         if (_panelTarget != null) _panelTarget.Visible = v;
         if (_panelRadar != null) _panelRadar.Visible = v;
-        if (_radarFrame != null) _radarFrame.Visible = v;
     }
 
     // Corner blocks hug their content: widths and heights come
@@ -724,13 +724,6 @@ public partial class RiderDuel
             var rs = _panelRadar.GetCombinedMinimumSize();
             _panelRadar.OffsetRight = -16; _panelRadar.OffsetTop = 14;
             _panelRadar.OffsetLeft = -16 - rs.X; _panelRadar.OffsetBottom = 14 + rs.Y;
-            if (_radarFrame != null)
-            {
-                _radarFrame.OffsetLeft = _panelRadar.OffsetLeft - 6;
-                _radarFrame.OffsetTop = _panelRadar.OffsetTop - 6;
-                _radarFrame.OffsetRight = _panelRadar.OffsetRight + 6;
-                _radarFrame.OffsetBottom = _panelRadar.OffsetBottom + 6;
-            }
         }
         if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
     }

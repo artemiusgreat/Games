@@ -307,7 +307,6 @@ public partial class RiderDuel : Node3D
     private double _labLoadT;
     private PanelContainer _panelHealth, _panelWeapons, _panelTarget; // corner blocks (owner: no bottom dashboard)
     private PanelContainer _panelRadar; // square radar panel, top-right (owner)
-    private Control _radarFrame; // white corner brackets around the radar panel
     private RadarView _radar;
     private TargetFrame _targetFrame; // screen-space frame on the active target (owner, 2026-11-11)
     private Label _lblRange, _lblSpeed, _lblLegs;
