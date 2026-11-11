@@ -629,17 +629,19 @@ public partial class RiderWalker : Node3D
         // Thruster flight, integrated per substep like the gait:
         // burn climbs and drains, otherwise gravity rules.
         Thrusting = _thrustHeld && JumpJets && JumpCharge > 0f && _fallT < 0f;
-        // Thruster flight freezes the legs (owner, 2026-11-11
-        // round 4: 'when thrusters are in use, legs should
-        // not move'). The latch runs from burn start until
-        // touchdown: no new steps, no swing progress, and the
-        // feet are carried rigidly with the root (below), so
-        // the pose at liftoff is the pose for the whole
-        // flight — no air-walking, no legs stretching down
-        // to ground targets the body has left behind.
-        if (Thrusting) _freezeLegs = true;
-        else if (_jumpH <= 0f) _freezeLegs = false;
-        var rootPrev = _rootPos; float yawPrev = _legsYaw;
+        // Thruster flight: the legs hang (owner, 2026-11-11
+        // rounds 4-5: no stepping while thrusters are in use,
+        // and in the air the legs hang straight). The latch
+        // runs from burn start until touchdown: liftoff
+        // cancels any step in progress, no new steps start,
+        // and both soles are pinned to the hang pose (set
+        // after UpdateRoot, below).
+        if (Thrusting && !_freezeLegs)
+        {
+            _freezeLegs = true;
+            foreach (var leg in new[] { _legL, _legR }) { leg.StepT = -1f; leg.Planted = true; }
+        }
+        else if (!Thrusting && _jumpH <= 0f) _freezeLegs = false;
         if (Thrusting)
         {
             JumpCharge = Mathf.Max(0f, JumpCharge - h / 2.2f);
@@ -752,11 +754,8 @@ public partial class RiderWalker : Node3D
             // does at a wall is what it does everywhere.
             if (best != null) BeginStep(best);
         }
-        // Frozen flight: AdvanceLeg still re-projects the
-        // swing foot into the current frame, but with h = 0
-        // the swing phase does not advance.
-        AdvanceLeg(_legL, _freezeLegs ? 0f : h);
-        AdvanceLeg(_legR, _freezeLegs ? 0f : h);
+        AdvanceLeg(_legL, h);
+        AdvanceLeg(_legR, h);
         // Dynamic ground (owner: Harbor lift pads): a surface
         // moving under a planted foot carries the foot with
         // it — up always, down when the gap is small (a
@@ -777,21 +776,25 @@ public partial class RiderWalker : Node3D
         UpdateRoot(h);
         if (_freezeLegs)
         {
-            // Carry the feet rigidly with the root's motion
-            // this substep (translation + yaw): in the body
-            // frame nothing moved, so the frame-relative
-            // swing endpoints need no change.
-            var b0 = Basis.Identity.Rotated(Vector3.Up, yawPrev + Mathf.Pi);
-            var b1 = Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
-            var inv0 = b0.Inverse();
+            // The hang pose (owner, 2026-11-11 round 5): each
+            // sole sits directly under its hip, a touch below
+            // full leg extension — SolveLeg clamps the ankle
+            // to reach along the hip->target line, so an
+            // over-long drop renders the leg straight down.
+            // Recomputed from the live skeleton transform
+            // every substep, so the legs ride the body without
+            // stepping, swinging or stretching. (Round 4's
+            // rigid carry of the liftoff pose is REMOVED: it
+            // fed DesiredRootY and pumped the root's ground
+            // reference to 'outer space' — see UpdateRoot.)
+            float st = _skelGlobal.Basis.X.Length();
             foreach (var leg in new[] { _legL, _legR })
             {
-                leg.SoleTarget = _rootPos + b1 * (inv0 * (leg.SoleTarget - rootPrev));
-                if (leg.StepT >= 0f)
-                {
-                    leg.StepFrom = _rootPos + b1 * (inv0 * (leg.StepFrom - rootPrev));
-                    leg.StepTo = _rootPos + b1 * (inv0 * (leg.StepTo - rootPrev));
-                }
+                var hipW = _skelGlobal * leg.Hrest;
+                float drop = (leg.L1 + leg.L2) * st + leg.AnkleAboveSoleW + 0.5f;
+                leg.SoleTarget = new Vector3(hipW.X, hipW.Y - drop, hipW.Z);
+                leg.PlantBasisW = YawBasis();
+                leg.CurBasisW = leg.PlantBasisW;
             }
         }
         SolveAll();
@@ -810,7 +813,15 @@ public partial class RiderWalker : Node3D
         bool doubleSupport = _legL.Planted && _legR.Planted;
         float bobT = doubleSupport ? -0.09f : -0.02f;
         _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-6f * h));
-        float yT = DesiredRootY();
+        // In thruster flight the root's ground reference is
+        // the surface under the ROOT, never the feet (owner
+        // round 5: with the feet feeding DesiredRootY, the
+        // root chased its own carried feet upward — the
+        // rider climbed to 'outer space' and hovered there
+        // until a step re-planted a foot on real ground).
+        float yT = _freezeLegs
+            ? GroundHere(_rootPos.X, _rootPos.Z) + 0.5f * (_legL.AnkleAboveSoleW + _legR.AnkleAboveSoleW) + _hipRiseW - _hipAboveHolderW + _bob
+            : DesiredRootY();
         // Knocked down: the hips drop to rest height (body on the ground).
         if (_fallAmt > 0.001f)
         {
