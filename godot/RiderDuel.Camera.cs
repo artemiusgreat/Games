@@ -58,6 +58,16 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(pad.X + 30f, gy + 60f, pad.Y + 95f);
             _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 240f) + 16f, 240f), Vector3.Up);
         }
+        else if (_camMode == "canyonVista")
+        {
+            // From above the home valley's east side, looking
+            // northwest across the bowl to the pad-1 pass: the
+            // rim ring and the road notch through it should
+            // fill the middle distance (AOT_TERRATEST=10).
+            var pad = Main.SpawnPads[0];
+            _cam.GlobalPosition = new Vector3(pad.X + 150f, 82f, pad.Y - 60f);
+            _cam.LookAt(new Vector3(-268f, 26f, 155f), Vector3.Up);
+        }
         else if (_camMode == "enemyFront")
         {
             // In front of the enemy, on its line of advance: the

@@ -2568,6 +2568,29 @@ public partial class RiderDuel
             }
             if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
             if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
+            if (start == "9") { _xPhase = 97; RunDeckShot(); return; }
+            if (start == "10")
+            {
+                // Canyon presence (owner: "looks like you
+                // removed canyon"): height profile from the
+                // home pad toward pad 1, plus a HUD-free vista
+                // of the rim and the pass notch.
+                _xPhase = 96;
+                var p0 = Main.SpawnPads[0]; var p1 = Main.SpawnPads[1];
+                var ray = (p1 - p0).Normalized();
+                string prof = "";
+                foreach (float r in new[] { 300f, 400f, 460f, 500f, 540f, 580f, 620f })
+                {
+                    var s = p0 + ray * r;
+                    prof += $" r{r:F0}={Main.HeightAt(s.X, s.Y):F0}";
+                }
+                var saddle = (p0 + p1) / 2f;
+                GD.Print($"CANYONPROFILE toward pad1:{prof} saddle={Main.HeightAt(saddle.X, saddle.Y):F0}");
+                SetHudPanelsVisible(false);
+                QueueCapture("res://proof/canyon_vista.png", "canyon", "canyonVista",
+                    () => { GD.Print("CANYONVISTA saved"); GetTree().Quit(0); });
+                return;
+            }
             if (start == "5")
             {
                 var back5 = TestRampFoot - TestRampDir * 10f;
@@ -2666,6 +2689,101 @@ public partial class RiderDuel
         }
         if (misses == 0) { GD.Print($"LIPSWEEP PASS: {total} plant cases at the ramp lip, GroundAt always finds the surface"); GetTree().Quit(0); }
         else { GD.PrintErr($"LIPSWEEP FAIL: {misses} of {total} plant cases fall through at the ramp lip"); GetTree().Quit(1); }
+    }
+
+    // Deck-shot proof (owner: platforms must collide with
+    // weapons): the shared HitModel ray against the home L1
+    // platform — top from above, underside from below, side
+    // band from the side, a clear pass UNDER the deck, the
+    // ramp slope, and a rider standing on the deck.
+    // City audit (owner: "random pieces of building are
+    // sticking out of the ground"): every destructible
+    // building whose base sits below the terrain at its
+    // centre or corners is buried there — print them all.
+    private void RunCityAudit()
+    {
+        int buried = 0, total = 0;
+        foreach (var bd in _destructibles)
+        {
+            if (bd.Kind != "building") continue;
+            total++;
+            float baseY = bd.Center.Y;
+            float worst = Main.HeightAt(bd.Center.X, bd.Center.Z) - baseY;
+            float rr = bd.Radius * 0.7f;
+            for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+                worst = Mathf.Max(worst,
+                    Main.HeightAt(bd.Center.X + sx * rr, bd.Center.Z + sz * rr) - baseY);
+            if (worst > 1.0f)
+            {
+                buried++;
+                if (buried <= 12)
+                    GD.Print($"CITYAUDIT BURIED at ({bd.Center.X:F0},{bd.Center.Z:F0}) base={baseY:F1} h={bd.Height:F0} terrain over base by {worst:F1}");
+            }
+        }
+        GD.Print($"CITYAUDIT {buried} of {total} buildings buried (terrain above base by >1u somewhere on the footprint)");
+    }
+
+    private void RunDeckShot()
+    {
+        RunCityAudit();
+        int fails = 0;
+        void Check(string name, bool ok, string detail)
+        {
+            GD.Print($"DECKSHOT {name}: {(ok ? "ok" : "FAIL")} {detail}");
+            if (!ok) fails++;
+        }
+        var (pc, ph, ptop) = TestPlatforms[0];
+        // A clear spot on the deck: no building within 9u.
+        Vector2 spot = pc; bool found = false;
+        for (float gx = -ph.X + 10f; gx <= ph.X - 10f && !found; gx += 5f)
+        for (float gz = -ph.Y + 10f; gz <= ph.Y - 10f && !found; gz += 5f)
+        {
+            var cand = new Vector2(pc.X + gx, pc.Y + gz);
+            bool clear = true;
+            foreach (var bp in _buildingPts) if (bp.DistanceTo(cand) < 9f) { clear = false; break; }
+            if (clear) { spot = cand; found = true; }
+        }
+        Check("clearspot", found, $"at ({spot.X:F0},{spot.Y:F0})");
+        // 1. Deck top from above.
+        var h1 = _hit.Ray(new Vector3(spot.X, ptop + 30f, spot.Y),
+            new Vector3(0.3f, -1f, 0.1f).Normalized(), 120f, Roles.Player);
+        Check("top", h1.Hit && h1.Target == Roles.Terrain && Mathf.Abs(h1.Point.Y - ptop) < 0.6f,
+            $"hit={h1.Hit} tgt={h1.Target} y={h1.Point.Y:F1} want {ptop:F0}");
+        // 2. Underside from below (deck Under = Top - 2.2).
+        var h2 = _hit.Ray(new Vector3(spot.X, 2f, spot.Y),
+            new Vector3(0.2f, 1f, -0.15f).Normalized(), 60f, Roles.Player);
+        Check("under", h2.Hit && h2.Target == Roles.Terrain && Mathf.Abs(h2.Point.Y - (ptop - 2.2f)) < 0.7f,
+            $"hit={h2.Hit} tgt={h2.Target} y={h2.Point.Y:F1} want {ptop - 2.2f:F1}");
+        // 3. Side band from the west at deck-band height.
+        var h3 = _hit.Ray(new Vector3(pc.X - ph.X - 30f, ptop - 1f, pc.Y),
+            Vector3.Right, 120f, Roles.Player);
+        Check("side", h3.Hit && h3.Point.X <= pc.X - ph.X + 8f && Mathf.Abs(h3.Point.Y - (ptop - 1f)) < 0.6f,
+            $"hit={h3.Hit} tgt={h3.Target} x={h3.Point.X:F1} want <= {pc.X - ph.X + 8f:F1}");
+        // 4. Control: a shot UNDER the deck (below the band,
+        // started inside the deck's span) flies through — no
+        // phantom slab.
+        var h4 = _hit.Ray(new Vector3(pc.X - 20f, ptop - 5f, pc.Y),
+            Vector3.Right, 40f, Roles.Player);
+        Check("underpass", !h4.Hit, $"hit={h4.Hit} tgt={h4.Target} t={h4.T:F1}");
+        // 5. Ramp slope at its midpoint.
+        var rmid = TestRampFoot + TestRampDir * (TestRampRun * 0.5f);
+        var h5 = _hit.Ray(new Vector3(rmid.X, TestRampHi + 25f, rmid.Y),
+            Vector3.Down, 80f, Roles.Player);
+        Check("ramp", h5.Hit && Mathf.Abs(h5.Point.Y - TestRampHi * 0.5f) < 1.4f,
+            $"hit={h5.Hit} tgt={h5.Target} y={h5.Point.Y:F1} want ~{TestRampHi * 0.5f:F1}");
+        // 6. A rider standing ON the deck is hittable at its
+        // visible height (capsule base = live sole level).
+        if (_enemy != null)
+        {
+            _enemy.Teleport(new Vector3(spot.X, ptop, spot.Y), 0f);
+            var h6 = _hit.Ray(new Vector3(spot.X - 40f, ptop + 7f, spot.Y),
+                Vector3.Right, 120f, Roles.Player);
+            Check("rider", h6.Hit && h6.Target != Roles.Terrain && h6.Target != Roles.Prop && h6.Target != "",
+                $"hit={h6.Hit} tgt={h6.Target} y={h6.Point.Y:F1}");
+        }
+        if (fails == 0) { GD.Print("DECKSHOT PASS: decks, ramps and riders on them collide with the shared hit ray"); GetTree().Quit(0); }
+        else { GD.PrintErr($"DECKSHOT FAIL: {fails} case(s)"); GetTree().Quit(1); }
     }
 
     private void RunSeamScan()
