@@ -68,6 +68,15 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(pad.X + 150f, 82f, pad.Y - 60f);
             _cam.LookAt(new Vector3(-268f, 26f, 155f), Vector3.Up);
         }
+        else if (_camMode == "blockedcam")
+        {
+            // Beside the blocked-walk test rider, at hip
+            // height: the marching pose reads here — feet
+            // under the body, normal cycle (AOT_TERRATEST=12).
+            var p = _player.RootPos;
+            _cam.GlobalPosition = p + new Vector3(-21f, 9f, 17f);
+            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+        }
         else if (_camMode == "underdeck")
         {
             // Under the test deck, rider height, looking across
@@ -77,6 +86,16 @@ public partial class RiderDuel
             var dp = TestDeckPoint;
             _cam.GlobalPosition = new Vector3(dp.X - 26f, 7f, dp.Y + 10f);
             _cam.LookAt(new Vector3(dp.X + 6f, 5f, dp.Y), Vector3.Up);
+        }
+        else if (_camMode == "decktop")
+        {
+            // High south-west of the test deck cluster,
+            // looking down at it: the curvy blob outline, the
+            // glowing border ribbon and the plate ramps read
+            // here (AOT_TERRATEST=11).
+            var dp = TestDeckPoint;
+            _cam.GlobalPosition = new Vector3(dp.X - 58f, 66f, dp.Y + 58f);
+            _cam.LookAt(new Vector3(dp.X - 6f, 20f, dp.Y - 4f), Vector3.Up);
         }
         else if (_camMode == "islandcam")
         {

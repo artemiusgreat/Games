@@ -2551,6 +2551,7 @@ public partial class RiderDuel
         _xPhaseT += dt;
         if (_xPhase == 5 || _xPhase == 6) { UpdateDeckWalkTest(dt); return; }
         if (_xPhase == 94) { UpdateBlockedWalkTest(dt); return; }
+        if (_xPhase == 93) { UpdateRampSideTest(dt); return; }
         if (_xPhase == 0 && _xPhaseT > 1.5f)
         {
             if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
@@ -2580,22 +2581,42 @@ public partial class RiderDuel
                 _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
                 QueueCapture("res://proof/underdeck.png", "under", "underdeck",
                     () => QueueCapture("res://proof/island.png", "island", "islandcam",
-                        () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); }));
+                        () => QueueCapture("res://proof/decktop.png", "decktop", "decktop",
+                            () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); })));
                 return;
             }
             if (start == "12")
             {
                 // Blocked walk (owner, 2026-11-11: a rider
                 // walking into an obstacle lifted one leg and
-                // shook it): start 16u west of the test deck's
-                // west column line and drive east into the deck
-                // block for 10s. Blocked must engage, steps must
-                // nearly stop while pressed, and the root must
-                // not pass the block's west face.
+                // shook it; his follow-up the same day: keep
+                // the walk cycle running against the collider):
+                // start west of the test deck block and drive
+                // east into it for 12s. Blocked must engage, the
+                // gait must keep marching (steps continue), and
+                // the root must not pass the block's west face.
                 _xPhase = 94; _xPhaseT = 0f;
-                _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue;
+                _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue; _bwShot = false;
                 var st = TestDeckPoint + new Vector2(-34f, 0f);
                 _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(Vector3.Right));
+                return;
+            }
+            if (start == "13")
+            {
+                // Ramp side (owner, 2026-11-11: 'I can walk
+                // through the ramp if I come from the side'):
+                // stage beside the test ramp at its mid-height,
+                // 14u off the centreline, and drive straight at
+                // the wedge's side for 8s. The root must stop
+                // at the corridor edge (HalfWid + radius) and
+                // never reach the centreline.
+                _xPhase = 93; _xPhaseT = 0f;
+                _rsMinPerp = float.MaxValue;
+                var rp = TestRampRect;
+                var perp = new Vector2(-rp.DirZ, rp.DirX);
+                var st = new Vector2(rp.Cx, rp.Cz) + perp * 14f;
+                _rsPerp = perp; _rsCentre = new Vector2(rp.Cx, rp.Cz);
+                _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(new Vector3(-perp.X, 0f, -perp.Y)));
                 return;
             }
             if (start == "10")
@@ -2849,21 +2870,46 @@ public partial class RiderDuel
     private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
     private float _bkMaxRoot; private bool _bkOnDeck; private float _bkMaxHead;
     private int _lpCyc; private bool _lpUp; private int _lpFalls; private float _lpLogT; // phase 8: ramp-lip crossing probe (owner fall-through report)
-    private int _bwSteps0, _bwEngageSteps; private float _bwMaxX;
-    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block, expect a standstill (owner, 2026-11-11)
+    private float _rsMinPerp; private Vector2 _rsPerp, _rsCentre;
+    private void UpdateRampSideTest(float dt) // phase 13: drive at a ramp's side — the wedge must be solid (owner, 2026-11-11)
+    {
+        _player.SetDrive(RiderWalker.YawOf(new Vector3(-_rsPerp.X, 0f, -_rsPerp.Y)), 3.2f);
+        var rel = new Vector2(_player.RootPos.X, _player.RootPos.Z) - _rsCentre;
+        float perpDist = Mathf.Abs(rel.Dot(_rsPerp));
+        _rsMinPerp = Mathf.Min(_rsMinPerp, perpDist);
+        if (_xPhaseT > 8f)
+        {
+            float stopAt = TestRampRect.HalfWid + _player.CollisionRadius; // 6.5 + 2.0 = 8.5
+            GD.Print($"RAMPSIDE minPerp={_rsMinPerp:F1} stopAt={stopAt:F1} rootPerp={perpDist:F1}");
+            if (_rsMinPerp >= stopAt - 0.6f)
+            { GD.Print("RAMP SIDE PASS: the wedge's side stopped the rider"); GetTree().Quit(0); return; }
+            GD.PrintErr("RAMP SIDE FAIL"); GetTree().Quit(1);
+        }
+    }
+
+    private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
+    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block — root held, gait marches (owner, 2026-11-11)
     {
         if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
         _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f);
         _bwMaxX = Mathf.Max(_bwMaxX, _player.RootPos.X);
-        if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only — steps AFTER this are the shake metric
+        if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only — steps AFTER this are the march metric
+        if (_xPhaseT > 10.5f && !_bwShot)
+        {
+            _bwShot = true;
+            QueueCapture("res://proof/blocked_pose.png", "blockedpose", "blockedcam");
+        }
         if (_xPhaseT > 12f)
         {
             bool engaged = _bwEngageSteps >= 0;
             int stepsWhileBlocked = engaged ? _player.Steps - _bwEngageSteps : _player.Steps - _bwSteps0;
             float westFace = TestDeckPoint.X - 16f;
             GD.Print($"BLOCKED engaged={engaged} stepsWhileBlocked={stepsWhileBlocked} maxX={_bwMaxX:F1} westFace={westFace:F1} rootX={_player.RootPos.X:F1}");
-            if (engaged && stepsWhileBlocked <= 1 && _bwMaxX <= westFace + 3.4f)
-            { GD.Print("BLOCKED WALK PASS: rider stands at the obstacle instead of shaking a leg"); GetTree().Quit(0); return; }
+            // The owner's current word: the walk cycle keeps
+            // running against the collider (marching), the
+            // root must not pass, and Blocked must engage.
+            if (engaged && stepsWhileBlocked >= 4 && _bwMaxX <= westFace + 3.4f)
+            { GD.Print("BLOCKED WALK PASS: root held at the obstacle, gait marching in place"); GetTree().Quit(0); return; }
             GD.PrintErr("BLOCKED WALK FAIL"); GetTree().Quit(1);
         }
     }
