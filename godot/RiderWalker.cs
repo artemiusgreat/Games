@@ -139,6 +139,7 @@ public partial class RiderWalker : Node3D
     private float _cohWinNet; private float _cohWinWant; private float _cohWinT;
     private float _cohRatio = 1f; private float _cohBlockT;
     public bool Blocked => _cohBlockT > 0.25f;
+    private bool _freezeLegs; // thruster flight: legs held (owner, 2026-11-11 round 4)
     private int _plantedFrames;
     private float _hipRiseW;
     private float _hipAboveHolderW;
@@ -459,7 +460,7 @@ public partial class RiderWalker : Node3D
         _legsYaw = legsYaw;
         _prevYaw = legsYaw;
         _speed = 0f;
-        _jumpH = 0f; _jumpVel = 0f; _thrustHeld = false; Thrusting = false;
+        _jumpH = 0f; _jumpVel = 0f; _thrustHeld = false; Thrusting = false; _freezeLegs = false;
         _targetSpeed = 0f;
         _fallT = -1f;
         _fallAmt = 0f;
@@ -628,6 +629,17 @@ public partial class RiderWalker : Node3D
         // Thruster flight, integrated per substep like the gait:
         // burn climbs and drains, otherwise gravity rules.
         Thrusting = _thrustHeld && JumpJets && JumpCharge > 0f && _fallT < 0f;
+        // Thruster flight freezes the legs (owner, 2026-11-11
+        // round 4: 'when thrusters are in use, legs should
+        // not move'). The latch runs from burn start until
+        // touchdown: no new steps, no swing progress, and the
+        // feet are carried rigidly with the root (below), so
+        // the pose at liftoff is the pose for the whole
+        // flight — no air-walking, no legs stretching down
+        // to ground targets the body has left behind.
+        if (Thrusting) _freezeLegs = true;
+        else if (_jumpH <= 0f) _freezeLegs = false;
+        var rootPrev = _rootPos; float yawPrev = _legsYaw;
         if (Thrusting)
         {
             JumpCharge = Mathf.Max(0f, JumpCharge - h / 2.2f);
@@ -720,7 +732,7 @@ public partial class RiderWalker : Node3D
         _rootPos += vel * h;
 
         var stepping = _legL.StepT >= 0f ? _legL : _legR.StepT >= 0f ? _legR : null;
-        if (stepping == null && _fallT < 0f)
+        if (stepping == null && _fallT < 0f && !_freezeLegs)
         {
             bool settling = Mathf.Abs(_targetSpeed) < 0.01f && Mathf.Abs(_speed) < 0.15f && _yawRate < 0.05f;
             float threshold = settling ? 0.10f : _cfg.StepThreshold;
@@ -740,14 +752,17 @@ public partial class RiderWalker : Node3D
             // does at a wall is what it does everywhere.
             if (best != null) BeginStep(best);
         }
-        AdvanceLeg(_legL, h);
-        AdvanceLeg(_legR, h);
+        // Frozen flight: AdvanceLeg still re-projects the
+        // swing foot into the current frame, but with h = 0
+        // the swing phase does not advance.
+        AdvanceLeg(_legL, _freezeLegs ? 0f : h);
+        AdvanceLeg(_legR, _freezeLegs ? 0f : h);
         // Dynamic ground (owner: Harbor lift pads): a surface
         // moving under a planted foot carries the foot with
         // it — up always, down when the gap is small (a
         // descending pad). Static ground re-samples identical,
         // so ordinary walking is untouched.
-        foreach (var leg in new[] { _legL, _legR })
+        if (!_freezeLegs) foreach (var leg in new[] { _legL, _legR })
         {
             if (!leg.Planted) continue;
             float g = GroundHere(leg.SoleTarget.X, leg.SoleTarget.Z);
@@ -760,6 +775,25 @@ public partial class RiderWalker : Node3D
         // with the rider's throttled speed.
 
         UpdateRoot(h);
+        if (_freezeLegs)
+        {
+            // Carry the feet rigidly with the root's motion
+            // this substep (translation + yaw): in the body
+            // frame nothing moved, so the frame-relative
+            // swing endpoints need no change.
+            var b0 = Basis.Identity.Rotated(Vector3.Up, yawPrev + Mathf.Pi);
+            var b1 = Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
+            var inv0 = b0.Inverse();
+            foreach (var leg in new[] { _legL, _legR })
+            {
+                leg.SoleTarget = _rootPos + b1 * (inv0 * (leg.SoleTarget - rootPrev));
+                if (leg.StepT >= 0f)
+                {
+                    leg.StepFrom = _rootPos + b1 * (inv0 * (leg.StepFrom - rootPrev));
+                    leg.StepTo = _rootPos + b1 * (inv0 * (leg.StepTo - rootPrev));
+                }
+            }
+        }
         SolveAll();
         TrackSlide();
     }

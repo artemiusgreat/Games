@@ -2552,6 +2552,7 @@ public partial class RiderDuel
         if (_xPhase == 5 || _xPhase == 6) { UpdateDeckWalkTest(dt); return; }
         if (_xPhase == 94) { UpdateBlockedWalkTest(dt); return; }
         if (_xPhase == 93) { UpdateRampSideTest(dt); return; }
+        if (_xPhase == 96) { UpdateFreezeTest(dt); return; }
         if (_xPhase == 0 && _xPhaseT > 1.5f)
         {
             if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
@@ -2593,6 +2594,19 @@ public partial class RiderDuel
                 _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue; _bwShot = false;
                 var st = TestDeckPoint + new Vector2(-34f, 0f);
                 _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(Vector3.Right));
+                return;
+            }
+            if (start == "14")
+            {
+                // Thruster leg freeze (owner, 2026-11-11
+                // round 4): stage on the open home plaza,
+                // walk 1.5s to build a stride, then burn with
+                // the drive held for 4s. No step may complete
+                // from burn start to touchdown.
+                _xPhase = 96; _xPhaseT = 0f;
+                _fzSteps0 = -1; _fzStepsFrozen = 0; _fzMaxH = 0f;
+                var hp = Main.SpawnPads[0];
+                _player.Teleport(new Vector3(hp.X, 0f, hp.Y - 25f), 0f);
                 return;
             }
             if (start == "13")
@@ -2872,6 +2886,189 @@ public partial class RiderDuel
     }
 
     private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
+    private int _fzSteps0, _fzStepsFrozen; private float _fzMaxH;
+
+    private void UpdateFreezeTest(float dt) // phase 14: legs must not move while thrusters burn (owner, 2026-11-11 round 4)
+    {
+        if (_xPhaseT < 1.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
+        else if (_xPhaseT < 5.5f)
+        {
+            _player.SetDrive(1f, 0f); _player.SetThrust(true);
+            if (_player.Thrusting && _fzSteps0 < 0) _fzSteps0 = _player.Steps;
+            if (_fzSteps0 >= 0) _fzStepsFrozen = _player.Steps - _fzSteps0;
+            _fzMaxH = Mathf.Max(_fzMaxH, _player.JumpHeight);
+        }
+        else { _player.SetDrive(0f, 0f); _player.SetThrust(false); }
+        if (_xPhaseT > 10f)
+        {
+            GD.Print($"FREEZE stepsDuringFlight={_fzStepsFrozen} maxJumpH={_fzMaxH:F1} settleSole={_player.SoleLevel:F1}");
+            if (_fzSteps0 >= 0 && _fzStepsFrozen == 0 && _fzMaxH > 3f && _player.SoleLevel <= 0.7f)
+            { GD.Print("FREEZE PASS: no steps from burn start to touchdown"); GetTree().Quit(0); return; }
+            GD.PrintErr("FREEZE FAIL"); GetTree().Quit(1);
+        }
+    }
+
+    private void RunDeckShot()
+    {
+        PrintTriCount();
+        RunCityAudit();
+        int fails = 0;
+        void Check(string name, bool ok, string detail)
+        {
+            GD.Print($"DECKSHOT {name}: {(ok ? "ok" : "FAIL")} {detail}");
+            if (!ok) fails++;
+        }
+        var (pc, ph, ptop) = TestPlatforms[0];
+        // A clear spot on the deck: no building within 9u.
+        Vector2 spot = pc; bool found = false;
+        for (float gx = -ph.X + 10f; gx <= ph.X - 10f && !found; gx += 5f)
+        for (float gz = -ph.Y + 10f; gz <= ph.Y - 10f && !found; gz += 5f)
+        {
+            var cand = new Vector2(pc.X + gx, pc.Y + gz);
+            bool clear = true;
+            foreach (var bp in _buildingPts) if (bp.DistanceTo(cand) < 9f) { clear = false; break; }
+            if (clear) { spot = cand; found = true; }
+        }
+        Check("clearspot", found, $"at ({spot.X:F0},{spot.Y:F0})");
+        // 1. Deck top from above.
+        var h1 = _hit.Ray(new Vector3(spot.X, ptop + 30f, spot.Y),
+            new Vector3(0.3f, -1f, 0.1f).Normalized(), 120f, Roles.Player);
+        Check("top", h1.Hit && h1.Target == Roles.Terrain && Mathf.Abs(h1.Point.Y - ptop) < 0.6f,
+            $"hit={h1.Hit} tgt={h1.Target} y={h1.Point.Y:F1} want {ptop:F0}");
+        // 2. Underside from below (deck Under = Top - 2.2).
+        var h2 = _hit.Ray(new Vector3(spot.X, 2f, spot.Y),
+            new Vector3(0.2f, 1f, -0.15f).Normalized(), 60f, Roles.Player);
+        Check("under", h2.Hit && h2.Target == Roles.Terrain && Mathf.Abs(h2.Point.Y - (ptop - 2.2f)) < 0.7f,
+            $"hit={h2.Hit} tgt={h2.Target} y={h2.Point.Y:F1} want {ptop - 2.2f:F1}");
+        // 3. Side band from the west at deck-band height.
+        var h3 = _hit.Ray(new Vector3(pc.X - ph.X - 30f, ptop - 1f, pc.Y),
+            Vector3.Right, 120f, Roles.Player);
+        Check("side", h3.Hit && h3.Point.X <= pc.X - ph.X + 8f && Mathf.Abs(h3.Point.Y - (ptop - 1f)) < 0.6f,
+            $"hit={h3.Hit} tgt={h3.Target} x={h3.Point.X:F1} want <= {pc.X - ph.X + 8f:F1}");
+        // 4. Control: a shot UNDER the deck (below the band,
+        // started inside the deck's span) flies through — no
+        // phantom slab.
+        var h4 = _hit.Ray(new Vector3(pc.X - 20f, ptop - 5f, pc.Y),
+            Vector3.Right, 40f, Roles.Player);
+        Check("underpass", !h4.Hit, $"hit={h4.Hit} tgt={h4.Target} t={h4.T:F1}");
+        // 5. Ramp slope at its midpoint.
+        var rmid = TestRampFoot + TestRampDir * (TestRampRun * 0.5f);
+        var h5 = _hit.Ray(new Vector3(rmid.X, TestRampHi + 25f, rmid.Y),
+            Vector3.Down, 80f, Roles.Player);
+        Check("ramp", h5.Hit && Mathf.Abs(h5.Point.Y - TestRampHi * 0.5f) < 1.4f,
+            $"hit={h5.Hit} tgt={h5.Target} y={h5.Point.Y:F1} want ~{TestRampHi * 0.5f:F1}");
+        // 6. A rider standing ON the deck is hittable at its
+        // visible height (capsule base = live sole level).
+        if (_enemy != null)
+        {
+            _enemy.Teleport(new Vector3(spot.X, ptop, spot.Y), 0f);
+            var h6 = _hit.Ray(new Vector3(spot.X - 40f, ptop + 7f, spot.Y),
+                Vector3.Right, 120f, Roles.Player);
+            Check("rider", h6.Hit && h6.Target != Roles.Terrain && h6.Target != Roles.Prop && h6.Target != "",
+                $"hit={h6.Hit} tgt={h6.Target} y={h6.Point.Y:F1}");
+        }
+        if (fails == 0) { GD.Print("DECKSHOT PASS: decks, ramps and riders on them collide with the shared hit ray"); GetTree().Quit(0); }
+        else { GD.PrintErr($"DECKSHOT FAIL: {fails} case(s)"); GetTree().Quit(1); }
+    }
+
+    private void RunSeamScan()
+    {
+        int bad = 0; string worst = "";
+        foreach (var (c, h, top) in TestPlatforms)
+        {
+            for (float gx = -h.X + 3f; gx <= h.X - 3f; gx += 6f)
+            for (float gz = -h.Y + 3f; gz <= h.Y - 3f; gz += 6f)
+            {
+                float x = c.X + gx, z = c.Y + gz;
+                float g = Main.GroundAt(x, z, top + 1.5f);
+                if (g < top - 0.1f) { bad++; if (worst.Length < 300) worst += $" ({x:F0},{z:F0})={g:F1}<{top:F0}"; }
+            }
+        }
+        var pad0 = Main.SpawnPads[0];
+        for (int k = 0; k < 8; k++)
+        {
+            float rad = k / 8f * Mathf.Tau;
+            float x = pad0.X + Mathf.Cos(rad) * 12f, z = pad0.Y + Mathf.Sin(rad) * 12f;
+            float g = Main.GroundAt(x, z, 1.5f);
+            if (g > 1.8f) { bad++; if (worst.Length < 300) worst += $" plaza({x:F0},{z:F0})={g:F1}"; }
+        }
+        if (TestPlatforms.Count > 6)
+        {
+            var gc = TestPlatforms[6].C;
+            float g = Main.GroundAt(gc.X, gc.Y, 1.5f);
+            if (g > 1.8f) { bad++; worst += $" underG={g:F1}"; }
+        }
+        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: valley platforms fully tiled, plaza + under-deck open"); GetTree().Quit(0); }
+        else { GD.PrintErr($"TERRACE SEAMSCAN FAIL: {bad} holes:{worst}"); GetTree().Quit(1); }
+    }
+
+    private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
+    private float _bkMaxRoot; private bool _bkOnDeck; private float _bkMaxHead;
+    private int _lpCyc; private bool _lpUp; private int _lpFalls; private float _lpLogT; // phase 8: ramp-lip crossing probe (owner fall-through report)
+    private float _rsMinPerp; private Vector2 _rsPerp, _rsCentre;
+    private void UpdateRampSideTest(float dt) // phase 13: drive at a ramp's side — the wedge must be solid (owner, 2026-11-11)
+    {
+        _player.SetDrive(RiderWalker.YawOf(new Vector3(-_rsPerp.X, 0f, -_rsPerp.Y)), 3.2f);
+        var rel = new Vector2(_player.RootPos.X, _player.RootPos.Z) - _rsCentre;
+        float perpDist = Mathf.Abs(rel.Dot(_rsPerp));
+        _rsMinPerp = Mathf.Min(_rsMinPerp, perpDist);
+        if (_xPhaseT > 8f)
+        {
+            float stopAt = TestRampRect.HalfWid + _player.CollisionRadius; // 6.5 + 2.0 = 8.5
+            GD.Print($"RAMPSIDE minPerp={_rsMinPerp:F1} stopAt={stopAt:F1} rootPerp={perpDist:F1}");
+            if (_rsMinPerp >= stopAt - 0.6f)
+            { GD.Print("RAMP SIDE PASS: the wedge's side stopped the rider"); GetTree().Quit(0); return; }
+            GD.PrintErr("RAMP SIDE FAIL"); GetTree().Quit(1);
+        }
+    }
+
+    private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
+    private int _fzSteps0, _fzStepsFrozen; private float _fzMaxH;
+
+    private void UpdateFreezeTest(float dt) // phase 14: legs must not move while thrusters burn (owner, 2026-11-11 round 4)
+    {
+        if (_xPhaseT < 1.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
+        else if (_xPhaseT < 5.5f)
+        {
+            _player.SetDrive(1f, 0f); _player.SetThrust(true);
+            if (_player.Thrusting && _fzSteps0 < 0) _fzSteps0 = _player.Steps;
+            if (_fzSteps0 >= 0) _fzStepsFrozen = _player.Steps - _fzSteps0;
+            _fzMaxH = Mathf.Max(_fzMaxH, _player.JumpHeight);
+        }
+        else { _player.SetDrive(0f, 0f); _player.SetThrust(false); }
+        if (_xPhaseT > 10f)
+        {
+            GD.Print($"FREEZE stepsDuringFlight={_fzStepsFrozen} maxJumpH={_fzMaxH:F1} settleSole={_player.SoleLevel:F1}");
+            if (_fzSteps0 >= 0 && _fzStepsFrozen == 0 && _fzMaxH > 3f && _player.SoleLevel <= 0.7f)
+            { GD.Print("FREEZE PASS: no steps from burn start to touchdown"); GetTree().Quit(0); return; }
+            GD.PrintErr("FREEZE FAIL"); GetTree().Quit(1);
+        }
+    }
+
+    // Triangle census of the built world (owner asked,
+    // 2026-11-11): every mesh instance in the scene tree,
+    // bucketed by kit buildings / the heightfield terrain /
+    // everything else (terraces, props, riders, sky).
+    private void PrintTriCount()
+    {
+        long total = 0, kit = 0, terrain = 0; int meshes = 0;
+        var stack = new System.Collections.Generic.Stack<Node>();
+        stack.Push(GetTree().Root);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            foreach (var ch in n.GetChildren()) stack.Push(ch);
+            if (n is MultiMeshInstance3D mm && mm.Multimesh != null && mm.Multimesh.Mesh != null)
+            { total += (long)mm.Multimesh.Mesh.GetFaces().Length / 3 * mm.Multimesh.InstanceCount; meshes++; continue; }
+            if (n is not MeshInstance3D mi || mi.Mesh == null) continue;
+            long tris = mi.Mesh.GetFaces().Length / 3; meshes++;
+            total += tris;
+            string rp = mi.Mesh.ResourcePath ?? "";
+            if (rp.Contains("citykits")) kit += tris;
+            else if (rp == "" && tris > terrain) terrain = tris; // largest code-built mesh = the heightfield
+        }
+        GD.Print($"TRICOUNT meshes={meshes} total={total} kitBuildings={kit} terrain={terrain} rest={total - kit - terrain}");
+    }
     private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block — root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
     {
         if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
