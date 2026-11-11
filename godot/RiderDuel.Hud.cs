@@ -91,7 +91,7 @@ public partial class RiderDuel
             ContentMarginTop = 16, ContentMarginBottom = 16,
         };
         rsb.SetBorderWidthAll(2);
-        rsb.SetCornerRadiusAll(8);
+        rsb.SetCornerRadiusAll(0); // sharp square (owner: no round border on the radar)
         _panelRadar.AddThemeStyleboxOverride("panel", rsb);
         layer.AddChild(_panelRadar);
         _radar = new RadarView
