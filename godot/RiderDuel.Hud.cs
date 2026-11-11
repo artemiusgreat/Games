@@ -297,10 +297,10 @@ public partial class RiderDuel
     }
 
     // The active target's in-world frame (owner, 2026-11-11:
-    // 'when I have some enemy selected, add a frame around it
-    // or some marker on top of it'): red corner brackets
-    // around the target's projected silhouette plus a chevron
-    // riding above its head. UpdateTargetFrame projects the
+    // 'when I have some enemy selected, add a frame around
+    // it'; his follow-up the same day: frame ONLY, no marker
+    // on top): red corner brackets around the target's
+    // projected silhouette. UpdateTargetFrame projects the
     // eight corners of the walker's capsule box each frame.
     private sealed partial class TargetFrame : Control
     {
@@ -320,12 +320,10 @@ public partial class RiderDuel
             DrawLine(b, new Vector2(b.X - L, b.Y), col, w);
             DrawLine(new Vector2(a.X, b.Y), new Vector2(a.X + L, b.Y), col, w);
             DrawLine(new Vector2(a.X, b.Y - L), new Vector2(a.X, b.Y), col, w);
-            // Chevron above the head, pointing down at it.
-            var tip = new Vector2((a.X + b.X) / 2f, a.Y - 6f);
-            DrawColoredPolygon(new[]
-            {
-                tip, tip + new Vector2(-8f, -10f), tip + new Vector2(8f, -10f)
-            }, col);
+            // Frame only — no marker on top (owner, 2026-11-11:
+            // 'remove triangle on top of the enemy, keep only
+            // frame'; the chevron from the same day's first
+            // cut is gone again).
         }
     }
 
@@ -500,6 +498,9 @@ public partial class RiderDuel
         for (int i = 0; i < _baseMarks.Length; i++)
         {
             var l = _baseMarks[i];
+            // Only the home base keeps an indicator (owner,
+            // 2026-11-11: 'remove indicator Enemy base').
+            if (i != 0) { l.Visible = false; continue; }
             var pad = Main.SpawnPads[i];
             var world = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y) + 20f, pad.Y);
             float dist = _player.RootPos.DistanceTo(world);
