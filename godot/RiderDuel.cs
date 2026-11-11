@@ -36,13 +36,14 @@ public partial class RiderDuel : Node3D
         WorldConfig.IsMission && distToTarget > 130f ? spec.MaxSpeed
         : Mathf.Min(spec.MaxSpeed, EnemyMaxSpeed);
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
-    private const float TurnRate = 0.85f;
+    private const float TurnRate = 1.35f; // A/D leg turn, rad/s (owner, 2026-11-11: 'keys A and D should rotate rider faster' — was 0.85)
     private static float WorldBound => WorldConfig.WorldBound; // arena 115 (260 world); Mission front 915 (1900 world)
 
     private RiderWalker _player;
     private RiderWalker _enemy;
     private Camera3D _cam;
     private DirectionalLight3D _labLight; // lab-only fill: the rider must read as the centerpiece, not a silhouette
+    private OmniLight3D _heroLight; // soft shadowless pool over the player rider: it must stay readable in ANY shadow (owner, 2026-11-11)
     private bool _test;
     private bool _labShot; // dev flag: capture the live RiderLab to /tmp/lab_live.png and quit
     private bool _hectorCam; // dev flag: swap player to Hector, force-deploy, capture the chase view
@@ -365,6 +366,11 @@ public partial class RiderDuel : Node3D
         {
             RotationDegrees = new Vector3(-48f, -35f, 0f),
             ShadowEnabled = true,
+            // Shadows are barely there (owner, 2026-11-11:
+            // 'shadows barely noticeable' — walking into one
+            // made the rider almost invisible). Form stays,
+            // darkness goes.
+            ShadowOpacity = 0.28f,
             LightEnergy = 1.45f,
             LightColor = new Color(1f, 0.955f, 0.885f)
         };
@@ -378,6 +384,14 @@ public partial class RiderDuel : Node3D
             Visible = false
         };
         AddChild(_labLight);
+        _heroLight = new OmniLight3D
+        {
+            LightEnergy = 0.55f,
+            LightColor = new Color(0.85f, 0.92f, 1f),
+            OmniRange = 30f,
+            ShadowEnabled = false
+        };
+        AddChild(_heroLight);
         var skyMat = new ProceduralSkyMaterial
         {
             SkyTopColor = new Color(0.20f, 0.40f, 0.71f),

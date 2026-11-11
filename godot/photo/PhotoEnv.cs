@@ -552,7 +552,7 @@ void fragment() {
         // bounce, darker fog, and a gentle filmic contrast/
         // saturation adjustment on top. The haze itself stays.
         env.TonemapExposure = 0.94f;
-        env.AmbientLightEnergy = 0.30f;
+        env.AmbientLightEnergy = 0.50f; // raised 0.30 -> 0.50 (owner, 2026-11-11: shadows must stay readable)
         env.SdfgiEnergy = 0.85f;
         env.FogLightColor = fogC;
         env.VolumetricFogAlbedo = fogC;
@@ -561,6 +561,7 @@ void fragment() {
         env.AdjustmentContrast = 1.08f;
         env.AdjustmentSaturation = 1.05f;
         sun.LightEnergy = sunE;
+        sun.ShadowOpacity = 0.28f; // shadows barely noticeable (owner, 2026-11-11)
         sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? 900f : 520f;
         GD.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }
