@@ -51,14 +51,10 @@ public partial class RiderDuel
         var rect = new ColorRect { Color = new Color(0.015f, 0.02f, 0.035f, 0.98f) };
         rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _labLoad.AddChild(rect);
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _labLoad.AddChild(center);
-        var v = new VBoxContainer();
-        v.AddThemeConstantOverride("separation", 10);
-        center.AddChild(v);
-        v.AddChild(FlowUi.MakeHeading("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center));
-        v.AddChild(FlowUi.MakeLabel("Building the world…", 14, FlowUi.Dim, HorizontalAlignment.Center));
+        // The loading art replaces the old text screen (owner),
+        // same as the front door's cover.
+        _labLoadArt = FlowUi.MakeLoadingArt();
+        _labLoad.AddChild(_labLoadArt);
     }
 
     private void OpenLab()

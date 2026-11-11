@@ -296,4 +296,61 @@ public static class FlowUi
         }
         return ImageTexture.CreateFromImage(img);
     }
+
+    private static Texture2D _loadingTex;
+
+    // The loading screen (owner): his targeting-reticle rider
+    // art in white corner brackets on the near-black ground,
+    // slowly blinking via PulseLoadingArt. Replaces the old
+    // "Loading / Composing the views..." text screens —
+    // every loading cover in the game builds this.
+    public static Control MakeLoadingArt()
+    {
+        _loadingTex ??= GD.Load<Texture2D>("res://assets/ui/loading_target.png");
+        var root = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        root.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        var arc = new AspectRatioContainer { Ratio = 1f, StretchMode = AspectRatioContainer.StretchModeEnum.Fit };
+        arc.AnchorLeft = 0.06f; arc.AnchorTop = 0.05f; arc.AnchorRight = 0.94f; arc.AnchorBottom = 0.95f;
+        arc.OffsetLeft = 0f; arc.OffsetTop = 0f; arc.OffsetRight = 0f; arc.OffsetBottom = 0f;
+        arc.MouseFilter = Control.MouseFilterEnum.Ignore;
+        root.AddChild(arc);
+        arc.AddChild(new TextureRect
+        {
+            Texture = _loadingTex,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        arc.AddChild(new BracketFrame { MouseFilter = Control.MouseFilterEnum.Ignore });
+        return root;
+    }
+
+    // Slow blink for the loading art (owner): a gentle sine
+    // pulse of the whole art's alpha, ~3.2 s period.
+    public static void PulseLoadingArt(Control art, double tSec)
+    {
+        if (art == null) return;
+        float a = 0.60f + 0.40f * (0.5f - 0.5f * Mathf.Cos((float)(tSec * (Mathf.Tau / 3.2))));
+        var m = art.Modulate; m.A = a; art.Modulate = m;
+    }
+}
+
+// White corner brackets, drawn proud of the control's rect —
+// the exit popup's frame, shared by the loading art (owner).
+public partial class BracketFrame : Control
+{
+    public override void _Draw()
+    {
+        var col = new Color(1f, 1f, 1f, 0.9f);
+        float L = 18f, w = 2f;
+        var s = Size;
+        DrawLine(new Vector2(1, L), new Vector2(1, 1), col, w);
+        DrawLine(new Vector2(1, 1), new Vector2(L, 1), col, w);
+        DrawLine(new Vector2(s.X - L, 1), new Vector2(s.X - 1, 1), col, w);
+        DrawLine(new Vector2(s.X - 1, 1), new Vector2(s.X - 1, L), col, w);
+        DrawLine(new Vector2(s.X - 1, s.Y - L), new Vector2(s.X - 1, s.Y - 1), col, w);
+        DrawLine(new Vector2(s.X - 1, s.Y - 1), new Vector2(s.X - L, s.Y - 1), col, w);
+        DrawLine(new Vector2(1, s.Y - 1), new Vector2(L, s.Y - 1), col, w);
+        DrawLine(new Vector2(1, s.Y - L), new Vector2(1, s.Y - 1), col, w);
+    }
 }

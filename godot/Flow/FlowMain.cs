@@ -41,7 +41,7 @@ public partial class FlowMain : Node3D
     private string _flowshot;
     private double _shotT;
     private CanvasLayer _loadLayer;
-    private Label _loadLabel, _loadPct;
+    private Control _loadArt;
     private bool _loading;
     private double _loadT;
     private int _focusTarget, _focusDone;
@@ -67,6 +67,12 @@ public partial class FlowMain : Node3D
 
         switch (_flowshot)
         {
+            case "loading":
+                // Harness: hold the loading cover up for its portrait.
+                _loading = true;
+                _loadLayer.Visible = true;
+                GoMapType();
+                break;
             case "planet":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
                 WorldConfig.SelectedMission = MissionCatalog.Planets[0].Missions[0];
@@ -94,8 +100,8 @@ public partial class FlowMain : Node3D
         if (_loading)
         {
             _loadT += delta;
-            // Static heading (owner): "Loading" with no dots.
-            _loadLabel.Text = "Loading";
+            // The loading art slowly blinks (owner).
+            FlowUi.PulseLoadingArt(_loadArt, _loadT);
         }
         if (_navTest)
         {
@@ -169,16 +175,10 @@ public partial class FlowMain : Node3D
         var rect = new ColorRect { Color = new Color(0.015f, 0.02f, 0.035f, 0.98f) };
         rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _loadLayer.AddChild(rect);
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _loadLayer.AddChild(center);
-        var v = new VBoxContainer();
-        v.AddThemeConstantOverride("separation", 10);
-        center.AddChild(v);
-        _loadLabel = FlowUi.MakeHeading("Loading", 30, FlowUi.Gold, HorizontalAlignment.Center);
-        v.AddChild(_loadLabel);
-        _loadPct = FlowUi.MakeLabel("Composing the views...", 14, FlowUi.Dim, HorizontalAlignment.Center);
-        v.AddChild(_loadPct);
+        // The loading art replaces the old text screen (owner):
+        // the targeting-reticle rider in white corner brackets.
+        _loadArt = FlowUi.MakeLoadingArt();
+        _loadLayer.AddChild(_loadArt);
     }
 
     public void GoMapType()
