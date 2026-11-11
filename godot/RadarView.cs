@@ -1,18 +1,19 @@
 using Godot;
 using System.Collections.Generic;
 
-// Cockpit radar (owner's ask): a SQUARE, semi-transparent,
-// north-up, player-centered scope in the top-right corner —
-// sharp corners, no round border. Range 90u. Dressed like
-// the reference instrument: a square grid (15u minor / 30u
-// major), concentric SQUARE range rings at 30/60/90 with
-// scale numbers on the east axis, bearing ticks around the
-// rim every 10 degrees (major at 30, labelled at the
-// cardinals) and an N marker. The player is a heading
-// triangle in the center, enemies are red contacts clamped
-// to the square rim — buildings are NOT shown (owner).
-// Pure presentation — it reads walker positions each
-// redraw and owns no game state.
+// Cockpit radar (owner): a SQUARE, semi-transparent panel in
+// the top-right corner carrying a CIRCULAR north-up scope —
+// the square stays (it matches the dashboard), the plot
+// inside is round (owner, 2026-11-11: 'the inner part needs
+// to be a circle'). Range 90u. Dressed like the reference
+// instrument: a grid clipped to the circle (15u minor / 30u
+// major), circular range rings at 30/60/90, bearing ticks
+// around the rim every 10 degrees (major at 30) and an N
+// marker. NO numbers anywhere (owner: 'remove numbers, they
+// are fake anyway'). The player is a heading triangle in the
+// center, enemies are red contacts clamped to the rim —
+// buildings are NOT shown (owner). Pure presentation — it
+// reads walker positions each redraw and owns no state.
 public partial class RadarView : Control
 {
     public RiderWalker Player;
@@ -29,8 +30,7 @@ public partial class RadarView : Control
         var p = Player.RootPos;
         var e = w.RootPos;
         var d = new Vector2(e.X - p.X, e.Z - p.Z) * px;
-        float m = Mathf.Max(Mathf.Abs(d.X), Mathf.Abs(d.Y));
-        if (m > maxOff) d *= maxOff / m; // clamp to the square rim
+        if (d.Length() > maxOff) d = d.Normalized() * maxOff; // clamp to the rim
         DrawCircle(c + d, 4.5f, new Color(1f, 0.3f, 0.22f, 0.95f));
     }
 
@@ -41,10 +41,11 @@ public partial class RadarView : Control
         var border = new Rect2(1f, 1f, W - 2f, H - 2f);
         DrawRect(border, new Color(0.03f, 0.06f, 0.09f, 0.5f));
         var c = Size * 0.5f;
-        float half = Mathf.Min(W, H) * 0.5f - 10f; // plot half-extent
+        float half = Mathf.Min(W, H) * 0.5f - 10f; // scope radius in px
         float px = half / Range;                  // pixels per world unit
 
-        // Square grid: minor every 15u, major every 30u.
+        // Grid clipped to the circle: each line is drawn only
+        // across its chord.
         var minor = new Color(ink, 0.10f);
         var major = new Color(ink, 0.20f);
         for (int k = -6; k <= 6; k++)
@@ -52,45 +53,35 @@ public partial class RadarView : Control
             if (k == 0) continue;
             var col = k % 2 == 0 ? major : minor;
             float o = k * 15f * px;
-            DrawLine(c + new Vector2(o, -half), c + new Vector2(o, half), col, 1f);
-            DrawLine(c + new Vector2(-half, o), c + new Vector2(half, o), col, 1f);
+            float ch = Mathf.Sqrt(Mathf.Max(0f, half * half - o * o));
+            DrawLine(c + new Vector2(o, -ch), c + new Vector2(o, ch), col, 1f);
+            DrawLine(c + new Vector2(-ch, o), c + new Vector2(ch, o), col, 1f);
         }
         // Centre cross.
         DrawLine(c + new Vector2(-half, 0f), c + new Vector2(half, 0f), major, 1f);
         DrawLine(c + new Vector2(0f, -half), c + new Vector2(0f, half), major, 1f);
 
-        // Concentric square range rings + scale numbers east.
-        var font = GetThemeDefaultFont();
+        // Circular range rings at 30/60/90 (the rim is 90).
         for (int r = 1; r <= 3; r++)
         {
             float o = r * 30f * px;
-            DrawRect(new Rect2(c - new Vector2(o, o), new Vector2(o, o) * 2f),
-                new Color(ink, r == 3 ? 0.4f : 0.28f), false, 1f);
-            if (r < 3) // the rim itself is the 90 ring; its cardinal label lives there
-                DrawString(font, c + new Vector2(o - 15f, -4f), $"{r * 30}",
-                    HorizontalAlignment.Left, -1f, 9, new Color(ink, 0.75f));
+            DrawArc(c, o, 0f, Mathf.Tau, 96, new Color(ink, r == 3 ? 0.4f : 0.28f), 1f);
         }
 
-        // Bearing ticks around the rim: a tick where the ray
-        // at each bearing leaves the square, pointing inward.
+        // Bearing ticks around the rim every 10 degrees,
+        // pointing inward; major at 30.
         for (int deg = 0; deg < 360; deg += 10)
         {
             float a = Mathf.DegToRad(deg);
             var dir = new Vector2(Mathf.Sin(a), -Mathf.Cos(a)); // 0 = north (up)
-            float t = half / Mathf.Max(Mathf.Abs(dir.X), Mathf.Abs(dir.Y));
-            var rim = c + dir * t;
+            var rim = c + dir * half;
             bool maj = deg % 30 == 0;
             DrawLine(rim, rim - dir * (maj ? 9f : 5f), new Color(ink, maj ? 0.85f : 0.5f), maj ? 1.5f : 1f);
         }
-        // Cardinal labels + N arrow, just inside the rim.
+        // N marker just inside the rim (a letter, not a number).
+        var font = GetThemeDefaultFont();
         DrawString(font, c + new Vector2(-3f, -half + 13f), "N",
             HorizontalAlignment.Left, -1f, 10, new Color(ink, 0.95f));
-        DrawString(font, c + new Vector2(half - 24f, 3f), "90",
-            HorizontalAlignment.Left, -1f, 9, new Color(ink, 0.7f));
-        DrawString(font, c + new Vector2(-4f, half - 4f), "180",
-            HorizontalAlignment.Left, -1f, 9, new Color(ink, 0.7f));
-        DrawString(font, c + new Vector2(-half + 4f, 3f), "270",
-            HorizontalAlignment.Left, -1f, 9, new Color(ink, 0.7f));
 
         // Sharp square border on top of the dressing.
         DrawRect(border, new Color(ink, 0.8f), false, 1.5f);
