@@ -623,14 +623,21 @@ public partial class RiderWalker : Node3D
         // Ceilings (owner: platforms collide from below too):
         // a thrustering rider under a deck bonks against its
         // underside instead of passing through it. The head
-        // room derives from the chassis height against the
-        // sole-to-root span (10.5) the gait uses throughout.
+        // room is the FULL chassis height above the soles:
+        // _rootPos.Y sits at sole level (_groundY + _jumpH)
+        // and the body stands TargetHeight tall on it. (The
+        // first cut charged only TargetHeight - 10.5 against
+        // the ceiling, so the head and most of the body came
+        // through the deck before the clamp bit — the owner's
+        // 'no collision from the bottom' report, 2026-11-11;
+        // the old bonk test passed because it capped the root
+        // by the same wrong allowance instead of the head.)
         if (_jumpH > 0f)
         {
             float ceil = Main.CeilingAt(_rootPos.X, _rootPos.Z, _groundY + 0.5f);
             if (ceil < float.MaxValue)
             {
-                float headRoom = Mathf.Max(1.5f, _cfg.TargetHeight - 10.5f + 0.5f);
+                float headRoom = _cfg.TargetHeight + 0.5f;
                 float maxH = ceil - headRoom - _groundY;
                 if (_jumpH > maxH)
                 {
