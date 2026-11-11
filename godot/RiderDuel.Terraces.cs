@@ -25,8 +25,6 @@ public partial class RiderDuel
     // fits beneath it: the +22 underside is 19.8, above the
     // tallest rider (14) and its camera anchor (~16).
     private const float TerraceL1 = 22f, TerraceL2 = 44f, TerraceL3 = 66f;
-    private const float IslandTop = 6f;
-    private const float IslandR = 48f;
 
     private sealed class Lift
     {
@@ -45,7 +43,7 @@ public partial class RiderDuel
     public float TestLiftLo, TestLiftHi;
     public bool HasTestRamp, HasTestLift;
     public bool HasTerraceTest => HasTestRamp && HasTestLift;
-    public Vector2 IslandAbs, TestDeckPoint;
+    public Vector2 TestDeckPoint;
     public readonly List<(Vector2 C, Vector2 H, float Top)> TestPlatforms = new();
 
     // Platform layout per valley, in plot indices (pitch 32)
@@ -242,20 +240,28 @@ public partial class RiderDuel
         foreach (var pad in Main.SpawnPads)
             BuildValleyCity(rng, ref placed, pad, pad == Main.SpawnPads[0]);
         BuildPassArches();
-        GD.Print($"TERRACES built: {_lifts.Count} lifts in 3 valley cities (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
+        GD.Print($"TERRACES built: {_lifts.Count} lifts in the 2 enemy valley cities (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
     }
 
     private void BuildValleyCity(System.Random rng, ref int placed, Vector2 ctr, bool home)
     {
         float p = CityGrid.Pitch;
         Vector2 L(float x, float z) => ctr + new Vector2(x, z);
-        // Connections first — they register the skip rects
-        // the block placement respects. Platform spans (plot
-        // centres ±16): A x[-144,-48] z[-80,-16]; B mirrored
-        // +x; C/D mirrored +z; E x[-112,-16] z[-176,-112];
+        // Multi-level terraces stand only around the ENEMY
+        // bases (owner, 2026-11-11 round 3: 'multi-level
+        // city is needed only around enemy bases, remove it
+        // from the home base'): the home valley is a flat
+        // ground-level city — no platforms, ramps, lifts,
+        // bridges or island district. Connections first —
+        // they register the skip rects the block placement
+        // respects. Platform spans (plot centres ±16):
+        // A x[-144,-48] z[-80,-16]; B mirrored +x; C/D
+        // mirrored +z; E x[-112,-16] z[-176,-112];
         // F x[16,112] z[112,176]; G x[48,112] z[-176,-112].
         // Ground -> L1 ramps on the outer edges of all four
         // platforms; lifts on the plaza sides of A and D.
+        if (!home)
+        {
         BuildRamp(L(-144f, -48f), new Vector2(-1, 0), 0f, TerraceL1, TerraceL1 * 2f);
         BuildRamp(L(144f, -48f), new Vector2(1, 0), 0f, TerraceL1, TerraceL1 * 2f);
         BuildRamp(L(-144f, 48f), new Vector2(-1, 0), 0f, TerraceL1, TerraceL1 * 2f);
@@ -274,7 +280,11 @@ public partial class RiderDuel
         BuildFlatBridge(L(-48f, 48f), L(48f, 48f), TerraceL1);
         // The landmark plot stays clear on the top platform.
         _skipRects.Add(new Main.RoofRect { Cx = ctr.X + 80f, Cz = ctr.Y - 144f, Hx = 17f, Hz = 17f, Top = 0f });
-        if (home)
+        }
+        // Harness hooks anchor on the FIRST enemy valley
+        // (they pointed at the home decks while those
+        // existed).
+        if (!home && TestPlatforms.Count == 0)
         {
             TestDeckPoint = L(-96f, -48f);
             TestPlatforms.Add((L(-96f, -48f), new Vector2(48f, 32f), TerraceL1));
@@ -284,14 +294,11 @@ public partial class RiderDuel
             TestPlatforms.Add((L(-64f, -144f), new Vector2(48f, 32f), TerraceL2));
             TestPlatforms.Add((L(64f, 144f), new Vector2(48f, 32f), TerraceL2));
             TestPlatforms.Add((L(80f, -144f), new Vector2(32f, 32f), TerraceL3));
-            // The island goes in BEFORE the plots so its
-            // skip rects clear the ground blocks beneath it.
-            BuildIsland(rng, ref placed, L(225f, 0f));
         }
         // Platform clusters first (merged curvy decks over
         // each same-level plot group; the statics register
         // the roofs/columns/lights the blocks then respect).
-        BuildPlatformClusters(ctr);
+        if (!home) BuildPlatformClusters(ctr);
         // Plots: exact grid (platforms must TILE — jittered
         // centres once left ground-data slits riders fell
         // through), platform membership by plot index.
@@ -302,7 +309,7 @@ public partial class RiderDuel
             var c = L(i * p, j * p);
             if ((c - ctr).Length() > CityGrid.Radius) continue;
             if (TerrainGrade(c.X, c.Y) > 0.4f) continue;
-            float l = PlatformLevel(i, j);
+            float l = home ? 0f : PlatformLevel(i, j);
             // The base plaza at the valley centre stays clear
             // (spawn + base structures live there), wide
             // enough for the defenders' 55u patrol disc.
@@ -931,129 +938,4 @@ public partial class RiderDuel
         _destructibles[_destructibles.Count - 1].Hp = hp;
     }
 
-    private void BuildIsland(System.Random rng, ref int placed, Vector2 ic)
-    {
-        IslandAbs = ic;
-        // Island deck: a round terrace across the water.
-        var deck = new MeshInstance3D
-        {
-            Mesh = new CylinderMesh { TopRadius = IslandR, BottomRadius = IslandR + 2f, Height = IslandTop + 2f, RadialSegments = 36 },
-            MaterialOverride = DeckMat(),
-            Position = new Vector3(ic.X, IslandTop / 2f - 1f, ic.Y)
-        };
-        AddChild(deck);
-        var rim = new MeshInstance3D
-        {
-            Mesh = new TorusMesh { InnerRadius = IslandR - 0.5f, OuterRadius = IslandR + 0.9f, Rings = 36, RingSegments = 6 },
-            MaterialOverride = TrimMat(),
-            Position = new Vector3(ic.X, IslandTop - 0.1f, ic.Y),
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        };
-        AddChild(rim);
-        for (int k = 0; k < 8; k++)
-        {
-            float a3 = k / 8f * Mathf.Tau + 0.2f;
-            var col = new MeshInstance3D
-            {
-                Mesh = new CylinderMesh { TopRadius = 1.3f, BottomRadius = 1.3f, Height = IslandTop + 1f, RadialSegments = 10 },
-                MaterialOverride = DeckMat(),
-                Position = new Vector3(ic.X + Mathf.Cos(a3) * 42f, (IslandTop - 2f) / 2f, ic.Y + Mathf.Sin(a3) * 42f)
-            };
-            AddChild(col);
-        }
-        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = ic.X, Cz = ic.Y, R = IslandR, Top = IslandTop });
-        _props.Add(new Circle { P = ic, R = IslandR + 0.4f, RoofTop = IslandTop });
-        var water = new MeshInstance3D
-        {
-            Mesh = new PlaneMesh { Size = new Vector2(170f, 170f) },
-            MaterialOverride = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(0.10f, 0.22f, 0.38f, 0.85f),
-                Roughness = 0.15f, Metallic = 0.35f,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha
-            },
-            Position = new Vector3(ic.X, 0.4f, ic.Y),
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        };
-        AddChild(water);
-        // The bridge: a sloped span up from the valley floor,
-        // then a flat deck to the island edge — the only crossing.
-        Main.Ramps.Add(new Main.RampRect
-        {
-            Cx = ic.X - 66f, Cz = ic.Y, DirX = 1f, DirZ = 0f,
-            HalfLen = 13f, HalfWid = 5.5f, H0 = 0f, H1 = IslandTop
-        });
-        AddRampWedge(new Vector2(ic.X - 79f, ic.Y), 0f, new Vector2(ic.X - 53f, ic.Y), IslandTop, 11f);
-        Main.Roofs.Add(new Main.RoofRect { Cx = ic.X - 46f, Cz = ic.Y, Hx = 14f, Hz = 5.5f, Top = IslandTop, Under = IslandTop - 1.2f });
-        var deckFlat = new MeshInstance3D
-        {
-            Mesh = new BoxMesh { Size = new Vector3(28f, 1.2f, 11f) },
-            MaterialOverride = DeckMat(),
-            Position = new Vector3(ic.X - 46f, IslandTop - 0.6f, ic.Y)
-        };
-        AddChild(deckFlat);
-        foreach (float side in new[] { -5.4f, 5.4f })
-        {
-            Main.Walls.Add(new Main.RoofRect { Cx = ic.X - 55.5f, Cz = ic.Y + side, Hx = 23.5f, Hz = 0.7f, Top = IslandTop });
-            var rail = new MeshInstance3D
-            {
-                Mesh = new BoxMesh { Size = new Vector3(47f, 0.35f, 0.35f) },
-                MaterialOverride = TrimMat(),
-                Position = new Vector3(ic.X - 55.5f, IslandTop + 0.9f, ic.Y + side),
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-            };
-            AddChild(rail);
-        }
-        // The island's own dais: a second, smaller deck at
-        // +12 carrying a landmark spire, up a ramp.
-        const float daisTop = IslandTop + 6f;
-        var dais = new MeshInstance3D
-        {
-            Mesh = new CylinderMesh { TopRadius = 24f, BottomRadius = 25f, Height = daisTop - IslandTop + 1f, RadialSegments = 30 },
-            MaterialOverride = DeckMat(),
-            Position = new Vector3(ic.X, (IslandTop + daisTop) / 2f - 0.5f, ic.Y)
-        };
-        AddChild(dais);
-        var daisRim = new MeshInstance3D
-        {
-            Mesh = new TorusMesh { InnerRadius = 23.5f, OuterRadius = 24.9f, Rings = 30, RingSegments = 6 },
-            MaterialOverride = TrimMat(),
-            Position = new Vector3(ic.X, daisTop - 0.1f, ic.Y),
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        };
-        AddChild(daisRim);
-        Main.DiscRoofs.Add(new Main.DiscRoof { Cx = ic.X, Cz = ic.Y, R = 24f, Top = daisTop, Under = IslandTop });
-        _props.Add(new Circle { P = ic, R = 23.6f, RoofTop = daisTop });
-        Main.Ramps.Add(new Main.RampRect
-        {
-            Cx = ic.X - 37f, Cz = ic.Y, DirX = 1f, DirZ = 0f,
-            HalfLen = 13f, HalfWid = 5.5f, H0 = IslandTop, H1 = daisTop
-        });
-        AddRampWedge(new Vector2(ic.X - 50f, ic.Y), IslandTop, new Vector2(ic.X - 24f, ic.Y), daisTop, 11f);
-        BuildLandmark(ic, daisTop, 20f, 34f, 120f, false);
-        // Island blocks on the deck, clear of the bridge
-        // landing (west) and the dais. The ring plots sit at
-        // 32-45u out, but a block's corner slots reach ~8u
-        // past the plot centre and a building ~7u past its
-        // slot — plots that passed the old centre test still
-        // planted buildings over the rim, floating past the
-        // disc edge (owner: 'sticks coming out of the round
-        // platform, floating in the air', 2026-11-11). A plot
-        // now serves only when its WHOLE block — corner slot
-        // plus building half-diagonal — fits inside the disc.
-        for (int gx = -1; gx <= 1; gx++)
-        for (int gz = -1; gz <= 1; gz++)
-        {
-            var c = ic + new Vector2(gx * CityGrid.Pitch, gz * CityGrid.Pitch);
-            if (c.DistanceTo(ic) + 15.5f > IslandR) continue;
-            if (c.DistanceTo(ic) < 30f) continue;
-            if (c.X < ic.X - 16f && Mathf.Abs(c.Y - ic.Y) < 20f) continue;
-            PlaceCityBlock(rng, c, ref placed, IslandTop);
-        }
-        // AFTER the island's own blocks: keep the valley's
-        // ground blocks out of the disc and the bridge lane.
-        _skipRects.Add(new Main.RoofRect { Cx = ic.X, Cz = ic.Y, Hx = IslandR + 4f, Hz = IslandR + 4f, Top = 0f });
-        _skipRects.Add(new Main.RoofRect { Cx = ic.X - 66f, Cz = ic.Y, Hx = 24f, Hz = 9f, Top = 0f });
-        GD.Print($"TERRACE ISLAND at ({ic.X:F0},{ic.Y:F0}) r={IslandR:F0} top={IslandTop:F0}, bridge from the valley floor");
-    }
 }
