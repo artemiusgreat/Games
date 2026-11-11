@@ -117,6 +117,25 @@ public partial class RiderWalker : Node3D
     private double _acc;
     private int _steps;
     private float _maxSlide;
+    // Blocked coherence (owner, 2026-11-11): signed travel
+    // along the drive heading, summed over a 0.25s window,
+    // vs the travel the drive asked for in that window. The
+    // duel's push-out resolves once per frame AFTER the
+    // walker moves, so a wall's snap-back lands inside one
+    // substep as backward travel: a per-substep MAGNITUDE
+    // ratio reads it as full progress (advance +0.027, snap
+    // back -0.026 -> |net| = the wanted step) and can never
+    // fire — measured on the phase-12 trace, 2026-11-11.
+    // Signed projection over a window cancels the pair:
+    // advance and snap-back sum to ~0 while the asked-for
+    // travel keeps accumulating. Sustained near-zero
+    // progress while driving means the way is blocked, and
+    // stepping is suppressed (the rider stands instead of
+    // lifting a leg and shaking it against the obstacle).
+    private Vector2 _cohPrev; private bool _cohInit;
+    private float _cohWinNet; private float _cohWinWant; private float _cohWinT;
+    private float _cohRatio = 1f; private float _cohBlockT;
+    public bool Blocked => _cohBlockT > 0.25f;
     private int _plantedFrames;
     private float _hipRiseW;
     private float _hipAboveHolderW;
@@ -675,6 +694,25 @@ public partial class RiderWalker : Node3D
         else _brakeV = 0f;
         _speed = Mathf.MoveToward(_speed, tgt, dv);
         var vel = HeadingVec(_legsYaw) * _speed;
+        var rootXZ = new Vector2(_rootPos.X, _rootPos.Z);
+        if (_cohInit)
+        {
+            float spd = vel.Length();
+            if (spd > 0.01f)
+            {
+                _cohWinNet += (rootXZ - _cohPrev).Dot(new Vector2(vel.X, vel.Z) / spd); // signed: snap-back subtracts
+                _cohWinWant += spd * h;
+            }
+            _cohWinT += h;
+            if (_cohWinT >= 0.25f)
+            {
+                _cohRatio = _cohWinWant > 0.02f ? Mathf.Clamp(_cohWinNet / _cohWinWant, 0f, 1f) : 1f;
+                _cohWinNet = 0f; _cohWinWant = 0f; _cohWinT = 0f;
+            }
+        }
+        _cohPrev = rootXZ; _cohInit = true;
+        bool cohBlocked = _cohRatio < 0.35f && Mathf.Abs(_targetSpeed) > 0.01f && _fallT < 0f;
+        _cohBlockT = cohBlocked ? _cohBlockT + h : 0f;
         _rootPos += vel * h;
 
         var stepping = _legL.StepT >= 0f ? _legL : _legR.StepT >= 0f ? _legR : null;
@@ -690,7 +728,7 @@ public partial class RiderWalker : Node3D
                 float lag = new Vector2(leg.SoleTarget.X - home.X, leg.SoleTarget.Z - home.Z).Length();
                 if (lag > bestLag) { bestLag = lag; best = leg; }
             }
-            if (best != null) BeginStep(best);
+            if (best != null && !Blocked) BeginStep(best); // blocked: stand, don't shake a leg at the wall
         }
         AdvanceLeg(_legL, h);
         AdvanceLeg(_legR, h);
