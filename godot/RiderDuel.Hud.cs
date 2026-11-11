@@ -27,30 +27,12 @@ public partial class RiderDuel
         return l;
     }
 
-    // Mission fronts: objective markers for the three bases (the
-    // 90u radar cannot navigate a 1900u map). Screen-projected,
-    // clamped to the viewport edge when off-screen.
-    private Label[] _baseMarks;
+    // No base markers at all (owner, 2026-11-11: the enemy
+    // marker went in round 2, 'remove Home base indicator'
+    // in round 3 — the projected base labels are gone).
 
     private void BuildHud(CanvasLayer layer)
     {
-        if (WorldConfig.IsMission)
-        {
-            _baseMarks = new Label[Main.SpawnPads.Length];
-            for (int i = 0; i < _baseMarks.Length; i++)
-            {
-                // Enemy marker text is WHITE (owner: the salmon
-                // washed out against bright ground); the black
-                // outline stroke stays. Home keeps its green.
-                var l = MakeLabel(13, i == 0 ? new Color(0.55f, 0.95f, 0.6f) : new Color(1f, 1f, 1f));
-                l.AddThemeConstantOverride("outline_size", 8);
-                l.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
-                l.Visible = false;
-                l.MouseFilter = Control.MouseFilterEnum.Ignore;
-                layer.AddChild(l);
-                _baseMarks[i] = l;
-            }
-        }
         // ---- Cockpit info blocks in the screen corners (owner:
         // no more bottom dashboard): weapon groups top-left, own
         // integrity bottom-left, target/systems bottom-right,
@@ -490,38 +472,6 @@ public partial class RiderDuel
         else GetTree().Quit();
     }
 
-    private void UpdateBaseMarks()
-    {
-        if (_baseMarks == null) return;
-        bool show = _panelHealth.Visible && !_labOpen && _cam != null;
-        var vp = GetViewport().GetVisibleRect().Size;
-        for (int i = 0; i < _baseMarks.Length; i++)
-        {
-            var l = _baseMarks[i];
-            // Only the home base keeps an indicator (owner,
-            // 2026-11-11: 'remove indicator Enemy base').
-            if (i != 0) { l.Visible = false; continue; }
-            var pad = Main.SpawnPads[i];
-            var world = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y) + 20f, pad.Y);
-            float dist = _player.RootPos.DistanceTo(world);
-            if (!show || dist < 45f) { l.Visible = false; continue; }
-            Vector2 sp;
-            if (_cam.IsPositionBehind(world))
-            {
-                // Mirror through the screen center, then clamp to the edge.
-                var fwd = -_cam.GlobalTransform.Basis.Z;
-                var to = (world - _cam.GlobalPosition).Normalized();
-                float side = Mathf.Sign(to.Dot(_cam.GlobalTransform.Basis.X));
-                sp = new Vector2(vp.X * (0.5f + 0.46f * side), vp.Y * 0.92f);
-            }
-            else sp = _cam.UnprojectPosition(world);
-            sp = new Vector2(Mathf.Clamp(sp.X, 70f, vp.X - 190f), Mathf.Clamp(sp.Y, 30f, vp.Y - 210f));
-            l.Position = sp - new Vector2(60f, 10f);
-            l.Text = i == 0 ? $"◆ HOME BASE · {dist:F0} u" : $"◆ ENEMY BASE · {dist:F0} u";
-            l.Visible = true;
-        }
-    }
-
     // Project the active target's capsule to a screen box for
     // the TargetFrame overlay. Hidden when there is no living
     // active target, when it is behind the camera, or when the
@@ -565,7 +515,6 @@ public partial class RiderDuel
     private void UpdateHud()
     {
         if (_barPlayer == null) return;
-        UpdateBaseMarks();
         UpdateTargetFrame();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
         _lblPlayerHp.Text = $"{_playerSpec.Name} — {_hpPlayer:F0} HP";
