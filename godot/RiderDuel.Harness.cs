@@ -2604,7 +2604,7 @@ public partial class RiderDuel
                 // the drive held for 4s. No step may complete
                 // from burn start to touchdown.
                 _xPhase = 96; _xPhaseT = 0f;
-                _fzSteps0 = -1; _fzStepsFrozen = 0; _fzMaxH = 0f;
+                _fzSteps0 = -1; _fzStepsFrozen = 0; _fzMaxH = 0f; _fzMaxY = 0f; _fzWasAir = false;
                 var hp = Main.SpawnPads[0];
                 _player.Teleport(new Vector3(hp.X, 0f, hp.Y - 25f), 0f);
                 return;
@@ -2726,6 +2726,7 @@ public partial class RiderDuel
             if (!onRamp) continue;
             float exp = Main.HeightAt(lead.X, lead.Y);
             foreach (var rr in Main.Roofs) if (rr.Top > exp && Mathf.Abs(lead.X - rr.Cx) <= rr.Hx && Mathf.Abs(lead.Y - rr.Cz) <= rr.Hz) exp = rr.Top;
+            foreach (var bb in Main.BlobDecks) if (bb.Top > exp && Main.BlobContains(bb, lead.X, lead.Y)) exp = bb.Top;
             foreach (var rp in Main.Ramps) { float hh = Main.RampHeightAt(rp, lead.X, lead.Y, out bool ins); if (ins && hh > exp) exp = hh; }
             float got = Main.GroundAt(lead.X, lead.Y, ht + 1.5f);
             total++;
@@ -2782,7 +2783,7 @@ public partial class RiderDuel
             GD.Print($"DECKSHOT {name}: {(ok ? "ok" : "FAIL")} {detail}");
             if (!ok) fails++;
         }
-        var (pc, ph, ptop) = TestPlatforms[0];
+        var (pc, ph, pr, ptop) = TestPlatforms[0];
         // A clear spot on the deck: no building within 9u.
         Vector2 spot = pc; bool found = false;
         for (float gx = -ph.X + 10f; gx <= ph.X - 10f && !found; gx += 5f)
@@ -2838,7 +2839,7 @@ public partial class RiderDuel
     private void RunSeamScan()
     {
         int bad = 0; string worst = "";
-        foreach (var (c, h, top) in TestPlatforms)
+        foreach (var (c, h, rIns, top) in TestPlatforms)
         {
             for (float gx = -h.X + 3f; gx <= h.X - 3f; gx += 6f)
             for (float gz = -h.Y + 3f; gz <= h.Y - 3f; gz += 6f)
@@ -2887,24 +2888,38 @@ public partial class RiderDuel
     }
 
     private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
-    private int _fzSteps0, _fzStepsFrozen; private float _fzMaxH;
+    private int _fzSteps0, _fzStepsFrozen; private float _fzMaxH, _fzMaxY; private bool _fzWasAir;
 
-    private void UpdateFreezeTest(float dt) // phase 14: legs must not move while thrusters burn (owner, 2026-11-11 round 4)
+    // Phase 14: thruster flight discipline (owner rounds 4-5).
+    // THREE burn cycles with the drive held: no step may
+    // complete while airborne, and the rider must come back
+    // to the ground after every cycle — round 5's 'fly to
+    // outer space and never land' regression (the rigid
+    // foot-carry pumped the root's ground reference through
+    // DesiredRootY) is exactly what the altitude terms
+    // watch: maxRootY across all cycles must stay under 55
+    // (one honest arc is ~24) and the final settle is on
+    // the terrain.
+    private void UpdateFreezeTest(float dt)
     {
-        if (_xPhaseT < 1.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
-        else if (_xPhaseT < 5.5f)
+        // Cycle timeline (9s each): walk 1.5s, burn to empty
+        // (~2.2s), coast/fall the rest.
+        float ct = _xPhaseT % 9f;
+        int cyc = (int)(_xPhaseT / 9f);
+        if (ct < 1.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
+        else if (ct < 4.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(true); }
+        else { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
+        bool air = _player.Airborne;
+        if (air && !_fzWasAir && cyc == 0 && _fzSteps0 < 0) _fzSteps0 = _player.Steps;
+        if (air && _fzSteps0 >= 0) _fzStepsFrozen = Mathf.Max(_fzStepsFrozen, _player.Steps - _fzSteps0);
+        _fzWasAir = air;
+        _fzMaxH = Mathf.Max(_fzMaxH, _player.JumpHeight);
+        _fzMaxY = Mathf.Max(_fzMaxY, _player.RootPos.Y);
+        if (_xPhaseT > 27.5f)
         {
-            _player.SetDrive(1f, 0f); _player.SetThrust(true);
-            if (_player.Thrusting && _fzSteps0 < 0) _fzSteps0 = _player.Steps;
-            if (_fzSteps0 >= 0) _fzStepsFrozen = _player.Steps - _fzSteps0;
-            _fzMaxH = Mathf.Max(_fzMaxH, _player.JumpHeight);
-        }
-        else { _player.SetDrive(0f, 0f); _player.SetThrust(false); }
-        if (_xPhaseT > 10f)
-        {
-            GD.Print($"FREEZE stepsDuringFlight={_fzStepsFrozen} maxJumpH={_fzMaxH:F1} settleSole={_player.SoleLevel:F1}");
-            if (_fzSteps0 >= 0 && _fzStepsFrozen == 0 && _fzMaxH > 3f && _player.SoleLevel <= 0.7f)
-            { GD.Print("FREEZE PASS: no steps from burn start to touchdown"); GetTree().Quit(0); return; }
+            GD.Print($"FREEZE stepsDuringFlight={_fzStepsFrozen} maxJumpH={_fzMaxH:F1} maxRootY={_fzMaxY:F1} settleY={_player.RootPos.Y:F1} settleSole={_player.SoleLevel:F1}");
+            if (_fzSteps0 >= 0 && _fzStepsFrozen == 0 && _fzMaxH > 3f && _fzMaxY < 55f && _player.RootPos.Y <= 0.7f)
+            { GD.Print("FREEZE PASS: no steps in flight, no altitude ratchet, lands every cycle"); GetTree().Quit(0); return; }
             GD.PrintErr("FREEZE FAIL"); GetTree().Quit(1);
         }
     }
