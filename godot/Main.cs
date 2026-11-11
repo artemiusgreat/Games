@@ -271,9 +271,65 @@ public partial class Main : Node3D
 	public struct RampRect { public float Cx, Cz, DirX, DirZ, HalfLen, HalfWid, H0, H1; }
 	public static readonly System.Collections.Generic.List<RampRect> Ramps = new();
 
-	// Round standable tops (the Harbor island deck).
+	// Round standable tops (the Harbor island deck). Kept as
+	// the SHOT-collision approximation for blob decks (ray
+	// vs disc planes/cylinder in HitModel); walkers ground
+	// on the exact BlobDeck outlines below instead — a union
+	// of discs overhangs ramp corridors by metres (a disc
+	// centred on a diagonal reaches sideways past the rect
+	// edge), which read as feet floating at deck height over
+	// a ramp head.
 	public struct DiscRoof { public float Cx, Cz, R, Top, Under; }
 	public static readonly System.Collections.Generic.List<DiscRoof> DiscRoofs = new();
+
+	// A connection sector: the angular span (centre angle,
+	// half-width) where a ramp, lift or bridge meets a blob
+	// platform — inside it the outline stays at the rect
+	// boundary so no bulge roofs a connection corridor.
+	public struct Sector { public float Ang, Half; public Sector(float ang, float half) { Ang = ang; Half = half; } }
+
+	// A round, curvy platform (owner, 2026-11-11 round 5):
+	// the outline is the polar radius function BlobRadius
+	// around (Cx, Cz) over the rect half-extents (Hx, Hz) —
+	// the deck a walker stands on is EXACTLY the deck he
+	// sees, evaluated per query, no disc approximation.
+	public struct BlobDeck { public float Cx, Cz, Hx, Hz, Seed, Top, Under, RMax; public Sector[] Sectors; }
+	public static readonly System.Collections.Generic.List<BlobDeck> BlobDecks = new();
+
+	public static float BlobRadius(float hx, float hz, float th, float seed, Sector[] secs)
+	{
+		float c = Mathf.Cos(th), sn = Mathf.Sin(th);
+		float rd = Mathf.Min(hx / Mathf.Max(Mathf.Abs(c), 0.001f), hz / Mathf.Max(Mathf.Abs(sn), 0.001f));
+		float lobe = 1.08f
+			+ 0.05f * Mathf.Sin(4f * th + seed * 1.7f)
+			+ 0.13f * Mathf.Max(0f, Mathf.Sin(3f * th + seed))
+			+ 0.09f * Mathf.Max(0f, Mathf.Sin(5f * th + seed * 2.3f))
+			+ 0.07f * Mathf.Max(0f, Mathf.Sin(2f * th + seed * 0.6f));
+		if (secs != null)
+		{
+			// Wide blend (0.65 rad): the radius slope stays
+			// gradual near connections, so the outline pulls
+			// smoothly in toward the rect on approach sides.
+			float scale = 1f;
+			foreach (var sc in secs)
+			{
+				float d = Mathf.Abs(Mathf.Wrap(th - sc.Ang, -Mathf.Pi, Mathf.Pi));
+				if (d < sc.Half + 0.65f)
+					scale = Mathf.Min(scale, Mathf.SmoothStep(sc.Half, sc.Half + 0.65f, d));
+			}
+			lobe = 1f + (lobe - 1f) * scale;
+		}
+		return rd * lobe;
+	}
+
+	public static bool BlobContains(BlobDeck b, float x, float z)
+	{
+		float dx = x - b.Cx, dz = z - b.Cz;
+		float dist = Mathf.Sqrt(dx * dx + dz * dz);
+		if (dist > b.RMax + 0.15f) return false;
+		float th = Mathf.Atan2(dz, dx);
+		return dist <= BlobRadius(b.Hx, b.Hz, th, b.Seed, b.Sectors) + 0.15f;
+	}
 
 	// Axis-aligned walls with a top (terrace platform sides,
 	// the island bridge under-deck): RiderDuel's ResolveOne
@@ -323,10 +379,9 @@ public partial class Main : Node3D
 		foreach (var r in Roofs)
 			if (r.Top > g && (refY >= r.Top - StepUp || Ledge(r.Top)) && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				g = r.Top;
-		foreach (var d in DiscRoofs)
-			if (d.Top > g && (refY >= d.Top - StepUp || Ledge(d.Top)) &&
-				(x - d.Cx) * (x - d.Cx) + (z - d.Cz) * (z - d.Cz) <= d.R * d.R)
-				g = d.Top;
+		foreach (var b in BlobDecks)
+			if (b.Top > g && (refY >= b.Top - StepUp || Ledge(b.Top)) && BlobContains(b, x, z))
+				g = b.Top;
 		foreach (var r in Ramps)
 		{
 			float h = RampHeightAt(r, x, z, out bool inside);
@@ -348,10 +403,9 @@ public partial class Main : Node3D
 		foreach (var r in Roofs)
 			if (r.Under > aboveY && r.Under < c && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				c = r.Under;
-		foreach (var d in DiscRoofs)
-			if (d.Under > aboveY && d.Under < c &&
-				(x - d.Cx) * (x - d.Cx) + (z - d.Cz) * (z - d.Cz) <= d.R * d.R)
-				c = d.Under;
+		foreach (var b in BlobDecks)
+			if (b.Under > aboveY && b.Under < c && BlobContains(b, x, z))
+				c = b.Under;
 		foreach (var r in Ramps)
 		{
 			float h = RampHeightAt(r, x, z, out bool inside);
@@ -430,14 +484,18 @@ public partial class Main : Node3D
 		float grain = Fbm(x / 6.5f + 31f, z / 6.5f - 11f, 3) * 0.5f + 0.5f;
 		// Biome palettes (owner's map types): Forest keeps the
 		// original greens; Desert runs sand; City runs urban
-		// concrete with a per-block tint shift.
+		// concrete. The city tint varies SMOOTHLY (the patch
+		// field): the old per-block quantised tint — Floor(x/26)
+		// hashed per 26u block — read as a checkerboard over
+		// every city floor, worst where no buildings cover it
+		// (owner, 2026-11-11 round 5: 'checkerboard needs to
+		// be removed everywhere').
 		bool desert = WorldConfig.Biome == WorldConfig.BiomeKind.Desert;
 		bool city = WorldConfig.Biome == WorldConfig.BiomeKind.City;
 		var col = desert
 			? new Color(0.70f, 0.565f, 0.335f).Lerp(new Color(0.79f, 0.66f, 0.42f), patch)
 			: city
-				? new Color(0.345f, 0.35f, 0.36f).Lerp(new Color(0.41f, 0.405f, 0.395f),
-					Fbm(Mathf.Floor(x / 26f) * 7.13f, Mathf.Floor(z / 26f) * 3.71f, 1) * 0.5f + 0.5f)
+				? new Color(0.345f, 0.35f, 0.36f).Lerp(new Color(0.41f, 0.405f, 0.395f), patch)
 				: new Color(0.185f, 0.36f, 0.145f).Lerp(new Color(0.36f, 0.485f, 0.21f), patch);
 		if (!desert && !city)
 			col = col.Lerp(new Color(0.44f, 0.43f, 0.235f), Mathf.Clamp((patch - 0.60f) * 1.5f, 0f, 0.5f)); // dry patches
@@ -467,15 +525,11 @@ public partial class Main : Node3D
 				asphalt = asphalt.Lerp(desert ? new Color(0.72f, 0.62f, 0.45f) : new Color(0.5f, 0.48f, 0.4f), 0.35f); // worn edge line
 			col = col.Lerp(asphalt, rw * 0.94f);
 		}
-		// District streets: the same dark asphalt on the grid
-		// lanes between the building plots.
-		float streetD = DistrictStreetDistance(x, z);
-		if (streetD < 8f)
-		{
-			float sw = 1f - Smooth(5.5f, 8f, streetD);
-			float al = 0.85f + 0.3f * grain;
-			col = col.Lerp(new Color(0.235f * al, 0.235f * al, 0.25f * al), sw * 0.94f);
-		}
+		// No district street darkening (owner, 2026-11-11
+		// round 5: checkerboard removed everywhere): the grid
+		// lanes used to darken against the plots, which read
+		// as a checkerboard on open district ground. The
+		// pad-to-pad roads above keep their asphalt.
 		return col;
 	}
 

@@ -168,17 +168,16 @@ void fragment() {
                     grass *= 0.12f;
                     dirt *= 0.5f;
                 }
-                // City district (kit contracts): the plots are
-                // paved and the lanes between them are full
-                // asphalt — no grass or dirt inside the blocks.
-                float sd = Main.DistrictStreetDistance(x, z);
-                if (sd < 1e5f)
-                {
-                    float lane = 1f - Mathf.SmoothStep(5.5f, 8f, sd);
-                    road = Mathf.Lerp(road * 0.25f, 1f, lane);
-                    dirt = Mathf.Lerp(Mathf.Max(dirt, 0.85f), 0f, lane);
-                    grass *= 1f - Mathf.Max(lane, 0.8f);
-                }
+                // City district ground stays UNIFORM (owner,
+                // 2026-11-11 round 5: the checkerboard comes
+                // out everywhere): the old plot/lane split —
+                // dirt plots against asphalt lanes on the 32u
+                // grid — read as a crisp checkerboard wherever
+                // no buildings covered it, worst across the
+                // emptied home valley. No district term: the
+                // ground flows on the smooth patch field like
+                // everywhere else; the buildings themselves
+                // define the lanes.
                 img.SetPixel(i, j, new Color(
                     Mathf.Clamp(rock, 0f, 1f), grass,
                     Mathf.Clamp(dirt, 0f, 1f), road));
