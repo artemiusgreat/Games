@@ -314,9 +314,13 @@ public partial class RiderDuel
             // (spawn + base structures live there), wide
             // enough for the defenders' 55u patrol disc.
             if (l == 0f && (c - ctr).Length() < 62f) continue;
-            PlaceCityBlock(rng, c, ref placed, l);
+            // Home valley: no buildings at all (owner,
+            // 2026-11-11 round 4: 'home base should be a
+            // flat area, no buildings') — the whole valley
+            // stays open ground around the base.
+            if (!home) PlaceCityBlock(rng, c, ref placed, l);
         }
-        BuildLandmark(L(80f, -144f), TerraceL3, 26f, 46f, 200f, true);
+        if (!home) BuildLandmark(L(80f, -144f), TerraceL3, 26f, 46f, 200f, true);
         GD.Print($"VALLEY CITY at ({ctr.X:F0},{ctr.Y:F0}) home={home}");
     }
 
