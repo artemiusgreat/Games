@@ -2,18 +2,22 @@ using Godot;
 using System.Collections.Generic;
 
 // Cockpit radar (owner): a SQUARE, semi-transparent panel in
-// the top-right corner carrying a CIRCULAR north-up scope —
-// the square stays (it matches the dashboard), the plot
-// inside is round (owner, 2026-11-11: 'the inner part needs
-// to be a circle'). Range 90u. Dressed like the reference
+// the top-right corner carrying a CIRCULAR scope — the
+// square stays (it matches the dashboard), the plot inside
+// is round (owner, 2026-11-11: 'the inner part needs to be
+// a circle'). HEADING-UP (owner, 2026-11-11): the plot
+// rotates with the rider's legs, so a contact dead ahead
+// sits at the top centre and the rim ticks read as relative
+// bearing; the N marker travels around the rim to wherever
+// north actually is. Range 90u. Dressed like the reference
 // instrument: a grid clipped to the circle (15u minor / 30u
-// major), circular range rings at 30/60/90, bearing ticks
-// around the rim every 10 degrees (major at 30) and an N
-// marker. NO numbers anywhere (owner: 'remove numbers, they
-// are fake anyway'). The player is a heading triangle in the
-// center, enemies are red contacts clamped to the rim —
-// buildings are NOT shown (owner). Pure presentation — it
-// reads walker positions each redraw and owns no state.
+// major), circular range rings at 30/60/90 and bearing
+// ticks around the rim every 10 degrees (major at 30). NO
+// numbers anywhere (owner: 'remove numbers, they are fake
+// anyway'). The player is a fixed up-triangle in the center,
+// enemies are red contacts clamped to the rim — buildings
+// are NOT shown (owner). Pure presentation — it reads
+// walker positions each redraw and owns no state.
 public partial class RadarView : Control
 {
     public RiderWalker Player;
@@ -24,12 +28,24 @@ public partial class RadarView : Control
 
     private const float Range = 90f;
 
+    // World XZ offset -> heading-up screen offset: the
+    // player's forward maps to screen-up, their right to
+    // screen-right (owner: walking straight at an enemy must
+    // put it at the top centre).
+    private Vector2 ToScope(Vector2 dWorld)
+    {
+        float yaw = Player.LegsYaw;
+        var f = new Vector2(-Mathf.Sin(yaw), -Mathf.Cos(yaw)); // forward in (X, Z)
+        var r = new Vector2(Mathf.Cos(yaw), -Mathf.Sin(yaw));  // right in (X, Z)
+        return new Vector2(dWorld.Dot(r), -dWorld.Dot(f));
+    }
+
     private void DrawContact(RiderWalker w, bool down, Vector2 c, float px, float maxOff)
     {
         if (w == null || down || Player == null) return;
         var p = Player.RootPos;
         var e = w.RootPos;
-        var d = new Vector2(e.X - p.X, e.Z - p.Z) * px;
+        var d = ToScope(new Vector2(e.X - p.X, e.Z - p.Z)) * px;
         if (d.Length() > maxOff) d = d.Normalized() * maxOff; // clamp to the rim
         DrawCircle(c + d, 4.5f, new Color(1f, 0.3f, 0.22f, 0.95f));
     }
@@ -78,10 +94,20 @@ public partial class RadarView : Control
             bool maj = deg % 30 == 0;
             DrawLine(rim, rim - dir * (maj ? 9f : 5f), new Color(ink, maj ? 0.85f : 0.5f), maj ? 1.5f : 1f);
         }
-        // N marker just inside the rim (a letter, not a number).
+        // N marker just inside the rim (a letter, not a
+        // number), riding to wherever north falls under the
+        // current heading.
         var font = GetThemeDefaultFont();
-        DrawString(font, c + new Vector2(-3f, -half + 13f), "N",
-            HorizontalAlignment.Left, -1f, 10, new Color(ink, 0.95f));
+        if (Player != null)
+        {
+            var nd = ToScope(new Vector2(0f, -1f)); // world north in (X, Z)
+            if (nd.LengthSquared() > 0.001f)
+            {
+                var np = c + nd.Normalized() * (half - 11f);
+                DrawString(font, np + new Vector2(-3f, 3f), "N",
+                    HorizontalAlignment.Left, -1f, 10, new Color(ink, 0.95f));
+            }
+        }
 
         // Sharp square border on top of the dressing.
         DrawRect(border, new Color(ink, 0.8f), false, 1.5f);
@@ -90,15 +116,13 @@ public partial class RadarView : Control
         // Enemy contacts, clamped to the rim when out of range.
         DrawContact(Enemy, EnemyDown, c, px, half - 6f);
         DrawContact(Enemy2, Enemy2Down, c, px, half - 6f);
-        // Player heading triangle (legs facing).
-        var fwd = RiderWalker.HeadingVec(Player.LegsYaw);
-        var f2 = new Vector2(fwd.X, fwd.Z);
-        var r2 = new Vector2(-f2.Y, f2.X);
+        // Player triangle: fixed, pointing up — up IS the
+        // player's facing on a heading-up scope.
         var pts = new[]
         {
-            c + f2 * 8f,
-            c - f2 * 6f + r2 * 5f,
-            c - f2 * 6f - r2 * 5f
+            c + new Vector2(0f, -8f),
+            c + new Vector2(5f, 6f),
+            c + new Vector2(-5f, 6f)
         };
         DrawPolygon(pts, new[] { new Color(0.45f, 0.95f, 0.55f, 0.95f) });
         DrawString(font, new Vector2(6f, H - 5f), "RADAR",
