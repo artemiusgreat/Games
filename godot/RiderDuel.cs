@@ -416,22 +416,32 @@ public partial class RiderDuel : Node3D
         BuildTerrain();
         Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
         Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.Walls.Clear();
-        // Round-1 props (same spots as Main) + a few more for a fuller map.
-        AddTree(new Vector3(-12f, 0f, -8f));
-        AddTree(new Vector3(14f, 0f, -18f));
-        AddTree(new Vector3(6f, 0f, 16f));
-        AddTree(new Vector3(-26f, 0f, 26f));
-        AddTree(new Vector3(30f, 0f, -30f));
-        AddTree(new Vector3(-32f, 0f, -6f));
-        AddTree(new Vector3(26f, 0f, 30f));
-        // Larger (owner, 2026-10-31): footprints 10-15u, heights
-        // 11-16u — real cover next to a 13-14u rider, and every
-        // roof stays under the ~24u thruster apex so a jump-jet
-        // rider can land on top.
-        AddBuilding(new Vector3(-20f, 0f, 14f), new Vector3(13f, 11f, 11f));
-        AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(12f, 13f, 12f));
-        AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
-        AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
+        // Round-1 ARENA props at fixed spots around the origin.
+        // Arena only (owner: "random pieces of building are
+        // sticking out of the ground" — in a 1900u mission
+        // world the origin is open wilderness; on Harbor it is
+        // a mountain, so these four buildings planted
+        // themselves on the slope there, half-buried. Missions
+        // dress themselves via BuildBases/ScatterCity/
+        // ScatterNature below.)
+        if (!WorldConfig.IsMission)
+        {
+            AddTree(new Vector3(-12f, 0f, -8f));
+            AddTree(new Vector3(14f, 0f, -18f));
+            AddTree(new Vector3(6f, 0f, 16f));
+            AddTree(new Vector3(-26f, 0f, 26f));
+            AddTree(new Vector3(30f, 0f, -30f));
+            AddTree(new Vector3(-32f, 0f, -6f));
+            AddTree(new Vector3(26f, 0f, 30f));
+            // Larger (owner, 2026-10-31): footprints 10-15u, heights
+            // 11-16u — real cover next to a 13-14u rider, and every
+            // roof stays under the ~24u thruster apex so a jump-jet
+            // rider can land on top.
+            AddBuilding(new Vector3(-20f, 0f, 14f), new Vector3(13f, 11f, 11f));
+            AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(12f, 13f, 12f));
+            AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
+            AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
+        }
         if (WorldConfig.IsMission) BuildBases();
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City) ScatterCity();
         ScatterNature();
