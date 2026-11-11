@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b377ka3uweedj"
-path="res://.godot/imported/b_17_d3.jpg-e2e82e05f2326c94fb5489f8b953ee67.ctex"
+uid="uid://cahwjpe4plcfn"
+path="res://.godot/imported/b_12_Building-Medium-02_Bake1_PBR_Roughness.jpg-ad96851b6e8dddb6fe91b91f898bbabc.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "7d5cf473cc8dc16adea2e94d6a325e0c"
+"md5": "7d770582fbc6adddf5d13df8c814b253"
 }
 
 [deps]
 
-source_file="res://assets/citykits/kit4/b_17_d3.jpg"
-dest_files=["res://.godot/imported/b_17_d3.jpg-e2e82e05f2326c94fb5489f8b953ee67.ctex"]
+source_file="res://assets/citykits/kit4/b_12_Building-Medium-02_Bake1_PBR_Roughness.jpg"
+dest_files=["res://.godot/imported/b_12_Building-Medium-02_Bake1_PBR_Roughness.jpg-ad96851b6e8dddb6fe91b91f898bbabc.ctex"]
 
 [params]
 

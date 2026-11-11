@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cjk5ydth1lf5y"
-path="res://.godot/imported/b_19_color_512x512.jpg-35a615800d331fdca19888b3b2828bbb.ctex"
+uid="uid://dhkptkh1sptbu"
+path="res://.godot/imported/b_13_d16.jpg-aaedba5a2a2807fe657d37bcb6d1af19.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "d8b9fb63b5e1e10437168563ab151505"
+"md5": "6244267cf2024c9129b4d071d73c1fe2"
 }
 
 [deps]
 
-source_file="res://assets/citykits/kit4/b_19_color_512x512.jpg"
-dest_files=["res://.godot/imported/b_19_color_512x512.jpg-35a615800d331fdca19888b3b2828bbb.ctex"]
+source_file="res://assets/citykits/kit4/b_13_d16.jpg"
+dest_files=["res://.godot/imported/b_13_d16.jpg-aaedba5a2a2807fe657d37bcb6d1af19.ctex"]
 
 [params]
 
