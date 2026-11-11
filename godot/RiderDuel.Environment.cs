@@ -1489,6 +1489,39 @@ public partial class RiderDuel
                 if (c.Pass) continue; // stones: kept for scatter spacing and shot hits, never a wall
                 p = PushOut(p, w.CollisionRadius, c, out _);
             }
+            // Ramp wedges are solid from the side (owner,
+            // 2026-11-11: 'I can walk through the ramp if I
+            // come from the side'). GroundAt alone only refuses
+            // the FOOT — the root walked on under the wedge and
+            // out the other side. A walker whose soles are
+            // below the slope at its position (beyond the
+            // step-up it could legitimately climb) and whose
+            // head does not fit under the wedge's underside is
+            // pushed out by the shortest exit. On the slope
+            // (soles at its height) or fully under a bridge
+            // span, no push.
+            foreach (var rp in Main.Ramps)
+            {
+                float dx = p.X - rp.Cx, dz = p.Y - rp.Cz;
+                float along = dx * rp.DirX + dz * rp.DirZ;
+                float perp = -dx * rp.DirZ + dz * rp.DirX;
+                float rr = w.CollisionRadius;
+                if (Mathf.Abs(along) > rp.HalfLen + rr || Mathf.Abs(perp) > rp.HalfWid + rr) continue;
+                float h = Mathf.Lerp(rp.H0, rp.H1, Mathf.Clamp((along + rp.HalfLen) / (2f * rp.HalfLen), 0f, 1f));
+                if (w.SoleLevel >= h - 2.5f) continue;                 // standing on the slope
+                if (w.SoleLevel + w.Height <= h - 3.3f) continue;     // fits under the wedge
+                // Shortest exit in ramp space (perp sides or
+                // either end), then back to world XZ.
+                float exP = rp.HalfWid + rr - Mathf.Abs(perp);
+                float exA = rp.HalfLen + rr - Mathf.Abs(along);
+                if (exP <= exA)
+                    perp = (perp >= 0f ? 1f : -1f) * (rp.HalfWid + rr);
+                else
+                    along = (along >= 0f ? 1f : -1f) * (rp.HalfLen + rr);
+                p = new Vector2(rp.Cx, rp.Cz) + new Vector2(
+                    rp.DirX * along - rp.DirZ * perp,
+                    rp.DirZ * along + rp.DirX * perp);
+            }
         }
         float lim = WorldBound - w.CollisionRadius;
         p.X = Mathf.Clamp(p.X, -lim, lim);

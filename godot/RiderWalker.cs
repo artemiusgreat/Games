@@ -129,13 +129,15 @@ public partial class RiderWalker : Node3D
     // Signed projection over a window cancels the pair:
     // advance and snap-back sum to ~0 while the asked-for
     // travel keeps accumulating. Sustained near-zero
-    // progress while driving means the way is blocked, and
-    // stepping is suppressed (the rider stands instead of
-    // lifting a leg and shaking it against the obstacle).
+    // progress while driving means the way is blocked; the
+    // gait then marches in place (see the step trigger) —
+    // the normal walk cycle against the collider, not a
+    // stranded freeze and not a shake.
     private Vector2 _cohPrev; private bool _cohInit;
     private float _cohWinNet; private float _cohWinWant; private float _cohWinT;
     private float _cohRatio = 1f; private float _cohBlockT;
     public bool Blocked => _cohBlockT > 0.25f;
+    private float _marchT; private bool _marchAlt; // blocked-march cadence + alternation (owner, 2026-11-11)
     private int _plantedFrames;
     private float _hipRiseW;
     private float _hipAboveHolderW;
@@ -180,6 +182,7 @@ public partial class RiderWalker : Node3D
         : Main.GroundAt(x, z, SoleLevel + 1.5f);
     public float LegsYaw => _legsYaw;
     public float CollisionRadius => _cfg.CollisionRadius;
+    public float Height => _cfg.TargetHeight;
     public Vector3 RootPos => _rootPos;
     public int Steps => _steps;
     public float MaxSlide => _maxSlide;
@@ -553,11 +556,11 @@ public partial class RiderWalker : Node3D
     // swing paths are defined in this frame.
     private Basis YawBasis() => Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
 
-    private void BeginStep(Leg leg)
+    private void BeginStep(Leg leg, bool march = false)
     {
         var vel = HeadingVec(_legsYaw) * _speed;
-        var predRoot = _rootPos + vel * (_cfg.StepTime + 0.10f);
-        var home = HomeSlot(leg, predRoot) + vel * 0.30f;
+        var predRoot = march ? _rootPos : _rootPos + vel * (_cfg.StepTime + 0.10f);
+        var home = HomeSlot(leg, predRoot) + (march ? Vector3.Zero : vel * 0.30f);
         leg.StepFrom = leg.SoleTarget;
         leg.StepTo = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
         // Swing endpoints in the FACING frame (owner: leg motion
@@ -728,7 +731,33 @@ public partial class RiderWalker : Node3D
                 float lag = new Vector2(leg.SoleTarget.X - home.X, leg.SoleTarget.Z - home.Z).Length();
                 if (lag > bestLag) { bestLag = lag; best = leg; }
             }
-            if (best != null && !Blocked) BeginStep(best); // blocked: stand, don't shake a leg at the wall
+            if (Blocked)
+            {
+                // March in place (owner, 2026-11-11, supersedes
+                // the same-day stand-still: 'can rigging
+                // animation stay the same even at the obstacle,
+                // so rider is walking as usual but can't move
+                // through collider'). The root is stopped by the
+                // collider; the gait keeps its normal cycle —
+                // alternating steps that lift and re-plant AT
+                // the home slot, at a natural cadence. Feet
+                // therefore stay under the body (the stranded,
+                // both-legs-up pose came from feet planted far
+                // ahead while the root was pushed back).
+                _marchT += h;
+                if (_marchT >= _cfg.StepTime * 0.55f)
+                {
+                    _marchT = 0f;
+                    var leg = _marchAlt ? _legL : _legR;
+                    _marchAlt = !_marchAlt;
+                    if (leg.Planted && Other(leg).Planted) BeginStep(leg, march: true);
+                }
+            }
+            else
+            {
+                _marchT = _cfg.StepTime * 0.55f; // a first march step falls due at once when a block engages
+                if (best != null) BeginStep(best);
+            }
         }
         AdvanceLeg(_legL, h);
         AdvanceLeg(_legR, h);
