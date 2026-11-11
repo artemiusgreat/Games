@@ -2567,6 +2567,7 @@ public partial class RiderDuel
                 _xPhase = 3; _xPhaseT = 0f; return;
             }
             if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
+            if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
             if (start == "5")
             {
                 var back5 = TestRampFoot - TestRampDir * 10f;
@@ -2630,6 +2631,43 @@ public partial class RiderDuel
     // sample must read the platform top (no holes, no slits).
     // The plaza and the ground under the top platform must
     // stay open. Instant (one frame at world build).
+    // Phase 8 (owner: intermittent fall-through at the TOP of a
+    // ramp, where it meets the higher level): instead of driving
+    // the walker (stride-phase luck), sweep the exact plant
+    // geometry — for every leading-foot target around the lip and
+    // every stride length, GroundAt with the trailing foot's sole
+    // as refY must return (nearly) the analytic surface. A miss
+    // is a foot that would plant through the deck.
+    private void RunLipSweep()
+    {
+        var dir = TestRampDir; var perp = new Vector2(-dir.Y, dir.X);
+        var s1 = TestRampFoot + dir * TestRampRun; // the lip, 2u inside the deck
+        int misses = 0, total = 0;
+        for (float lat = -4f; lat <= 4f; lat += 2f)
+        for (float along = -10f; along <= 8f; along += 0.5f)
+        for (float stride = 2f; stride <= 6f; stride += 1f)
+        {
+            var lead = s1 + dir * along + perp * lat;
+            var trail = s1 + dir * (along - stride) + perp * lat;
+            // trailing foot stands on the ramp (analytic height there)
+            float ht = 0f; bool onRamp = false;
+            foreach (var rp in Main.Ramps) { float hh = Main.RampHeightAt(rp, trail.X, trail.Y, out bool ins); if (ins) { ht = hh; onRamp = true; } }
+            if (!onRamp) continue;
+            float exp = Main.HeightAt(lead.X, lead.Y);
+            foreach (var rr in Main.Roofs) if (rr.Top > exp && Mathf.Abs(lead.X - rr.Cx) <= rr.Hx && Mathf.Abs(lead.Y - rr.Cz) <= rr.Hz) exp = rr.Top;
+            foreach (var rp in Main.Ramps) { float hh = Main.RampHeightAt(rp, lead.X, lead.Y, out bool ins); if (ins && hh > exp) exp = hh; }
+            float got = Main.GroundAt(lead.X, lead.Y, ht + 1.5f);
+            total++;
+            if (exp - got > 1.0f)
+            {
+                misses++;
+                if (misses <= 8) GD.Print($"LIPSWEEP MISS lead=({lead.X:F1},{lead.Y:F1}) along={along:F1} stride={stride:F0} lat={lat:F0} trailH={ht:F1} exp={exp:F1} got={got:F1}");
+            }
+        }
+        if (misses == 0) { GD.Print($"LIPSWEEP PASS: {total} plant cases at the ramp lip, GroundAt always finds the surface"); GetTree().Quit(0); }
+        else { GD.PrintErr($"LIPSWEEP FAIL: {misses} of {total} plant cases fall through at the ramp lip"); GetTree().Quit(1); }
+    }
+
     private void RunSeamScan()
     {
         int bad = 0; string worst = "";
@@ -2663,6 +2701,7 @@ public partial class RiderDuel
 
     private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
     private float _bkMaxRoot; private bool _bkOnDeck;
+    private int _lpCyc; private bool _lpUp; private int _lpFalls; private float _lpLogT; // phase 8: ramp-lip crossing probe (owner fall-through report)
     private void UpdateDeckWalkTest(float dt) // phases 5/6: diagonal ramp drive + ceiling bonk (owner regressions, 2026-11-10)
     {
         if (_xPhase == 6)

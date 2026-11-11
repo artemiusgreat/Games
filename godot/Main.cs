@@ -290,21 +290,30 @@ public partial class Main : Node3D
 		// walker UNDER the same deck (hips below the top) never
 		// adopts it, so decks stay walkable from underneath.
 		bool Ledge(float top) => ledgeSlack > 0f && ledgeRootY > top && refY >= top - ledgeSlack;
+		// Step-up allowance (owner's ramp-lip fall-through,
+		// 2026-11-10): a climbing walker plants its next foot up
+		// to ~2.5u above its current sole — a stride's rise.
+		// Roofs need the same allowance ramps always had: just
+		// past a ramp's lip the deck is the only surface under
+		// the leading foot, and with a long stride the trailing
+		// foot still sits ~2u below the deck top, so a strict
+		// refY >= Top planted that foot on the terrain BELOW
+		// (LIPSWEEP: 45 of 725 plant cases returned 0 under a
+		// 22 deck). The allowance is far too small to adopt a
+		// deck from the ground beneath it (22 - 2.5 >> 1.5).
+		const float StepUp = 2.5f;
 		float g = HeightAt(x, z);
 		foreach (var r in Roofs)
-			if (r.Top > g && (refY >= r.Top || Ledge(r.Top)) && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
+			if (r.Top > g && (refY >= r.Top - StepUp || Ledge(r.Top)) && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				g = r.Top;
 		foreach (var d in DiscRoofs)
-			if (d.Top > g && (refY >= d.Top || Ledge(d.Top)) &&
+			if (d.Top > g && (refY >= d.Top - StepUp || Ledge(d.Top)) &&
 				(x - d.Cx) * (x - d.Cx) + (z - d.Cz) * (z - d.Cz) <= d.R * d.R)
 				g = d.Top;
-		// Ramps adopt with a step-up allowance: a walker
-		// climbing plants its next foot up to ~2.5u above its
-		// current sole (a stride's rise on a 28-degree ramp).
 		foreach (var r in Ramps)
 		{
 			float h = RampHeightAt(r, x, z, out bool inside);
-			if (inside && h > g && refY >= h - 2.5f) g = h;
+			if (inside && h > g && refY >= h - StepUp) g = h;
 		}
 		return g;
 	}
