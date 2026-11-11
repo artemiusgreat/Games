@@ -302,7 +302,11 @@ public partial class RiderDuel : Node3D
     private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
     private LeaveOverlay _leaveDialog;
     private CanvasLayer _labLoad; // loading cover held over the lab until the warmup settles (owner)
+    private Control _labLoadArt; // the blinking loading art inside the cover (owner)
+    private double _labLoadT;
     private PanelContainer _panelHealth, _panelWeapons, _panelTarget; // corner blocks (owner: no bottom dashboard)
+    private PanelContainer _panelRadar; // square radar panel, top-right (owner)
+    private Control _radarFrame; // white corner brackets around the radar panel
     private RadarView _radar;
     private Label _lblRange, _lblSpeed, _lblLegs;
     private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
@@ -852,6 +856,11 @@ public partial class RiderDuel : Node3D
             // has run (owner): the lab is revealed only in its
             // settled showroom framing, never mid-sweep.
             if (_labLoad != null) _labLoad.Visible = _photo && _warmPose < 4;
+            if (_labLoad != null && _labLoad.Visible)
+            {
+                _labLoadT += delta;
+                FlowUi.PulseLoadingArt(_labLoadArt, _labLoadT); // slow blink (owner)
+            }
             // The duel waits behind the RiderLab: a showroom view
             // (owner, MW4-style) — the rider stands front three-
             // quarter in the paperdoll area, lit by a lab fill, so

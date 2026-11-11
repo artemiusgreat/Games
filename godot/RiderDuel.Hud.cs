@@ -77,20 +77,34 @@ public partial class RiderDuel
         _panelHealth = CornerPanel(Control.LayoutPreset.BottomLeft);
         _panelTarget = CornerPanel(Control.LayoutPreset.BottomRight);
 
-        // Radar scope, top-right (owner): player-centered, north-up.
+        // Radar, top-right (owner): a SQUARE semi-transparent
+        // panel the same width as the range/speed block below
+        // it, with the exit popup's white corner brackets. The
+        // scope stays circular and north-up inside it.
+        _panelRadar = new PanelContainer();
+        _panelRadar.SetAnchorsPreset(Control.LayoutPreset.TopRight);
+        var rsb = new StyleBoxFlat
+        {
+            BgColor = new Color(0.055f, 0.075f, 0.105f, 0.58f),
+            BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.55f),
+            ContentMarginLeft = 16, ContentMarginRight = 16,
+            ContentMarginTop = 16, ContentMarginBottom = 16,
+        };
+        rsb.SetBorderWidthAll(2);
+        rsb.SetCornerRadiusAll(8);
+        _panelRadar.AddThemeStyleboxOverride("panel", rsb);
+        layer.AddChild(_panelRadar);
         _radar = new RadarView
         {
             Player = _player,
             Enemy = _enemy,
-            CustomMinimumSize = new Vector2(168f, 168f)
+            CustomMinimumSize = new Vector2(300f, 300f)
         };
-        _radar.SetAnchorsPreset(Control.LayoutPreset.TopRight);
-        _radar.OffsetLeft = -184f;
-        _radar.OffsetTop = 16f;
-        _radar.OffsetRight = -16f;
-        _radar.OffsetBottom = 184f;
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
-        layer.AddChild(_radar);
+        _panelRadar.AddChild(_radar);
+        _radarFrame = new CornerFrame { MouseFilter = Control.MouseFilterEnum.Ignore };
+        _radarFrame.SetAnchorsPreset(Control.LayoutPreset.TopRight);
+        layer.AddChild(_radarFrame);
 
 
         Label Title(string t)
@@ -654,6 +668,8 @@ public partial class RiderDuel
         if (_panelHealth != null) _panelHealth.Visible = v;
         if (_panelWeapons != null) _panelWeapons.Visible = v;
         if (_panelTarget != null) _panelTarget.Visible = v;
+        if (_panelRadar != null) _panelRadar.Visible = v;
+        if (_radarFrame != null) _radarFrame.Visible = v;
     }
 
     // Corner blocks hug their content: widths and heights come
@@ -676,6 +692,19 @@ public partial class RiderDuel
         var ts = _panelTarget.GetCombinedMinimumSize();
         _panelTarget.OffsetRight = -16; _panelTarget.OffsetBottom = -14;
         _panelTarget.OffsetLeft = -16 - w; _panelTarget.OffsetTop = -14 - ts.Y;
+        if (_panelRadar != null)
+        {
+            var rs = _panelRadar.GetCombinedMinimumSize();
+            _panelRadar.OffsetRight = -16; _panelRadar.OffsetTop = 14;
+            _panelRadar.OffsetLeft = -16 - rs.X; _panelRadar.OffsetBottom = 14 + rs.Y;
+            if (_radarFrame != null)
+            {
+                _radarFrame.OffsetLeft = _panelRadar.OffsetLeft - 6;
+                _radarFrame.OffsetTop = _panelRadar.OffsetTop - 6;
+                _radarFrame.OffsetRight = _panelRadar.OffsetRight + 6;
+                _radarFrame.OffsetBottom = _panelRadar.OffsetBottom + 6;
+            }
+        }
         if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
     }
 
