@@ -455,15 +455,9 @@ public partial class RiderDuel
         // "NAME DESTROYED / press R to reset" text overlapped
         // the exit confirmation popup) — the wreck, the feed
         // and the target readout carry the news; R still
-        // resets. Only the match-end VICTORY keeps the banner.
-        if (w != _player && _foe != null && _enemyDead && _foe.Dead)
-        {
-            // Free-for-all won: both opponents are down.
-            _banner.Text = "VICTORY";
-            _banner.Modulate = new Color(0.55f, 1f, 0.6f);
-            _bannerSub.Visible = true;
-            _banner.Visible = true;
-        }
+        // resets. The match-end VICTORY banner is removed
+        // too (owner, 2026-11-11 round 4) — nothing raises
+        // the centre banner any more.
     }
 
     private void SpawnDmgNumber(Vector3 point, float dmg, Color col)
