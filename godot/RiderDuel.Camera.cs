@@ -44,6 +44,10 @@ public partial class RiderDuel
 
     private void UpdateCamera(float delta)
     {
+        // The hero light rides over the player rider so it
+        // reads in any shadow (owner, 2026-11-11).
+        if (_heroLight != null && _player != null)
+            _heroLight.GlobalPosition = _player.RootPos + new Vector3(0f, 15f, 0f);
         if (_camMode == "missionBase")
         {
             var pad = Main.SpawnPads[0];
@@ -97,15 +101,15 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(dp.X - 58f, 66f, dp.Y + 58f);
             _cam.LookAt(new Vector3(dp.X - 6f, 20f, dp.Y - 4f), Vector3.Up);
         }
-        else if (_camMode == "islandcam")
+        else if (_camMode == "homecam")
         {
-            // Low over the water west of the island, looking
-            // east across the disc: buildings must sit ON the
-            // disc, nothing floating past its rim
-            // (AOT_TERRATEST=11).
-            var ic = IslandAbs;
-            _cam.GlobalPosition = new Vector3(ic.X - 95f, 13f, ic.Y + 26f);
-            _cam.LookAt(new Vector3(ic.X + 10f, 7f, ic.Y), Vector3.Up);
+            // High south-west of the HOME pad, looking across
+            // its valley: since round 3 the home valley must
+            // read as a FLAT ground-level city — no platforms,
+            // ramps or island (AOT_TERRATEST=11).
+            var hp = Main.SpawnPads[0];
+            _cam.GlobalPosition = new Vector3(hp.X - 150f, 62f, hp.Y + 150f);
+            _cam.LookAt(new Vector3(hp.X + 30f, 8f, hp.Y - 10f), Vector3.Up);
         }
         else if (_camMode == "gatesky")
         {

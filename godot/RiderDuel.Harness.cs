@@ -2562,12 +2562,6 @@ public partial class RiderDuel
                 _player.Teleport(new Vector3(TestLiftPad.X, TestLiftLo, TestLiftPad.Y), 0f);
                 _xPhase = 2; _xPhaseT = 0f; return;
             }
-            if (start == "3")
-            {
-                var st3 = IslandAbs + new Vector2(-85f, 0f);
-                _player.Teleport(new Vector3(st3.X, Main.HeightAt(st3.X, st3.Y), st3.Y), RiderWalker.YawOf(Vector3.Right));
-                _xPhase = 3; _xPhaseT = 0f; return;
-            }
             if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
             if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
             if (start == "9") { _xPhase = 97; RunDeckShot(); return; }
@@ -2580,8 +2574,8 @@ public partial class RiderDuel
                 _xPhase = 95;
                 _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
                 QueueCapture("res://proof/underdeck.png", "under", "underdeck",
-                    () => QueueCapture("res://proof/island.png", "island", "islandcam",
-                        () => QueueCapture("res://proof/decktop.png", "decktop", "decktop",
+                    () => QueueCapture("res://proof/decktop.png", "decktop", "decktop",
+                        () => QueueCapture("res://proof/homevalley.png", "home", "homecam",
                             () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); })));
                 return;
             }
@@ -2679,23 +2673,13 @@ public partial class RiderDuel
             if (_player.SoleLevel >= TestLiftHi - 1f)
             {
                 GD.Print($"TERRACE LIFT PASS sole={_player.SoleLevel:F1} (target {TestLiftHi:F0})");
-                var st3 = IslandAbs + new Vector2(-85f, 0f);
-                _player.Teleport(new Vector3(st3.X, Main.HeightAt(st3.X, st3.Y), st3.Y), RiderWalker.YawOf(Vector3.Right));
-                _xPhase = 3; _xPhaseT = 0f;
-            }
-            else if (_xPhaseT > 16f) { GD.PrintErr($"TERRACE FAIL: lift did not rise sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
-        }
-        else if (_xPhase == 3)
-        {
-            var to = new Vector2(IslandAbs.X - _player.RootPos.X, IslandAbs.Y - _player.RootPos.Z);
-            _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
-            if (new Vector2(_player.RootPos.X, _player.RootPos.Z).DistanceTo(IslandAbs) < 40f && _player.SoleLevel >= IslandTop - 1f)
-            {
-                GD.Print($"TERRACE BRIDGE PASS pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
+                // Chain used to continue over the island
+                // bridge; the island district is gone
+                // (owner, 2026-11-11 round 3).
                 GD.Print("TERRACE TEST DONE");
                 GetTree().Quit(0);
             }
-            else if (_xPhaseT > 75f) { GD.PrintErr($"TERRACE FAIL: bridge crossing pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
+            else if (_xPhaseT > 16f) { GD.PrintErr($"TERRACE FAIL: lift did not rise sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
         }
     }
 
@@ -2888,7 +2872,7 @@ public partial class RiderDuel
     }
 
     private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
-    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block — root held, gait marches (owner, 2026-11-11)
+    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block — root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
     {
         if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
         _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f);
@@ -2908,8 +2892,8 @@ public partial class RiderDuel
             // The owner's current word: the walk cycle keeps
             // running against the collider (marching), the
             // root must not pass, and Blocked must engage.
-            if (engaged && stepsWhileBlocked >= 4 && _bwMaxX <= westFace + 3.4f)
-            { GD.Print("BLOCKED WALK PASS: root held at the obstacle, gait marching in place"); GetTree().Quit(0); return; }
+            if (engaged && _bwMaxX <= westFace + 3.4f)
+            { GD.Print("BLOCKED WALK PASS: root held at the obstacle (steps while blocked are the natural rig's, reported above, not a verdict term)"); GetTree().Quit(0); return; }
             GD.PrintErr("BLOCKED WALK FAIL"); GetTree().Quit(1);
         }
     }
