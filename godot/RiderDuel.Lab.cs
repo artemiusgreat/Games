@@ -48,7 +48,7 @@ public partial class RiderDuel
     {
         _labLoad = new CanvasLayer { Layer = 5, Visible = _photo };
         AddChild(_labLoad);
-        var rect = new ColorRect { Color = new Color(0.015f, 0.02f, 0.035f, 0.98f) };
+        var rect = new ColorRect { Color = FlowUi.LoadingBg };
         rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _labLoad.AddChild(rect);
         // The loading art replaces the old text screen (owner),

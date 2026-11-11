@@ -97,12 +97,7 @@ public partial class FlowMain : Node3D
 
     public override void _Process(double delta)
     {
-        if (_loading)
-        {
-            _loadT += delta;
-            // The loading art slowly blinks (owner).
-            FlowUi.PulseLoadingArt(_loadArt, _loadT);
-        }
+        if (_loading) _loadT += delta;
         if (_navTest)
         {
             _shotT += delta;
@@ -172,11 +167,11 @@ public partial class FlowMain : Node3D
     {
         _loadLayer = new CanvasLayer { Layer = 5, Visible = false };
         AddChild(_loadLayer);
-        var rect = new ColorRect { Color = new Color(0.015f, 0.02f, 0.035f, 0.98f) };
+        var rect = new ColorRect { Color = FlowUi.LoadingBg };
         rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _loadLayer.AddChild(rect);
-        // The loading art replaces the old text screen (owner):
-        // the targeting-reticle rider in white corner brackets.
+        // The loading art (owner): the targeting-reticle
+        // rider, plain, over the shared loading background.
         _loadArt = FlowUi.MakeLoadingArt();
         _loadLayer.AddChild(_loadArt);
     }
