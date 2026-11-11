@@ -113,7 +113,110 @@ public partial class RiderDuel
     private static StandardMaterial3D DeckMat() => new()
     {
         AlbedoColor = DeckCol, AlbedoTexture = StoneTexture(),
+        NormalTexture = StoneNormalTexture(), NormalScale = 0.8f,
         Roughness = 0.95f, Metallic = 0.05f
+    };
+
+    // Bumpy stone (owner, 2026-11-11: 'apply bevel and
+    // roughness to platforms... make them look bumpy'): a
+    // tileable normal map derived from the same value-noise
+    // field as the albedo, so the decks and columns read as
+    // rough-hewn stone under raking light instead of flat
+    // tinted slabs.
+    private static ImageTexture _stoneNrm;
+    private static ImageTexture StoneNormalTexture()
+    {
+        if (_stoneNrm != null) return _stoneNrm;
+        const int S = 256;
+        float H(int x, int y)
+        {
+            float u = ((x % S) + S) % S / (float)S, v = ((y % S) + S) % S / (float)S;
+            return PNoise(u * 5f, v * 5f, 5) * 0.55f + PNoise(u * 13f + 7f, v * 13f + 3f, 13) * 0.30f
+                 + PNoise(u * 34f + 13f, v * 34f + 29f, 34) * 0.15f;
+        }
+        var img = Image.CreateEmpty(S, S, false, Image.Format.Rgb8);
+        for (int y = 0; y < S; y++)
+        for (int x = 0; x < S; x++)
+        {
+            float dx = (H(x + 1, y) - H(x - 1, y)) * 2.2f;
+            float dy = (H(x, y + 1) - H(x, y - 1)) * 2.2f;
+            var n = new Vector3(-dx, -dy, 1f).Normalized();
+            img.SetPixel(x, y, new Color(n.X * 0.5f + 0.5f, n.Y * 0.5f + 0.5f, n.Z * 0.5f + 0.5f));
+        }
+        _stoneNrm = ImageTexture.CreateFromImage(img);
+        return _stoneNrm;
+    }
+
+    // Bumpy metal plate for the ramp walking surface (owner:
+    // 'the walking area is bumpy metal with some pattern
+    // mounted inside the stone'): 2x2 tread plates per tile,
+    // dark seams, rivets at the corners, per-plate tint —
+    // albedo plus a matching normal map (seams recessed,
+    // rivets raised). Generated once.
+    private static ImageTexture _plateTex, _plateNrm;
+    private static void PlateTextures()
+    {
+        if (_plateTex != null) return;
+        const int S = 256;
+        var alb = Image.CreateEmpty(S, S, false, Image.Format.Rgb8);
+        var hgt = new float[S, S];
+        for (int y = 0; y < S; y++)
+        for (int x = 0; x < S; x++)
+        {
+            int px = x * 2 / S, py = y * 2 / S;              // plate indices (2x2 per tile)
+            int lx = x % (S / 2), ly = y % (S / 2);          // local position in the plate
+            float tint = 0.92f + Hash2(px * 7 + 3, py * 11 + 5) * 0.16f;
+            float grain = PNoise(x / (float)S * 40f, y / (float)S * 40f, 40);
+            bool seam = lx < 3 || ly < 3 || lx >= S / 2 - 3 || ly >= S / 2 - 3;
+            bool rivet = (Mathf.Abs(lx - 14) < 3 || Mathf.Abs(lx - (S / 2 - 15)) < 3) &&
+                         (Mathf.Abs(ly - 14) < 3 || Mathf.Abs(ly - (S / 2 - 15)) < 3);
+            float b = (0.34f + (grain - 0.5f) * 0.06f) * tint;
+            float h = seam ? 0.25f : 0.6f + (grain - 0.5f) * 0.08f;
+            if (rivet) { b += 0.13f; h = 0.95f; }
+            alb.SetPixel(x, y, new Color(b * 0.92f, b * 0.98f, b * 1.12f));
+            hgt[x, y] = h;
+        }
+        _plateTex = ImageTexture.CreateFromImage(alb);
+        var nrm = Image.CreateEmpty(S, S, false, Image.Format.Rgb8);
+        float Hg(int x, int y) => hgt[((x % S) + S) % S, ((y % S) + S) % S];
+        for (int y = 0; y < S; y++)
+        for (int x = 0; x < S; x++)
+        {
+            float dx = (Hg(x + 1, y) - Hg(x - 1, y)) * 2.6f;
+            float dy = (Hg(x, y + 1) - Hg(x, y - 1)) * 2.6f;
+            var n = new Vector3(-dx, -dy, 1f).Normalized();
+            nrm.SetPixel(x, y, new Color(n.X * 0.5f + 0.5f, n.Y * 0.5f + 0.5f, n.Z * 0.5f + 0.5f));
+        }
+        _plateNrm = ImageTexture.CreateFromImage(nrm);
+    }
+    private static StandardMaterial3D PlateMat()
+    {
+        PlateTextures();
+        return new StandardMaterial3D
+        {
+            AlbedoTexture = _plateTex, NormalTexture = _plateNrm, NormalScale = 0.9f,
+            Roughness = 0.5f, Metallic = 0.7f,
+            Uv1Triplanar = true, // world-space tiling: the plate pattern repeats ~7u on every face
+            Uv1Scale = new Vector3(0.14f, 0.14f, 0.14f)
+        };
+    }
+    // Darker stone for the columns (owner: round, bevelled,
+    // rough) — same rock, deeper tint, full roughness.
+    private static StandardMaterial3D ColumnMat() => new()
+    {
+        AlbedoColor = new Color(0.45f, 0.48f, 0.58f), AlbedoTexture = StoneTexture(),
+        NormalTexture = StoneNormalTexture(), NormalScale = 0.9f,
+        Roughness = 1f, Metallic = 0.02f
+    };
+    // Blob-deck material: the generated cap/side mesh is
+    // single-sided by construction order; cull off so the
+    // underside reads from below regardless of winding.
+    private static StandardMaterial3D BlobMat() => new()
+    {
+        AlbedoColor = DeckCol, AlbedoTexture = StoneTexture(),
+        NormalTexture = StoneNormalTexture(), NormalScale = 0.8f,
+        Roughness = 0.95f, Metallic = 0.05f,
+        CullMode = BaseMaterial3D.CullModeEnum.Disabled
     };
     // One trim colour per level (the reference model's
     // level coding): cyan, violet, gold.
@@ -185,6 +288,10 @@ public partial class RiderDuel
             // skip rects clear the ground blocks beneath it.
             BuildIsland(rng, ref placed, L(225f, 0f));
         }
+        // Platform clusters first (merged curvy decks over
+        // each same-level plot group; the statics register
+        // the roofs/columns/lights the blocks then respect).
+        BuildPlatformClusters(ctr);
         // Plots: exact grid (platforms must TILE — jittered
         // centres once left ground-data slits riders fell
         // through), platform membership by plot index.
@@ -200,7 +307,6 @@ public partial class RiderDuel
             // (spawn + base structures live there), wide
             // enough for the defenders' 55u patrol disc.
             if (l == 0f && (c - ctr).Length() < 62f) continue;
-            if (l > 0f) BuildPlatform(c, l);
             PlaceCityBlock(rng, c, ref placed, l);
         }
         BuildLandmark(L(80f, -144f), TerraceL3, 26f, 46f, 200f, true);
@@ -232,13 +338,7 @@ public partial class RiderDuel
         foreach (float f in new[] { -len / 4f, 0f, len / 4f })
         {
             var cp = mid + d.Normalized() * f;
-            var col = new MeshInstance3D
-            {
-                Mesh = new BoxMesh { Size = new Vector3(1.7f, top - 1.2f, 1.7f) },
-                MaterialOverride = DeckMat(),
-                Position = new Vector3(cp.X, (top - 1.2f) / 2f, cp.Y)
-            };
-            AddChild(col);
+            AddColumn(cp, top - 1.2f, LevelIndex(top), b);
             _props.Add(new Circle { P = cp, R = 1.15f, RoofTop = top - 1.2f });
         }
         foreach (float side in new[] { -5.4f, 5.4f })
@@ -337,12 +437,66 @@ public partial class RiderDuel
         AddChild(omni);
     }
 
-    private void BuildPlatform(Vector2 c, float lvlTop)
+    // A round terrace column (owner, 2026-11-11: 'make
+    // columns round, apply some bevel... add luminescent
+    // lines along each column'): a rough stone cylinder the
+    // size of its collision circle, a bevel ring at both
+    // ends, and one emissive line running its height on the
+    // side facing `face` (usually the deck's centre).
+    private void AddColumn(Vector2 p, float topY, int lvl, Vector2 face)
     {
-        // A deck slab on columns (owner: platforms stand on
-        // pillars, not solid blocks) — the space under a deck
-        // is open ground a rider can walk through; the corner
-        // columns are the only obstacles down there.
+        float h = Mathf.Max(topY, 1f);
+        var col = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 1.15f, BottomRadius = 1.15f, Height = h, RadialSegments = 18 },
+            MaterialOverride = ColumnMat(),
+            Position = new Vector3(p.X, h / 2f, p.Y)
+        };
+        AddChild(col);
+        foreach (float ry in new[] { 0.28f, h - 0.28f })
+        {
+            var ring = new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 1.34f, BottomRadius = 1.34f, Height = 0.56f, RadialSegments = 18 },
+                MaterialOverride = ColumnMat(),
+                Position = new Vector3(p.X, ry, p.Y)
+            };
+            AddChild(ring);
+        }
+        var dir = face - p;
+        if (dir.LengthSquared() > 0.01f)
+        {
+            dir = dir.Normalized();
+            var strip = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(0.16f, h - 1.4f, 0.07f) },
+                MaterialOverride = TrimMat(lvl),
+                Position = new Vector3(p.X + dir.X * 1.17f, h / 2f, p.Y + dir.Y * 1.17f),
+                Rotation = new Vector3(0f, Mathf.Atan2(dir.X, dir.Y), 0f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            AddChild(strip);
+        }
+    }
+
+    // The non-visual half of a platform plot: its standable
+    // roof rect, its four columns (the only obstacles under
+    // the deck) and its ceiling light.
+    private void PlatformStatics(Vector2 c, float lvlTop)
+    {
+        foreach (var s2 in new[] { new Vector2(13.5f, 13.5f), new Vector2(-13.5f, 13.5f), new Vector2(13.5f, -13.5f), new Vector2(-13.5f, -13.5f) })
+        {
+            AddColumn(c + s2, lvlTop - 2.2f, LevelIndex(lvlTop), c);
+            _props.Add(new Circle { P = c + s2, R = 1.15f, RoofTop = lvlTop });
+        }
+        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - 2.2f });
+        AddCeilingLight(new Vector3(c.X, lvlTop - 2.35f, c.Y), 21f);
+    }
+
+    // The old per-plot slab, kept as the fallback for any
+    // platform cluster that is not a clean rectangle.
+    private void PlatformSlabFallback(Vector2 c, float lvlTop)
+    {
         var mi = new MeshInstance3D
         {
             Mesh = new BoxMesh { Size = new Vector3(31.9f, 2.2f, 31.9f) },
@@ -350,17 +504,6 @@ public partial class RiderDuel
             Position = new Vector3(c.X, lvlTop - 1.1f, c.Y)
         };
         AddChild(mi);
-        foreach (var s2 in new[] { new Vector2(13.5f, 13.5f), new Vector2(-13.5f, 13.5f), new Vector2(13.5f, -13.5f), new Vector2(-13.5f, -13.5f) })
-        {
-            var col = new MeshInstance3D
-            {
-                Mesh = new BoxMesh { Size = new Vector3(1.7f, lvlTop - 2.2f, 1.7f) },
-                MaterialOverride = DeckMat(),
-                Position = new Vector3(c.X + s2.X, (lvlTop - 2.2f) / 2f, c.Y + s2.Y)
-            };
-            AddChild(col);
-            _props.Add(new Circle { P = c + s2, R = 1.15f, RoofTop = lvlTop });
-        }
         var trim = new MeshInstance3D
         {
             Mesh = new BoxMesh { Size = new Vector3(32.5f, 0.55f, 32.5f) },
@@ -369,8 +512,173 @@ public partial class RiderDuel
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         AddChild(trim);
-        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - 2.2f });
-        AddCeilingLight(new Vector3(c.X, lvlTop - 2.35f, c.Y), 21f);
+    }
+
+    // Platforms are built per CLUSTER (a flood-filled group
+    // of same-level plots), not per plot (owner, 2026-11-11:
+    // curvy platform shapes, visible borders, no more
+    // per-plot trim slabs — whose coplanar overlaps also
+    // z-fought into stray triangles under the decks).
+    private void BuildPlatformClusters(Vector2 ctr)
+    {
+        float p = CityGrid.Pitch;
+        int hb = Mathf.CeilToInt(CityGrid.Radius / p);
+        var cells = new Dictionary<(int, int), float>();
+        for (int i = -hb; i <= hb; i++)
+        for (int j = -hb; j <= hb; j++)
+        {
+            var c = ctr + new Vector2(i * p, j * p);
+            if ((c - ctr).Length() > CityGrid.Radius) continue;
+            if (TerrainGrade(c.X, c.Y) > 0.4f) continue;
+            float l = PlatformLevel(i, j);
+            if (l > 0f) cells[(i, j)] = l;
+        }
+        var seen = new HashSet<(int, int)>();
+        foreach (var kv in cells)
+        {
+            if (seen.Contains(kv.Key)) continue;
+            var stack = new List<(int, int)> { kv.Key };
+            var group = new List<(int, int)>();
+            seen.Add(kv.Key);
+            while (stack.Count > 0)
+            {
+                var cur = stack[stack.Count - 1]; stack.RemoveAt(stack.Count - 1);
+                group.Add(cur);
+                foreach (var d in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+                {
+                    var n = (cur.Item1 + d.Item1, cur.Item2 + d.Item2);
+                    if (cells.TryGetValue(n, out float nl) && nl == kv.Value && !seen.Contains(n))
+                    { seen.Add(n); stack.Add(n); }
+                }
+            }
+            BuildPlatformCluster(group, kv.Value, ctr);
+        }
+    }
+
+    private void BuildPlatformCluster(List<(int i, int j)> group, float lvlTop, Vector2 ctr)
+    {
+        float p = CityGrid.Pitch;
+        int i0 = int.MaxValue, i1 = int.MinValue, j0 = int.MaxValue, j1 = int.MinValue;
+        foreach (var (i, j) in group)
+        {
+            i0 = Mathf.Min(i0, i); i1 = Mathf.Max(i1, i); j0 = Mathf.Min(j0, j); j1 = Mathf.Max(j1, j);
+            PlatformStatics(ctr + new Vector2(i * p, j * p), lvlTop);
+        }
+        bool rect = group.Count == (i1 - i0 + 1) * (j1 - j0 + 1);
+        if (!rect)
+        {
+            foreach (var (i, j) in group) PlatformSlabFallback(ctr + new Vector2(i * p, j * p), lvlTop);
+            return;
+        }
+        float x0 = ctr.X + i0 * p - 16.05f, x1 = ctr.X + i1 * p + 16.05f;
+        float z0 = ctr.Y + j0 * p - 16.05f, z1 = ctr.Y + j1 * p + 16.05f;
+        BuildBlobDeck(x0, x1, z0, z1, lvlTop);
+    }
+
+    // One curvy deck over a rectangular plot cluster (owner:
+    // 'platforms should be curvy and shaped approximately
+    // like the black shape' — his amoeba silhouette): the
+    // rect's perimeter, sampled and smoothed into big round
+    // corners, then pushed radially outward by a seeded
+    // wobble (always >= +0.5u, so the standable rect stays
+    // fully covered and the wavy rim reads as a border
+    // apron). Bevelled edge (a flare strip below the cap),
+    // glowing border ribbon following the same outline.
+    private void BuildBlobDeck(float x0, float x1, float z0, float z1, float top)
+    {
+        var centre = new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f);
+        var loop = new List<Vector2>();
+        void Edge(Vector2 a, Vector2 b)
+        {
+            int n = Mathf.Max(2, Mathf.CeilToInt(a.DistanceTo(b) / 5f));
+            for (int k = 0; k < n; k++) loop.Add(a.Lerp(b, k / (float)n));
+        }
+        Edge(new Vector2(x0, z0), new Vector2(x1, z0));
+        Edge(new Vector2(x1, z0), new Vector2(x1, z1));
+        Edge(new Vector2(x1, z1), new Vector2(x0, z1));
+        Edge(new Vector2(x0, z1), new Vector2(x0, z0));
+        for (int pass = 0; pass < 2; pass++)
+        {
+            var sm = new List<Vector2>(loop.Count);
+            for (int k = 0; k < loop.Count; k++)
+                sm.Add(loop[(k + loop.Count - 1) % loop.Count] * 0.25f + loop[k] * 0.5f + loop[(k + 1) % loop.Count] * 0.25f);
+            loop = sm;
+        }
+        float seed = Mathf.Abs(centre.X * 12.9898f + centre.Y * 78.233f) % 6.2831f;
+        var dir = new List<Vector2>(loop.Count);
+        for (int k = 0; k < loop.Count; k++)
+        {
+            var d = (loop[k] - centre).Normalized();
+            dir.Add(d);
+            float th = Mathf.Atan2(d.Y, d.X);
+            float w = 1.5f + 0.6f * Mathf.Sin(3f * th + seed) + 0.4f * Mathf.Sin(6f * th + seed * 2f);
+            loop[k] += d * w;
+        }
+        int n2 = loop.Count;
+        var verts = new List<Vector3>(); var norms = new List<Vector3>(); var uvs = new List<Vector2>(); var idx = new List<int>();
+        int V(Vector3 pos, Vector3 nrm)
+        {
+            verts.Add(pos); norms.Add(nrm); uvs.Add(new Vector2(pos.X / 14f, pos.Z / 14f));
+            return verts.Count - 1;
+        }
+        void Tri(int a, int b, int c) { idx.Add(a); idx.Add(b); idx.Add(c); }
+        void Quad(int a, int b, int c, int d) { Tri(a, b, c); Tri(a, c, d); }
+        int cTop = V(new Vector3(centre.X, top, centre.Y), Vector3.Up);
+        int cBot = V(new Vector3(centre.X, top - 2.2f, centre.Y), Vector3.Down);
+        var T = new int[n2]; var O = new int[n2]; var B = new int[n2];
+        for (int k = 0; k < n2; k++)
+        {
+            var d = dir[k];
+            var outP = loop[k] + d * 0.55f;
+            var bevN = new Vector3(d.X, 0.75f, d.Y).Normalized();
+            var sideN = new Vector3(d.X, 0f, d.Y);
+            T[k] = V(new Vector3(loop[k].X, top, loop[k].Y), Vector3.Up);
+            O[k] = V(new Vector3(outP.X, top - 0.6f, outP.Y), bevN);
+            B[k] = V(new Vector3(outP.X, top - 2.2f, outP.Y), sideN);
+        }
+        for (int k = 0; k < n2; k++)
+        {
+            int k2 = (k + 1) % n2;
+            Tri(cTop, T[k], T[k2]);                    // top cap (fan)
+            Quad(T[k], O[k], O[k2], T[k2]);            // bevel flare
+            Quad(O[k], B[k], B[k2], O[k2]);            // side wall
+            Tri(cBot, B[k2], B[k]);                    // underside (fan)
+        }
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
+        arrays[(int)Mesh.ArrayType.TexUV] = uvs.ToArray();
+        arrays[(int)Mesh.ArrayType.Index] = idx.ToArray();
+        var mesh = new ArrayMesh();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+        AddChild(new MeshInstance3D { Mesh = mesh, MaterialOverride = BlobMat() });
+        // Glowing border ribbon along the wavy outline.
+        var tv = new List<Vector3>(); var tn = new List<Vector3>(); var tuv = new List<Vector2>(); var tidx = new List<int>();
+        for (int k = 0; k < n2; k++)
+        {
+            var d = dir[k];
+            var inner = loop[k] - d * 1.1f;
+            tv.Add(new Vector3(loop[k].X, top + 0.06f, loop[k].Y)); tn.Add(Vector3.Up); tuv.Add(new Vector2(loop[k].X / 14f, loop[k].Y / 14f));
+            tv.Add(new Vector3(inner.X, top + 0.06f, inner.Y)); tn.Add(Vector3.Up); tuv.Add(new Vector2(inner.X / 14f, inner.Y / 14f));
+        }
+        for (int k = 0; k < n2; k++)
+        {
+            int k2 = (k + 1) % n2;
+            tidx.Add(k * 2); tidx.Add(k2 * 2); tidx.Add(k2 * 2 + 1);
+            tidx.Add(k * 2); tidx.Add(k2 * 2 + 1); tidx.Add(k * 2 + 1);
+        }
+        var ta = new Godot.Collections.Array();
+        ta.Resize((int)Mesh.ArrayType.Max);
+        ta[(int)Mesh.ArrayType.Vertex] = tv.ToArray();
+        ta[(int)Mesh.ArrayType.Normal] = tn.ToArray();
+        ta[(int)Mesh.ArrayType.TexUV] = tuv.ToArray();
+        ta[(int)Mesh.ArrayType.Index] = tidx.ToArray();
+        var tmesh = new ArrayMesh();
+        tmesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, ta);
+        var tmat = TrimMat(LevelIndex(top));
+        tmat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        AddChild(new MeshInstance3D { Mesh = tmesh, MaterialOverride = tmat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
     }
 
     // A sloped deck wedge between two points at two heights:
@@ -394,12 +702,35 @@ public partial class RiderDuel
         float yaw = Mathf.Atan2(d.X, d.Y);
         float pitch = -Mathf.Atan2(h1 - h0, run);
         holder.Rotation = new Vector3(pitch, yaw, 0f);
-        var mi = new MeshInstance3D
+        // Walking surface: a bumpy metal plate inset in stone
+        // (owner, 2026-11-11) — the plate's top lies on the
+        // slope line, the stone curbs frame it as a visible
+        // border standing slightly proud, each carrying the
+        // level's glow line.
+        var plate = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(width, 3.5f, len) },
-            MaterialOverride = DeckMat()
+            Mesh = new BoxMesh { Size = new Vector3(width - 2.4f, 3.5f, len) },
+            MaterialOverride = PlateMat()
         };
-        holder.AddChild(mi);
+        holder.AddChild(plate);
+        foreach (float sx in new[] { -1f, 1f })
+        {
+            var curb = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(1.2f, 3.75f, len) },
+                MaterialOverride = DeckMat(),
+                Position = new Vector3(sx * (width / 2f - 0.6f), 0.125f, 0f)
+            };
+            holder.AddChild(curb);
+            var glow = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(0.34f, 0.1f, len) },
+                MaterialOverride = TrimMat(LevelIndex(Mathf.Max(h0, h1))),
+                Position = new Vector3(sx * (width / 2f - 0.6f), 2.03f, 0f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            holder.AddChild(glow);
+        }
         AddChild(holder);
     }
 
