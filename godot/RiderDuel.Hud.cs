@@ -105,6 +105,9 @@ public partial class RiderDuel
         _radarFrame = new CornerFrame { MouseFilter = Control.MouseFilterEnum.Ignore };
         _radarFrame.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         layer.AddChild(_radarFrame);
+        _targetFrame = new TargetFrame { MouseFilter = Control.MouseFilterEnum.Ignore };
+        _targetFrame.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        layer.AddChild(_targetFrame);
 
 
         Label Title(string t)
@@ -290,6 +293,39 @@ public partial class RiderDuel
                 new Vector2(c.X + 4f, c.Y + 5f),
                 new Vector2(c.X - 5f, c.Y)
             }, new Color(1f, 0.95f, 0.6f));
+        }
+    }
+
+    // The active target's in-world frame (owner, 2026-11-11:
+    // 'when I have some enemy selected, add a frame around it
+    // or some marker on top of it'): red corner brackets
+    // around the target's projected silhouette plus a chevron
+    // riding above its head. UpdateTargetFrame projects the
+    // eight corners of the walker's capsule box each frame.
+    private sealed partial class TargetFrame : Control
+    {
+        public bool Show;
+        public Rect2 Box;
+        public override void _Draw()
+        {
+            if (!Show) return;
+            var col = new Color(1f, 0.30f, 0.22f, 0.95f);
+            float L = Mathf.Min(20f, Box.Size.X * 0.3f), w = 2f;
+            var a = Box.Position; var b = Box.Position + Box.Size;
+            DrawLine(a + new Vector2(0, L), a, col, w);
+            DrawLine(a, a + new Vector2(L, 0), col, w);
+            DrawLine(new Vector2(b.X - L, a.Y), new Vector2(b.X, a.Y), col, w);
+            DrawLine(new Vector2(b.X, a.Y), new Vector2(b.X, a.Y + L), col, w);
+            DrawLine(new Vector2(b.X, b.Y - L), b, col, w);
+            DrawLine(b, new Vector2(b.X - L, b.Y), col, w);
+            DrawLine(new Vector2(a.X, b.Y), new Vector2(a.X + L, b.Y), col, w);
+            DrawLine(new Vector2(a.X, b.Y - L), new Vector2(a.X, b.Y), col, w);
+            // Chevron above the head, pointing down at it.
+            var tip = new Vector2((a.X + b.X) / 2f, a.Y - 6f);
+            DrawColoredPolygon(new[]
+            {
+                tip, tip + new Vector2(-8f, -10f), tip + new Vector2(8f, -10f)
+            }, col);
         }
     }
 
@@ -485,10 +521,51 @@ public partial class RiderDuel
         }
     }
 
+    // Project the active target's capsule to a screen box for
+    // the TargetFrame overlay. Hidden when there is no living
+    // active target, when it is behind the camera, or when the
+    // HUD is down (lab open / panels hidden). The marker is
+    // NOT range-gated: finding the selected enemy across the
+    // map is its whole point.
+    private void UpdateTargetFrame()
+    {
+        if (_targetFrame == null) return;
+        bool show = _panelHealth.Visible && !_labOpen && _cam != null;
+        RiderWalker w = null; RiderSpec spec = null; bool dead = true;
+        if (_targetIdx == 0) { w = _enemy; spec = _enemySpec; dead = _enemyDead; }
+        else if (_foe != null) { w = _foe.Walker; spec = _foe.Spec; dead = _foe.Dead; }
+        if (!show || w == null || spec == null || dead) { _targetFrame.Show = false; _targetFrame.QueueRedraw(); return; }
+        var org = w.RootPos;
+        float r = spec.Radius, hgt = spec.Height;
+        var vp = GetViewport().GetVisibleRect().Size;
+        float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+        for (int i = 0; i < 8; i++)
+        {
+            var corner = new Vector3(
+                org.X + ((i & 1) == 0 ? -r : r),
+                org.Y + ((i & 4) == 0 ? 0f : hgt),
+                org.Z + ((i & 2) == 0 ? -r : r));
+            if (_cam.IsPositionBehind(corner)) { _targetFrame.Show = false; _targetFrame.QueueRedraw(); return; }
+            var sp = _cam.UnprojectPosition(corner);
+            minX = Mathf.Min(minX, sp.X); maxX = Mathf.Max(maxX, sp.X);
+            minY = Mathf.Min(minY, sp.Y); maxY = Mathf.Max(maxY, sp.Y);
+        }
+        if (maxX < -40f || minX > vp.X + 40f || maxY < -40f || minY > vp.Y + 40f)
+        { _targetFrame.Show = false; _targetFrame.QueueRedraw(); return; }
+        float pad = 6f;
+        _targetFrame.Box = new Rect2(
+            Mathf.Clamp(minX - pad, 2f, vp.X - 2f), Mathf.Clamp(minY - pad, 16f, vp.Y - 2f),
+            Mathf.Clamp(maxX + pad, 2f, vp.X - 2f) - Mathf.Clamp(minX - pad, 2f, vp.X - 2f),
+            Mathf.Clamp(maxY + pad, 2f, vp.Y - 2f) - Mathf.Clamp(minY - pad, 16f, vp.Y - 2f));
+        _targetFrame.Show = true;
+        _targetFrame.QueueRedraw();
+    }
+
     private void UpdateHud()
     {
         if (_barPlayer == null) return;
         UpdateBaseMarks();
+        UpdateTargetFrame();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
         _lblPlayerHp.Text = $"{_playerSpec.Name} — {_hpPlayer:F0} HP";
         // Group aliveness (owner's lab groups): a group is
