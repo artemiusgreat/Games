@@ -429,7 +429,7 @@ public partial class RiderDuel : Node3D
 
         BuildTerrain();
         Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
-        Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.Walls.Clear();
+        Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.BlobDecks.Clear(); Main.Walls.Clear();
         // Round-1 ARENA props at fixed spots around the origin.
         // Arena only (owner: "random pieces of building are
         // sticking out of the ground" — in a 1900u mission
@@ -883,7 +883,6 @@ public partial class RiderDuel : Node3D
             if (_labLoad != null && _labLoad.Visible)
             {
                 _labLoadT += delta;
-                FlowUi.PulseLoadingArt(_labLoadArt, _labLoadT); // slow blink (owner)
             }
             // The duel waits behind the RiderLab: a showroom view
             // (owner, MW4-style) — the rider stands front three-

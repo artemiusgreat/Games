@@ -44,7 +44,7 @@ public partial class RiderDuel
     public bool HasTestRamp, HasTestLift;
     public bool HasTerraceTest => HasTestRamp && HasTestLift;
     public Vector2 TestDeckPoint;
-    public readonly List<(Vector2 C, Vector2 H, float Top)> TestPlatforms = new();
+    public readonly List<(Vector2 C, Vector2 H, float R, float Top)> TestPlatforms = new();
 
     // Platform layout per valley, in plot indices (pitch 32)
     // — the reference model's arrangement: several INDEPENDENT
@@ -287,13 +287,13 @@ public partial class RiderDuel
         if (!home && TestPlatforms.Count == 0)
         {
             TestDeckPoint = L(-96f, -48f);
-            TestPlatforms.Add((L(-96f, -48f), new Vector2(48f, 32f), TerraceL1));
-            TestPlatforms.Add((L(96f, -48f), new Vector2(48f, 32f), TerraceL1));
-            TestPlatforms.Add((L(-96f, 48f), new Vector2(48f, 32f), TerraceL1));
-            TestPlatforms.Add((L(96f, 48f), new Vector2(48f, 32f), TerraceL1));
-            TestPlatforms.Add((L(-64f, -144f), new Vector2(48f, 32f), TerraceL2));
-            TestPlatforms.Add((L(64f, 144f), new Vector2(48f, 32f), TerraceL2));
-            TestPlatforms.Add((L(80f, -144f), new Vector2(32f, 32f), TerraceL3));
+            TestPlatforms.Add((L(-96f, -48f), new Vector2(48f, 32f), 30f, TerraceL1));
+            TestPlatforms.Add((L(96f, -48f), new Vector2(48f, 32f), 30f, TerraceL1));
+            TestPlatforms.Add((L(-96f, 48f), new Vector2(48f, 32f), 30f, TerraceL1));
+            TestPlatforms.Add((L(96f, 48f), new Vector2(48f, 32f), 30f, TerraceL1));
+            TestPlatforms.Add((L(-64f, -144f), new Vector2(48f, 32f), 30f, TerraceL2));
+            TestPlatforms.Add((L(64f, 144f), new Vector2(48f, 32f), 30f, TerraceL2));
+            TestPlatforms.Add((L(80f, -144f), new Vector2(32f, 32f), 30f, TerraceL3));
         }
         // Platform clusters first (merged curvy decks over
         // each same-level plot group; the statics register
@@ -493,16 +493,55 @@ public partial class RiderDuel
     // The non-visual half of a platform plot: its standable
     // roof rect, its four columns (the only obstacles under
     // the deck) and its ceiling light.
-    private void PlatformStatics(Vector2 c, float lvlTop)
+    private void PlatformStatics(Vector2 c, float lvlTop, bool roof = true)
     {
         foreach (var s2 in new[] { new Vector2(13.5f, 13.5f), new Vector2(-13.5f, 13.5f), new Vector2(13.5f, -13.5f), new Vector2(-13.5f, -13.5f) })
         {
             AddColumn(c + s2, lvlTop - 2.2f, LevelIndex(lvlTop), c);
             _props.Add(new Circle { P = c + s2, R = 1.15f, RoofTop = lvlTop });
         }
-        Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - 2.2f });
+        if (roof) Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - 2.2f });
         AddCeilingLight(new Vector3(c.X, lvlTop - 2.35f, c.Y), 21f);
     }
+
+    // The platform outline (owner, 2026-11-11 round 5):
+    // the platform ITSELF is round and curvy — a radial
+    // amoeba around the cluster centre, not a rectangle
+    // with smoothed edges. The radius in every direction
+    // is the cluster rect's boundary distance times a
+    // low-frequency lobe factor (>= 1.03), so the shape
+    // bulges organically outward everywhere while always
+    // CONTAINING the rect: ramps, lifts, bridges and the
+    // landmark, which all land on the rect, keep working,
+    // and the standable discs registered from the same
+    // radii cover the rect with margin.
+    // Connection sectors per cluster (centre offset, level):
+    // the angular spans where a ramp, lift or bridge meets
+    // the platform. Inside a sector the outline stays AT
+    // the rect boundary (lobe excess scaled to 0, blended
+    // over 0.65 rad) — a bulge over a ramp corridor would
+    // roof the climbing rider (the deck underside at
+    // top-2.2 vs the ramp surface a few units below it).
+    // The radius function itself lives in Main (BlobRadius)
+    // so the walker's ground query evaluates the exact
+    // outline the mesh was built from.
+    private static readonly Dictionary<(int, int, int), Main.Sector[]> ClusterSectors = new()
+    {
+        // A (-96,-48) L1: west ramp, east lift+bridge, NE wedge up to E
+        [( -96, -48, 1)] = new[] { new Main.Sector(Mathf.Pi, 0.21f), new Main.Sector(0f, 0.21f), new Main.Sector(-1.107f, 0.26f) },
+        // B (96,-48) L1: east ramp, west bridge
+        [( 96, -48, 1)] = new[] { new Main.Sector(0f, 0.21f), new Main.Sector(Mathf.Pi, 0.21f) },
+        // C (-96,48) L1: west ramp, east bridge
+        [( -96, 48, 1)] = new[] { new Main.Sector(Mathf.Pi, 0.21f), new Main.Sector(0f, 0.21f) },
+        // D (96,48) L1: east ramp, west lift+bridge, NW wedge up to F
+        [( 96, 48, 1)] = new[] { new Main.Sector(0f, 0.21f), new Main.Sector(Mathf.Pi, 0.21f), new Main.Sector(2.199f, 0.26f) },
+        // E (-64,-144) L2: bridge-ramp landing (S), L3-ramp foot wedge (E)
+        [( -64, -144, 2)] = new[] { new Main.Sector(2.034f, 0.26f), new Main.Sector(0f, 0.24f) },
+        // F (64,144) L2: bridge-ramp landing (N)
+        [( 64, 144, 2)] = new[] { new Main.Sector(-1.107f, 0.26f) },
+        // G (80,-144) L3: ramp landing (W)
+        [( 80, -144, 3)] = new[] { new Main.Sector(Mathf.Pi, 0.24f) },
+    };
 
     // The old per-plot slab, kept as the fallback for any
     // platform cluster that is not a clean rectangle.
@@ -573,9 +612,15 @@ public partial class RiderDuel
         foreach (var (i, j) in group)
         {
             i0 = Mathf.Min(i0, i); i1 = Mathf.Max(i1, i); j0 = Mathf.Min(j0, j); j1 = Mathf.Max(j1, j);
-            PlatformStatics(ctr + new Vector2(i * p, j * p), lvlTop);
         }
         bool rect = group.Count == (i1 - i0 + 1) * (j1 - j0 + 1);
+        // Rectangular clusters are ROUND platforms now: their
+        // standable area is a union of discs following the
+        // amoeba outline (registered below), so the per-plot
+        // rect roofs are skipped for them — columns and
+        // ceiling lights stay per plot, inside the outline.
+        foreach (var (i, j) in group)
+            PlatformStatics(ctr + new Vector2(i * p, j * p), lvlTop, roof: !rect);
         if (!rect)
         {
             foreach (var (i, j) in group) PlatformSlabFallback(ctr + new Vector2(i * p, j * p), lvlTop);
@@ -583,47 +628,57 @@ public partial class RiderDuel
         }
         float x0 = ctr.X + i0 * p - 16.05f, x1 = ctr.X + i1 * p + 16.05f;
         float z0 = ctr.Y + j0 * p - 16.05f, z1 = ctr.Y + j1 * p + 16.05f;
-        BuildBlobDeck(x0, x1, z0, z1, lvlTop);
+        var centre = new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f);
+        float hx = (x1 - x0) / 2f, hz = (z1 - z0) / 2f;
+        float seed = Mathf.Abs(centre.X * 12.9898f + centre.Y * 78.233f) % 6.2831f;
+        var key = ((int)Mathf.Round(centre.X - ctr.X), (int)Mathf.Round(centre.Y - ctr.Y), LevelIndex(lvlTop));
+        ClusterSectors.TryGetValue(key, out var secs);
+        // The walker grounds on the EXACT outline: one
+        // BlobDeck registration (Main evaluates BlobRadius
+        // per query — a disc union overhangs the ramp
+        // corridors by metres and floated feet at deck
+        // height over the ramp heads). The 32 discs remain
+        // only as the shot-collision approximation.
+        float rMax = 0f;
+        for (int k = 0; k < 32; k++)
+        {
+            float th = k / 32f * Mathf.Tau;
+            float r = Main.BlobRadius(hx, hz, th, seed, secs);
+            rMax = Mathf.Max(rMax, r);
+            var dc = centre + new Vector2(Mathf.Cos(th), Mathf.Sin(th)) * (r * 0.50f);
+            Main.DiscRoofs.Add(new Main.DiscRoof { Cx = dc.X, Cz = dc.Y, R = r * 0.53f, Top = lvlTop, Under = lvlTop - 2.2f });
+        }
+        Main.BlobDecks.Add(new Main.BlobDeck
+        {
+            Cx = centre.X, Cz = centre.Y, Hx = hx, Hz = hz, Seed = seed,
+            Top = lvlTop, Under = lvlTop - 2.2f, RMax = rMax, Sectors = secs
+        });
+        BuildBlobDeck(x0, x1, z0, z1, lvlTop, secs);
     }
 
-    // One curvy deck over a rectangular plot cluster (owner:
-    // 'platforms should be curvy and shaped approximately
-    // like the black shape' — his amoeba silhouette): the
-    // rect's perimeter, sampled and smoothed into big round
-    // corners, then pushed radially outward by a seeded
-    // wobble (always >= +0.5u, so the standable rect stays
-    // fully covered and the wavy rim reads as a border
-    // apron). Bevelled edge (a flare strip below the cap),
-    // glowing border ribbon following the same outline.
-    private void BuildBlobDeck(float x0, float x1, float z0, float z1, float top)
+    // One round, curvy deck over a rectangular plot cluster
+    // (owner, 2026-11-11 round 5: 'make the platform itself
+    // round and curvy' — NOT a rectangle with smoothed
+    // edges): the outline is the radial amoeba of
+    // Main.BlobRadius, sampled at 72 points around the
+    // cluster centre. The shape is star-convex, so the top
+    // is a clean fan; bevelled edge (a flare strip below
+    // the cap) and the glowing border ribbon follow the
+    // same outline; the standable discs registered in
+    // BuildPlatformCluster follow the same radii.
+    private void BuildBlobDeck(float x0, float x1, float z0, float z1, float top, Main.Sector[] secs = null)
     {
         var centre = new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f);
-        var loop = new List<Vector2>();
-        void Edge(Vector2 a, Vector2 b)
-        {
-            int n = Mathf.Max(2, Mathf.CeilToInt(a.DistanceTo(b) / 5f));
-            for (int k = 0; k < n; k++) loop.Add(a.Lerp(b, k / (float)n));
-        }
-        Edge(new Vector2(x0, z0), new Vector2(x1, z0));
-        Edge(new Vector2(x1, z0), new Vector2(x1, z1));
-        Edge(new Vector2(x1, z1), new Vector2(x0, z1));
-        Edge(new Vector2(x0, z1), new Vector2(x0, z0));
-        for (int pass = 0; pass < 2; pass++)
-        {
-            var sm = new List<Vector2>(loop.Count);
-            for (int k = 0; k < loop.Count; k++)
-                sm.Add(loop[(k + loop.Count - 1) % loop.Count] * 0.25f + loop[k] * 0.5f + loop[(k + 1) % loop.Count] * 0.25f);
-            loop = sm;
-        }
+        float hx = (x1 - x0) / 2f, hz = (z1 - z0) / 2f;
         float seed = Mathf.Abs(centre.X * 12.9898f + centre.Y * 78.233f) % 6.2831f;
-        var dir = new List<Vector2>(loop.Count);
-        for (int k = 0; k < loop.Count; k++)
+        var loop = new List<Vector2>();
+        var dir = new List<Vector2>();
+        for (int k = 0; k < 72; k++)
         {
-            var d = (loop[k] - centre).Normalized();
+            float th = k / 72f * Mathf.Tau;
+            var d = new Vector2(Mathf.Cos(th), Mathf.Sin(th));
             dir.Add(d);
-            float th = Mathf.Atan2(d.Y, d.X);
-            float w = 1.5f + 0.6f * Mathf.Sin(3f * th + seed) + 0.4f * Mathf.Sin(6f * th + seed * 2f);
-            loop[k] += d * w;
+            loop.Add(centre + d * Main.BlobRadius(hx, hz, th, seed, secs));
         }
         int n2 = loop.Count;
         var verts = new List<Vector3>(); var norms = new List<Vector3>(); var uvs = new List<Vector2>(); var idx = new List<int>();
