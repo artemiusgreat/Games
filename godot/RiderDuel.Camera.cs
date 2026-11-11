@@ -68,6 +68,41 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(pad.X + 150f, 82f, pad.Y - 60f);
             _cam.LookAt(new Vector3(-268f, 26f, 155f), Vector3.Up);
         }
+        else if (_camMode == "underdeck")
+        {
+            // Under the test deck, rider height, looking across
+            // the under-deck ground at the rider: the ceiling
+            // fixtures and their light pool read here
+            // (AOT_TERRATEST=11).
+            var dp = TestDeckPoint;
+            _cam.GlobalPosition = new Vector3(dp.X - 26f, 7f, dp.Y + 10f);
+            _cam.LookAt(new Vector3(dp.X + 6f, 5f, dp.Y), Vector3.Up);
+        }
+        else if (_camMode == "islandcam")
+        {
+            // Low over the water west of the island, looking
+            // east across the disc: buildings must sit ON the
+            // disc, nothing floating past its rim
+            // (AOT_TERRATEST=11).
+            var ic = IslandAbs;
+            _cam.GlobalPosition = new Vector3(ic.X - 95f, 13f, ic.Y + 26f);
+            _cam.LookAt(new Vector3(ic.X + 10f, 7f, ic.Y), Vector3.Up);
+        }
+        else if (_camMode == "gatesky")
+        {
+            // Gate City sky check (owner: 'Saturn ring still
+            // broken'): from the home base, pitched up at the
+            // ringed planet's azimuth — the planet rides ~124
+            // degrees clockwise from panorama centre; in the
+            // mission world that bearing lands past pad 2, so
+            // aim from pad 0 toward pad 2 and tilt up.
+            var pad = Main.SpawnPads[0];
+            var to = Main.SpawnPads[2] - pad;
+            var dirv = new Vector3(to.X, 0f, to.Y).Normalized();
+            var eye = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y) + 10f, pad.Y);
+            _cam.GlobalPosition = eye;
+            _cam.LookAt(eye + dirv * 100f + new Vector3(0f, 42f, 0f), Vector3.Up);
+        }
         else if (_camMode == "enemyFront")
         {
             // In front of the enemy, on its line of advance: the

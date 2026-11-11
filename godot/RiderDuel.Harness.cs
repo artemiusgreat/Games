@@ -2550,6 +2550,7 @@ public partial class RiderDuel
     {
         _xPhaseT += dt;
         if (_xPhase == 5 || _xPhase == 6) { UpdateDeckWalkTest(dt); return; }
+        if (_xPhase == 94) { UpdateBlockedWalkTest(dt); return; }
         if (_xPhase == 0 && _xPhaseT > 1.5f)
         {
             if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
@@ -2569,6 +2570,34 @@ public partial class RiderDuel
             if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
             if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
             if (start == "9") { _xPhase = 97; RunDeckShot(); return; }
+            if (start == "11")
+            {
+                // Under-deck light + island containment
+                // (owner, 2026-11-11): park the player under
+                // the test deck, capture the lit underside,
+                // then capture the island from the water.
+                _xPhase = 95;
+                _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
+                QueueCapture("res://proof/underdeck.png", "under", "underdeck",
+                    () => QueueCapture("res://proof/island.png", "island", "islandcam",
+                        () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); }));
+                return;
+            }
+            if (start == "12")
+            {
+                // Blocked walk (owner, 2026-11-11: a rider
+                // walking into an obstacle lifted one leg and
+                // shook it): start 16u west of the test deck's
+                // west column line and drive east into the deck
+                // block for 10s. Blocked must engage, steps must
+                // nearly stop while pressed, and the root must
+                // not pass the block's west face.
+                _xPhase = 94; _xPhaseT = 0f;
+                _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue;
+                var st = TestDeckPoint + new Vector2(-34f, 0f);
+                _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(Vector3.Right));
+                return;
+            }
             if (start == "10")
             {
                 // Canyon presence (owner: "looks like you
@@ -2818,26 +2847,50 @@ public partial class RiderDuel
     }
 
     private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
-    private float _bkMaxRoot; private bool _bkOnDeck;
+    private float _bkMaxRoot; private bool _bkOnDeck; private float _bkMaxHead;
     private int _lpCyc; private bool _lpUp; private int _lpFalls; private float _lpLogT; // phase 8: ramp-lip crossing probe (owner fall-through report)
+    private int _bwSteps0, _bwEngageSteps; private float _bwMaxX;
+    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block, expect a standstill (owner, 2026-11-11)
+    {
+        if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
+        _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f);
+        _bwMaxX = Mathf.Max(_bwMaxX, _player.RootPos.X);
+        if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only — steps AFTER this are the shake metric
+        if (_xPhaseT > 12f)
+        {
+            bool engaged = _bwEngageSteps >= 0;
+            int stepsWhileBlocked = engaged ? _player.Steps - _bwEngageSteps : _player.Steps - _bwSteps0;
+            float westFace = TestDeckPoint.X - 16f;
+            GD.Print($"BLOCKED engaged={engaged} stepsWhileBlocked={stepsWhileBlocked} maxX={_bwMaxX:F1} westFace={westFace:F1} rootX={_player.RootPos.X:F1}");
+            if (engaged && stepsWhileBlocked <= 1 && _bwMaxX <= westFace + 3.4f)
+            { GD.Print("BLOCKED WALK PASS: rider stands at the obstacle instead of shaking a leg"); GetTree().Quit(0); return; }
+            GD.PrintErr("BLOCKED WALK FAIL"); GetTree().Quit(1);
+        }
+    }
+
     private void UpdateDeckWalkTest(float dt) // phases 5/6: diagonal ramp drive + ceiling bonk (owner regressions, 2026-11-10)
     {
         if (_xPhase == 6)
         {
             // BONK (owner: collision both ways): burn straight
-            // up UNDER a +22 deck for 7s. The rider must bonk
-            // at the underside (19.8) minus head room, never
-            // reach the deck, and settle back on the ground.
+            // up UNDER a +22 deck for 7s. The HEAD (sole level +
+            // the full chassis height) must never reach the
+            // deck's underside (19.8), the rider must never be
+            // adopted onto the deck, and it must settle back on
+            // the ground. (The first version capped the ROOT by
+            // the walker's own head-room allowance and so
+            // certified the through-the-deck bug, 2026-11-11.)
             if (_xPhaseT < 7f) { _player.SetThrust(true); _player.SetDrive(0f, 0f); }
             else _player.SetThrust(false);
             _bkMaxRoot = Mathf.Max(_bkMaxRoot, _player.RootPos.Y);
+            float headTop = _player.SoleLevel + _playerSpec.Height;
+            _bkMaxHead = Mathf.Max(_bkMaxHead, headTop);
             if (_player.SoleLevel >= TerraceL1 - 1f) _bkOnDeck = true;
             if (_xPhaseT > 12f)
             {
-                float headRoom = Mathf.Max(1.5f, _playerSpec.Height - 10.5f + 0.5f);
-                float cap = TerraceL1 - 2.2f - headRoom + 0.75f;
-                GD.Print($"BONK maxRoot={_bkMaxRoot:F1} cap={cap:F1} onDeck={_bkOnDeck} settleSole={_player.SoleLevel:F1}");
-                if (!_bkOnDeck && _bkMaxRoot <= cap && _player.SoleLevel <= 0.7f)
+                float cap = TerraceL1 - 2.2f; // the underside itself
+                GD.Print($"BONK maxHead={_bkMaxHead:F1} under={cap:F1} maxRoot={_bkMaxRoot:F1} onDeck={_bkOnDeck} settleSole={_player.SoleLevel:F1}");
+                if (!_bkOnDeck && _bkMaxHead <= cap + 0.05f && _player.SoleLevel <= 0.7f)
                 { GD.Print("TERRACE BONK PASS: flight stops at the deck underside"); GetTree().Quit(0); return; }
                 GD.PrintErr("TERRACE BONK FAIL"); GetTree().Quit(1);
             }
@@ -2889,7 +2942,8 @@ public partial class RiderDuel
             GD.Print($"MISSION PATROL start: enemy distToPlayer={_mDistE0:F0} foe distToPlayer={_mDistF0:F0}");
             QueueCapture("res://proof/mission_base.png", "mbase", "missionBase", () =>
             QueueCapture("res://proof/mission_vista.png", "mvista", "missionVista", () =>
-            { _mPhase = 1; _mPhaseT = 0f; }));
+            QueueCapture("res://proof/gate_sky.png", "gsky", "gatesky", () =>
+            { _mPhase = 1; _mPhaseT = 0f; })));
             _mPhase = 99;
         }
         else if (_mPhase == 1)
