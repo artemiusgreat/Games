@@ -451,27 +451,19 @@ public partial class RiderDuel
         if (w == _player || distToPlayer < 45f) _shake = 1.0f;
         GD.Print($"DEATHBLOW {TagOf(w)} exploded into debris");
         w.SetDarkened(true);
-        if (w == _player)
-        {
-            _banner.Text = "RIDER DESTROYED — press R to reset";
-            _banner.Modulate = new Color(1f, 0.35f, 0.28f);
-            _bannerSub.Visible = false;
-        }
-        else if (_foe != null && _enemyDead && _foe.Dead)
+        // No centre banner for a destruction (owner: the
+        // "NAME DESTROYED / press R to reset" text overlapped
+        // the exit confirmation popup) — the wreck, the feed
+        // and the target readout carry the news; R still
+        // resets. Only the match-end VICTORY keeps the banner.
+        if (w != _player && _foe != null && _enemyDead && _foe.Dead)
         {
             // Free-for-all won: both opponents are down.
             _banner.Text = "VICTORY";
             _banner.Modulate = new Color(0.55f, 1f, 0.6f);
             _bannerSub.Visible = true;
+            _banner.Visible = true;
         }
-        else
-        {
-            var spec = _foe != null && w == _foe.Walker ? _foe.Spec : _enemySpec;
-            _banner.Text = $"{spec.Name} DESTROYED";
-            _banner.Modulate = new Color(1f, 0.85f, 0.35f);
-            _bannerSub.Visible = true;
-        }
-        _banner.Visible = true;
     }
 
     private void SpawnDmgNumber(Vector3 point, float dmg, Color col)
