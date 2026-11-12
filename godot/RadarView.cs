@@ -26,7 +26,16 @@ public partial class RadarView : Control
     public RiderWalker Enemy2;
     public bool Enemy2Down;
 
-    private const float Range = 90f;
+    // Scope range in world units (owner, 2026-11-11 round 6:
+    // 'radar seems broken, dot positions don't change' — at
+    // the old fixed 90u the mission enemies sat ~1,074u away,
+    // so both contacts were rim-clamped for the entire
+    // approach and only their bearing crept). Set by the HUD
+    // from the world: 600u on missions (the firefight reads
+    // in the inner half, bearings track along the rim before
+    // that), 160u in the arena (spawns ~139u apart now read
+    // just inside the rim instead of clamped on it).
+    public float Range = 160f;
 
     // World XZ offset -> heading-up screen offset: the
     // player's forward maps to screen-up, their right to
@@ -64,11 +73,13 @@ public partial class RadarView : Control
         // across its chord.
         var minor = new Color(ink, 0.10f);
         var major = new Color(ink, 0.20f);
-        for (int k = -6; k <= 6; k++)
+        float cell = Range / 12f;
+        int cells = Mathf.CeilToInt(half / (cell * px)) + 1;
+        for (int k = -cells; k <= cells; k++)
         {
             if (k == 0) continue;
             var col = k % 2 == 0 ? major : minor;
-            float o = k * 15f * px;
+            float o = k * cell * px;
             float ch = Mathf.Sqrt(Mathf.Max(0f, half * half - o * o));
             DrawLine(c + new Vector2(o, -ch), c + new Vector2(o, ch), col, 1f);
             DrawLine(c + new Vector2(-ch, o), c + new Vector2(ch, o), col, 1f);
@@ -77,10 +88,10 @@ public partial class RadarView : Control
         DrawLine(c + new Vector2(-half, 0f), c + new Vector2(half, 0f), major, 1f);
         DrawLine(c + new Vector2(0f, -half), c + new Vector2(0f, half), major, 1f);
 
-        // Circular range rings at 30/60/90 (the rim is 90).
+        // Circular range rings at Range/3 steps (the rim is Range).
         for (int r = 1; r <= 3; r++)
         {
-            float o = r * 30f * px;
+            float o = r * (Range / 3f) * px;
             DrawArc(c, o, 0f, Mathf.Tau, 96, new Color(ink, r == 3 ? 0.4f : 0.28f), 1f);
         }
 

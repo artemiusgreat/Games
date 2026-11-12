@@ -80,7 +80,8 @@ public partial class RiderDuel
         {
             Player = _player,
             Enemy = _enemy,
-            CustomMinimumSize = new Vector2(300f, 300f)
+            CustomMinimumSize = new Vector2(300f, 300f),
+            Range = WorldConfig.IsMission ? 600f : 160f
         };
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
         _panelRadar.AddChild(_radar);
