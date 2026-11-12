@@ -28,12 +28,18 @@ public static class CityKits
     {
         if (_kits.TryGetValue(kit, out var cached)) return cached;
         var list = new List<Entry>();
-        for (int i = 0; ; i++)
+        // Scan a bounded index range and SKIP missing
+        // models: the kit's roster is whatever files are
+        // present. (Owner, 2026-11-12: the seven heavy
+        // towers were deleted from kit4 outright — the old
+        // stop-at-first-gap scan would have emptied the
+        // whole kit and fallen back to procedural boxes.)
+        for (int i = 0; i < 64; i++)
         {
             string path = $"res://assets/citykits/kit{kit}/b_{i}.glb";
-            if (!ResourceLoader.Exists(path)) break;
+            if (!ResourceLoader.Exists(path)) continue;
             var scene = ResourceLoader.Load<PackedScene>(path);
-            if (scene == null) break;
+            if (scene == null) continue;
             var probe = scene.Instantiate<Node3D>();
             var box = Measure(probe);
             probe.Free();
