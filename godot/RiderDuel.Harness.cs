@@ -2628,7 +2628,6 @@ public partial class RiderDuel
     {
         _xPhaseT += dt;
         if (_xPhase == 5 || _xPhase == 6) { UpdateDeckWalkTest(dt); return; }
-        if (_xPhase == 95) { UpdateSlopeContactTest(dt); return; }
         if (_xPhase == 94) { UpdateBlockedWalkTest(dt); return; }
         if (_xPhase == 93) { UpdateRampSideTest(dt); return; }
         if (_xPhase == 96) { UpdateFreezeTest(dt); return; }
@@ -2654,37 +2653,6 @@ public partial class RiderDuel
                 simg.SavePng("res://proof/splat.png");
                 GD.Print($"SPLAT saved {simg.GetWidth()}x{simg.GetHeight()}");
                 GetTree().Quit(0); return;
-            }
-            if (start == "19")
-            {
-                // Slope contact probe (owner, 2026-11-12:
-                // 'walking turned into flying — the rider
-                // must touch the ground'): stage on the
-                // steepest stretch of the pad0->pad1 road
-                // (rim crossings), drive DOWNHILL, and track
-                // the planted feet's engine-truth clearance.
-                _xPhase = 95; _xPhaseT = 0f;
-                _scMaxDiff = 0f; _scLogged = false;
-                var pa = Main.SpawnPads[0]; var pb = Main.SpawnPads[1];
-                var va = new Vector2(pa.X, pa.Y); var vb = new Vector2(pb.X, pb.Y);
-                var seg = vb - va; float segLen = seg.Length(); var sdir = seg / segLen;
-                var scSpot = va + sdir * (segLen * 0.35f); float bestGrade = 0f;
-                for (float t = 0.2f; t <= 0.6f; t += 0.02f)
-                {
-                    var p = va + sdir * (segLen * t);
-                    float grade = Mathf.Abs(Main.HeightAt(p.X - sdir.X * 20f, p.Y - sdir.Y * 20f)
-                                          - Main.HeightAt(p.X + sdir.X * 20f, p.Y + sdir.Y * 20f)) / 40f;
-                    if (grade > bestGrade) { bestGrade = grade; scSpot = p; }
-                }
-                float hBack = Main.HeightAt(scSpot.X - sdir.X * 20f, scSpot.Y - sdir.Y * 20f);
-                float hFwd = Main.HeightAt(scSpot.X + sdir.X * 20f, scSpot.Y + sdir.Y * 20f);
-                var down = hFwd < hBack ? sdir : -sdir;
-                _scDownYaw = RiderWalker.YawOf(new Vector3(down.X, 0f, down.Y));
-                _player.Teleport(new Vector3(scSpot.X, 0f, scSpot.Y), _scDownYaw);
-                GD.Print($"SLOPECONTACT staged at ({scSpot.X:F0},{scSpot.Y:F0}) grade={bestGrade:F2} downYaw={Mathf.RadToDeg(_scDownYaw):F0}deg");
-                GD.Print($"SLOPECONTACT atstage analytic {_player.FootReport(false)}");
-                GD.Print($"SLOPECONTACT atstage engine   {_player.FootReport(true)}");
-                return;
             }
             if (start == "11")
             {
@@ -3134,29 +3102,6 @@ public partial class RiderDuel
             if (_rsMinPerp >= stopAt - 0.6f)
             { GD.Print("RAMP SIDE PASS: the wedge's side stopped the rider"); GetTree().Quit(0); return; }
             GD.PrintErr("RAMP SIDE FAIL"); GetTree().Quit(1);
-        }
-    }
-
-    private float _scMaxDiff, _scDownYaw; private bool _scLogged;
-    private void UpdateSlopeContactTest(float dt) // phase 19: downhill walk — planted feet must touch (owner, 2026-11-12)
-    {
-        _player.SetDrive(_scDownYaw, 3.0f);
-        float md = _player.MaxPlantedDiff();
-        if (md > _scMaxDiff + 0.03f)
-        {
-            _scMaxDiff = md;
-            GD.Print($"SLOPECONTACT newmax t={_xPhaseT:F2} diff={md:F3} root={_player.RootPos} analytic {_player.FootReport(false)} engine {_player.FootReport(true)}");
-        }
-        if (_xPhaseT > 3.5f && !_scLogged)
-        {
-            _scLogged = true;
-            GD.Print($"SLOPECONTACT mid engine {_player.FootReport(true)}");
-            QueueCapture("res://proof/slope_contact.png", "slopecontact", "slopeSide");
-        }
-        if (_xPhaseT > 7f)
-        {
-            GD.Print($"SLOPECONTACT maxPlantedDiff={_scMaxDiff:F3} engine {_player.FootReport(true)}");
-            GetTree().Quit(0);
         }
     }
 

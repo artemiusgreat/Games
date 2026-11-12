@@ -648,28 +648,11 @@ public partial class RiderWalker : Node3D
         // stride at run speed \u2014 the Enyo's legs spread
         // enormously in run mode. Forward must stay world-anchored.)
         var pos = leg.StepFrom.Lerp(leg.StepTo, e);
-        float liftNow = Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;
-        pos.Y += liftNow;
+        pos.Y += Mathf.Sin(Mathf.Pi * t) * _cfg.StepLift;
         var yawB = YawBasis();
         var rel = yawB.Inverse() * (pos - _rootPos);
         rel.X = leg.StepFromLocal.X + (leg.StepToLocal.X - leg.StepFromLocal.X) * e;
         pos = _rootPos + yawB * rel;
-        // Terrain-hugging swing (owner, 2026-11-12, same
-        // report): the straight chord sailed the stepping
-        // foot high over FALLING ground — chord lift plus
-        // the terrain dropping away under it read as
-        // flight. Cap the swing at the live surface under
-        // the foot plus the same lift arc: on flat ground
-        // the cap never binds; uphill the brow pokes above
-        // the chord and the chord keeps the foot (no new
-        // clipping); only the excess over falling terrain
-        // is trimmed. The plant itself (t >= 1) always
-        // lands exactly on the solved StepTo.
-        if (t < 1f)
-        {
-            float capY = GroundHere(pos.X, pos.Z) + liftNow + 0.05f;
-            if (pos.Y > capY) pos.Y = capY;
-        }
         leg.SoleTarget = pos;
         if (t >= 1f) leg.StepTo = pos; // plant at the corrected spot
         var qa = leg.StepBasisFrom.GetRotationQuaternion();
@@ -867,52 +850,9 @@ public partial class RiderWalker : Node3D
 
     private float DesiredRootY()
     {
-        // Root reference = the LOWEST PLANTED foot (owner,
-        // 2026-11-12: 'the rider must touch the ground
-        // while walking'). The old average of both feet
-        // rode the body halfway up a slope: the downhill
-        // leg then had to reach past its standing length,
-        // the solve clamped short, and a PLANTED foot
-        // hovered — probe measured 1.09u off the snow on a
-        // 0.26 grade. Riding on the lowest planted foot
-        // keeps that leg at stand length (it always
-        // touches) and the uphill leg simply folds deeper
-        // at the knee. On flat ground both refs are equal,
-        // so nothing changes there. A swinging foot does
-        // not hold the body up; its StepTo counts only
-        // when neither foot is planted (a transient).
-        float best = float.MaxValue;
-        foreach (var leg in new[] { _legL, _legR })
-            if (leg.Planted) best = Mathf.Min(best, leg.SoleTarget.Y + leg.AnkleAboveSoleW);
-        // Anticipate a DESCENDING step (same report, second
-        // cut): with the reference switching only at
-        // touchdown, the smoothed root (8/s lerp) lagged a
-        // full step-drop behind and the just-planted
-        // downhill foot hung short — probe still measured
-        // 0.87u after the min-reference change. Blend the
-        // reference toward a LOWER StepTo along the swing's
-        // own easing, so the body pre-descends with the
-        // stepping foot and arrives as it lands: the weight
-        // transfer of a real step down. Asymmetric on
-        // purpose — a too-LOW root costs nothing (the knee
-        // folds, the sole stays planted); only a too-HIGH
-        // root breaks contact. Ascending steps never
-        // anticipate.
-        if (best != float.MaxValue)
-            foreach (var leg in new[] { _legL, _legR })
-            {
-                if (leg.Planted || leg.StepT < 0f) continue;
-                float stepRef = leg.StepTo.Y + leg.AnkleAboveSoleW;
-                if (stepRef < best)
-                {
-                    float t = Mathf.Clamp(leg.StepT, 0f, 1f);
-                    float e = t * t * (3f - 2f * t);
-                    best = Mathf.Lerp(best, stepRef, e);
-                }
-            }
-        if (best == float.MaxValue)
-            best = 0.5f * ((_legL.StepTo.Y + _legL.AnkleAboveSoleW) + (_legR.StepTo.Y + _legR.AnkleAboveSoleW));
-        return best + _hipRiseW - _hipAboveHolderW + _bob;
+        float refL = (_legL.Planted ? _legL.SoleTarget.Y : _legL.StepTo.Y) + _legL.AnkleAboveSoleW;
+        float refR = (_legR.Planted ? _legR.SoleTarget.Y : _legR.StepTo.Y) + _legR.AnkleAboveSoleW;
+        return 0.5f * (refL + refR) + _hipRiseW - _hipAboveHolderW + _bob;
     }
 
     private void UpdateRoot(float h)
@@ -969,17 +909,14 @@ public partial class RiderWalker : Node3D
         // Gait lean (owner, 2026-11-12): a walking body
         // leans into its stride — the weight shifts onto
         // the forward leg instead of the torso hanging
-        // back over the trailing one. First cut was 0.011
-        // per u/s (2.3 degrees at walk): his side-view
-        // verdict was 'about to trip over and fall down',
-        // so the lean is cut to under half — about 1
-        // degree at walk, capped near 2.6 degrees at a
-        // run. It reverses when backing up, composes on
-        // top of the terrain tilt and eases through
-        // _upEased like every other tilt.
+        // back over the trailing one. The lean grows with
+        // speed (about 2.3 degrees at walk, capped near
+        // 5.7 degrees at a run) and reverses when backing
+        // up; it composes on top of the terrain tilt and
+        // eases through _upEased like every other tilt.
         if (_fallT < 0f && !_freezeLegs && Mathf.Abs(_speed) > 0.05f)
         {
-            float lean = Mathf.Clamp(Mathf.Abs(_speed) * 0.005f, 0f, 0.045f) * Mathf.Sign(_speed);
+            float lean = Mathf.Clamp(Mathf.Abs(_speed) * 0.011f, 0f, 0.10f) * Mathf.Sign(_speed);
             upT = (upT + fwd * Mathf.Tan(lean)).Normalized();
         }
         // Limp: permanent lean toward a dead leg, on top of terrain tilt.
