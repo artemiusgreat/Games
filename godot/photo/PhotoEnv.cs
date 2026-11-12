@@ -214,6 +214,11 @@ void fragment() {
         return ImageTexture.CreateFromImage(img);
     }
 
+    // Harness hook (phase 18): the baked splat weights as
+    // an image, so ground-material complaints can be
+    // diagnosed channel by channel instead of by eye.
+    internal static Image SplatImage() => BuildSplat().GetImage();
+
     public static Material TerrainMaterial()
     {
         var sh = new Shader { Code = TerrainShader.Replace("WORLD_SIZE",

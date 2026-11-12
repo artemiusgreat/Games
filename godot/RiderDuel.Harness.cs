@@ -2568,6 +2568,14 @@ public partial class RiderDuel
             if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
             if (start == "9") { _xPhase = 97; RunDeckShot(); return; }
             if (start == "16") { RunShotBlock(); return; }
+            if (start == "17") { RunRadarCheck(); return; }
+            if (start == "18")
+            {
+                var simg = PhotoEnv.SplatImage();
+                simg.SavePng("res://proof/splat.png");
+                GD.Print($"SPLAT saved {simg.GetWidth()}x{simg.GetHeight()}");
+                GetTree().Quit(0); return;
+            }
             if (start == "11")
             {
                 // Under-deck light + island containment
@@ -2579,7 +2587,8 @@ public partial class RiderDuel
                 QueueCapture("res://proof/underdeck.png", "under", "underdeck",
                     () => QueueCapture("res://proof/decktop.png", "decktop", "decktop",
                         () => QueueCapture("res://proof/homevalley.png", "home", "homecam",
-                            () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); })));
+                            () => QueueCapture("res://proof/passview.png", "pass", "passcam",
+                                () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); }))));
                 return;
             }
             if (start == "12")
@@ -2593,7 +2602,7 @@ public partial class RiderDuel
                 // gait must keep marching (steps continue), and
                 // the root must not pass the block's west face.
                 _xPhase = 94; _xPhaseT = 0f;
-                _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue; _bwShot = false;
+                _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue; _bwShot = false; _bwFootPen = float.MinValue;
                 var st = TestDeckPoint + new Vector2(-34f, 0f);
                 _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(Vector3.Right));
                 return;
@@ -2867,6 +2876,42 @@ public partial class RiderDuel
         else { GD.PrintErr($"DECKSHOT FAIL: {fails} case(s)"); GetTree().Quit(1); }
     }
 
+    // Phase 17 (owner round 7: 'radar is still broken'):
+    // the lab rebuilds walkers on a rider swap, so the
+    // radar's walker references must be refreshed by the
+    // HUD update — poison them, update once, expect live
+    // references back; then assert the scope geometry
+    // (dead ahead = top centre, dead right = right).
+    private void RunRadarCheck()
+    {
+        int fails = 0;
+        void Check(string name, bool ok, string detail)
+        {
+            GD.Print($"RADAR {name}: {(ok ? "ok" : "FAIL")} {detail}");
+            if (!ok) fails++;
+        }
+        _radar.Player = _enemy; _radar.Enemy = _player; // stale, as after a lab swap
+        UpdateHud();
+        Check("binding", _radar.Player == _player && _radar.Enemy == _enemy,
+            $"playerLive={_radar.Player == _player} enemyLive={_radar.Enemy == _enemy}");
+        float yaw = _player.LegsYaw;
+        var fwd = new Vector3(-Mathf.Sin(yaw), 0f, -Mathf.Cos(yaw));
+        var right = new Vector3(Mathf.Cos(yaw), 0f, -Mathf.Sin(yaw));
+        _enemy.Teleport(_player.RootPos + fwd * 100f, yaw);
+        var s1 = _radar.ScopeOf(_enemy.RootPos);
+        Check("ahead", Mathf.Abs(s1.X) < 2f && Mathf.Abs(s1.Y + 100f) < 2f,
+            $"scope=({s1.X:F1},{s1.Y:F1}) want (0,-100)");
+        if (_foe != null)
+        {
+            _foe.Walker.Teleport(_player.RootPos + right * 80f, yaw);
+            var s2 = _radar.ScopeOf(_foe.Walker.RootPos);
+            Check("right", Mathf.Abs(s2.X - 80f) < 2f && Mathf.Abs(s2.Y) < 2f,
+                $"scope=({s2.X:F1},{s2.Y:F1}) want (80,0)");
+        }
+        if (fails == 0) { GD.Print("RADAR PASS: live bindings after a swap; ahead is top centre, right is right"); GetTree().Quit(0); }
+        else { GD.PrintErr($"RADAR FAIL: {fails} case(s)"); GetTree().Quit(1); }
+    }
+
     // Phase 16 (owner round 7): obstacles must block shots
     // and the arch must be walkable — columns (movement-only
     // before), arch pillars, the arch lintel (nothing before),
@@ -2983,6 +3028,7 @@ public partial class RiderDuel
     }
 
     private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
+    private float _bwFootPen; // phase 12: deepest planted-foot penetration into a blocking circle
     private int _fzSteps0, _fzStepsFrozen; private float _fzMaxH, _fzMaxY; private bool _fzWasAir;
 
     // Phase 14: thruster flight discipline (owner rounds 4-5).
@@ -3087,6 +3133,24 @@ public partial class RiderDuel
         if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
         _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f);
         _bwMaxX = Mathf.Max(_bwMaxX, _player.RootPos.X);
+        // Foot clamp (owner round 7, option 1): a PLANTED
+        // foot's centre must never sit inside a blocking
+        // circle (same exemptions as the clamp itself:
+        // roofs being stepped onto, buildings based above
+        // the foot, pass-through stones).
+        foreach (bool left in new[] { true, false })
+        {
+            if (!_player.LegPlanted(left)) continue;
+            var fp = _player.SolePos(left);
+            foreach (var c in _props)
+            {
+                if (c.Pass) continue;
+                if (c.RoofTop > 0f && fp.Y + 1.5f >= c.RoofTop) continue;
+                if (c.BaseY > 0f && fp.Y < c.BaseY - 1.5f) continue;
+                float pen = c.R - new Vector2(fp.X - c.P.X, fp.Z - c.P.Y).Length();
+                if (pen > _bwFootPen) _bwFootPen = pen;
+            }
+        }
         if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only — steps AFTER this are the march metric
         if (_xPhaseT > 10.5f && !_bwShot)
         {
@@ -3098,12 +3162,14 @@ public partial class RiderDuel
             bool engaged = _bwEngageSteps >= 0;
             int stepsWhileBlocked = engaged ? _player.Steps - _bwEngageSteps : _player.Steps - _bwSteps0;
             float westFace = TestDeckPoint.X - 16f;
-            GD.Print($"BLOCKED engaged={engaged} stepsWhileBlocked={stepsWhileBlocked} maxX={_bwMaxX:F1} westFace={westFace:F1} rootX={_player.RootPos.X:F1}");
+            GD.Print($"BLOCKED engaged={engaged} stepsWhileBlocked={stepsWhileBlocked} maxX={_bwMaxX:F1} westFace={westFace:F1} rootX={_player.RootPos.X:F1} footPen={_bwFootPen:F2}");
             // The owner's current word: the walk cycle keeps
             // running against the collider (marching), the
             // root must not pass, and Blocked must engage.
-            if (engaged && _bwMaxX <= westFace + 3.4f)
-            { GD.Print("BLOCKED WALK PASS: root held at the obstacle (steps while blocked are the natural rig's, reported above, not a verdict term)"); GetTree().Quit(0); return; }
+            // Plus round 7 option 1: planted feet stay out of
+            // the obstacle (footPen <= 0.05).
+            if (engaged && _bwMaxX <= westFace + 3.4f && _bwFootPen <= 0.05f)
+            { GD.Print("BLOCKED WALK PASS: root held at the obstacle, planted feet clamped out of it (steps while blocked are the natural rig's, reported above, not a verdict term)"); GetTree().Quit(0); return; }
             GD.PrintErr("BLOCKED WALK FAIL"); GetTree().Quit(1);
         }
     }

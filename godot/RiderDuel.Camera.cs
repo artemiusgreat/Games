@@ -111,6 +111,20 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(hp.X - 150f, 62f, hp.Y + 150f);
             _cam.LookAt(new Vector3(hp.X + 30f, 8f, hp.Y - 10f), Vector3.Up);
         }
+        else if (_camMode == "passcam")
+        {
+            // On the road at the home->pad2 saddle, rider
+            // height, looking along the road through the arch
+            // (owner round 7: the pass floor must not wear
+            // the mountain's grass/stone mix — the mix ends
+            // where the slope meets the ground).
+            var a = Main.SpawnPads[0]; var b = Main.SpawnPads[1];
+            var mid = (a + b) * 0.5f;
+            var dirv = new Vector3(b.X - a.X, 0f, b.Y - a.Y).Normalized();
+            var eye = new Vector3(mid.X, Main.HeightAt(mid.X, mid.Y), mid.Y) - dirv * 55f + new Vector3(0f, 9f, 0f);
+            _cam.GlobalPosition = eye;
+            _cam.LookAt(eye + dirv * 10f + new Vector3(0f, 1.5f, 0f), Vector3.Up);
+        }
         else if (_camMode == "gatesky")
         {
             // Gate City sky check (owner: 'Saturn ring still
