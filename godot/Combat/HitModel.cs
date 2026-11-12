@@ -250,13 +250,52 @@ public sealed class HitModel
             float along0 = (from.X - r.Cx) * r.DirX + (from.Z - r.Cz) * r.DirZ;
             float f0 = from.Y - slope * along0 - hMid;
             float df = dir.Y - slope * (dir.X * r.DirX + dir.Z * r.DirZ);
-            if (Mathf.Abs(df) < 1e-7f) continue;
-            float t = -f0 / df;
-            if (t < 0f || t > maxT) continue;
-            var p = from + dir * t;
-            float along = (p.X - r.Cx) * r.DirX + (p.Z - r.Cz) * r.DirZ;
-            float perp = -(p.X - r.Cx) * r.DirZ + (p.Z - r.Cz) * r.DirX;
-            if (Mathf.Abs(along) <= r.HalfLen && Mathf.Abs(perp) <= r.HalfWid) Take(t);
+            if (Mathf.Abs(df) >= 1e-7f)
+            {
+                float t = -f0 / df;
+                if (t >= 0f && t <= maxT)
+                {
+                    var p = from + dir * t;
+                    float along = (p.X - r.Cx) * r.DirX + (p.Z - r.Cz) * r.DirZ;
+                    float perp = -(p.X - r.Cx) * r.DirZ + (p.Z - r.Cz) * r.DirX;
+                    if (Mathf.Abs(along) <= r.HalfLen && Mathf.Abs(perp) <= r.HalfWid) Take(t);
+                }
+            }
+            // Wedge band (owner round 7): the solid under the
+            // slope plane is 3.5 thick — a level shot into the
+            // wedge's side, or up into its underside, must
+            // stop too, not just a shot landing on the plane.
+            // Underside plane first (same math, hMid - 3.5):
+            float f0b = from.Y - slope * along0 - (hMid - 3.5f);
+            float tb = Mathf.Abs(df) >= 1e-7f ? -f0b / df : -1f;
+            if (tb >= 0f && tb <= maxT)
+            {
+                var pb = from + dir * tb;
+                float ab = (pb.X - r.Cx) * r.DirX + (pb.Z - r.Cz) * r.DirZ;
+                float pp2 = -(pb.X - r.Cx) * r.DirZ + (pb.Z - r.Cz) * r.DirX;
+                if (Mathf.Abs(ab) <= r.HalfLen && Mathf.Abs(pp2) <= r.HalfWid) Take(tb);
+            }
+            // Side entry: slab test in the ramp's own frame;
+            // the hit counts when the entry height sits
+            // inside [h(along) - 3.5, h(along)].
+            float oP = -(from.X - r.Cx) * r.DirZ + (from.Z - r.Cz) * r.DirX;
+            float dA = dir.X * r.DirX + dir.Z * r.DirZ;
+            float dP = -dir.X * r.DirZ + dir.Z * r.DirX;
+            float t0 = 0f, t1 = maxT; bool ok = true;
+            if (Mathf.Abs(dA) < 1e-8f) { if (Mathf.Abs(along0) > r.HalfLen) ok = false; }
+            else { float u1 = (-r.HalfLen - along0) / dA, u2 = (r.HalfLen - along0) / dA; if (u1 > u2) (u1, u2) = (u2, u1); t0 = Mathf.Max(t0, u1); t1 = Mathf.Min(t1, u2); }
+            if (ok)
+            {
+                if (Mathf.Abs(dP) < 1e-8f) { if (Mathf.Abs(oP) > r.HalfWid) ok = false; }
+                else { float u1 = (-r.HalfWid - oP) / dP, u2 = (r.HalfWid - oP) / dP; if (u1 > u2) (u1, u2) = (u2, u1); t0 = Mathf.Max(t0, u1); t1 = Mathf.Min(t1, u2); }
+            }
+            if (ok && t0 <= t1 && t0 <= maxT)
+            {
+                float aE = along0 + dA * t0;
+                float hE = Mathf.Lerp(r.H0, r.H1, Mathf.Clamp((aE + r.HalfLen) / (2f * r.HalfLen), 0f, 1f));
+                float yE = from.Y + dir.Y * t0;
+                if (yE <= hE + 0.001f && yE >= hE - 3.5f - 0.001f) Take(t0);
+            }
         }
         return best;
     }

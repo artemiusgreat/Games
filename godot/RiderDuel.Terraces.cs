@@ -401,7 +401,22 @@ public partial class RiderDuel
                 };
                 holder.AddChild(pil);
                 _props.Add(new Circle { P = pp, R = 2.6f, RoofTop = top });
+                _hit.Props.Add(new HitModel.PropCyl { P = pp, R = 2.6f, BaseY = by, Height = top - by + 2f });
             }
+            // The lintel is an obstacle and a floor (owner,
+            // round 7: 'the arc at the enemy base doesn't
+            // have collider — everything meant to be an
+            // obstacle should have collider and preferably
+            // allow to walk on it'): a FLAT ramp rect across
+            // the pass — same 3.5-thick wedge the ramps use —
+            // gives it ground, ceiling, side push-out and
+            // shot planes in one registration. Its top is
+            // the mesh top: (top + 1.7) + 3.5/2 = top + 3.45.
+            Main.Ramps.Add(new Main.RampRect
+            {
+                Cx = mid.X, Cz = mid.Y, DirX = perp.X, DirZ = perp.Y,
+                HalfLen = 12.25f, HalfWid = 2.5f, H0 = top + 3.45f, H1 = top + 3.45f
+            });
             var lin = new MeshInstance3D
             {
                 Mesh = new BoxMesh { Size = new Vector3(24.5f, 3.5f, 5f) },
@@ -457,6 +472,12 @@ public partial class RiderDuel
     private void AddColumn(Vector2 p, float topY, int lvl, Vector2 face)
     {
         float h = Mathf.Max(topY, 1f);
+        // Shot collision (owner, 2026-11-11 round 7: 'I can
+        // shoot through column even it is an obstacle'): the
+        // movement circle existed, the hit cylinder did not.
+        // Every column funnels through here, so one
+        // registration covers decks and bridges alike.
+        _hit.Props.Add(new HitModel.PropCyl { P = p, R = 1.15f, BaseY = 0f, Height = h });
         var col = new MeshInstance3D
         {
             Mesh = new CylinderMesh { TopRadius = 1.15f, BottomRadius = 1.15f, Height = h, RadialSegments = 18 },
