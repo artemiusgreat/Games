@@ -49,12 +49,20 @@ public partial class RadarView : Control
         return new Vector2(dWorld.Dot(r), -dWorld.Dot(f));
     }
 
+    // Scope offset of a world position, in world units,
+    // unclamped: (0, -dist) is dead ahead, (+dist, 0) is
+    // dead right. Public so the harness can assert the
+    // instrument's geometry directly (phase 17).
+    public Vector2 ScopeOf(Vector3 world)
+    {
+        var p = Player.RootPos;
+        return ToScope(new Vector2(world.X - p.X, world.Z - p.Z));
+    }
+
     private void DrawContact(RiderWalker w, bool down, Vector2 c, float px, float maxOff)
     {
         if (w == null || down || Player == null) return;
-        var p = Player.RootPos;
-        var e = w.RootPos;
-        var d = ToScope(new Vector2(e.X - p.X, e.Z - p.Z)) * px;
+        var d = ScopeOf(w.RootPos) * px;
         if (d.Length() > maxOff) d = d.Normalized() * maxOff; // clamp to the rim
         DrawCircle(c + d, 4.5f, new Color(1f, 0.3f, 0.22f, 0.95f));
     }

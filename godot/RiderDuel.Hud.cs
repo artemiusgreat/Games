@@ -648,6 +648,19 @@ public partial class RiderDuel
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
         if (_radar != null)
         {
+            // Refresh EVERY reference every frame (owner,
+            // 2026-11-11 round 7: 'radar is still broken' —
+            // measured off his screenshot: both contacts sat
+            // at exactly +/-30 degrees, rim-clamped, the view
+            // from the HOME PAD at spawn yaw. The lab rebuilds
+            // the player and enemy walkers on a rider swap
+            // (QueueFree + BuildRider), so the references the
+            // radar captured at BuildHud went stale and it
+            // plotted from the first walker, parked at spawn,
+            // forever). Enemy2 was already refreshed here;
+            // Player and Enemy now are too.
+            _radar.Player = _player;
+            _radar.Enemy = _enemy;
             _radar.EnemyDown = _enemyDead;
             _radar.Enemy2 = _foe?.Walker;
             _radar.Enemy2Down = _foe?.Dead ?? true;
