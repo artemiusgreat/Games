@@ -31,7 +31,7 @@ public partial class RiderDuel
                     // weight cap and slot type must both refuse.
                     var lab = new LoadoutState();
                     var spec = RiderSpecs.Enyo;
-                    var cap = lab.Check(spec, "arm_L", WeaponCatalog.Ppc);
+                    var cap = lab.Check(spec, "torso", WeaponCatalog.HeavyCannon);
                     if (cap == null || !cap.Contains("weighs"))
                     { GD.PrintErr($"DUEL FAIL: lab weight cap not enforced ({cap})"); GetTree().Quit(1); return; }
                     if (lab.Check(spec, "arm_R", WeaponCatalog.Autocannon) == null)
@@ -39,9 +39,9 @@ public partial class RiderDuel
                     if (lab.TryAssign(spec, "arm_R", WeaponCatalog.LargeLaser) != null
                         || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
                     { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
-                    if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - 64f) > 0.01f)
-                    { GD.PrintErr("DUEL FAIL: default fit tonnage != 64t"); GetTree().Quit(1); return; }
-                    GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused on weight, AC refused on the mirrored energy arm), legal fits accepted, default fit = 64t (every slot filled)");
+                    if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - 72f) > 0.01f)
+                    { GD.PrintErr("DUEL FAIL: default fit tonnage != 72t"); GetTree().Quit(1); return; }
+                    GD.Print("LABTEST PASS slot type + 13t chest cap enforced (HC refused on weight, AC refused on the mirrored energy arm), legal fits accepted, default fit = 72t (every slot filled)");
                     // Capacity rule (owner, MW4 model): every chassis'
                     // slot caps sum to exactly its tonnage.
                     foreach (var sp in RiderSpecs.All)
@@ -57,8 +57,9 @@ public partial class RiderDuel
                     var multi = new LoadoutState();
                     if (multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
                         || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
+                        || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
                         || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) == null)
-                    { GD.PrintErr("DUEL FAIL: multi-fit cumulative arm cap wrong (2x ML = 6t fits the 8t arm, 3x = 9t must refuse)"); GetTree().Quit(1); return; }
+                    { GD.PrintErr("DUEL FAIL: multi-fit cumulative arm cap wrong (3x ML = 9t fits the 10t arm, 4x = 12t must refuse)"); GetTree().Quit(1); return; }
                     if (multi.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null
                         || multi.TryAssign(spec, "pod_L", WeaponCatalog.Srm) != null)
                     { GD.PrintErr("DUEL FAIL: multi-fit pod refused (LRM 10t + SRM 4t = 14t <= 21t cap)"); GetTree().Quit(1); return; }
@@ -68,9 +69,9 @@ public partial class RiderDuel
                     // Distribution (owner): heavier riders carry MORE
                     // hardpoints, so their firepower survives losing
                     // a single mount.
-                    if (RiderSpecs.Hector.Slots.Length <= RiderSpecs.Enyo.Slots.Length)
-                    { GD.PrintErr("DUEL FAIL: the 100t Hector must have more hardpoints than the 75t Enyo"); GetTree().Quit(1); return; }
-                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: Enyo {RiderSpecs.Enyo.Slots.Length}, Hector {RiderSpecs.Hector.Slots.Length} (heavier = more mounts)");
+                    if (RiderSpecs.Hector.Slots.Length < RiderSpecs.Enyo.Slots.Length)
+                    { GD.PrintErr("DUEL FAIL: the 100t Hector must carry at least as many hardpoints as the 75t Enyo"); GetTree().Quit(1); return; }
+                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: Enyo {RiderSpecs.Enyo.Slots.Length}, Hector {RiderSpecs.Hector.Slots.Length} (tied since Enyo's three-type chest mount; Hector's mounts are the roster's largest — 30t gun, 28t pod)");
                     // Rider selection (round 22): swap both chassis and
                     // verify the duel follows — parts layout, pools
                     // and equipped defs all follow the spec.

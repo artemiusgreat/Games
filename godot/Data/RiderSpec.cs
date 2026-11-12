@@ -60,10 +60,19 @@ public static class RiderSpecs
         ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 4.8f,
         FlipKneePole = false,
+        // Three types on every rider (owner, 2026-11-12):
+        // Energy, Cannons, Rockets. Enyo's cannons ride a
+        // chest mount (pool-owned torso part, like Hector's
+        // chest slot). And because the chassis reads
+        // naturally symmetrical, its slot tonnage splits
+        // EQUALLY left/right (owner): arms 10 + 10, pods
+        // 21 + 21, the 13t chest mount on the centreline —
+        // caps still sum to the 75t budget.
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 25f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 10f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 10f },
+            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Ballistic, MaxWeight = 13f },
             new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
             new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
@@ -78,10 +87,11 @@ public static class RiderSpecs
     // (Demeter / Theseus cannons). Pods sit outside the
     // rule, with one constraint: a rider whose rocket pods
     // exist on one side only uses them as rockets — every
-    // pod on the roster is a missile mount. Enyo mirrors
-    // energy on both arms (its Timber Wolf laser fit); it
-    // carries no cannon — the twin LRM pods are its heavy
-    // punch.
+    // pod on the roster is a missile mount. Every rider
+    // also carries all three types (owner, same day):
+    // Enyo mirrors energy on both arms and mounts its
+    // cannon in the chest; Prometheus's rockets return on
+    // the fused SRM housing (see its spec).
     public static readonly RiderSpec Hector = new()
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
@@ -104,10 +114,14 @@ public static class RiderSpecs
     };
 
     // PROMETHEUS (Hellbringer kit, 65t Heavy): three mounts —
-    // the ballistic arm, the energy arm, and the torso missile
-    // rack (the kit's SRM housing is fused into the torso mesh,
-    // so the rack is a torso slot, not a breakable pod). Caps
-    // sum to the 65t budget.
+    // Four mounts: mirrored energy arms, a ballistic torso
+    // rack, and the missile pod on the left shoulder (fused
+    // into the torso mesh; RiderParts carves it out as a
+    // real pod part from the measured census region). The
+    // pod restores Prometheus's rockets under the owner's
+    // three-types rule (Energy, Cannons, Rockets on every
+    // rider, 2026-11-12) after the mirrored-arm pass had
+    // left it with two. Caps sum to the 65t budget.
     public static readonly RiderSpec Prometheus = new()
     {
         Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = true,
@@ -116,9 +130,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 22f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 23f },
-            new SlotDef { Id = "torso", Display = "TORSO RACK", Type = WeaponSlotType.Ballistic, MaxWeight = 20f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 20f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+            new SlotDef { Id = "torso", Display = "TORSO RACK", Type = WeaponSlotType.Ballistic, MaxWeight = 14f },
+            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 10f },
         }
     };
 
@@ -211,8 +226,9 @@ public static class RiderSpecs
     {
         ["enyo"] = new[]
         {
-            ("arm_L", new[] { "large_laser", "medium_laser" }),                    // 8/8t
-            ("arm_R", new[] { "large_laser", "large_laser", "medium_laser", "medium_laser" }),  // 16/25t
+            ("arm_L", new[] { "large_laser", "large_laser" }),                      // 10/10t
+            ("arm_R", new[] { "large_laser", "large_laser" }),                      // 10/10t
+            ("torso", new[] { "autocannon" }),                                      // 12/13t
             ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
             ("pod_R", new[] { "lrm", "lrm" }),                                     // 20/21t
         },
@@ -226,9 +242,10 @@ public static class RiderSpecs
         },
         ["prometheus"] = new[]
         {
-            ("arm_L", new[] { "ppc", "large_laser", "large_laser", "medium_laser" }), // 22/22t
-            ("arm_R", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser" }), // 23/23t
-            ("torso", new[] { "ac20", "machine_gun", "machine_gun" }),                                     // 20/20t
+            ("arm_L", new[] { "ppc", "large_laser", "large_laser", "small_laser" }), // 20/20t
+            ("arm_R", new[] { "ppc", "ppc", "medium_laser" }),                        // 21/21t
+            ("torso", new[] { "autocannon", "machine_gun" }),                         // 14/14t
+            ("pod_L", new[] { "lrm" }),                                               // 10/10t
         },
         ["medea"] = new[]
         {

@@ -136,11 +136,17 @@ public sealed class RiderParts
         {
             // Hellbringer kit: the head is the cockpit hood region
             // split out of the Torso mesh (measured on the built
-            // model: |x| <= 1.3, top front). No pod split — the
-            // SRM housing is fused into the torso, so the missile
-            // slot rides on the torso part itself.
+            // model: |x| <= 1.3, top front). The missile pod on
+            // the LEFT shoulder (owner, 2026-11-12: 'obvious pods
+            // for missiles on its left shoulder') is fused into
+            // the same Torso mesh — the census puts it at
+            // X 1.10..2.28, height 10.6..12.1 (610 verts, a
+            // distinct block above the shoulder line; axis
+            // mapping cross-checked against Enyo's pod census),
+            // so SplitTorso carves it as a real pod part.
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
+                ("Pod_L", p => p.X >= 1.12f && p.Y >= 10.55f),
                 // Classification space note: measured on the
                 // built model — the cockpit is the top of the
                 // torso's dense front slab, which lands at
@@ -150,6 +156,7 @@ public sealed class RiderParts
                 ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 11.0f && p.Z >= -0.72f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart("pod_L", "LEFT POD", 45f, byName, "TorsoPod_L");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
             AddPart("arm_L", "LEFT ARM", 90f, byName,
                 "ShoulderAct_L", "UpperArm_L", "UpperArm2_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
