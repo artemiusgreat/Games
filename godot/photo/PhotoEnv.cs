@@ -164,8 +164,15 @@ void fragment() {
                     Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e; // rise per unit
                 float patch = ValueNoise(x * 0.045f, z * 0.045f) * 0.65f
                             + ValueNoise(x * 0.23f, z * 0.23f) * 0.35f;
-                float rock = Mathf.SmoothStep(0.30f, 0.62f, slope)
-                           + Mathf.SmoothStep(13f, 20f, h) * 0.7f;
+                // Rock is a SLOPE material only (owner,
+                // 2026-11-11 round 7: 'ground should not
+                // look the same as mountains — the grass/
+                // stone mix should end where the mountain
+                // goes into the ground'). The old height
+                // term (+0.7 above h=13) dragged stone onto
+                // every elevated flat — the pass floors wore
+                // the mountain's face. Steep faces keep it.
+                float rock = Mathf.SmoothStep(0.30f, 0.62f, slope);
                 float dirt = Mathf.SmoothStep(0.52f, 0.72f, patch) * (1f - rock);
                 float grass = Mathf.Max(0f, 1f - rock - dirt);
                 float road = 1f - Mathf.SmoothStep(2.25f, 3.1f, Main.RoadDistance(x, z));

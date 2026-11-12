@@ -450,13 +450,21 @@ public partial class Main : Node3D
 	{
 		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return 1e6f;
 		float p = CityGrid.Pitch;
-		// Terraced city: the street lattice repeats per valley.
+		// Terraced city: the street lattice repeats per
+		// valley — except the home valley (owner, 2026-11-11
+		// round 7): no city stands there (rounds 4/6 emptied
+		// it), so no streets are painted there either. The
+		// lattice across the empty home floor was the
+		// checkerboard that survived every other fix: plot
+		// rectangles of snow between asphalt grid lines.
 		if (WorldConfig.TerracedCity)
 		{
 			float best = 1e6f;
 			float extV = CityGrid.Radius + p;
-			foreach (var pad in SpawnPads)
+			for (int pi = 0; pi < SpawnPads.Length; pi++)
 			{
+				if (pi == 0) continue; // home valley: no city, no streets
+				var pad = SpawnPads[pi];
 				float lx = x - pad.X, lz = z - pad.Y;
 				if (lx * lx + lz * lz > extV * extV) continue;
 				float vx = lx / p - 0.5f, vz = lz / p - 0.5f;
