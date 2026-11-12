@@ -576,6 +576,32 @@ public partial class RiderWalker : Node3D
         var home = HomeSlot(leg, predRoot) + vel * 0.30f;
         leg.StepFrom = leg.SoleTarget;
         leg.StepTo = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
+        // Stride symmetry (owner, 2026-11-12): the stepping
+        // foot may not land further ahead of the root than
+        // the planted foot sits behind it. The old target —
+        // a home slot around a root predicted StepTime +
+        // 0.10 ahead, plus another 0.30 of velocity lead —
+        // threw the leg far in front while the support foot
+        // trailed only by the step threshold, so the torso
+        // rode behind the stride and the gait lurched. The
+        // lead is now capped at the support foot's current
+        // trail: the root travels over the planted foot
+        // (the weight shift) and the stride mirrors
+        // front-to-back. The obstacle FootClamp below still
+        // has the final word and can only shorten the step.
+        if (Mathf.Abs(_speed) > 0.05f)
+        {
+            var dir = HeadingVec(_legsYaw) * Mathf.Sign(_speed);
+            float trail = -(Other(leg).SoleTarget - _rootPos).Dot(dir);
+            var to = leg.StepTo - _rootPos;
+            float lead = to.Dot(dir);
+            if (lead > trail)
+            {
+                var lat = to - dir * lead;
+                var clamped = _rootPos + lat + dir * Mathf.Max(trail, 0f);
+                leg.StepTo = new Vector3(clamped.X, GroundHere(clamped.X, clamped.Z), clamped.Z);
+            }
+        }
         if (FootClamp != null)
         {
             // Clamp the landing point out of obstacles, then
@@ -880,6 +906,19 @@ public partial class RiderWalker : Node3D
         var upT = (Vector3.Up - right * dhLat - fwd * dhFwd).Normalized();
         float tilt = Mathf.Acos(Mathf.Clamp(upT.Dot(Vector3.Up), -1f, 1f));
         if (tilt > 0.23f) upT = Vector3.Up.Lerp(upT, 0.23f / tilt).Normalized();
+        // Gait lean (owner, 2026-11-12): a walking body
+        // leans into its stride — the weight shifts onto
+        // the forward leg instead of the torso hanging
+        // back over the trailing one. The lean grows with
+        // speed (about 2.3 degrees at walk, capped near
+        // 5.7 degrees at a run) and reverses when backing
+        // up; it composes on top of the terrain tilt and
+        // eases through _upEased like every other tilt.
+        if (_fallT < 0f && !_freezeLegs && Mathf.Abs(_speed) > 0.05f)
+        {
+            float lean = Mathf.Clamp(Mathf.Abs(_speed) * 0.011f, 0f, 0.10f) * Mathf.Sign(_speed);
+            upT = (upT + fwd * Mathf.Tan(lean)).Normalized();
+        }
         // Limp: permanent lean toward a dead leg, on top of terrain tilt.
         // upT - right*sin leans the body's top toward its anatomical left.
         if (LimpRoll != 0f)

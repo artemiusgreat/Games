@@ -97,6 +97,7 @@ public partial class RiderDuel : Node3D
     private double _phaseT;
     private int _strideShots;
     private float _minTreeSep, _minRiderSep;
+    private float _gaitWorst = -1e9f; private int _gaitN; private bool _strideCaptured;
     private int _pLimpStep;
     private int _aimStep;
     private double _aimT0;
