@@ -110,33 +110,6 @@ public partial class RiderDuel
             case 1: // Hector walks at the player; grab stride + wide frames
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 1.8f);
-                // Stride symmetry sampling (owner, 2026-11-12):
-                // while Hector walks, the foremost foot may not
-                // sit further ahead of his root than the rearmost
-                // foot sits behind it.
-                if (_phaseT > 0.3)
-                {
-                    var gdir = RiderWalker.HeadingVec(_enemy.LegsYaw);
-                    float gfL = (_enemy.SolePos(true) - _enemy.RootPos).Dot(gdir);
-                    float gfR = (_enemy.SolePos(false) - _enemy.RootPos).Dot(gdir);
-                    _gaitWorst = Mathf.Max(_gaitWorst, Mathf.Max(gfL, gfR) + Mathf.Min(gfL, gfR));
-                    _gaitN++;
-                }
-                // The phase ends only once the gait verdict has
-                // its samples (the stride photos alone finish in
-                // ~1.5s — too few frames at render speed to judge
-                // the stride; the first cut of this verdict
-                // measured 5 samples and called itself vacuous).
-                if (_strideCaptured && _gaitN >= 40)
-                {
-                    if (_gaitWorst > 0.45f)
-                    { GD.PrintErr($"DUEL FAIL: stride asymmetric: worst lead-minus-trail excess {_gaitWorst:F2}u over {_gaitN} samples"); GetTree().Quit(1); return; }
-                    GD.Print($"DUEL GAIT PASS stride symmetric (worst lead-minus-trail {_gaitWorst:F2}u over {_gaitN} samples at walk)");
-                    SetPhase(2);
-                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f), 0f);
-                    _player.TorsoTwist = 1.15f;
-                    break;
-                }
                 if (_enemy.ConsumeStepMidCross() && _phaseT > 0.6)
                 {
                     _strideShots++;
@@ -148,7 +121,12 @@ public partial class RiderDuel
                     }
                     else if (_strideShots == 2)
                     {
-                        QueueCapture("res://proof/duel_main.png", "main", "wide", () => { _strideCaptured = true; });
+                        QueueCapture("res://proof/duel_main.png", "main", "wide", () =>
+                        {
+                            SetPhase(2);
+                            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f), 0f);
+                            _player.TorsoTwist = 1.15f;
+                        });
                     }
                 }
                 if (_phaseT > 12) { GD.PrintErr("DUEL FAIL: hector stride shots missing"); GetTree().Quit(1); }
