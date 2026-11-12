@@ -77,16 +77,31 @@ uniform vec4 grass_tint : source_color = vec4(1.0);
 uniform vec4 dirt_tint : source_color = vec4(1.0);
 uniform vec4 rock_tint : source_color = vec4(1.0);
 uniform vec4 asph_tint : source_color = vec4(1.0);
-// Solid ground zones (owner, 2026-11-11 round 6: 'replace
-// checkerboard with solid color'): inside a zone (xy =
-// centre XZ, z = radius, w = strength) the ground renders
-// as ONE flat colour — no splat patches, no texture grain.
+// Uniform ground zones (owner, 2026-11-11 round 6,
+// corrected round 7: 'when I said solid color I meant it
+// should look the same as the ground in other places'):
+// inside a zone (xy = centre XZ, z = radius, w = strength)
+// the splat's rock/grass/dirt weights freeze to the zone
+// centre's own mix, so the patch and paving noise that
+// read as blotches/checkerboard cannot vary the surface —
+// while the detail textures, normals and road weight stay
+// fully live. The ground is the same material as anywhere
+// else; it just stops changing its recipe mid-valley.
 uniform vec4 solid_zones[4];
-uniform vec4 solid_col : source_color = vec4(0.0);
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
     vec4 sp = texture(splat, wpos.xz / WORLD_SIZE + 0.5);
+    float zf = 0.0; vec3 zrgb = vec3(0.0);
+    for (int zi = 0; zi < 4; zi++) {
+        vec4 zn = solid_zones[zi];
+        if (zn.w > 0.001) {
+            float dd = distance(wpos.xz, zn.xy);
+            float f = zn.w * (1.0 - smoothstep(zn.z - 14.0, zn.z, dd));
+            if (f > zf) { zf = f; zrgb = texture(splat, zn.xy / WORLD_SIZE + 0.5).rgb; }
+        }
+    }
+    sp = vec4(mix(sp.rgb, zrgb, zf), sp.a);
     float tot = max(sp.r + sp.g + sp.b + sp.a, 0.001);
     float wr = sp.r / tot, wg = sp.g / tot, wb = sp.b / tot, wa = sp.a / tot;
     vec2 uv1 = wpos.xz * 0.055;
@@ -104,21 +119,11 @@ void fragment() {
     vec3 arm = vec3(1.0, 0.9, 0.0);
     arm *= wg * texture(grass_arm, uv1).rgb + wb * texture(dirt_arm, uv1).rgb
          + wr * texture(rock_arm, uv1).rgb + wa * texture(asph_arm, uv1).rgb;
-    float sf = 0.0;
-    for (int zi = 0; zi < 4; zi++) {
-        vec4 zn = solid_zones[zi];
-        if (zn.w > 0.001) {
-            float dd = distance(wpos.xz, zn.xy);
-            sf = max(sf, zn.w * (1.0 - smoothstep(zn.z - 14.0, zn.z, dd)));
-        }
-    }
-    alb = mix(alb, solid_col.rgb, sf);
-    nrm = mix(nrm, vec3(0.5, 0.5, 1.0), sf);
     ALBEDO = alb;
     NORMAL_MAP = nrm;
     NORMAL_MAP_DEPTH = 0.9;
-    ROUGHNESS = mix(clamp(arm.g, 0.05, 1.0), 0.95, sf);
-    AO = mix(arm.r, 1.0, sf);
+    ROUGHNESS = clamp(arm.g, 0.05, 1.0);
+    AO = arm.r;
 }
 ";
 
@@ -225,12 +230,13 @@ void fragment() {
             gt = new Color(1.55f, 1.65f, 1.95f); dt = new Color(1.45f, 1.55f, 1.85f);
             rt = new Color(1.35f, 1.45f, 1.75f); at = new Color(1.05f, 1.12f, 1.30f);
         }
-        // Solid ground zones (owner round 6): on mission
-        // city maps the valley floors (and the Gate City
-        // disc) render as one flat colour — the splat patch
-        // field read as a checkerboard there no matter how
-        // smooth the weights got. Snow city: pale blue-grey
-        // concrete; plain city: mid concrete.
+        // Uniform ground zones (owner round 6, corrected
+        // round 7): on mission city maps the valley floors
+        // (and the Gate City disc) freeze their splat
+        // recipe to the pad centre's mix in the shader —
+        // same ground as everywhere else, minus the patch
+        // blotches. (Round 6 first rendered them as one
+        // flat colour: a blue plastic sheet. Replaced.)
         var zones = new Vector4[4];
         if (WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.City)
         {
@@ -239,8 +245,6 @@ void fragment() {
                 zones[i] = new Vector4(Main.SpawnPads[i].X, Main.SpawnPads[i].Y, padR, 1f);
             if (!WorldConfig.TerracedCity)
                 zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
-            m.SetShaderParameter("solid_col", WorldConfig.SnowGround
-                ? new Color(0.58f, 0.64f, 0.74f) : new Color(0.33f, 0.34f, 0.35f));
         }
         m.SetShaderParameter("solid_zones", zones);
         m.SetShaderParameter("grass_tint", gt);
