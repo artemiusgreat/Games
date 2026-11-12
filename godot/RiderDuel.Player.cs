@@ -8,8 +8,27 @@ public partial class RiderDuel
 {
     // ---------- input ----------
 
+    // Caps Lock state (owner, 2026-11-11 round 6: 'when
+    // Capslock is on, switch to run mode'). Godot's input
+    // events carry no lock state, so on Windows the toggle
+    // is polled from the OS each frame (GetKeyState,
+    // VK_CAPITAL); elsewhere it is tracked from the
+    // CapsLock key's own presses.
+    private bool _capsLockOn;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern short GetKeyState(int vKey);
+
+    private void PollCapsLock()
+    {
+        if (OS.HasFeature("windows"))
+            _capsLockOn = (GetKeyState(0x14) & 1) != 0; // VK_CAPITAL toggle bit
+    }
+
     public override void _Input(InputEvent e)
     {
+        if (!OS.HasFeature("windows") && e is InputEventKey ck && ck.Pressed && !ck.Echo && ck.Keycode == Key.Capslock)
+            _capsLockOn = !_capsLockOn;
         // While the RiderLab is open the mouse belongs to the GUI: the
         // click-to-capture below would hide the cursor the moment a
         // drag starts and kill drag-and-drop (owner's bug report).
@@ -106,6 +125,7 @@ public partial class RiderDuel
 
     private void UpdatePlayerInput(float delta)
     {
+        PollCapsLock();
         ApplyPlayerInput(delta,
             Input.IsPhysicalKeyPressed(Key.W), Input.IsPhysicalKeyPressed(Key.S),
             Input.IsPhysicalKeyPressed(Key.A), Input.IsPhysicalKeyPressed(Key.D),
@@ -126,8 +146,10 @@ public partial class RiderDuel
         float f = _player.SpeedFactor;
         if (a) _playerYaw += TurnRate * f * delta;
         if (d) _playerYaw -= TurnRate * f * delta;
-        // SHIFT + W = run mode (RunFactor x walk speed); reverse stays at walk pace.
-        _running = shift && w;
+        // Run mode (RunFactor x walk speed): SHIFT held, or
+        // Caps Lock on (owner round 6); W only — reverse
+        // stays at walk pace.
+        _running = (shift || _capsLockOn) && w;
         float spd = 0f;
         if (w) spd = _playerSpec.MaxSpeed * (_running ? RunFactor : 1f);
         if (w && _player.Thrusting) spd += 3.0f; // jets burning + forward key: the thrusters push the rider forward too (owner)
