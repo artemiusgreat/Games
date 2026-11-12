@@ -1518,11 +1518,18 @@ public partial class RiderDuel
                     // wrecked legs limp, they never kill — so a dead
                     // Hector must show hp == 0 exactly.
                     if (_hpEnemy != 0f)
-                        WFail($"dead hector hp={_hpEnemy:F1} (want pool kill, hp 0)");
-                    if (!_enemy.Halted) WFail("dead hector walker not halted");
-                    if (!_banner.Visible || _banner.Text != "HECTOR DESTROYED")
-                        WFail($"kill banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
-                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, banner 'HECTOR DESTROYED'");
+                    { WFail($"dead hector hp={_hpEnemy:F1} (want pool kill, hp 0)"); return; }
+                    if (!_enemy.Halted) { WFail("dead hector walker not halted"); return; }
+                    // No centre banner for a destruction (owner,
+                    // round 4 — the game's current contract: the
+                    // wreck, the feed and the target readout
+                    // carry the news). The banner must stay DOWN
+                    // and the readout must say DESTROYED.
+                    if (_banner.Visible)
+                    { WFail($"kill raised the centre banner ('{_banner.Text}') — destructions must not"); return; }
+                    if (!_lblRange.Text.Contains("DESTROYED"))
+                    { WFail($"target readout does not carry the kill: '{_lblRange.Text}'"); return; }
+                    GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, no banner, readout '{_lblRange.Text}'");
                     _wDeadShotQueued = true;
                     QueueCapture("res://proof/weapons_hector_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
                 }
@@ -1541,10 +1548,13 @@ public partial class RiderDuel
                         Point = _player.RootPos + Vector3.Up * 8f
                     };
                     ApplyDamage(_player, 9999f, dummy, Roles.Enemy);
-                    if (!_playerDead) WFail("player death flag not set");
-                    if (!_banner.Visible || _banner.Text != "RIDER DESTROYED — press R to reset")
-                        WFail($"player banner wrong: visible={_banner.Visible} text='{_banner.Text}'");
-                    GD.Print("WPNTEST PLAYERDEATH PASS banner 'RIDER DESTROYED — press R to reset'");
+                    if (!_playerDead) { WFail("player death flag not set"); return; }
+                    // Same no-banner contract for the player's
+                    // own death (owner, round 4): R still resets,
+                    // but nothing raises the centre banner.
+                    if (_banner.Visible)
+                    { WFail($"player death raised the centre banner ('{_banner.Text}') — it must not"); return; }
+                    GD.Print("WPNTEST PLAYERDEATH PASS death certified, no banner (round-4 contract)");
                 }
                 if (_wShotsFired == 1 && _wPhaseT > 0.9)
                 {
