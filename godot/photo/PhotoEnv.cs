@@ -97,7 +97,7 @@ void fragment() {
         vec4 zn = solid_zones[zi];
         if (zn.w > 0.001) {
             float dd = distance(wpos.xz, zn.xy);
-            float f = zn.w * (1.0 - smoothstep(zn.z - 14.0, zn.z, dd));
+            float f = zn.w * (1.0 - smoothstep(zn.z - 34.0, zn.z, dd));
             if (f > zf) { zf = f; zrgb = texture(splat, zn.xy / WORLD_SIZE + 0.5).rgb; }
         }
     }
@@ -162,8 +162,17 @@ void fragment() {
                 float slope = Mathf.Max(
                     Mathf.Abs(Main.HeightAt(x + e, z) - h),
                     Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e; // rise per unit
-                float patch = ValueNoise(x * 0.045f, z * 0.045f) * 0.65f
-                            + ValueNoise(x * 0.23f, z * 0.23f) * 0.35f;
+                // Blurry-cloud variation (owner, 2026-11-12):
+                // the ground must carry NO obvious shapes — no
+                // blotches, no stripes, no rims. Every weight
+                // below therefore crosses a WIDE smoothstep at
+                // reduced strength, so the recipe drifts like
+                // cloud shadows instead of swapping at an edge.
+                // (The old patch field's fine 0.23 octave and
+                // the narrow dirt/street/road bands drew the
+                // shapes in his screenshot.)
+                float patch = ValueNoise(x * 0.032f, z * 0.032f) * 0.85f
+                            + ValueNoise(x * 0.09f, z * 0.09f) * 0.15f;
                 // Rock is a SLOPE material only (owner,
                 // 2026-11-11 round 7: 'ground should not
                 // look the same as mountains — the grass/
@@ -173,10 +182,30 @@ void fragment() {
                 // every elevated flat — the pass floors wore
                 // the mountain's face. Steep faces keep it.
                 float rock = Mathf.SmoothStep(0.30f, 0.62f, slope);
-                float dirt = Mathf.SmoothStep(0.52f, 0.72f, patch) * (1f - rock);
+                float dirt = Mathf.SmoothStep(0.30f, 0.85f, patch) * 0.6f * (1f - rock);
                 float grass = Mathf.Max(0f, 1f - rock - dirt);
-                float road = 1f - Mathf.SmoothStep(2.25f, 3.1f, Main.RoadDistance(x, z));
-                float street = 1f - Mathf.SmoothStep(5.5f, 8f, Main.DistrictStreetDistance(x, z));
+                // No full-strength core on the road either
+                // (splat audit, 2026-11-12: the +-1.4u plateau
+                // still drew a bright stripe down its middle) —
+                // a pure gradient from a 0.65 peak, gone by
+                // 7.5u. The district streets drop to a faint
+                // wash: at full strength their grid lattice IS
+                // the checkerboard the owner keeps reporting.
+                float road = (1f - Mathf.SmoothStep(0f, 7.5f, Main.RoadDistance(x, z))) * 0.65f;
+                float street = (1f - Mathf.SmoothStep(2f, 16f, Main.DistrictStreetDistance(x, z))) * 0.3f;
+                // Plaza carve (splat audit round 2): the open
+                // ground around a pad — the patrol plaza where
+                // fights happen — carries no street wash at
+                // all; the lattice there was the last crisp
+                // pattern left in the weights. Streets fade
+                // back in between 58u and 92u from a pad.
+                float padD = float.MaxValue;
+                foreach (var pad in Main.SpawnPads)
+                {
+                    float pdx = x - pad.X, pdz = z - pad.Y;
+                    padD = Mathf.Min(padD, Mathf.Sqrt(pdx * pdx + pdz * pdz));
+                }
+                street *= Mathf.SmoothStep(58f, 92f, padD);
                 road = Mathf.Max(road, street);
                 // Biome weights (owner's map types): the desert
                 // runs sand (dirt channel, tinted) with only a
@@ -185,14 +214,14 @@ void fragment() {
                 // ground, grass all but vanishes.
                 if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
                 {
-                    dirt = Mathf.SmoothStep(0.30f, 0.52f, patch) * (1f - rock);
+                    dirt = Mathf.SmoothStep(0.15f, 0.80f, patch) * (1f - rock);
                     grass = Mathf.Max(0f, 1f - rock - dirt) * 0.35f;
                 }
                 else if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
                 {
                     float blocks = ValueNoise(x * 0.021f + 9f, z * 0.021f + 3f);
-                    float paved = Mathf.SmoothStep(0.34f, 0.52f, blocks) * (1f - Mathf.SmoothStep(0.5f, 0.8f, slope));
-                    road = Mathf.Max(road, paved * 0.9f);
+                    float paved = Mathf.SmoothStep(0.05f, 0.95f, blocks) * (1f - Mathf.SmoothStep(0.5f, 0.8f, slope));
+                    road = Mathf.Max(road, paved * 0.45f);
                     grass *= 0.12f;
                     dirt *= 0.5f;
                 }
