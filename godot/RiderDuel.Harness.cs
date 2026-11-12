@@ -2553,6 +2553,7 @@ public partial class RiderDuel
         if (_xPhase == 94) { UpdateBlockedWalkTest(dt); return; }
         if (_xPhase == 93) { UpdateRampSideTest(dt); return; }
         if (_xPhase == 96) { UpdateFreezeTest(dt); return; }
+        if (_xPhase == 98) { UpdateUnderDeckTest(dt); return; }
         if (_xPhase == 0 && _xPhaseT > 1.5f)
         {
             if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
@@ -2566,6 +2567,7 @@ public partial class RiderDuel
             if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
             if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
             if (start == "9") { _xPhase = 97; RunDeckShot(); return; }
+            if (start == "16") { RunShotBlock(); return; }
             if (start == "11")
             {
                 // Under-deck light + island containment
@@ -2607,6 +2609,35 @@ public partial class RiderDuel
                 _fzSteps0 = -1; _fzStepsFrozen = 0; _fzMaxH = 0f; _fzMaxY = 0f; _fzWasAir = false;
                 var hp = Main.SpawnPads[0];
                 _player.Teleport(new Vector3(hp.X, 0f, hp.Y - 25f), 0f);
+                return;
+            }
+            if (start == "15")
+            {
+                // Under-deck drive (owner, 2026-11-11 round 6:
+                // 'why does rider sometimes get stuck under
+                // the platform?'): stage on the ground south of
+                // a building that stands ON an L1 deck and
+                // drive straight through its XZ. The building's
+                // collision circle used to run from below the
+                // terrain to its roof — an invisible wall under
+                // the deck. With the base gate the rider walks
+                // under the deck, through the building's
+                // footprint, and out the other side.
+                _xPhase = 98; _xPhaseT = 0f;
+                Vector2 bp = Vector2.Zero; bool found = false;
+                foreach (var pc in _hit.Props)
+                {
+                    if (pc.BaseY < 15f || pc.BaseY > 30f) continue;
+                    bool blocked = false;
+                    foreach (var c in _props)
+                        if (c.R <= 1.2f && Mathf.Abs(c.P.X - pc.P.X) < 3.6f && c.P.Y > pc.P.Y - 8f && c.P.Y < pc.P.Y + 16f) { blocked = true; break; }
+                    if (blocked) continue;
+                    bp = pc.P; found = true; break;
+                }
+                if (!found) { GD.PrintErr("UNDERDECK FAIL: no deck building with a clear approach"); GetTree().Quit(1); return; }
+                _udTarget = bp;
+                _player.Teleport(new Vector3(bp.X, 0f, bp.Y + 16f), 0f);
+                GD.Print($"UNDERDECK staged under deck building at ({bp.X:F0},{bp.Y:F0})");
                 return;
             }
             if (start == "13")
@@ -2836,6 +2867,70 @@ public partial class RiderDuel
         else { GD.PrintErr($"DECKSHOT FAIL: {fails} case(s)"); GetTree().Quit(1); }
     }
 
+    // Phase 16 (owner round 7): obstacles must block shots
+    // and the arch must be walkable — columns (movement-only
+    // before), arch pillars, the arch lintel (nothing before),
+    // and the ramp wedge BAND (only the slope plane before).
+    private void RunShotBlock()
+    {
+        int fails = 0;
+        void Check(string name, bool ok, string detail)
+        {
+            GD.Print($"SHOTBLOCK {name}: {(ok ? "ok" : "FAIL")} {detail}");
+            if (!ok) fails++;
+        }
+        // 1. Column: horizontal ray into a tall column's side.
+        bool colFound = false;
+        foreach (var pc in _hit.Props)
+        {
+            if (pc.R < 1.1f || pc.R > 1.2f || pc.Height < 15f) continue;
+            colFound = true;
+            float y = pc.BaseY + pc.Height * 0.5f;
+            var hc = _hit.Ray(new Vector3(pc.P.X, y, pc.P.Y + 10f), new Vector3(0f, 0f, -1f), 30f, Roles.Player);
+            Check("column", hc.Hit && hc.Target == Roles.Prop && Mathf.Abs(hc.T - 8.85f) < 0.9f,
+                $"hit={hc.Hit} tgt={hc.Target} t={hc.T:F2} want ~8.85 at ({pc.P.X:F0},{pc.P.Y:F0})");
+            break;
+        }
+        if (!colFound) Check("column", false, "no tall column prop found");
+        // 2. Arch lintel: walkable top + band blocks a level
+        // shot + the road under it stays open.
+        var pads = Main.SpawnPads;
+        var amid = (pads[0] + pads[1]) / 2f;
+        var adir = (pads[1] - pads[0]).Normalized();
+        var aperp = new Vector2(-adir.Y, adir.X);
+        float agy = Main.HeightAt(amid.X, amid.Y);
+        float atop = agy + 16f, lintelTop = atop + 3.45f;
+        float gTop = Main.GroundAt(amid.X, amid.Y, lintelTop + 1.5f);
+        Check("lintel-walk", Mathf.Abs(gTop - lintelTop) < 0.35f, $"groundAt={gTop:F2} want {lintelTop:F2}");
+        // Approach along the road (the lintel's long face):
+        // from beside the pass the hillside itself is in the
+        // way — that is terrain doing its job, not a gap.
+        var hl = _hit.Ray(new Vector3(amid.X - adir.X * 8.5f, atop + 1.7f, amid.Y - adir.Y * 8.5f),
+            new Vector3(adir.X, 0f, adir.Y), 30f, Roles.Player);
+        Check("lintel-band", hl.Hit && hl.Target == Roles.Terrain && Mathf.Abs(hl.T - 6.0f) < 1.1f,
+            $"hit={hl.Hit} tgt={hl.Target} t={hl.T:F2} want ~6.0 (surface, not a prop)");
+        var hu = _hit.Ray(new Vector3(amid.X - adir.X * 15f, agy + 7f, amid.Y - adir.Y * 15f),
+            new Vector3(adir.X, 0f, adir.Y), 30f, Roles.Player);
+        Check("arch-clear", !hu.Hit, $"hit={hu.Hit} tgt={hu.Target} t={hu.T:F1} (road under the arch must stay open)");
+        // 3. Ramp wedge band: level shot into the test ramp's
+        // side at mid-slope, 1.5 under the plane.
+        Main.RampRect best = default; float bd = float.MaxValue;
+        foreach (var r in Main.Ramps)
+        {
+            var foot = new Vector2(r.Cx - r.DirX * r.HalfLen, r.Cz - r.DirZ * r.HalfLen);
+            float d = foot.DistanceTo(TestRampFoot);
+            if (d < bd) { bd = d; best = r; }
+        }
+        float hMid = (best.H0 + best.H1) * 0.5f;
+        var rperp = new Vector2(-best.DirZ, best.DirX);
+        var hwb = _hit.Ray(new Vector3(best.Cx + rperp.X * (best.HalfWid + 10f), hMid - 1.5f, best.Cz + rperp.Y * (best.HalfWid + 10f)),
+            new Vector3(-rperp.X, 0f, -rperp.Y), 40f, Roles.Player);
+        Check("wedge-band", hwb.Hit && Mathf.Abs(hwb.T - 10f) < 1.3f,
+            $"hit={hwb.Hit} tgt={hwb.Target} t={hwb.T:F2} want ~10 (foot match d={bd:F1})");
+        if (fails == 0) { GD.Print("SHOTBLOCK PASS: columns, arch and ramp wedges block shots; the lintel is walkable"); GetTree().Quit(0); }
+        else { GD.PrintErr($"SHOTBLOCK FAIL: {fails} case(s)"); GetTree().Quit(1); }
+    }
+
     private void RunSeamScan()
     {
         int bad = 0; string worst = "";
@@ -2900,6 +2995,21 @@ public partial class RiderDuel
     // watch: maxRootY across all cycles must stay under 55
     // (one honest arc is ~24) and the final settle is on
     // the terrain.
+    private Vector2 _udTarget;
+    private void UpdateUnderDeckTest(float dt)
+    {
+        _xPhaseT += dt;
+        _player.SetDrive(0f, 3.6f);
+        if (_xPhaseT > 15f) // 15s: llvmpipe dt quanta halve the effective stride speed (~1.9 u/s measured) — the pass line needs ~10s
+        {
+            float z = _player.RootPos.Z;
+            GD.Print($"UNDERDECK rootZ={z:F1} targetZ={_udTarget.Y:F1} sole={_player.SoleLevel:F1}");
+            if (z <= _udTarget.Y - 2f && _player.SoleLevel < 5f)
+            { GD.Print("UNDERDECK PASS: rider walks under the deck through a deck building's footprint"); GetTree().Quit(0); return; }
+            GD.PrintErr("UNDERDECK FAIL: root held above the target line (invisible wall)"); GetTree().Quit(1);
+        }
+    }
+
     private void UpdateFreezeTest(float dt)
     {
         // Cycle timeline (9s each): walk 1.5s, burn to empty
@@ -2931,6 +3041,12 @@ public partial class RiderDuel
     private void PrintTriCount()
     {
         long total = 0, kit = 0, terrain = 0; int meshes = 0;
+        var groups = new System.Collections.Generic.Dictionary<string, (long Tris, int Count, long Each)>();
+        void AddGroup(string key, long tris)
+        {
+            if (groups.TryGetValue(key, out var g)) groups[key] = (g.Tris + tris, g.Count + 1, g.Each);
+            else groups[key] = (tris, 1, tris);
+        }
         var stack = new System.Collections.Generic.Stack<Node>();
         stack.Push(GetTree().Root);
         while (stack.Count > 0)
@@ -2938,15 +3054,33 @@ public partial class RiderDuel
             var n = stack.Pop();
             foreach (var ch in n.GetChildren()) stack.Push(ch);
             if (n is MultiMeshInstance3D mm && mm.Multimesh != null && mm.Multimesh.Mesh != null)
-            { total += (long)mm.Multimesh.Mesh.GetFaces().Length / 3 * mm.Multimesh.InstanceCount; meshes++; continue; }
+            {
+                long mt = (long)mm.Multimesh.Mesh.GetFaces().Length / 3 * mm.Multimesh.InstanceCount;
+                total += mt; meshes++;
+                string mk = mm.Multimesh.Mesh.ResourcePath ?? "";
+                AddGroup(mk != "" ? mk.Split("::")[0] + " (multimesh)" : $"code:{mm.Multimesh.Mesh.GetType().Name} (multimesh)", mt);
+                continue;
+            }
             if (n is not MeshInstance3D mi || mi.Mesh == null) continue;
             long tris = mi.Mesh.GetFaces().Length / 3; meshes++;
             total += tris;
             string rp = mi.Mesh.ResourcePath ?? "";
             if (rp.Contains("citykits")) kit += tris;
             else if (rp == "" && tris > terrain) terrain = tris; // largest code-built mesh = the heightfield
+            string key = rp != "" ? rp.Split("::")[0]
+                : !string.IsNullOrEmpty(mi.Mesh.ResourceName) ? "code:" + mi.Mesh.ResourceName
+                : $"code:{mi.Mesh.GetType().Name}:{tris}";
+            AddGroup(key, tris);
         }
         GD.Print($"TRICOUNT meshes={meshes} total={total} kitBuildings={kit} terrain={terrain} rest={total - kit - terrain}");
+        // Per-object table (owner, 2026-11-11 round 6): which
+        // objects carry the polygons, so removal candidates
+        // are measured, not guessed.
+        var rows = new System.Collections.Generic.List<(string K, long T, int C, long E)>();
+        foreach (var kv in groups) rows.Add((kv.Key, kv.Value.Tris, kv.Value.Count, kv.Value.Each));
+        rows.Sort((a, b) => b.T.CompareTo(a.T));
+        foreach (var r in rows)
+            GD.Print($"TRILIST total={r.T} count={r.C} each={r.E} {r.K}");
     }
     private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block — root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
     {

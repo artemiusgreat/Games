@@ -737,7 +737,7 @@ public partial class RiderDuel
         arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
         arrays[(int)Mesh.ArrayType.TexUV] = uvs.ToArray();
         arrays[(int)Mesh.ArrayType.Index] = idx.ToArray();
-        var mesh = new ArrayMesh();
+        var mesh = new ArrayMesh { ResourceName = "TerraceDeck" };
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
         AddChild(new MeshInstance3D { Mesh = mesh, MaterialOverride = BlobMat() });
         // Glowing border ribbon along the wavy outline.

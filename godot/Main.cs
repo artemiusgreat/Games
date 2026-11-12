@@ -570,7 +570,7 @@ public partial class Main : Node3D
 		arrays[(int)Mesh.ArrayType.Normal] = normals;
 		arrays[(int)Mesh.ArrayType.Color] = colors;
 		arrays[(int)Mesh.ArrayType.Index] = idx;
-		var mesh = new ArrayMesh();
+		var mesh = new ArrayMesh { ResourceName = "Terrain" };
 		mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
 		mesh.SurfaceSetMaterial(0, new StandardMaterial3D
 		{
