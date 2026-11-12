@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // stays one partial class — see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
-    private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; } // RoofTop > 0: a building circle whose push-out lifts at roof level. Pass: the circle never blocks movement (stones — owner, round 29: only TALL objects block a rider)
+    private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on — a rider entirely below it (under the deck it stands on) is NOT blocked. Pass: the circle never blocks movement (stones — owner, round 29: only TALL objects block a rider)
 
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees ignite, burn for 3s, then smoke
@@ -1108,15 +1108,15 @@ public partial class RiderDuel
             var a = new Vector2(pos.X, pos.Z);
             var b = new Vector2(pos.X, pos.Z);
             if (sx > sz) { a.X -= off; b.X += off; } else { a.Y -= off; b.Y += off; }
-            _props.Add(new Circle { P = a, R = r, RoofTop = roofTop });
-            _props.Add(new Circle { P = b, R = r, RoofTop = roofTop });
+            _props.Add(new Circle { P = a, R = r, RoofTop = roofTop, BaseY = groundY - sink });
+            _props.Add(new Circle { P = b, R = r, RoofTop = roofTop, BaseY = groundY - sink });
             _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - sink, Height = size.Y });
             _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - sink, Height = size.Y });
         }
         else
         {
             float r = Mathf.Max(sx, sz) / 2f + 0.3f;
-            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, RoofTop = roofTop });
+            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, RoofTop = roofTop, BaseY = groundY - sink });
             _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - sink, Height = size.Y });
         }
         var bd = new Destructible
@@ -1491,6 +1491,14 @@ public partial class RiderDuel
                 // but not one standing on its roof or flying over
                 // it: at roof level the circle is not a wall.
                 if (c.RoofTop > 0f && w.SoleLevel + 1.5f >= c.RoofTop) continue;
+                // A building standing on a deck does not reach
+                // the ground under it (owner, 2026-11-11 round
+                // 6: 'why does rider sometimes get stuck under
+                // the platform?' — the circles were full-height
+                // columns from below the terrain to the roof,
+                // so the under-deck was full of invisible walls
+                // shaped like the buildings above).
+                if (c.BaseY > 0f && w.SoleLevel + w.Height < c.BaseY - 0.5f) continue;
                 if (c.Pass) continue; // stones: kept for scatter spacing and shot hits, never a wall
                 p = PushOut(p, w.CollisionRadius, c, out _);
             }
