@@ -1943,15 +1943,31 @@ public partial class RiderDuel
                 }
                 break;
 
-            case 4: // PLAYER ARM: laser denied with zero beams; HUD frame
+            case 4: // PLAYER ARM: arm-break gate first, then laser denied; HUD frame
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
                 {
-                    int guard = 0;
-                    while (_partsPlayer.Alive("arm_L") && guard++ < 5)
-                        CraftHit(_player, "arm_L", 26f);
-                    if (_partsPlayer.Alive("arm_L")) BFail("player arm_L would not break");
+                    // Arm-break gate (owner, 2026-11-12): at a
+                    // FULL pool, four 26-dmg arm hits must NOT
+                    // break the arm — damage caps at 1 HP left.
+                    _hpPlayer = _playerSpec.MaxHp;
+                    for (int i = 0; i < 4; i++) CraftHit(_player, "arm_L", 26f);
+                    if (!_partsPlayer.Alive("arm_L")) BFail("arm_L broke at full pool — gate not holding");
+                    if (Mathf.Abs(_partsPlayer.HpOf("arm_L") - 1f) > 0.01f)
+                        BFail($"arm_L hp after gated hits = {_partsPlayer.HpOf("arm_L"):F1} (want exactly 1)");
+                    GD.Print($"BRKTEST ARMGATE PASS arm capped at 1 HP while pool healthy (pool {_hpPlayer:F0}/{_playerSpec.MaxHp:F0})");
+                    BStep(1);
+                }
+                else if (_bStep == 1)
+                {
+                    // Pool critical (19%): the gate lifts and
+                    // one more hit takes the arm off.
+                    _hpPlayer = _playerSpec.MaxHp * 0.19f;
+                    CraftHit(_player, "arm_L", 26f);
+                    if (_partsPlayer.Alive("arm_L")) BFail("arm_L survived at 19% pool — gate did not lift");
+                    if (_partsPlayer.DebrisOf("arm_L") == null) BFail("arm_L debris missing after gated break");
+                    GD.Print("BRKTEST ARMGATE-OPEN PASS arm breaks once the pool is critical");
                     _bCount1 = _beamsSpawned;
                     _lastDenied = "";
                     FireLaser(EnemyAim());
@@ -1959,9 +1975,9 @@ public partial class RiderDuel
                     if (_beamsSpawned != _bCount1) BFail("denied laser still spawned a beam");
                     GD.Print("BRKTEST LASERDENIED PASS arm_L lost -> laser denied, 0 beams");
                     QueueCapture("res://proof/break_hud_destroyed.png", "bhud", "wpnHud");
-                    BStep(1);
+                    BStep(2);
                 }
-                else if (_bStep == 1 && BStepT > 0.8)
+                else if (_bStep == 2 && BStepT > 0.8)
                 {
                     ResetDuel();
                     BSetup(new Vector3(-38f, Main.HeightAt(-38f, 38f), 38f), new Vector3(0f, Main.HeightAt(0f, 24f), 24f));

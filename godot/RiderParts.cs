@@ -108,9 +108,9 @@ public sealed class RiderParts
             AddPart("pod_L", "LEFT LRM POD", 45f, byName, "TorsoPod_L");
             AddPart("pod_R", "RIGHT LRM POD", 45f, byName, "TorsoPod_R");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead", "Antenna");
-            AddPart("arm_L", "LEFT ARM", 65f, byName,
+            AddPart("arm_L", "LEFT ARM", 90f, byName,
                 "UpperArm_L", "ShoulderPad_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart("arm_R", "RIGHT ARM", 65f, byName,
+            AddPart("arm_R", "RIGHT ARM", 90f, byName,
                 "UpperArm_R", "ShoulderPad_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
             AddPart("leg_L", "LEFT LEG", 90f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
@@ -127,8 +127,8 @@ public sealed class RiderParts
             AddPart("gun", "WAIST GUN", 65f, byName, "AC20");
             AddPart("pod_L", "SRM POD", 45f, byName, "SRM6");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 65f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
-            AddPart("arm_R", "RIGHT ARM", 65f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
             AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
         }
@@ -151,9 +151,9 @@ public sealed class RiderParts
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 65f, byName,
+            AddPart("arm_L", "LEFT ARM", 90f, byName,
                 "ShoulderAct_L", "UpperArm_L", "UpperArm2_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart("arm_R", "RIGHT ARM", 65f, byName,
+            AddPart("arm_R", "RIGHT ARM", 90f, byName,
                 "ShoulderAct_R", "UpperArm_R", "UpperArm2_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
             AddPart("leg_L", "LEFT LEG", 90f, byName,
                 "Thigh_L", "Knee_L", "Shin_L", "Foot_L");
@@ -171,8 +171,8 @@ public sealed class RiderParts
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
             AddPart("head", "HEAD", 45f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 60f, byName, "UpperArm_L", "GunArm_L", "Shield_L");
-            AddPart("arm_R", "RIGHT ARM", 60f, byName, "UpperArm_R", "GunArm_R");
+            AddPart("arm_L", "LEFT ARM", 85f, byName, "UpperArm_L", "GunArm_L", "Shield_L");
+            AddPart("arm_R", "RIGHT ARM", 85f, byName, "UpperArm_R", "GunArm_R");
             AddPart("leg_L", "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
@@ -190,8 +190,8 @@ public sealed class RiderParts
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
             AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
-            AddPart("arm_L", "LEFT ARM", 70f, byName, "GunArm_L", "Elbow_L");
-            AddPart("arm_R", "RIGHT ARM", 70f, byName, "GunArm_R", "Elbow_R");
+            AddPart("arm_L", "LEFT ARM", 95f, byName, "GunArm_L", "Elbow_L");
+            AddPart("arm_R", "RIGHT ARM", 95f, byName, "GunArm_R", "Elbow_R");
             AddPart("leg_L", "LEFT LEG", 95f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
             AddPart("leg_R", "RIGHT LEG", 95f, byName,
@@ -210,8 +210,8 @@ public sealed class RiderParts
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
             AddPart("pod_R", "RIGHT SHOULDER", 45f, byName, "TorsoPod_R");
-            AddPart("arm_L", "LEFT ARM", 70f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
-            AddPart("arm_R", "RIGHT ARM", 70f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
+            AddPart("arm_L", "LEFT ARM", 95f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
+            AddPart("arm_R", "RIGHT ARM", 95f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
             AddPart("leg_L", "LEFT LEG", 95f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
             AddPart("leg_R", "RIGHT LEG", 95f, byName,

@@ -451,8 +451,20 @@ public partial class RiderDuel
             : parts.AttributePoint(hit.Point);
         if (isPlayer) { _playerDmgEvents++; _playerDmgTotal += dmg; }
         else if (!isFoe) { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
+        float poolNow = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : _hpEnemy;
+        float poolMax = isPlayer ? _playerSpec.MaxHp : isFoe ? _foe.Spec.MaxHp : _enemySpec.MaxHp;
+        // Arm-break gate (owner, 2026-11-12; PartRules):
+        // while the pool after this hit is still above the
+        // gate, arm damage is capped so the arm keeps 1 HP —
+        // shot to pieces but attached. Once the rider is
+        // critical the cap lifts and the arm can come off.
+        // The pool itself burns exactly as before.
+        float partDmg = dmg;
+        if ((partId == SlotIds.ArmL || partId == SlotIds.ArmR)
+            && poolNow - dmg > poolMax * PartRules.ArmBreakPoolFraction)
+            partDmg = Mathf.Min(dmg, Mathf.Max(parts.HpOf(partId) - 1f, 0f));
         float poolDmg = dmg;
-        parts.DamagePart(partId, dmg); // torso is pool-owned: a no-op there
+        parts.DamagePart(partId, partDmg); // torso is pool-owned: a no-op there
         if (poolDmg > 0f)
         {
             if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - poolDmg, 0f);

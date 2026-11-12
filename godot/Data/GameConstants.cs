@@ -46,6 +46,21 @@ public static class CamModes
 /// constants instead of spelling the ids itself. The same ids
 /// key the breakable-parts layouts.
 /// </summary>
+/// <summary>
+/// Part-break rules (owner, 2026-11-12): a rider cannot lose
+/// an ARM while its body is sound — early arm loss wrecked
+/// the opening of a duel. Arm parts take damage as normal,
+/// but the break itself is gated: an arm comes off only
+/// once the main pool is at or below this fraction. (Legs
+/// wreck and heads wreck under their own long-standing
+/// rules; pods and the waist gun are not arms and are not
+/// gated.)
+/// </summary>
+public static class PartRules
+{
+    public const float ArmBreakPoolFraction = 0.20f;
+}
+
 public static class SlotIds
 {
     public const string ArmL = "arm_L";
