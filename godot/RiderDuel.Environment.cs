@@ -1724,7 +1724,7 @@ public partial class RiderDuel
         env.TonemapExposure = 1.25f; // overall scene lift; the sky stays darker via BackgroundEnergyMultiplier 0.7 (net 0.88)
         env.AmbientLightEnergy = 0.9f;
         sun.LightEnergy = 1.1f;
-        sun.ShadowOpacity = 0.28f; // shadows barely noticeable (owner, 2026-11-11)
+        sun.ShadowOpacity = 0.55f; // real shade depth (owner round 6: rider's shadow was too bright)
         sun.LightColor = new Color(0.62f, 0.72f, 1.0f);
         env.FogLightColor = new Color(0.10f, 0.14f, 0.24f);
         // The painting carries its own atmosphere: distance fog

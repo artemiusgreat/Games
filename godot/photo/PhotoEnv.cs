@@ -594,7 +594,7 @@ void fragment() {
         env.AdjustmentContrast = 1.08f;
         env.AdjustmentSaturation = 1.05f;
         sun.LightEnergy = sunE;
-        sun.ShadowOpacity = 0.28f; // shadows barely noticeable (owner, 2026-11-11)
+        sun.ShadowOpacity = 0.55f; // real shade depth (owner round 6: rider's shadow was too bright)
         sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? 900f : 520f;
         GD.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }

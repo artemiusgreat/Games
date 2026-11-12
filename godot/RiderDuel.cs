@@ -365,11 +365,15 @@ public partial class RiderDuel : Node3D
         {
             RotationDegrees = new Vector3(-48f, -35f, 0f),
             ShadowEnabled = true,
-            // Shadows are barely there (owner, 2026-11-11:
-            // 'shadows barely noticeable' — walking into one
-            // made the rider almost invisible). Form stays,
-            // darkness goes.
-            ShadowOpacity = 0.28f,
+            // Shadow depth (owner, 2026-11-11 round 6:
+            // 'rider's shadow looks too bright and
+            // unrealistic — make it darker, but keep the
+            // under-city illumination bright'): 0.28 leaked
+            // so much sun that a rider in shadow read as
+            // fully lit. 0.55 restores real shade; the
+            // under-deck stays readable on its ceiling
+            // lights and ambient, not on leaked sunlight.
+            ShadowOpacity = 0.55f,
             LightEnergy = 1.45f,
             LightColor = new Color(1f, 0.955f, 0.885f)
         };
@@ -385,9 +389,13 @@ public partial class RiderDuel : Node3D
         AddChild(_labLight);
         _heroLight = new OmniLight3D
         {
-            LightEnergy = 0.55f,
+            // Gentler fill (owner round 6): at 0.55 the
+            // shadowless pool flattened the rider — no dark
+            // side anywhere. 0.30 keeps him readable in shade
+            // while his shadow side can actually go dark.
+            LightEnergy = 0.30f,
             LightColor = new Color(0.85f, 0.92f, 1f),
-            OmniRange = 30f,
+            OmniRange = 24f,
             ShadowEnabled = false
         };
         AddChild(_heroLight);
