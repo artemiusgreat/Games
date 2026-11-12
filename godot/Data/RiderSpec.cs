@@ -63,18 +63,25 @@ public static class RiderSpecs
         Slots = new[]
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 25f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 25f },
             new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
             new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
     };
 
-    // Arms-only symmetry (owner, 2026-11-12): every rider
-    // carries one ENERGY arm and one BALLISTIC arm — Hector's
-    // right arm flipped Energy -> Ballistic and Demeter's
-    // left arm Ballistic -> Energy to make it so (pods and
-    // centre mounts untouched). Roster pattern: energy left,
-    // ballistic right; Prometheus is the designed mirror.
+    // Mirrored symmetry (owner, 2026-11-12, final word):
+    // weapon symmetry binds the body's own mounts — arms,
+    // legs, waist — so both arms of a rider carry the SAME
+    // type and no weapon type fires from a single arm. The
+    // other type lives on the centre mounts (waist gun,
+    // turret, torso rack) or pairs on both arms itself
+    // (Demeter / Theseus cannons). Pods sit outside the
+    // rule, with one constraint: a rider whose rocket pods
+    // exist on one side only uses them as rockets — every
+    // pod on the roster is a missile mount. Enyo mirrors
+    // energy on both arms (its Timber Wolf laser fit); it
+    // carries no cannon — the twin LRM pods are its heavy
+    // punch.
     public static readonly RiderSpec Hector = new()
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
@@ -90,7 +97,7 @@ public static class RiderSpecs
         {
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 18f },
             new SlotDef { Id = "gun", Display = "WAIST GUN", Type = WeaponSlotType.Ballistic, MaxWeight = 30f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 14f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
             new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 10f },
             new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 28f },
         }
@@ -109,9 +116,9 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 22f },
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 23f },
-            new SlotDef { Id = "torso", Display = "TORSO RACK", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+            new SlotDef { Id = "torso", Display = "TORSO RACK", Type = WeaponSlotType.Ballistic, MaxWeight = 20f },
         }
     };
 
@@ -130,7 +137,7 @@ public static class RiderSpecs
         Slots = new[]
         {
             new SlotDef { Id = "torso", Display = "TURRET", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 24f },
             new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 15f },
             new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
         }
@@ -154,7 +161,7 @@ public static class RiderSpecs
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 28f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
             new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
             new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
         }
@@ -174,7 +181,7 @@ public static class RiderSpecs
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
             new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 19f },
             new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 24f },
         }
@@ -205,7 +212,7 @@ public static class RiderSpecs
         ["enyo"] = new[]
         {
             ("arm_L", new[] { "large_laser", "medium_laser" }),                    // 8/8t
-            ("arm_R", new[] { "autocannon", "machine_gun", "machine_gun" }),      // 16/25t
+            ("arm_R", new[] { "large_laser", "large_laser", "medium_laser", "medium_laser" }),  // 16/25t
             ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
             ("pod_R", new[] { "lrm", "lrm" }),                                     // 20/21t
         },
@@ -213,34 +220,34 @@ public static class RiderSpecs
         {
             ("arm_L", new[] { "ppc", "large_laser", "medium_laser" }),             // 17/18t
             ("gun", new[] { "ac20", "autocannon" }),                               // 28/30t
-            ("arm_R", new[] { "autocannon", "machine_gun" }),     // 13/14t
+            ("arm_R", new[] { "large_laser", "large_laser", "medium_laser" }),     // 13/14t
             ("torso", new[] { "ppc" }),                                            // 9/10t
             ("pod_L", new[] { "lrm", "lrm", "srm", "srm" }),                       // 28/28t
         },
         ["prometheus"] = new[]
         {
-            ("arm_L", new[] { "ac20", "machine_gun", "machine_gun", "machine_gun" }), // 22/22t
+            ("arm_L", new[] { "ppc", "large_laser", "large_laser", "medium_laser" }), // 22/22t
             ("arm_R", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser" }), // 23/23t
-            ("torso", new[] { "lrm", "lrm" }),                                     // 20/20t
+            ("torso", new[] { "ac20", "machine_gun", "machine_gun" }),                                     // 20/20t
         },
         ["medea"] = new[]
         {
             ("torso", new[] { "autocannon", "autocannon", "machine_gun" }),       // 26/26t
-            ("arm_R", new[] { "autocannon", "autocannon" }),                       // 24/24t
+            ("arm_R", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }),                       // 24/24t
             ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),              // 15/15t
             ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/20t
         },
         ["demeter"] = new[]
         {
             ("arm_R", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
-            ("arm_L", new[] { "ppc", "ppc", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 28/28t
+            ("arm_L", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
             ("torso", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 24/24t
             ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/20t
         },
         ["theseus"] = new[]
         {
             ("arm_R", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
-            ("arm_L", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 24/24t
+            ("arm_L", new[] { "autocannon", "autocannon" }), // 24/24t
             ("torso", new[] { "ppc", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 19/19t
             ("pod_R", new[] { "lrm", "lrm", "srm" }),                              // 24/24t
         },

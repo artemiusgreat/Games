@@ -34,14 +34,14 @@ public partial class RiderDuel
                     var cap = lab.Check(spec, "arm_L", WeaponCatalog.Ppc);
                     if (cap == null || !cap.Contains("weighs"))
                     { GD.PrintErr($"DUEL FAIL: lab weight cap not enforced ({cap})"); GetTree().Quit(1); return; }
-                    if (lab.Check(spec, "arm_R", WeaponCatalog.Ppc) == null)
+                    if (lab.Check(spec, "arm_R", WeaponCatalog.Autocannon) == null)
                     { GD.PrintErr("DUEL FAIL: lab slot type not enforced"); GetTree().Quit(1); return; }
-                    if (lab.TryAssign(spec, "arm_R", WeaponCatalog.Autocannon) != null
+                    if (lab.TryAssign(spec, "arm_R", WeaponCatalog.LargeLaser) != null
                         || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
                     { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
                     if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - 64f) > 0.01f)
                     { GD.PrintErr("DUEL FAIL: default fit tonnage != 64t"); GetTree().Quit(1); return; }
-                    GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused), legal fits accepted, default fit = 64t (every slot filled)");
+                    GD.Print("LABTEST PASS slot type + 8t arm cap enforced (PPC refused on weight, AC refused on the mirrored energy arm), legal fits accepted, default fit = 64t (every slot filled)");
                     // Capacity rule (owner, MW4 model): every chassis'
                     // slot caps sum to exactly its tonnage.
                     foreach (var sp in RiderSpecs.All)
@@ -1247,8 +1247,37 @@ public partial class RiderDuel
     // every number without testing anything more. The weapons and
     // break suites therefore start from this range fit; the duel
     // suite and the live game use the real defaults.
+    // Weapons-range mannequin (2026-11-12): the firing
+    // suites (weapons + breakable) calibrate weapon
+    // BEHAVIOUR — damage, routing, reactions, salvo counts —
+    // on single fits: one energy arm, one ballistic arm, two
+    // missile pods. Since the owner's mirrored-symmetry
+    // ruling, no shipped rider has that layout (Enyo, the
+    // suites' original body, now mirrors energy on both
+    // arms), so the suites fit their range loadout on this
+    // harness-only spec: Enyo's body numbers with the legacy
+    // slot layout. It is not in RiderSpecs.All and never
+    // reaches the game; loadout legality on the shipped
+    // riders is asserted by LABTEST and the duel suite on
+    // the real specs and real defaults.
+    private static readonly RiderSpec RangeMannequin = new()
+    {
+        Id = "enyo_range", Name = "ENYO (RANGE)", Tonnage = 75f, JumpCapable = true,
+        ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 4.8f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 25f },
+            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+        }
+    };
+
     private void ApplyRangeFit()
     {
+        _playerSpec = RangeMannequin;
         _loadout = new LoadoutState { JumpJets = true };
         _loadout.TryAssign(_playerSpec, "arm_L", WeaponCatalog.LargeLaser);
         _loadout.TryAssign(_playerSpec, "arm_R", WeaponCatalog.Autocannon);
