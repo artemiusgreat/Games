@@ -92,9 +92,9 @@ public static class MissionCatalog
             "Move overland to the Troy depot and destroy the Corvane garrison before their relief column arrives. " +
             "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion — the new contract depends on her signature.",
             "Colonel Mara Voss", "Asterion needs that depot rubble by dawn. You look like dawn to me.", WorldConfig.BiomeKind.Desert);
-        M(ares, "Syracuse", "Leonidas", 0.34f, -0.18f,
+        M(ares, "Syracuse", "Athens", 0.34f, -0.18f,
             "Convoy Escort", "Asterion Logistics", 210000, 2,
-            "A supply convoy crawls from Leonidas to the front at first light. Raiders have hit the last two. " +
+            "A supply convoy crawls from Athens to the front at first light. Raiders have hit the last two. " +
             "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
             "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
         M(ares, "Erebus", "Erebus", 0.28f, 0.40f,
