@@ -720,6 +720,11 @@ public partial class RiderDuel
         };
         for (int b = 0; b < Main.SpawnPads.Length; b++)
         {
+            // The HOME base stands empty (owner, 2026-11-11
+            // round 6: 'remove buildings in the home base') —
+            // the player spawns on open ground; the two enemy
+            // bases keep their structures.
+            if (b == 0) continue;
             var pad = Main.SpawnPads[b];
             float rot = b * 2.1f; // vary the layout per base
             for (int i = 0; i < offs.Length; i++)

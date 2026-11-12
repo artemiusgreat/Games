@@ -77,6 +77,12 @@ uniform vec4 grass_tint : source_color = vec4(1.0);
 uniform vec4 dirt_tint : source_color = vec4(1.0);
 uniform vec4 rock_tint : source_color = vec4(1.0);
 uniform vec4 asph_tint : source_color = vec4(1.0);
+// Solid ground zones (owner, 2026-11-11 round 6: 'replace
+// checkerboard with solid color'): inside a zone (xy =
+// centre XZ, z = radius, w = strength) the ground renders
+// as ONE flat colour — no splat patches, no texture grain.
+uniform vec4 solid_zones[4];
+uniform vec4 solid_col : source_color = vec4(0.0);
 varying vec3 wpos;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -98,11 +104,21 @@ void fragment() {
     vec3 arm = vec3(1.0, 0.9, 0.0);
     arm *= wg * texture(grass_arm, uv1).rgb + wb * texture(dirt_arm, uv1).rgb
          + wr * texture(rock_arm, uv1).rgb + wa * texture(asph_arm, uv1).rgb;
+    float sf = 0.0;
+    for (int zi = 0; zi < 4; zi++) {
+        vec4 zn = solid_zones[zi];
+        if (zn.w > 0.001) {
+            float dd = distance(wpos.xz, zn.xy);
+            sf = max(sf, zn.w * (1.0 - smoothstep(zn.z - 14.0, zn.z, dd)));
+        }
+    }
+    alb = mix(alb, solid_col.rgb, sf);
+    nrm = mix(nrm, vec3(0.5, 0.5, 1.0), sf);
     ALBEDO = alb;
     NORMAL_MAP = nrm;
     NORMAL_MAP_DEPTH = 0.9;
-    ROUGHNESS = clamp(arm.g, 0.05, 1.0);
-    AO = arm.r;
+    ROUGHNESS = mix(clamp(arm.g, 0.05, 1.0), 0.95, sf);
+    AO = mix(arm.r, 1.0, sf);
 }
 ";
 
@@ -209,6 +225,24 @@ void fragment() {
             gt = new Color(1.55f, 1.65f, 1.95f); dt = new Color(1.45f, 1.55f, 1.85f);
             rt = new Color(1.35f, 1.45f, 1.75f); at = new Color(1.05f, 1.12f, 1.30f);
         }
+        // Solid ground zones (owner round 6): on mission
+        // city maps the valley floors (and the Gate City
+        // disc) render as one flat colour — the splat patch
+        // field read as a checkerboard there no matter how
+        // smooth the weights got. Snow city: pale blue-grey
+        // concrete; plain city: mid concrete.
+        var zones = new Vector4[4];
+        if (WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.City)
+        {
+            float padR = WorldConfig.TerracedCity ? 300f : 120f;
+            for (int i = 0; i < 3 && i < Main.SpawnPads.Length; i++)
+                zones[i] = new Vector4(Main.SpawnPads[i].X, Main.SpawnPads[i].Y, padR, 1f);
+            if (!WorldConfig.TerracedCity)
+                zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
+            m.SetShaderParameter("solid_col", WorldConfig.SnowGround
+                ? new Color(0.58f, 0.64f, 0.74f) : new Color(0.33f, 0.34f, 0.35f));
+        }
+        m.SetShaderParameter("solid_zones", zones);
         m.SetShaderParameter("grass_tint", gt);
         m.SetShaderParameter("dirt_tint", dt);
         m.SetShaderParameter("rock_tint", rt);
