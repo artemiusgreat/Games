@@ -256,6 +256,17 @@ public partial class RiderWalker : Node3D
     public bool LegDisabled(bool left) => (left ? _legL : _legR).Disabled;
     public Vector3 SoleWorld(bool left) => (left ? _legL : _legR).SolvedSoleWorld;
     public bool LegPlanted(bool left) => (left ? _legL : _legR).Planted;
+    public Vector3 SolePos(bool left) => (left ? _legL : _legR).SoleTarget;
+
+    // Foot-target clamp (owner, 2026-11-11: leg-collider
+    // option 1 — 'clamp the foot targets'): the OWNER may
+    // supply a clamp that pulls a step's landing point out
+    // of obstacle footprints before the step begins, so a
+    // foot plants short of a wall instead of inside it.
+    // Null = no clamping (standalone walker use). The
+    // stride simply shortens on the blocked side; no gait
+    // mode changes — the same generic trigger fires.
+    public System.Func<Vector3, Vector3> FootClamp;
     public Vector3 VelocityVec => HeadingVec(_legsYaw) * _speed;
 
     // World position of a skeleton bone (muzzle hardpoints, aim points).
@@ -565,6 +576,16 @@ public partial class RiderWalker : Node3D
         var home = HomeSlot(leg, predRoot) + vel * 0.30f;
         leg.StepFrom = leg.SoleTarget;
         leg.StepTo = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
+        if (FootClamp != null)
+        {
+            // Clamp the landing point out of obstacles, then
+            // re-sample the ground at the clamped spot (the
+            // ground there is the surrounding level, not
+            // whatever the unclamped point sampled).
+            var ct = FootClamp(leg.StepTo);
+            if (Mathf.Abs(ct.X - leg.StepTo.X) > 0.001f || Mathf.Abs(ct.Z - leg.StepTo.Z) > 0.001f)
+                leg.StepTo = new Vector3(ct.X, GroundHere(ct.X, ct.Z), ct.Z);
+        }
         // Swing endpoints in the FACING frame (owner: leg motion
         // must read in the sagittal plane from the front — a
         // world-space lerp cuts across the body whenever the rider

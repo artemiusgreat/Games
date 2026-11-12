@@ -1472,6 +1472,58 @@ public partial class RiderDuel
         return p;
     }
 
+    // Foot-target clamp (owner, 2026-11-11: leg-collider
+    // option 1). The root resolves against the obstacle
+    // set in ResolveOne; a foot's step TARGET now clamps
+    // against the SAME set — circles, terrace walls, ramp
+    // wedges — with the same exemptions, judged at the
+    // foot's own level: a building whose roof the foot is
+    // stepping onto is not a wall to that foot, a building
+    // standing on a deck does not reach the ground under
+    // it, stones never block, a foot on a ramp's slope or
+    // under its span is left alone. The pad is the foot's
+    // own clearance, much smaller than the body's: the
+    // foot plants right at the wall base.
+    private const float FootPad = 0.5f;
+
+    private Vector3 ClampFootTarget(Vector3 t)
+    {
+        var p = new Vector2(t.X, t.Z);
+        float lvl = t.Y;
+        foreach (var wl in Main.Walls)
+        {
+            if (lvl + 1.5f >= wl.Top) continue;
+            p = PushOutRect(p, FootPad, wl);
+        }
+        foreach (var c in _props)
+        {
+            if (c.Pass) continue;
+            if (c.RoofTop > 0f && lvl + 1.5f >= c.RoofTop) continue;
+            if (c.BaseY > 0f && lvl < c.BaseY - 1.5f) continue;
+            p = PushOut(p, FootPad, c, out _);
+        }
+        foreach (var rp in Main.Ramps)
+        {
+            float dx = p.X - rp.Cx, dz = p.Y - rp.Cz;
+            float along = dx * rp.DirX + dz * rp.DirZ;
+            float perp = -dx * rp.DirZ + dz * rp.DirX;
+            if (Mathf.Abs(along) > rp.HalfLen + FootPad || Mathf.Abs(perp) > rp.HalfWid + FootPad) continue;
+            float h = Mathf.Lerp(rp.H0, rp.H1, Mathf.Clamp((along + rp.HalfLen) / (2f * rp.HalfLen), 0f, 1f));
+            if (lvl >= h - 2.5f) continue;   // planting on the slope
+            if (lvl <= h - 3.5f) continue;   // planting under the span
+            float exP = rp.HalfWid + FootPad - Mathf.Abs(perp);
+            float exA = rp.HalfLen + FootPad - Mathf.Abs(along);
+            if (exP <= exA)
+                perp = (perp >= 0f ? 1f : -1f) * (rp.HalfWid + FootPad);
+            else
+                along = (along >= 0f ? 1f : -1f) * (rp.HalfLen + FootPad);
+            p = new Vector2(rp.Cx, rp.Cz) + new Vector2(
+                rp.DirX * along - rp.DirZ * perp,
+                rp.DirZ * along + rp.DirX * perp);
+        }
+        return new Vector3(p.X, t.Y, p.Y);
+    }
+
     private void ResolveOne(RiderWalker w)
     {
         var p = new Vector2(w.RootPos.X, w.RootPos.Z);

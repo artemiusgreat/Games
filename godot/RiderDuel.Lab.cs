@@ -96,6 +96,7 @@ public partial class RiderDuel
     private RiderWalker BuildRider(RiderSpec spec, string nodeName, Vector3 pos, float yaw)
     {
         var w = new RiderWalker { Name = nodeName };
+        w.FootClamp = ClampFootTarget; // owner round 7: step targets clamp against obstacles (leg-collider option 1)
         AddChild(w);
         w.Init(new RiderWalker.Config
         {
