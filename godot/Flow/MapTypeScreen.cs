@@ -100,8 +100,8 @@ public partial class MapTypeScreen : Control
     // the window (two cards + margins + the gap), their height
     // what remains under the title and telemetry rows. The ART
     // height is what's left of the card after the fixed
-    // interior (card margins 48, separations 70, header 56,
-    // rule 2, action bar 50) and the description's wrapped
+    // interior (card margins 62, separations 70, header 56,
+    // rule 2, spacer 4, action bar 50) and the description's
     // height — the first cut scaled the art by a ratio of the
     // card height and the interior overflowed at short
     // windows, pushing the action bar past the card's bottom
@@ -113,28 +113,18 @@ public partial class MapTypeScreen : Control
         var vp = GetViewportRect().Size;
         if (vp.X < 200f || _cardT == null) return;
         float cardW = Mathf.Clamp((vp.X - 88f - 30f) / 2f, 320f, 600f);
-        float th = Mathf.Clamp(vp.Y * 0.115f, 60f, 96f);
-        // Card height from the EQUAL-GAPS rule (owner): the
-        // space under the action bar inside the card (its
-        // bottom padding, 26) must equal the space under the
-        // card down to the telemetry row. The cards are
-        // vertically centred between the title and telemetry,
-        // so: centre zone = vp - root margins (64) - title -
-        // separations (20) - telemetry (~16); the card leaves
-        // 2 x (26 - 10 separation) of that zone below itself.
-        // At the 620 design cap (tall windows) the rule is
-        // unreachable and the gap simply grows.
-        float cardH = Mathf.Clamp(vp.Y - th - 132f, 360f, 620f);
+        float cardH = Mathf.Clamp(vp.Y - 250f, 380f, 620f);
         var cs = new Vector2(cardW, cardH);
         _cardT.CustomMinimumSize = cs;
         _cardM.CustomMinimumSize = cs;
         float descH = cardW >= 470f ? 62f : 84f; // wrapped lines at the card's text width
-        float artH = Mathf.Clamp(cardH - 48f - 178f - descH, 84f, 246f);
+        float artH = Mathf.Clamp(cardH - 62f - 182f - descH, 72f, 246f);
         _artT.CustomMinimumSize = new Vector2(0f, artH);
         _artM.CustomMinimumSize = new Vector2(0f, artH);
         var dsz = new Vector2(cardW - 52f, 0f);
         _descT.CustomMinimumSize = dsz;
         _descM.CustomMinimumSize = dsz;
+        float th = Mathf.Clamp(vp.Y * 0.115f, 60f, 96f);
         _titleRect.CustomMinimumSize = new Vector2(th * (300f / 96f), th);
     }
 
@@ -200,7 +190,7 @@ public partial class MapTypeScreen : Control
         margin.AddThemeConstantOverride("margin_left", 26);
         margin.AddThemeConstantOverride("margin_right", 26);
         margin.AddThemeConstantOverride("margin_top", 22);
-        margin.AddThemeConstantOverride("margin_bottom", 26); // = the gap under the card (owner: inside/outside spacing equal)
+        margin.AddThemeConstantOverride("margin_bottom", 32); // bar -> card edge = text -> bar (owner's rule)
         card.AddChild(margin);
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 14);
@@ -252,7 +242,12 @@ public partial class MapTypeScreen : Control
         d.CustomMinimumSize = new Vector2(548f, 72f);
         v.AddChild(d);
 
-        var spacer = new Control { SizeFlagsVertical = SizeFlags.ExpandFill };
+        // Fixed 4px spacer (owner's rule): with the two 14px
+        // separations around it, the gap between the text and
+        // the button is 32 — exactly the button's bottom
+        // margin to the card's lower edge. Leftover height
+        // goes to the art (ExpandFill), never to this gap.
+        var spacer = new Control { CustomMinimumSize = new Vector2(0f, 4f) };
         v.AddChild(spacer);
 
         // Action bar: a chamfered plate — solid gold on the
