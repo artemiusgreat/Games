@@ -60,7 +60,7 @@ public static class PhotoEnv
 
     private const string TerrainShader = @"
 shader_type spatial;
-uniform sampler2D splat : filter_linear, repeat_disable;
+uniform sampler2D splat : filter_linear_mipmap, repeat_disable;
 uniform sampler2D grass_diff : source_color, repeat_enable;
 uniform sampler2D grass_nor : hint_normal, repeat_enable;
 uniform sampler2D grass_arm : repeat_enable;
@@ -240,6 +240,11 @@ void fragment() {
                     Mathf.Clamp(dirt, 0f, 1f), road));
             }
         }
+        // Mipmaps (owner, 2026-11-13): without them the splat and
+        // the detail textures minify by picking single texels, so
+        // distant slopes render as per-pixel dither. The four
+        // scanned sets' .import files generate mipmaps too now.
+        img.GenerateMipmaps();
         return ImageTexture.CreateFromImage(img);
     }
 
