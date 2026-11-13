@@ -133,7 +133,7 @@ public static class MissionCatalog
             "The Atlantis stacks rise straight out of the storm water — ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_nebula.jpg", snow: true, peaks: false, terraces: true);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true);
         M(thalassa, "Elysium", "Elysium", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Elysium, a walled port town on the trade lane, and grows " +
