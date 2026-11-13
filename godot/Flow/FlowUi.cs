@@ -130,12 +130,13 @@ public static class FlowUi
 
     private static FontFile _headFont;
     public static FontFile HeadFont(bool bold) =>
-        _headFont ??= GD.Load<FontFile>("res://assets/fonts/IBMPlexMono-Light.ttf");
+        _headFont ??= GD.Load<FontFile>("res://assets/fonts/Cinzel-Bold.ttf");
 
-    // Terminal font for HEADINGS only (owner): body text keeps the
-    // built-in font — a mono everywhere broke fixed layouts. One
-    // weight for every heading: Light (the bold flag is retained
-    // at call sites but no longer changes the face).
+    // Display font for HEADINGS everywhere (owner, 2026-11-13:
+    // the home screen's new fonts apply game-wide): Cinzel Bold,
+    // the engraved serif of his menu concept. Body text is Open
+    // Sans via the project theme's default font. (The bold flag
+    // is retained at call sites but no longer changes the face.)
     public static void Heading(Control c, bool bold = true) =>
         c.AddThemeFontOverride("font", HeadFont(bold));
 

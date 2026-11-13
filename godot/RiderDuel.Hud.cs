@@ -11,11 +11,11 @@ public partial class RiderDuel
     private static Label MakeLabel(int fontSize, Color col)
     {
         var l = new Label { Text = "" };
-        // Dashboard text is BOLDER than the game's Light default
-        // (owner): every HUD label renders in Plex Mono Medium.
-        // Mono advance is identical across weights, so no layout
-        // shifts — only the stroke gets heavier.
-        _hudFont ??= GD.Load<FontFile>("res://assets/fonts/IBMPlexMono-Medium.ttf");
+        // Dashboard text is BOLDER than the game's default
+        // (owner): every HUD label renders in Open Sans Semibold
+        // (the game-wide font change, 2026-11-13 — it succeeds
+        // Plex Mono Medium in this role).
+        _hudFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
         if (_hudFont != null) l.AddThemeFontOverride("font", _hudFont);
         l.AddThemeFontSizeOverride("font_size", fontSize);
         l.AddThemeColorOverride("font_color", col);
