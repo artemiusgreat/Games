@@ -670,9 +670,9 @@ public partial class RiderDuel
         // is complete when the player outlives every defender.
         if (WorldConfig.IsMission && !_playerDead && _enemyDead && (_foe == null || _foe.Dead))
         {
-            int before = StoryProgress.UnlockedCount;
+            int before = StoryProgress.UnlockedIn(FlowMain.PlanetIndex);
             StoryProgress.Complete(FlowMain.PlanetIndex, FlowMain.MissionIndex);
-            AddFeed(StoryProgress.UnlockedCount > before
+            AddFeed(StoryProgress.UnlockedIn(FlowMain.PlanetIndex) > before
                 ? "MISSION COMPLETE — NEW MISSION AVAILABLE"
                 : "MISSION COMPLETE");
         }

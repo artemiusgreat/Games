@@ -290,9 +290,10 @@ public partial class MapScreen : Control
         return bezel;
     }
 
-    // Story gating (owner, 2026-11-13): locked planets and
-    // missions are not shown at all — the selectors cycle only
-    // what StoryProgress has unlocked.
+    // Story gating (owner, 2026-11-13, non-linear revision):
+    // every planet is visible; locked MISSIONS are not shown —
+    // the mission selector and the disc markers cycle only
+    // what StoryProgress has unlocked on that planet.
     private static System.Collections.Generic.List<int> UnlockedMissions(int planet)
     {
         var list = new System.Collections.Generic.List<int>();
@@ -304,8 +305,7 @@ public partial class MapScreen : Control
     private static System.Collections.Generic.List<int> VisiblePlanets()
     {
         var list = new System.Collections.Generic.List<int>();
-        for (int p = 0; p < MissionCatalog.Planets.Count; p++)
-            if (UnlockedMissions(p).Count > 0) list.Add(p);
+        for (int p = 0; p < MissionCatalog.Planets.Count; p++) list.Add(p);
         return list;
     }
 
@@ -315,15 +315,13 @@ public partial class MapScreen : Control
         return u.Count > 0 ? u[0] : 0;
     }
 
-    // Keep the shared indices on unlocked content (a reset, a
-    // harness seed, or an older save can leave them pointing
-    // at locked entries).
+    // Keep the shared mission index on unlocked content (a
+    // reset, a harness seed, or an older save can leave it
+    // pointing at a locked entry).
     private void ClampToUnlocked()
     {
-        var vis = VisiblePlanets();
-        if (vis.Count == 0) return;
-        if (!vis.Contains(FlowMain.PlanetIndex))
-            FlowMain.PlanetIndex = vis[0];
+        if (FlowMain.PlanetIndex < 0 || FlowMain.PlanetIndex >= MissionCatalog.Planets.Count)
+            FlowMain.PlanetIndex = 0;
         if (!StoryProgress.IsUnlocked(FlowMain.PlanetIndex, FlowMain.MissionIndex))
             FlowMain.MissionIndex = FirstUnlockedMission(FlowMain.PlanetIndex);
     }

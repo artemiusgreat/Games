@@ -1,46 +1,54 @@
 using Godot;
-using System.Collections.Generic;
 
-// Story campaign progression (owner, 2026-11-13): a new
-// Story shows ONE planet and ONE mission. Completing a
-// mission unlocks the next in the catalog's linear chain
-// (planets in catalog order, missions in planet order), so
-// finishing a planet's last mission opens the next planet.
-// Progress persists between sessions in
-// user://story_progress.cfg (a single integer: how many
-// chain entries are unlocked).
+// Story campaign progression (owner, 2026-11-13, revised
+// the same day to NON-LINEAR): all three planets are visible
+// from the start, but each planet shows only its first
+// mission. Completing a mission unlocks the next mission ON
+// THAT PLANET — the planets progress independently, in any
+// order the player chooses. Progress persists between
+// sessions in user://story_progress.cfg (one unlocked-count
+// per planet, comma-separated).
 public static class StoryProgress
 {
     private const string SavePath = "user://story_progress.cfg";
-    private static int _unlocked = -1; // -1 = not loaded yet
+    private static int[] _counts; // per planet; null = not loaded
 
-    private static List<(int Planet, int Mission)> Chain()
-    {
-        var list = new List<(int, int)>();
-        for (int p = 0; p < MissionCatalog.Planets.Count; p++)
-            for (int m = 0; m < MissionCatalog.Planets[p].Missions.Count; m++)
-                list.Add((p, m));
-        return list;
-    }
+    private static int PlanetCount => MissionCatalog.Planets.Count;
 
-    public static int Total => Chain().Count;
-
-    public static int UnlockedCount
+    private static int[] Counts
     {
         get
         {
-            if (_unlocked < 0)
+            if (_counts != null) return _counts;
+            _counts = new int[PlanetCount];
+            for (int p = 0; p < PlanetCount; p++) _counts[p] = 1;
+            var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
+            if (f != null)
             {
-                _unlocked = 1;
-                var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
-                if (f != null)
+                string text = f.GetAsText().Trim();
+                f.Close();
+                var parts = text.Split(',');
+                if (parts.Length == PlanetCount)
                 {
-                    if (int.TryParse(f.GetAsText().Trim(), out int v))
-                        _unlocked = Mathf.Clamp(v, 1, Total);
-                    f.Close();
+                    for (int p = 0; p < PlanetCount; p++)
+                        if (int.TryParse(parts[p], out int v))
+                            _counts[p] = Mathf.Clamp(v, 1, MissionCatalog.Planets[p].Missions.Count);
+                }
+                else if (int.TryParse(text, out int legacy))
+                {
+                    // Migration from the first build's single
+                    // linear-chain count: unfold it back into
+                    // per-planet counts so no progress is lost.
+                    int left = legacy;
+                    for (int p = 0; p < PlanetCount && left > 0; p++)
+                    {
+                        int take = Mathf.Min(left, MissionCatalog.Planets[p].Missions.Count);
+                        _counts[p] = Mathf.Max(1, take);
+                        left -= take;
+                    }
                 }
             }
-            return _unlocked;
+            return _counts;
         }
     }
 
@@ -49,39 +57,41 @@ public static class StoryProgress
         var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         if (f != null)
         {
-            f.StoreString(UnlockedCount.ToString());
+            f.StoreString(string.Join(",", Counts));
             f.Close();
         }
     }
 
-    public static bool IsUnlocked(int planet, int mission)
+    public static int UnlockedIn(int planet)
     {
-        var chain = Chain();
-        int i = chain.FindIndex(e => e.Planet == planet && e.Mission == mission);
-        return i >= 0 && i < UnlockedCount;
+        if (planet < 0 || planet >= PlanetCount) return 0;
+        return Counts[planet];
     }
 
-    // Mark a mission complete: unlocks everything up to the
-    // NEXT chain entry. Replays of older missions never
-    // shrink the unlocked set.
+    public static bool IsUnlocked(int planet, int mission)
+        => planet >= 0 && planet < PlanetCount
+           && mission >= 0 && mission < Counts[planet];
+
+    // Mark a mission complete: unlocks the NEXT mission on
+    // the same planet. Replays never shrink the unlocked set,
+    // and other planets are untouched.
     public static void Complete(int planet, int mission)
     {
-        var chain = Chain();
-        int i = chain.FindIndex(e => e.Planet == planet && e.Mission == mission);
-        if (i < 0) return;
-        int want = Mathf.Min(i + 2, chain.Count);
-        if (want > UnlockedCount)
+        if (planet < 0 || planet >= PlanetCount) return;
+        int cap = MissionCatalog.Planets[planet].Missions.Count;
+        int want = Mathf.Min(mission + 2, cap);
+        if (want > Counts[planet])
         {
-            _unlocked = want;
+            Counts[planet] = want;
             Save();
-            GD.Print($"STORY progress: completed planet {planet} mission {mission}; unlocked {want}/{chain.Count}");
+            GD.Print($"STORY progress: completed planet {planet} mission {mission}; that planet now has {want}/{cap} unlocked");
         }
     }
 
     public static void Reset()
     {
-        _unlocked = 1;
+        for (int p = 0; p < PlanetCount; p++) Counts[p] = 1;
         Save();
-        GD.Print("STORY progress reset: one planet, one mission");
+        GD.Print("STORY progress reset: every planet back to its first mission");
     }
 }
