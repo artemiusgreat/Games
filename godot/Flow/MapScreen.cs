@@ -90,6 +90,11 @@ public partial class MapScreen : Control
             var toLab = FlowUi.MakeButton("Command center", 14);
             toLab.Pressed += () => Flow.EnterLab(fromPlanet: true);
             menu.AddChild(toLab);
+            var menuSpacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            menu.AddChild(menuSpacer);
+            var resetStory = FlowUi.MakeButton("Reset story", 11);
+            resetStory.Pressed += () => { StoryProgress.Reset(); Flow.GoPlanet(); };
+            menu.AddChild(resetStory);
             // No Bar button here (owner): the briefing pick IS
             // the contract — sending the player to sign another
             // one in the bar contradicted it. Bars return as a
@@ -163,10 +168,11 @@ public partial class MapScreen : Control
         descMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
         sv.AddChild(descMonitor);
 
-        // Contract section (Mission only).
+        // Mission section (Story mode; the section was called
+        // Contract until the owner's 2026-11-13 rename).
         if (IsMission)
         {
-            sv.AddChild(FlowUi.MakeHeading("Contract", 13, FlowUi.Gold, bold: false));
+            sv.AddChild(FlowUi.MakeHeading("Mission", 13, FlowUi.Gold, bold: false));
             sv.AddChild(Selector(out _contractName, 15, StepMission));
             var contractScroll = new ScrollContainer
             {
@@ -284,13 +290,53 @@ public partial class MapScreen : Control
         return bezel;
     }
 
+    // Story gating (owner, 2026-11-13): locked planets and
+    // missions are not shown at all — the selectors cycle only
+    // what StoryProgress has unlocked.
+    private static System.Collections.Generic.List<int> UnlockedMissions(int planet)
+    {
+        var list = new System.Collections.Generic.List<int>();
+        for (int m = 0; m < MissionCatalog.Planets[planet].Missions.Count; m++)
+            if (StoryProgress.IsUnlocked(planet, m)) list.Add(m);
+        return list;
+    }
+
+    private static System.Collections.Generic.List<int> VisiblePlanets()
+    {
+        var list = new System.Collections.Generic.List<int>();
+        for (int p = 0; p < MissionCatalog.Planets.Count; p++)
+            if (UnlockedMissions(p).Count > 0) list.Add(p);
+        return list;
+    }
+
+    private static int FirstUnlockedMission(int planet)
+    {
+        var u = UnlockedMissions(planet);
+        return u.Count > 0 ? u[0] : 0;
+    }
+
+    // Keep the shared indices on unlocked content (a reset, a
+    // harness seed, or an older save can leave them pointing
+    // at locked entries).
+    private void ClampToUnlocked()
+    {
+        var vis = VisiblePlanets();
+        if (vis.Count == 0) return;
+        if (!vis.Contains(FlowMain.PlanetIndex))
+            FlowMain.PlanetIndex = vis[0];
+        if (!StoryProgress.IsUnlocked(FlowMain.PlanetIndex, FlowMain.MissionIndex))
+            FlowMain.MissionIndex = FirstUnlockedMission(FlowMain.PlanetIndex);
+    }
+
     private void StepPlace(int d)
     {
         if (IsMission)
         {
-            int n = MissionCatalog.Planets.Count;
-            FlowMain.PlanetIndex = (FlowMain.PlanetIndex + d + n) % n;
-            FlowMain.MissionIndex = 0;
+            var vis = VisiblePlanets();
+            int cur = vis.IndexOf(FlowMain.PlanetIndex);
+            if (cur < 0) cur = 0;
+            FlowMain.PlanetIndex = vis[(cur + d + vis.Count) % vis.Count];
+            FlowMain.MissionIndex = FirstUnlockedMission(FlowMain.PlanetIndex);
         }
         else
         {
@@ -302,8 +348,11 @@ public partial class MapScreen : Control
 
     private void StepMission(int d)
     {
-        int n = Planet.Missions.Count;
-        FlowMain.MissionIndex = (FlowMain.MissionIndex + d + n) % n;
+        var un = UnlockedMissions(FlowMain.PlanetIndex);
+        if (un.Count == 0) return;
+        int cur = un.IndexOf(FlowMain.MissionIndex);
+        if (cur < 0) cur = 0;
+        FlowMain.MissionIndex = un[(cur + d + un.Count) % un.Count];
         Refresh();
     }
 
@@ -311,6 +360,7 @@ public partial class MapScreen : Control
     {
         if (IsMission)
         {
+            ClampToUnlocked();
             var p = Planet; var m = Mission;
             _nameLabel.Text = p.Name;
             _subLabel.Text = p.Subtitle;
@@ -349,6 +399,7 @@ public partial class MapScreen : Control
         var p = Planet;
         for (int i = 0; i < p.Missions.Count; i++)
         {
+            if (!StoryProgress.IsUnlocked(FlowMain.PlanetIndex, i)) continue; // locked missions are not shown
             int idx = i;
             var mm = p.Missions[i];
             var b = new Button { Text = mm.Site };

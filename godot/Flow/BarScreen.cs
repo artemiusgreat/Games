@@ -48,14 +48,14 @@ public partial class BarScreen : Control
         var pv = new VBoxContainer();
         pv.AddThemeConstantOverride("separation", 8);
         panel.AddChild(pv);
-        pv.AddChild(FlowUi.MakeHeading($"Contract offers — {Planet.Name}", 17, FlowUi.Gold));
+        pv.AddChild(FlowUi.MakeHeading($"Mission offers — {Planet.Name}", 17, FlowUi.Gold));
         _status = FlowUi.MakeLabel("", 12, FlowUi.Dim);
         pv.AddChild(_status);
         _offers = new VBoxContainer();
         _offers.AddThemeConstantOverride("separation", 8);
         pv.AddChild(_offers);
 
-        ui.AddChild(FlowUi.MakeLabel("The bar keeps its own hours. Contracts signed here override the orbital selection.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
+        ui.AddChild(FlowUi.MakeLabel("The bar keeps its own hours. Missions signed here override the orbital selection.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
 
         RefreshOffers();
     }
@@ -67,12 +67,14 @@ public partial class BarScreen : Control
         foreach (var c in _offers.GetChildren()) c.QueueFree();
         var current = WorldConfig.SelectedMission;
         _status.Text = _signedHere != null
-            ? $"Contract signed: {_signedHere.Name} — {(_signedHere.Payment):N0} credits with {_signedHere.Employer}."
+            ? $"Mission signed: {_signedHere.Name} — {(_signedHere.Payment):N0} credits with {_signedHere.Employer}."
             : current != null
                 ? $"Orbital selection on file: {current.Name}. A signature here replaces it."
-                : "No contract on file yet.";
-        foreach (var m in Planet.Missions)
+                : "No mission on file yet.";
+        for (int mi = 0; mi < Planet.Missions.Count; mi++)
         {
+            if (!StoryProgress.IsUnlocked(FlowMain.PlanetIndex, mi)) continue; // locked missions are not offered
+            var m = Planet.Missions[mi];
             var row = new PanelContainer();
             row.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.85f));
             var h = new HBoxContainer();

@@ -63,10 +63,10 @@ public partial class MapTypeScreen : Control
             "ENTER TOURNAMENT  >", featured: true, icon: CardIcon.Kind.Compass,
             go: () => OnTournament?.Invoke()));
         cards.AddChild(Card(
-            "02", "MISSION", "TAKE ON A CONTRACT",
+            "02", "STORY", "TAKE ON A MISSION",
             "res://assets/flow/card_mission.jpg",
-            "Planetary operations on a full-scale front. Pick a world in orbit, sign a " +
-            "contract, then deploy from your base and march on the enemy.",
+            "Planetary operations on a full-scale front. Pick a world in orbit, take on " +
+            "a mission, then deploy from your base and march on the enemy.",
             "VIEW MISSIONS  >", featured: false, icon: CardIcon.Kind.Target,
             go: () => OnMission?.Invoke()));
 

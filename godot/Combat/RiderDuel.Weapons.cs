@@ -666,6 +666,16 @@ public partial class RiderDuel
         else if (_foe != null && w == _foe.Walker) { _foe.Dead = true; GD.Print("WPN DEATH FOE"); }
         else { _enemyDead = true; GD.Print("WPN DEATH ENEMY"); }
         OnDeath(w);
+        // Story progression (owner, 2026-11-13): the mission
+        // is complete when the player outlives every defender.
+        if (WorldConfig.IsMission && !_playerDead && _enemyDead && (_foe == null || _foe.Dead))
+        {
+            int before = StoryProgress.UnlockedCount;
+            StoryProgress.Complete(FlowMain.PlanetIndex, FlowMain.MissionIndex);
+            AddFeed(StoryProgress.UnlockedCount > before
+                ? "MISSION COMPLETE — NEW MISSION AVAILABLE"
+                : "MISSION COMPLETE");
+        }
     }
 
 }
