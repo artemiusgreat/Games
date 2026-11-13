@@ -119,6 +119,15 @@ public static class MissionCatalog
             LandColor = new Color(0.16f, 0.48f, 0.44f),
             PolarColor = new Color(0.75f, 0.88f, 0.90f)
         };
+        // Atlantis leads Meridian's list (owner, 2026-11-13):
+        // it is the mission under active testing, so it is the
+        // planet's first available mission in Story mode.
+        M(thalassa, "Atlantis", "Atlantis", -0.60f, 0.28f,
+            "Base Defense", "Meridian Combine", 390000, 4,
+            "The Atlantis stacks rise straight out of the storm water — ten thousand windows over the " +
+            "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
+            "the Combine's own lance lands. The port bar tab is on them.",
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true, stars: true);
         M(thalassa, "Pharos", "Pharos", -0.30f, -0.34f,
             "Base Defense", "Meridian Combine", 390000, 4,
             "Pirates riding out of the storm belt hit Pharos at every low tide. Hold the port until the " +
@@ -134,12 +143,6 @@ public static class MissionCatalog
             "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
             "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
             "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
-        M(thalassa, "Atlantis", "Atlantis", -0.60f, 0.28f,
-            "Base Defense", "Meridian Combine", 390000, 4,
-            "The Atlantis stacks rise straight out of the storm water — ten thousand windows over the " +
-            "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
-            "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true, stars: true);
         M(thalassa, "Elysium", "Elysium", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Elysium, a walled port town on the trade lane, and grows " +
