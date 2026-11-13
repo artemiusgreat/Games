@@ -1773,7 +1773,23 @@ public partial class RiderDuel
         if (string.IsNullOrEmpty(path)) return;
         var tex = ResourceLoader.Load<Texture2D>(path);
         if (tex == null) { GD.PrintErr($"SKY texture missing: {path}"); return; }
-        env.Sky = new Sky { SkyMaterial = new PanoramaSkyMaterial { Panorama = tex } };
+        // Hybrid sky (owner's pick, 2026-11-13): where the
+        // contract asks for it, the painted panorama is sampled
+        // by a sky shader that adds a procedural star layer —
+        // the photo keeps the nebula, the stars go sharp. Any
+        // other painted sky keeps the plain panorama material.
+        bool starsOn = false;
+        Material skyMat;
+        if (WorldConfig.SkyStars && ResourceLoader.Load<Shader>("res://assets/skies/star_layer.gdshader") is Shader starShader)
+        {
+            var sm = new ShaderMaterial { Shader = starShader };
+            sm.SetShaderParameter("panorama", tex);
+            skyMat = sm;
+            starsOn = true;
+        }
+        else
+            skyMat = new PanoramaSkyMaterial { Panorama = tex };
+        env.Sky = new Sky { SkyMaterial = skyMat };
         // Godot maps the panorama's center to +Z; the paintings
         // are composed to be looked AT, so turn the composition
         // to -Z (the direction of advance on most maps).
@@ -1795,6 +1811,7 @@ public partial class RiderDuel
         env.FogSkyAffect = 0f;
         env.VolumetricFogAlbedo = new Color(0.10f, 0.14f, 0.24f);
         GD.Print($"SKY map panorama applied: {path}");
+        if (starsOn) GD.Print("SKY star layer: procedural stars over the photo (hybrid)");
     }
 
 }

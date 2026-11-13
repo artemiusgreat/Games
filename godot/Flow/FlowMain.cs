@@ -249,6 +249,9 @@ public partial class FlowMain : Node3D
             WorldConfig.SkyTex = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTex
                 : ArenaCatalog.Arenas[ArenaIndex].SkyTex;
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_STARS")))
+            WorldConfig.SkyStars = WorldConfig.IsMission
+                && WorldConfig.SelectedMission.ProceduralStars;
         FromFlow = true;
         EnterLabScene();
     }

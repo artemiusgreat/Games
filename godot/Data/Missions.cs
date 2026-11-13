@@ -39,6 +39,10 @@ public sealed class MissionDef
     // darker/colder ones) as a res:// path to an equirect
     // texture in assets/skies/. "" = the procedural sky.
     public string SkyTex = "";
+    // Procedural star layer over the painted sky (owner:
+    // hybrid sky — the photo carries the nebula, a sky shader
+    // adds resolution-independent stars). Atlantis only.
+    public bool ProceduralStars;
     // Flat maps (owner): the contract's world builds with no
     // height map at all — every street level. The Harbor Stacks.
     public bool FlatTerrain;
@@ -61,14 +65,16 @@ public static class MissionCatalog
     private static MissionDef M(PlanetDef p, string name, string site, float sx, float sy,
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
-        bool flat = false, string sky = "", bool snow = false, bool peaks = true, bool terraces = false)
+        bool flat = false, string sky = "", bool snow = false, bool peaks = true, bool terraces = false,
+        bool stars = false)
     {
         var m = new MissionDef
         {
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
-            FlatTerrain = flat, SkyTex = sky, SnowGround = snow, BackdropPeaks = peaks, Terraces = terraces, Planet = p
+            FlatTerrain = flat, SkyTex = sky, SnowGround = snow, BackdropPeaks = peaks, Terraces = terraces, Planet = p,
+            ProceduralStars = stars
         };
         p.Missions.Add(m);
         return m;
@@ -133,7 +139,7 @@ public static class MissionCatalog
             "The Atlantis stacks rise straight out of the storm water — ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true, stars: true);
         M(thalassa, "Elysium", "Elysium", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Elysium, a walled port town on the trade lane, and grows " +
