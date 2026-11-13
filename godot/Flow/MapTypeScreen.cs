@@ -68,14 +68,14 @@ public partial class MapTypeScreen : Control
             "res://assets/flow/card_tournament.jpg",
             "Arena duel on a compact battlefield. Three riders enter — one leaves. " +
             "The classic test of machine and pilot, fought around the mesa under tournament rules.",
-            "ENTER TOURNAMENT  >", featured: true, icon: CardIcon.Kind.Compass,
+            "ENTER TOURNAMENT", featured: true, icon: CardIcon.Kind.Compass,
             go: () => OnTournament?.Invoke()));
         cards.AddChild(Card(
             "02", "STORY", "TAKE ON A MISSION",
             "res://assets/flow/card_mission.jpg",
             "Planetary operations on a full-scale front. Pick a world in orbit, take on " +
             "a mission, then deploy from your base and march on the enemy.",
-            "VIEW MISSIONS  >", featured: false, icon: CardIcon.Kind.Target,
+            "VIEW MISSIONS", featured: false, icon: CardIcon.Kind.Target,
             go: () => OnMission?.Invoke()));
 
         // Bottom telemetry row: dashboard readouts, not a bar.
@@ -100,7 +100,7 @@ public partial class MapTypeScreen : Control
     // the window (two cards + margins + the gap), their height
     // what remains under the title and telemetry rows. The ART
     // height is what's left of the card after the fixed
-    // interior (card margins 56, separations 70, header 56,
+    // interior (card margins 48, separations 70, header 56,
     // rule 2, action bar 50) and the description's wrapped
     // height — the first cut scaled the art by a ratio of the
     // card height and the interior overflowed at short
@@ -113,18 +113,28 @@ public partial class MapTypeScreen : Control
         var vp = GetViewportRect().Size;
         if (vp.X < 200f || _cardT == null) return;
         float cardW = Mathf.Clamp((vp.X - 88f - 30f) / 2f, 320f, 600f);
-        float cardH = Mathf.Clamp(vp.Y - 250f, 380f, 620f);
+        float th = Mathf.Clamp(vp.Y * 0.115f, 60f, 96f);
+        // Card height from the EQUAL-GAPS rule (owner): the
+        // space under the action bar inside the card (its
+        // bottom padding, 26) must equal the space under the
+        // card down to the telemetry row. The cards are
+        // vertically centred between the title and telemetry,
+        // so: centre zone = vp - root margins (64) - title -
+        // separations (20) - telemetry (~16); the card leaves
+        // 2 x (26 - 10 separation) of that zone below itself.
+        // At the 620 design cap (tall windows) the rule is
+        // unreachable and the gap simply grows.
+        float cardH = Mathf.Clamp(vp.Y - th - 132f, 360f, 620f);
         var cs = new Vector2(cardW, cardH);
         _cardT.CustomMinimumSize = cs;
         _cardM.CustomMinimumSize = cs;
         float descH = cardW >= 470f ? 62f : 84f; // wrapped lines at the card's text width
-        float artH = Mathf.Clamp(cardH - 56f - 178f - descH, 84f, 246f);
+        float artH = Mathf.Clamp(cardH - 48f - 178f - descH, 84f, 246f);
         _artT.CustomMinimumSize = new Vector2(0f, artH);
         _artM.CustomMinimumSize = new Vector2(0f, artH);
         var dsz = new Vector2(cardW - 52f, 0f);
         _descT.CustomMinimumSize = dsz;
         _descM.CustomMinimumSize = dsz;
-        float th = Mathf.Clamp(vp.Y * 0.115f, 60f, 96f);
         _titleRect.CustomMinimumSize = new Vector2(th * (300f / 96f), th);
     }
 
@@ -190,7 +200,7 @@ public partial class MapTypeScreen : Control
         margin.AddThemeConstantOverride("margin_left", 26);
         margin.AddThemeConstantOverride("margin_right", 26);
         margin.AddThemeConstantOverride("margin_top", 22);
-        margin.AddThemeConstantOverride("margin_bottom", 34); // breathing room under the action bar (owner)
+        margin.AddThemeConstantOverride("margin_bottom", 26); // = the gap under the card (owner: inside/outside spacing equal)
         card.AddChild(margin);
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 14);
