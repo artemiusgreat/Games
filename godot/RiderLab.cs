@@ -502,6 +502,15 @@ public partial class RiderLab : Control
 
     public override void _Ready()
     {
+        // Fonts (owner, 2026-11-13): the lab's texts are Open
+        // Sans EXPLICITLY (its headings already take Cinzel via
+        // FlowUi.Heading) — a local theme pins the default font
+        // for the whole lab subtree, with the game's label and
+        // button shadow colours kept from game_theme.tres.
+        var labTheme = new Theme { DefaultFont = FlowUi.BodyFont };
+        labTheme.SetColor("font_shadow_color", "Label", new Color(0, 0, 0, 0.85f));
+        labTheme.SetColor("font_shadow_color", "Button", new Color(0, 0, 0, 0.85f));
+        Theme = labTheme;
         // Anchors AND offsets: SetAnchorsPreset alone left this
         // code-created control at a 0x0 rect under its CanvasLayer
         // (measured live), which collapsed the backdrop ColorRect

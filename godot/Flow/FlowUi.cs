@@ -44,9 +44,17 @@ public static class FlowUi
         return sb;
     }
 
+    private static FontFile _bodyFont;
+    // The body font, applied EXPLICITLY (owner, 2026-11-13:
+    // Cinzel headings + Open Sans text on every screen — set
+    // in code, not left to the project theme, so a stale theme
+    // cache can never bring the mono back).
+    public static FontFile BodyFont => _bodyFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-Regular.ttf");
+
     public static Button MakeButton(string text, int fontSize = 15)
     {
         var b = new Button { Text = text };
+        b.AddThemeFontOverride("font", BodyFont);
         b.AddThemeFontSizeOverride("font_size", fontSize);
         b.AddThemeColorOverride("font_color", Ink);
         b.AddThemeColorOverride("font_hover_color", Gold);
@@ -74,6 +82,7 @@ public static class FlowUi
     public static Label MakeLabel(string text, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Left, bool wrap = false)
     {
         var l = new Label { Text = text, HorizontalAlignment = align };
+        l.AddThemeFontOverride("font", BodyFont);
         l.AddThemeFontSizeOverride("font_size", size);
         l.AddThemeColorOverride("font_color", color);
         if (wrap) l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -310,9 +319,10 @@ public static class FlowUi
 
     // The loading screen (owner, round 5): his targeting-
     // reticle rider art, plain — no white corner brackets,
-    // no blinking — with a 'Loading...' line under it in
-    // the terminal font. Every loading cover in the game
-    // builds this over a LoadingBg rect.
+    // no blinking — over a LoadingBg rect. Under the art, an
+    // animated ripple bar instead of a 'Loading...' line
+    // (owner, 2026-11-13). Every loading cover in the game
+    // builds this.
     public static Control MakeLoadingArt()
     {
         _loadingTex ??= GD.Load<Texture2D>("res://assets/ui/loading_target.png");
@@ -330,10 +340,50 @@ public static class FlowUi
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        var lbl = MakeLabel("Loading...", 22, new Color(0.72f, 0.82f, 0.88f), HorizontalAlignment.Center);
-        lbl.AnchorLeft = 0f; lbl.AnchorRight = 1f; lbl.AnchorTop = 0.885f; lbl.AnchorBottom = 0.95f;
-        lbl.OffsetLeft = 0f; lbl.OffsetRight = 0f; lbl.OffsetTop = 0f; lbl.OffsetBottom = 0f;
-        root.AddChild(lbl);
+        var bar = new RippleBar();
+        bar.AnchorLeft = 0.5f; bar.AnchorRight = 0.5f;
+        bar.AnchorTop = 0.90f; bar.AnchorBottom = 0.90f;
+        bar.OffsetLeft = -230f; bar.OffsetRight = 230f;
+        bar.OffsetTop = -11f; bar.OffsetBottom = 11f;
+        root.AddChild(bar);
         return root;
+    }
+}
+
+// The loading indicator (owner, 2026-11-13): a track line
+// with end ticks and a bright gold segment that sweeps
+// left to right and back on a timer — a ripple, no text.
+// Redraws only while actually on screen.
+public partial class RippleBar : Control
+{
+    private double _t;
+
+    public RippleBar()
+    {
+        MouseFilter = MouseFilterEnum.Ignore;
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!IsVisibleInTree()) return;
+        _t += delta;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        float w = Size.X, midY = Size.Y * 0.5f;
+        var track = new Color(0.45f, 0.52f, 0.60f, 0.35f);
+        DrawLine(new Vector2(0, midY), new Vector2(w, midY), track, 2f, true);
+        DrawLine(new Vector2(0, midY - 5), new Vector2(0, midY + 5), track, 2f, true);
+        DrawLine(new Vector2(w, midY - 5), new Vector2(w, midY + 5), track, 2f, true);
+        // Ping-pong phase with eased ends (smoothstep of a sine).
+        float ph = (Mathf.Sin((float)_t * 1.9f) + 1f) * 0.5f;
+        ph = ph * ph * (3f - 2f * ph);
+        float segW = w * 0.34f;
+        float x = ph * (w - segW);
+        var gold = FlowUi.Gold;
+        DrawLine(new Vector2(x, midY), new Vector2(x + segW, midY), new Color(gold, 0.22f), 7f, true);
+        DrawLine(new Vector2(x, midY), new Vector2(x + segW, midY), gold, 2.5f, true);
     }
 }

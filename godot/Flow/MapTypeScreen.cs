@@ -15,6 +15,13 @@ public partial class MapTypeScreen : Control
     public System.Action OnTournament;
     public System.Action OnMission;
 
+    // Layout refs for the responsive fit (owner, 2026-11-13:
+    // the cards must fit the visible area at his window size,
+    // not just at 1080p).
+    private Button _cardT, _cardM;
+    private TextureRect _artT, _artM, _titleRect;
+    private Label _descT, _descM;
+
     private static FontFile _cinzelBold, _cinzel, _sans, _sansSemi;
     private static FontFile CinzelBold => _cinzelBold ??= GD.Load<FontFile>("res://assets/fonts/Cinzel-Bold.ttf");
     private static FontFile Cinzel => _cinzel ??= GD.Load<FontFile>("res://assets/fonts/Cinzel-Regular.ttf");
@@ -39,14 +46,15 @@ public partial class MapTypeScreen : Control
         // top-right tagline is removed at his word).
         var top = new HBoxContainer();
         root.AddChild(top);
-        top.AddChild(new TextureRect
+        _titleRect = new TextureRect
         {
             Texture = GD.Load<Texture2D>("res://assets/flow/title_card.png"),
             CustomMinimumSize = new Vector2(300f, 96f),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             SizeFlagsHorizontal = SizeFlags.ShrinkBegin
-        });
+        };
+        top.AddChild(_titleRect);
 
         // The two mode cards, centred as a pair.
         var centre = new CenterContainer();
@@ -83,6 +91,33 @@ public partial class MapTypeScreen : Control
         var frame = new DeckFrame { MouseFilter = MouseFilterEnum.Ignore };
         frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(frame);
+
+        Layout();
+        GetTree().Root.SizeChanged += Layout;
+    }
+
+    // Fit the cards to the visible area: their width follows
+    // the window (two cards + margins + the gap), their height
+    // what remains under the title and telemetry rows, and the
+    // art/description inside scale with the card. At 1080p and
+    // above this lands exactly on the designed 600x620.
+    private void Layout()
+    {
+        var vp = GetViewportRect().Size;
+        if (vp.X < 200f || _cardT == null) return;
+        float cardW = Mathf.Clamp((vp.X - 88f - 30f) / 2f, 320f, 600f);
+        float cardH = Mathf.Clamp(vp.Y - 250f, 430f, 620f);
+        var cs = new Vector2(cardW, cardH);
+        _cardT.CustomMinimumSize = cs;
+        _cardM.CustomMinimumSize = cs;
+        float artH = Mathf.Clamp(cardH * 0.40f, 120f, 246f);
+        _artT.CustomMinimumSize = new Vector2(0f, artH);
+        _artM.CustomMinimumSize = new Vector2(0f, artH);
+        var dsz = new Vector2(cardW - 52f, 60f);
+        _descT.CustomMinimumSize = dsz;
+        _descM.CustomMinimumSize = dsz;
+        float th = Mathf.Clamp(vp.Y * 0.115f, 60f, 96f);
+        _titleRect.CustomMinimumSize = new Vector2(th * (300f / 96f), th);
     }
 
     // Letterspaced caps for the small panel labels: the sans
@@ -112,6 +147,7 @@ public partial class MapTypeScreen : Control
         string action, bool featured, CardIcon.Kind icon, System.Action go)
     {
         var card = new Button { CustomMinimumSize = new Vector2(600f, 620f) };
+        if (featured) _cardT = card; else _cardM = card;
         var empty = new StyleBoxEmpty();
         card.AddThemeStyleboxOverride("normal", empty);
         card.AddThemeStyleboxOverride("hover", empty);
@@ -181,15 +217,18 @@ public partial class MapTypeScreen : Control
         v.AddChild(rule);
 
         // Illustration, hard-edged like the panel cuts.
-        v.AddChild(new TextureRect
+        var art = new TextureRect
         {
             Texture = GD.Load<Texture2D>(artPath),
             CustomMinimumSize = new Vector2(0f, 246f),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered
-        });
+        };
+        if (featured) _artT = art; else _artM = art;
+        v.AddChild(art);
 
         var d = Serif(desc, 15, FlowUi.Ink, Sans);
+        if (featured) _descT = d; else _descM = d;
         d.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         d.CustomMinimumSize = new Vector2(548f, 72f);
         v.AddChild(d);

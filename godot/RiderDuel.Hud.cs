@@ -375,6 +375,9 @@ public partial class RiderDuel
             root.AddChild(v);
 
             var title = new Label { Text = "Exit the game?", HorizontalAlignment = HorizontalAlignment.Center };
+            // Cinzel for the popup's title (owner, 2026-11-13);
+            // the rest of the game UI is Open Sans.
+            title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
             title.AddThemeFontSizeOverride("font_size", 21);
             title.AddThemeColorOverride("font_color", Colors.White);
             v.AddChild(title);
