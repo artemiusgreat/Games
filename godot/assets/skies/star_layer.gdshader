@@ -20,6 +20,9 @@ vec3 hash33(vec3 p) {
 // One star field at one grid scale: each cell holds at most one
 // star, placed off-centre by a hash; brightness follows a steep
 // power curve so most stars are faint and a few are bright.
+// Stars are tight points (owner, 2026-11-13: the first cut's wide
+// halo read as soft blue dots) — a star is its core plus a whisper
+// of tight glow, nothing disc-like.
 vec3 star_layer(vec3 dir, float scale, float density, float gain) {
 	vec3 p = dir * scale;
 	vec3 base = floor(p);
@@ -35,13 +38,15 @@ vec3 star_layer(vec3 dir, float scale, float density, float gain) {
 		vec3 center = cell + 0.5 + (hash33(cell + 19.19) - 0.5) * 0.75;
 		float d = length(p - center);
 		float core = exp(-d * d * 300.0);
-		float halo = exp(-d * d * 36.0) * 0.22;
+		float glow = exp(-d * d * 140.0) * 0.10;
 		float mag = 0.22 + pow(rnd.y, 6.0) * 1.7;
-		vec3 tint = mix(vec3(0.72, 0.84, 1.25), vec3(1.25, 0.88, 0.66), rnd.z);
-		if (rnd.z > 0.93) {
+		// Mostly neutral-to-warm whites; blue is the rare tail of
+		// the mix, not the default (owner: no blue dots).
+		vec3 tint = mix(vec3(1.18, 1.05, 0.90), vec3(0.88, 0.95, 1.15), rnd.z * rnd.z);
+		if (rnd.z > 0.95) {
 			tint = vec3(1.25, 0.62, 0.85); // rare pink, like the photo's
 		}
-		col += tint * (core + halo) * mag * gain;
+		col += tint * (core + glow) * mag * gain;
 	}
 	return col;
 }
@@ -52,9 +57,19 @@ void sky() {
 	// so the photo lands exactly where it did without the layer.
 	vec2 uv = vec2(atan(dir.x, -dir.z) / 6.2831853 + 0.5,
 			acos(clamp(dir.y, -1.0, 1.0)) / 3.1415927);
-	vec3 col = texture(panorama, uv).rgb;
-	col += star_layer(dir, 120.0, 0.32, 0.30) * star_brightness; // dense faint field
-	col += star_layer(dir, 46.0, 0.50, 0.60) * star_brightness;  // main field
-	col += star_layer(dir, 21.0, 0.26, 1.10) * star_brightness;  // sparse bright stars
+	vec3 photo = texture(panorama, uv).rgb;
+	// Mute the photo's own saturated-blue star dots (owner): where
+	// a BRIGHT pixel is strongly blue-dominant, pull it toward its
+	// own luminance. The dim blue nebula wisps sit below the
+	// luminance gate and keep their colour.
+	float lum = dot(photo, vec3(0.299, 0.587, 0.114));
+	float blue_dom = photo.b - max(photo.r, photo.g);
+	float mute = clamp((blue_dom - 0.02) * 4.0, 0.0, 0.6) * smoothstep(0.04, 0.22, lum);
+	vec3 col = mix(photo, vec3(lum), mute);
+	// Sparser fields (owner, 2026-11-13): roughly half the first
+	// cut's densities at every scale.
+	col += star_layer(dir, 120.0, 0.14, 0.30) * star_brightness; // faint background field
+	col += star_layer(dir, 46.0, 0.24, 0.60) * star_brightness;  // main field
+	col += star_layer(dir, 21.0, 0.10, 1.10) * star_brightness;  // sparse bright stars
 	COLOR = col;
 }
