@@ -332,13 +332,51 @@ public partial class RiderDuel
         // hill". Capping tof bounds the lob AND the flight time
         // (long shots simply fly faster past ~79u), and the solve
         // stays exact: the rocket passes through the aim point.
-        float dist = Mathf.Max(toAim.Length(), 1f);
-        var dir = ApplyInaccuracy(toAim.Normalized(), 1.1f);
         (float baseSpeed, float grav, float tofMax) = (def.RocketBaseSpeed, def.RocketGravity, def.RocketTofMax);
+        // Axis-converged solve (owner's Atlantis lip, 2026-11-13):
+        // the crosshair is CAMERA truth, but the pod hangs below
+        // and behind that line, so a salvo solved from the pod
+        // flies the pod's shallower line and clips terrace lips
+        // the crosshair clears by metres. The arc is therefore
+        // solved from a VIRTUAL MUZZLE — the pod's projection onto
+        // the aim axis — and the rocket, still spawned at the pod,
+        // opens with guidance (Projectile.Step) that bends it onto
+        // that arc within the first fraction of a second; after
+        // that it flies the exact solution and passes through the
+        // aim point as before. Engages only when the pod sits
+        // meaningfully off the axis and the target is well past
+        // the rider; close shots and on-axis pods keep the plain
+        // pod solve (solveFrom == muzzle, identical numbers).
+        var axisOrigin = (_camMode == CamModes.Chase && _cam != null) ? _cam.GlobalPosition : _aimFrom;
+        var axisDir = _aimDir;
+        Vector3 solveFrom = muzzle;
+        bool guided = false;
+        if (axisDir.LengthSquared() > 0.5f)
+        {
+            float tPod = (muzzle - axisOrigin).Dot(axisDir);
+            float tAim = (muzzle + toAim - axisOrigin).Dot(axisDir);
+            var onAxis = axisOrigin + axisDir * tPod;
+            if ((muzzle - onAxis).Length() > 1.5f && tAim > tPod + 15f)
+            {
+                solveFrom = onAxis;
+                guided = true;
+            }
+        }
+        var toSolve = (muzzle + toAim) - solveFrom;
+        float dist = Mathf.Max(toSolve.Length(), 1f);
+        var dir = ApplyInaccuracy(toSolve.Normalized(), 1.1f);
         float tof = Mathf.Min(dist / baseSpeed, tofMax);
         float speed = dist / tof;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
-        SpawnProjectile(muzzle, vel, grav, def.Damage, def.Splash, Roles.Player, rocket: true, weaponWeight: def.PerRocketWeight);
+        var proj = SpawnProjectile(muzzle, vel, grav, def.Damage, def.Splash, Roles.Player, rocket: true, weaponWeight: def.PerRocketWeight);
+        if (guided)
+        {
+            proj.GuideActive = true;
+            proj.GuideOrigin = solveFrom;
+            proj.GuideStart = muzzle;
+            proj.GuideVel0 = vel;
+            proj.GuideTime = 0f;
+        }
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
     }
 

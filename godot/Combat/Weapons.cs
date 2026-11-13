@@ -22,13 +22,55 @@ public partial class Projectile : Node3D
     public System.Action<HitModel.Result, Projectile> OnHit;
     public System.Action<Projectile> OnStep; // per-step hook (rocket trail)
 
+    // Opening guidance window (axis convergence, 2026-11-13): the
+    // rocket was SOLVED from a virtual muzzle on the aim axis
+    // (GuideOrigin, GuideVel0) but physically launched from a pod
+    // off that axis (GuideStart). While guided, the position is an
+    // explicit smoothstep blend between the pod-launched arc and
+    // the axis arc — the two differ by the constant offset
+    // GuideOrigin - GuideStart, so the blend is the pod arc shifted
+    // by beta * offset — and the velocity is that blend's exact
+    // derivative. At the end of the window the rocket sits ON the
+    // solved arc with the arc's own velocity, so the ballistic
+    // continuation is the exact solution (a velocity-chasing
+    // controller was simulated first and rejected: its handoff
+    // velocity error integrated into a ~4.4u miss at the target).
+    // Rockets only; shells never set GuideActive.
+    public bool GuideActive;
+    public Vector3 GuideOrigin; // virtual muzzle on the aim axis
+    public Vector3 GuideStart;  // physical launch point (the pod)
+    public Vector3 GuideVel0;   // the solved arc's launch velocity
+    public float GuideTime;
+    public float GuideDur = 0.55f;
+
     public void Step(float dt, HitModel hm)
     {
         if (Dead) return;
         Life -= dt;
-        Vel.Y -= Gravity * dt;
+        Vector3 to;
+        if (GuideActive)
+        {
+            // Gravity is inside the arc model here, so the plain
+            // decrement below is skipped while guided; the swept
+            // segment test below runs on the blend's step exactly
+            // as it does for a ballistic step.
+            GuideTime += dt;
+            float u = Mathf.Clamp(GuideTime / GuideDur, 0f, 1f);
+            float beta = u * u * (3f - 2f * u);
+            float betaDeriv = GuideTime < GuideDur ? 6f * u * (1f - u) / GuideDur : 0f;
+            var delta = GuideOrigin - GuideStart;
+            to = GuideStart + GuideVel0 * GuideTime
+                + Vector3.Down * (0.5f * Gravity * GuideTime * GuideTime)
+                + delta * beta;
+            Vel = GuideVel0 + Vector3.Down * (Gravity * GuideTime) + delta * betaDeriv;
+            if (GuideTime >= GuideDur) GuideActive = false;
+        }
+        else
+        {
+            Vel.Y -= Gravity * dt;
+            to = GlobalPosition + Vel * dt;
+        }
         var from = GlobalPosition;
-        var to = from + Vel * dt;
         float len = from.DistanceTo(to);
         if (len > 1e-5f)
         {
