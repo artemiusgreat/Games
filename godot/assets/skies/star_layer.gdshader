@@ -57,15 +57,11 @@ void sky() {
 	// so the photo lands exactly where it did without the layer.
 	vec2 uv = vec2(atan(dir.x, -dir.z) / 6.2831853 + 0.5,
 			acos(clamp(dir.y, -1.0, 1.0)) / 3.1415927);
-	vec3 photo = texture(panorama, uv).rgb;
-	// Mute the photo's own saturated-blue star dots (owner): where
-	// a BRIGHT pixel is strongly blue-dominant, pull it toward its
-	// own luminance. The dim blue nebula wisps sit below the
-	// luminance gate and keep their colour.
-	float lum = dot(photo, vec3(0.299, 0.587, 0.114));
-	float blue_dom = photo.b - max(photo.r, photo.g);
-	float mute = clamp((blue_dom - 0.02) * 4.0, 0.0, 0.6) * smoothstep(0.04, 0.22, lum);
-	vec3 col = mix(photo, vec3(lum), mute);
+	// The photo's own saturated-blue stars are cleaned in the
+	// texture itself (owner, 2026-11-13: baked de-blue pass —
+	// blue-excess pixels neutralized to their luminance; the
+	// shader's earlier mute block is retired with it).
+	vec3 col = texture(panorama, uv).rgb;
 	// Sparser fields (owner, 2026-11-13): roughly half the first
 	// cut's densities at every scale.
 	col += star_layer(dir, 120.0, 0.14, 0.30) * star_brightness; // faint background field
