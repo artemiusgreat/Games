@@ -98,22 +98,30 @@ public partial class MapTypeScreen : Control
 
     // Fit the cards to the visible area: their width follows
     // the window (two cards + margins + the gap), their height
-    // what remains under the title and telemetry rows, and the
-    // art/description inside scale with the card. At 1080p and
-    // above this lands exactly on the designed 600x620.
+    // what remains under the title and telemetry rows. The ART
+    // height is what's left of the card after the fixed
+    // interior (vbox offsets 50, separations 70, header 56,
+    // rule 2, action bar 58) and the description's wrapped
+    // height — the first cut scaled the art by a ratio of the
+    // card height and the interior overflowed at short
+    // windows, pushing the action bar past the card's bottom
+    // edge over the telemetry line (owner's screenshot,
+    // 2026-11-13). At 1080p the budget lands on the designed
+    // 600x620 with the full 246px art.
     private void Layout()
     {
         var vp = GetViewportRect().Size;
         if (vp.X < 200f || _cardT == null) return;
         float cardW = Mathf.Clamp((vp.X - 88f - 30f) / 2f, 320f, 600f);
-        float cardH = Mathf.Clamp(vp.Y - 250f, 430f, 620f);
+        float cardH = Mathf.Clamp(vp.Y - 250f, 380f, 620f);
         var cs = new Vector2(cardW, cardH);
         _cardT.CustomMinimumSize = cs;
         _cardM.CustomMinimumSize = cs;
-        float artH = Mathf.Clamp(cardH * 0.40f, 120f, 246f);
+        float descH = cardW >= 470f ? 62f : 84f; // wrapped lines at the card's text width
+        float artH = Mathf.Clamp(cardH - 50f - 186f - descH, 84f, 246f);
         _artT.CustomMinimumSize = new Vector2(0f, artH);
         _artM.CustomMinimumSize = new Vector2(0f, artH);
-        var dsz = new Vector2(cardW - 52f, 60f);
+        var dsz = new Vector2(cardW - 52f, 0f);
         _descT.CustomMinimumSize = dsz;
         _descM.CustomMinimumSize = dsz;
         float th = Mathf.Clamp(vp.Y * 0.115f, 60f, 96f);
@@ -222,7 +230,8 @@ public partial class MapTypeScreen : Control
             Texture = GD.Load<Texture2D>(artPath),
             CustomMinimumSize = new Vector2(0f, 246f),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            SizeFlagsVertical = SizeFlags.ExpandFill // absorbs leftover height with the spacer
         };
         if (featured) _artT = art; else _artM = art;
         v.AddChild(art);
