@@ -96,7 +96,7 @@ public static class MissionCatalog
         M(ares, "Troy", "Troy", -0.38f, 0.30f,
             "Base Assault", "House Asterion", 480000, 4,
             "Move overland to the Troy depot and destroy the Corvane garrison before their relief column arrives. " +
-            "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion — the new contract depends on her signature.",
+            "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion — the new mission depends on her signature.",
             "Colonel Mara Voss", "Asterion needs that depot rubble by dawn. You look like dawn to me.", WorldConfig.BiomeKind.Desert);
         M(ares, "Syracuse", "Athens", 0.34f, -0.18f,
             "Convoy Escort", "Asterion Logistics", 210000, 2,
