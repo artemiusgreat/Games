@@ -146,7 +146,7 @@ public partial class RiderDuel
                 : camTruth ? _cam.GlobalPosition + AimDirWorld() * fired[i].Def.Range
                 : mz + (aimPoint - mz).Normalized() * fired[i].Def.Range;
             SpawnBeam(mz, beamEnd, ppc ? new Color(0.55f, 0.8f, 1f) : new Color(1f, 0.22f, 0.12f), 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
-            if (i == 0) PlaySfx(_sfxLaser, mz, 0f, ppc ? 0.8f : 1f);
+            if (i == 0) PlaySfx(_sfxLaser, mz, 0f, ppc ? 0.9f : 1.125f); // pitch raised ~2 semitones (owner, 2026-11-13); PPC stays proportionally deeper
             SpawnFlash(mz, new Color(1f, 0.4f, 0.2f), 0.3f, 0.07f);
         }
         if (anyReach)
