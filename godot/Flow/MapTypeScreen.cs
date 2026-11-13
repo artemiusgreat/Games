@@ -64,14 +64,14 @@ public partial class MapTypeScreen : Control
         cards.AddThemeConstantOverride("separation", 30);
         centre.AddChild(cards);
         cards.AddChild(Card(
-            "01", "TOURNAMENT", "SELECT YOUR CHAMPION",
+            "TOURNAMENT", "SELECT YOUR CHAMPION",
             "res://assets/flow/card_tournament.jpg",
             "Arena duel on a compact battlefield. Three riders enter — one leaves. " +
             "The classic test of machine and pilot, fought around the mesa under tournament rules.",
             "ENTER TOURNAMENT", featured: true, icon: CardIcon.Kind.Compass,
             go: () => OnTournament?.Invoke()));
         cards.AddChild(Card(
-            "02", "STORY", "TAKE ON A MISSION",
+            "STORY", "TAKE ON A MISSION",
             "res://assets/flow/card_mission.jpg",
             "Planetary operations on a full-scale front. Pick a world in orbit, take on " +
             "a mission, then deploy from your base and march on the enemy.",
@@ -151,7 +151,7 @@ public partial class MapTypeScreen : Control
         return l;
     }
 
-    private Control Card(string index, string title, string sub, string artPath, string desc,
+    private Control Card(string title, string sub, string artPath, string desc,
         string action, bool featured, CardIcon.Kind icon, System.Action go)
     {
         var card = new Button { CustomMinimumSize = new Vector2(600f, 620f) };
@@ -196,8 +196,9 @@ public partial class MapTypeScreen : Control
         v.AddThemeConstantOverride("separation", 14);
         margin.AddChild(v);
 
-        // Header: line icon + title / subtitle stack + the
-        // panel's index number, over a gold rule.
+        // Header: line icon + title / subtitle stack, over a
+        // gold rule. (The 01/02 panel indices were removed at
+        // the owner's word.)
         var head = new HBoxContainer();
         head.AddThemeConstantOverride("separation", 16);
         v.AddChild(head);
@@ -214,9 +215,6 @@ public partial class MapTypeScreen : Control
         titles.AddChild(Serif(title, 34, featured ? FlowUi.Gold : FlowUi.Ink, CinzelBold));
         var subL = Serif(Spread(sub), 12, featured ? FlowUi.GoldDim : FlowUi.Dim, SansSemi);
         titles.AddChild(subL);
-        var idx = Serif(index, 22, featured ? FlowUi.GoldDim : FlowUi.Dim, Cinzel);
-        idx.VerticalAlignment = VerticalAlignment.Top;
-        head.AddChild(idx);
         var rule = new ColorRect
         {
             Color = new Color(FlowUi.GoldDim, 0.55f),
