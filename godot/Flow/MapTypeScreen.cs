@@ -100,8 +100,8 @@ public partial class MapTypeScreen : Control
     // the window (two cards + margins + the gap), their height
     // what remains under the title and telemetry rows. The ART
     // height is what's left of the card after the fixed
-    // interior (vbox offsets 50, separations 70, header 56,
-    // rule 2, action bar 58) and the description's wrapped
+    // interior (card margins 56, separations 70, header 56,
+    // rule 2, action bar 50) and the description's wrapped
     // height — the first cut scaled the art by a ratio of the
     // card height and the interior overflowed at short
     // windows, pushing the action bar past the card's bottom
@@ -118,7 +118,7 @@ public partial class MapTypeScreen : Control
         _cardT.CustomMinimumSize = cs;
         _cardM.CustomMinimumSize = cs;
         float descH = cardW >= 470f ? 62f : 84f; // wrapped lines at the card's text width
-        float artH = Mathf.Clamp(cardH - 50f - 186f - descH, 84f, 246f);
+        float artH = Mathf.Clamp(cardH - 56f - 178f - descH, 84f, 246f);
         _artT.CustomMinimumSize = new Vector2(0f, artH);
         _artM.CustomMinimumSize = new Vector2(0f, artH);
         var dsz = new Vector2(cardW - 52f, 0f);
@@ -190,7 +190,7 @@ public partial class MapTypeScreen : Control
         margin.AddThemeConstantOverride("margin_left", 26);
         margin.AddThemeConstantOverride("margin_right", 26);
         margin.AddThemeConstantOverride("margin_top", 22);
-        margin.AddThemeConstantOverride("margin_bottom", 22);
+        margin.AddThemeConstantOverride("margin_bottom", 34); // breathing room under the action bar (owner)
         card.AddChild(margin);
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 14);
@@ -247,7 +247,7 @@ public partial class MapTypeScreen : Control
 
         // Action bar: a chamfered plate — solid gold on the
         // featured card, dark with a steel frame on the other.
-        var barWrap = new Control { CustomMinimumSize = new Vector2(0f, 58f) };
+        var barWrap = new Control { CustomMinimumSize = new Vector2(0f, 50f) };
         v.AddChild(barWrap);
         var bar = new CutPanel
         {
