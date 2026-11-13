@@ -556,6 +556,21 @@ public partial class RiderWalker : Node3D
         return new Basis(xA, n, zA);
     }
 
+    // FootBasisAt for a level floor (normal = +Y): the hang
+    // pose's foot basis. It MUST share FootBasisAt's axes —
+    // the flight code used YawBasis() here before, which is
+    // the same frame spun 180 degrees about Y, so the feet
+    // rendered toes-back/twisted for the whole burn (owner's
+    // report, 2026-11-13; measured foot yaw error ~174 deg
+    // in the air vs ~0 planted). YawBasis stays correct for
+    // its other job (step-space math), just not for feet.
+    private static Basis FlatFootBasis(float yaw)
+    {
+        var back = HeadingVec(yaw) * -1f;
+        var xA = Vector3.Up.Cross(back);
+        return new Basis(xA, Vector3.Up, back);
+    }
+
     private Vector3 HomeSlot(Leg leg, Vector3 rootXZ)
     {
         var off = _rootBasis * new Vector3(leg.HomeLocal.X * _scaleF, 0f, leg.HomeLocal.Y * _scaleF);
@@ -814,7 +829,7 @@ public partial class RiderWalker : Node3D
                 var hipW = _skelGlobal * leg.Hrest;
                 float drop = (leg.L1 + leg.L2) * st + leg.AnkleAboveSoleW + 0.5f;
                 leg.SoleTarget = new Vector3(hipW.X, hipW.Y - drop, hipW.Z);
-                leg.PlantBasisW = YawBasis();
+                leg.PlantBasisW = FlatFootBasis(_legsYaw);
                 leg.CurBasisW = leg.PlantBasisW;
             }
         }
