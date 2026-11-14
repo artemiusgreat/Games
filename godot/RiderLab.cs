@@ -615,6 +615,7 @@ public partial class RiderLab : Control
         rowsBox.AddThemeConstantOverride("separation", 4);
         rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var rowsMargin = new MarginContainer();
+        rowsMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill; // rows take the sidebar's full width, like the equipment page (owner, 2026-11-14): without the expand flag the scroll's child chain kept its content minimum and the rows stopped short
         rowsMargin.AddThemeConstantOverride("margin_right", 14); // air between the rows and the scrollbar (owner)
         rowsMargin.AddChild(rowsBox);
         scroll.AddChild(rowsMargin);
@@ -644,7 +645,7 @@ public partial class RiderLab : Control
             if (w.Type != gType || !w.CatalogListed) continue;
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text).
-            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true }; // row sized to fit the tile with air around it
+            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true, SizeFlagsHorizontal = SizeFlags.ExpandFill }; // row sized to fit the tile with air around it
             StyleBoxFlat RowBox()
             {
                 // Same backdrop as the slot panels (owner): one
