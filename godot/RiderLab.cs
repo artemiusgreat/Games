@@ -539,6 +539,12 @@ public partial class RiderLab : Control
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
+        // The team selector sits at the very top, above
+        // everything else (owner: inside the selector stack it
+        // overlapped the paperdoll's projected anchors and read
+        // as clutter). Its own band, first in the column.
+        if (TeamMode) root.AddChild(TeamSection());
+
         var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}"
             + (TeamMode ? $"  ·  TEAM SLOT {TeamSlot + 1} OF {TeamNames.Length}" : "") };
         FlowUi.Heading(title);
@@ -557,7 +563,6 @@ public partial class RiderLab : Control
         // One selector only (owner, 2026-10-31): yours. The two
         // opponents are fixed — a Enyo and an Hector field
         // against you (and each other) on every map.
-        if (TeamMode) selBox.AddChild(TeamSection());
         selBox.AddChild(RiderSelector("RIDER", true));
 
         var mid = new HBoxContainer();
@@ -826,9 +831,18 @@ public partial class RiderLab : Control
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 10);
         pv.AddChild(row);
+        // The strip hugs its cards (no ExpandFill): the buttons
+        // sit right beside the last card instead of across an
+        // empty panel (owner: the void read as clutter). The
+        // width is set explicitly — a ScrollContainer with Auto
+        // scrolling reports zero minimum width and collapsed
+        // shut in the first capture of this layout, hiding the
+        // cards entirely. It still scrolls when the window is
+        // too narrow for the full team.
+        float cardsW = TeamNames.Length * 176f + Mathf.Max(0, TeamNames.Length - 1) * 8f;
         var scroll = new ScrollContainer
         {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(Mathf.Min(cardsW, 744f), 0f),
             VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Auto
         };
@@ -840,7 +854,7 @@ public partial class RiderLab : Control
         {
             int idx = i;
             bool active = i == TeamSlot;
-            var card = new Button { CustomMinimumSize = new Vector2(176f, 88f) };
+            var card = new Button { CustomMinimumSize = new Vector2(176f, 82f) };
             var bg = active ? new Color(0.14f, 0.16f, 0.10f, 0.98f) : new Color(0.07f, 0.09f, 0.13f, 0.95f);
             var bd = active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.42f, 0.48f, 0.56f, 0.7f);
             card.AddThemeStyleboxOverride("normal", LabPanel(bg, bd));
