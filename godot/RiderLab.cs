@@ -597,13 +597,25 @@ public partial class RiderLab : Control
         var catBox = new VBoxContainer();
         catBox.AddThemeConstantOverride("separation", 8);
         sidePanel.AddChild(catBox);
+        // The tabs are one combo-button (owner, 2026-11-14):
+        // a single framed bar split in two, the active half
+        // filled, one frame around both.
+        var tabFrame = new PanelContainer();
+        var tabSb = new StyleBoxFlat { BgColor = new Color(0.05f, 0.07f, 0.11f, 0.9f), BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f) };
+        tabSb.SetBorderWidthAll(2);
+        tabSb.SetCornerRadiusAll(6);
+        tabFrame.AddThemeStyleboxOverride("panel", tabSb);
+        catBox.AddChild(tabFrame);
         var tabRow = new HBoxContainer();
-        tabRow.AddThemeConstantOverride("separation", 8);
-        catBox.AddChild(tabRow);
-        _tabWeapons = new Button { Text = "Weapons" };
+        tabRow.AddThemeConstantOverride("separation", 0);
+        tabFrame.AddChild(tabRow);
+        _tabWeapons = new Button { Text = "Weapon" };
         _tabWeapons.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _tabWeapons.Pressed += () => ShowLabTab(true);
         tabRow.AddChild(_tabWeapons);
+        var tabDiv = new VSeparator();
+        tabDiv.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(0.42f, 0.48f, 0.56f, 0.8f), Thickness = 2 });
+        tabRow.AddChild(tabDiv);
         _tabEquipment = new Button { Text = "Equipment" };
         _tabEquipment.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _tabEquipment.Pressed += () => ShowLabTab(false);
@@ -896,15 +908,17 @@ public partial class RiderLab : Control
     private static void StyleTabButton(Button b, bool active)
     {
         if (b == null) return;
+        // Combo-button halves (owner, 2026-11-14): the frame
+        // around the pair carries the border; a half only
+        // differs by its fill (gold-tinted when active, bare
+        // otherwise) and its text colour.
         b.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.82f, 0.88f, 0.94f));
         var face = new StyleBoxFlat
         {
-            BgColor = active ? new Color(0.16f, 0.15f, 0.08f, 0.95f) : new Color(0.08f, 0.10f, 0.15f, 0.9f),
-            BorderColor = active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.42f, 0.48f, 0.56f, 0.7f),
+            BgColor = active ? new Color(0.16f, 0.15f, 0.08f, 0.95f) : new Color(0, 0, 0, 0),
             ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
         };
-        face.SetBorderWidthAll(2);
-        face.SetCornerRadiusAll(6);
+        face.SetCornerRadiusAll(4);
         b.AddThemeStyleboxOverride("normal", face);
         b.AddThemeStyleboxOverride("hover", face);
         b.AddThemeStyleboxOverride("pressed", face);
