@@ -78,8 +78,13 @@ public partial class RiderDuel
             lab.TeamMode = true;
             lab.TeamSlot = TeamRoster.StorySlot;
             lab.TeamNames = new string[TeamRoster.Story.Count];
+            lab.TeamMeta = new string[TeamRoster.Story.Count];
             for (int i = 0; i < TeamRoster.Story.Count; i++)
-                lab.TeamNames[i] = TeamRoster.Story[i].Spec.Name;
+            {
+                var sp = TeamRoster.Story[i].Spec;
+                lab.TeamNames[i] = sp.Name;
+                lab.TeamMeta[i] = $"{sp.Tonnage:F0}T · {sp.ClassLabel}";
+            }
             lab.OnTeamSlot = i => SetStorySlot(i);
             lab.OnTeamAdd = () => AddStoryMember();
             lab.OnTeamRemove = i => RemoveStoryMember(i);

@@ -22,12 +22,13 @@ public partial class RiderLab : Control
     public Action OnSelectionChanged;
 
     // Story team mode (owner, teams stage): the lab edits one
-    // team slot at a time. TeamNames are the slots' rider names
-    // in slot order; the callbacks switch/add/remove slots and
+    // team slot at a time. TeamNames/TeamMeta describe the
+    // slots in order; the callbacks switch/add/remove slots and
     // the duel recreates the lab against the newly edited slot.
     public bool TeamMode;
     public int TeamSlot;
     public string[] TeamNames = System.Array.Empty<string>();
+    public string[] TeamMeta = System.Array.Empty<string>();
     public Action<int> OnTeamSlot;
     public Action OnTeamAdd;
     public Action<int> OnTeamRemove;
@@ -556,7 +557,7 @@ public partial class RiderLab : Control
         // One selector only (owner, 2026-10-31): yours. The two
         // opponents are fixed — a Enyo and an Hector field
         // against you (and each other) on every map.
-        if (TeamMode) selBox.AddChild(TeamSlotsRow());
+        if (TeamMode) selBox.AddChild(TeamSection());
         selBox.AddChild(RiderSelector("RIDER", true));
 
         var mid = new HBoxContainer();
@@ -792,48 +793,135 @@ public partial class RiderLab : Control
         }
     }
 
-    // Team slots row (owner, teams stage): one chip per team
-    // slot in a row; clicking a chip makes the lab show that
-    // rider (its info, weapon slots, tonnage). Slot 0 is the
-    // main player's rider and cannot be removed; slots can be
-    // added up to four. The RIDER selector below then changes
-    // the chassis of the slot being edited.
-    private Control TeamSlotsRow()
+    // Team section (owner, teams stage — reworked at his word:
+    // the chip row was not clear). A separate panel holding a
+    // scrollable strip of rider CARDS (like his MechWarrior
+    // Online reference): clicking a card makes the lab display
+    // that rider; the displayed rider's card is gold-framed.
+    // Add / Remove are explicit buttons beside the strip;
+    // Remove takes out the displayed rider. Slot 0 is the main
+    // player's rider and cannot be removed; the team holds at
+    // most four. The RIDER selector below changes the chassis
+    // of the displayed slot.
+    private Control TeamSection()
     {
-        var box = new HBoxContainer();
-        box.AddThemeConstantOverride("separation", 8);
-        var lab = new Label { Text = "TEAM:", VerticalAlignment = VerticalAlignment.Center };
-        lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
-        box.AddChild(lab);
-        box.AddChild(new Control { CustomMinimumSize = new Vector2(22, 0) });
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", LabPanel(new Color(0.045f, 0.065f, 0.105f, 0.96f), new Color(0.42f, 0.48f, 0.56f, 0.8f)));
+        var pv = new VBoxContainer();
+        pv.AddThemeConstantOverride("separation", 6);
+        panel.AddChild(pv);
+        var head = new HBoxContainer();
+        head.AddThemeConstantOverride("separation", 10);
+        pv.AddChild(head);
+        var h = new Label { Text = "TEAM" };
+        h.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
+        FlowUi.Heading(h, false);
+        head.AddChild(h);
+        var count = new Label { Text = $"{TeamNames.Length} OF 4 RIDERS — click a card to display that rider in the lab" };
+        count.AddThemeColorOverride("font_color", new Color(0.62f, 0.70f, 0.78f));
+        count.AddThemeFontSizeOverride("font_size", 12);
+        count.VerticalAlignment = VerticalAlignment.Center;
+        head.AddChild(count);
+
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 10);
+        pv.AddChild(row);
+        var scroll = new ScrollContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto
+        };
+        row.AddChild(scroll);
+        var cards = new HBoxContainer();
+        cards.AddThemeConstantOverride("separation", 8);
+        scroll.AddChild(cards);
         for (int i = 0; i < TeamNames.Length; i++)
         {
             int idx = i;
-            var chip = new Button { Text = $"{i + 1}. {TeamNames[i]}" + (i == 0 ? " (YOU)" : "") };
-            chip.AddThemeFontSizeOverride("font_size", 15);
-            if (i == TeamSlot)
+            bool active = i == TeamSlot;
+            var card = new Button { CustomMinimumSize = new Vector2(176f, 88f) };
+            var bg = active ? new Color(0.14f, 0.16f, 0.10f, 0.98f) : new Color(0.07f, 0.09f, 0.13f, 0.95f);
+            var bd = active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.42f, 0.48f, 0.56f, 0.7f);
+            card.AddThemeStyleboxOverride("normal", LabPanel(bg, bd));
+            card.AddThemeStyleboxOverride("hover", LabPanel(new Color(0.11f, 0.14f, 0.20f, 0.98f), bd));
+            card.AddThemeStyleboxOverride("pressed", LabPanel(bg, bd));
+            card.AddThemeStyleboxOverride("focus", LabPanel(new Color(0, 0, 0, 0), new Color(0.98f, 0.80f, 0.35f), drawCenter: false));
+            if (!active) card.Pressed += () => OnTeamSlot?.Invoke(idx);
+            var cv = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            cv.AddThemeConstantOverride("separation", 2);
+            cv.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            cv.OffsetLeft = 10; cv.OffsetTop = 8; cv.OffsetRight = -10; cv.OffsetBottom = -8;
+            card.AddChild(cv);
+            var nm = new Label { Text = $"{i + 1}. {TeamNames[i]}", MouseFilter = MouseFilterEnum.Ignore };
+            nm.AddThemeFontSizeOverride("font_size", 16);
+            nm.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.95f, 0.97f, 1f));
+            FlowUi.Heading(nm, false);
+            cv.AddChild(nm);
+            var meta = new Label { Text = TeamMeta.Length > i ? TeamMeta[i] : "", MouseFilter = MouseFilterEnum.Ignore };
+            meta.AddThemeFontSizeOverride("font_size", 12);
+            meta.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+            cv.AddChild(meta);
+            var st = new Label
             {
-                chip.Disabled = true;
-                chip.AddThemeColorOverride("font_disabled_color", new Color(0.98f, 0.80f, 0.35f));
-            }
-            else chip.Pressed += () => OnTeamSlot?.Invoke(idx);
-            box.AddChild(chip);
-            if (i >= 1)
-            {
-                var rm = new Button { Text = "×" };
-                rm.TooltipText = "Remove this rider from the team";
-                rm.Pressed += () => OnTeamRemove?.Invoke(idx);
-                box.AddChild(rm);
-            }
+                Text = active ? "IN LAB" : i == 0 ? "MAIN RIDER" : "TEAM RIDER",
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            st.AddThemeFontSizeOverride("font_size", 11);
+            st.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.62f, 0.70f, 0.78f));
+            cv.AddChild(st);
+            cards.AddChild(card);
         }
-        if (TeamNames.Length < 4)
+        var btns = new VBoxContainer();
+        btns.AddThemeConstantOverride("separation", 8);
+        row.AddChild(btns);
+        var add = new Button { Text = "ADD RIDER", CustomMinimumSize = new Vector2(132f, 40f) };
+        StyleTeamButton(add);
+        add.Disabled = TeamNames.Length >= 4;
+        add.Pressed += () => OnTeamAdd?.Invoke();
+        btns.AddChild(add);
+        var rem = new Button { Text = "REMOVE", CustomMinimumSize = new Vector2(132f, 40f) };
+        StyleTeamButton(rem);
+        rem.Disabled = TeamSlot == 0 || TeamNames.Length <= 1;
+        rem.TooltipText = TeamSlot == 0
+            ? "The main rider (slot 1) cannot be removed"
+            : "Remove the displayed rider from the team";
+        rem.Pressed += () => OnTeamRemove?.Invoke(TeamSlot);
+        btns.AddChild(rem);
+        return panel;
+    }
+
+    // Explicit button boxes for the team section: on the dark
+    // panel the lab theme's default button faces all but
+    // vanish (measured in the first capture), so Add/Remove
+    // carry the card idiom's boxes, with a dimmed disabled face.
+    private static void StyleTeamButton(Button b)
+    {
+        var bd = new Color(0.55f, 0.62f, 0.70f, 0.9f);
+        b.AddThemeStyleboxOverride("normal", LabPanel(new Color(0.10f, 0.13f, 0.19f, 0.98f), bd));
+        b.AddThemeStyleboxOverride("hover", LabPanel(new Color(0.16f, 0.20f, 0.28f, 0.98f), new Color(0.98f, 0.80f, 0.35f)));
+        b.AddThemeStyleboxOverride("pressed", LabPanel(new Color(0.20f, 0.17f, 0.08f, 0.98f), bd));
+        b.AddThemeStyleboxOverride("disabled", LabPanel(new Color(0.06f, 0.07f, 0.09f, 0.9f), new Color(0.35f, 0.38f, 0.42f, 0.6f)));
+        b.AddThemeColorOverride("font_disabled_color", new Color(0.45f, 0.48f, 0.52f));
+        b.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.80f, 0.35f));
+    }
+
+    // A flat bordered stylebox in the lab's idiom (the flow
+    // screens' panel look, built locally so the lab stays
+    // theme-self-contained).
+    private static StyleBoxFlat LabPanel(Color bg, Color border, bool drawCenter = true)
+    {
+        var sb = new StyleBoxFlat
         {
-            var add = new Button { Text = "ADD RIDER" };
-            add.AddThemeFontSizeOverride("font_size", 15);
-            add.Pressed += () => OnTeamAdd?.Invoke();
-            box.AddChild(add);
-        }
-        return box;
+            BgColor = bg,
+            BorderColor = border,
+            DrawCenter = drawCenter,
+            ContentMarginLeft = 6, ContentMarginRight = 6,
+            ContentMarginTop = 5, ContentMarginBottom = 5
+        };
+        sb.SetBorderWidthAll(2);
+        sb.SetCornerRadiusAll(4);
+        return sb;
     }
 
     // Slideshow selector (owner): chips don't scale to tens of
