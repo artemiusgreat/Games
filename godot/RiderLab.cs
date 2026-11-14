@@ -700,9 +700,11 @@ public partial class RiderLab : Control
             _jetsTileBtn.AddThemeStyleboxOverride(bst, new StyleBoxEmpty());
         var thFrame = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
         thFrame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        // Thin and square, like the weapon icons' own frames
+        // (owner, 2026-11-14).
         var thSb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.16f, 0.95f), BorderColor = new Color(0.62f, 0.68f, 0.75f, 0.95f) };
-        thSb.SetBorderWidthAll(2);
-        thSb.SetCornerRadiusAll(4);
+        thSb.SetBorderWidthAll(1);
+        thSb.SetCornerRadiusAll(0);
         thFrame.AddThemeStyleboxOverride("panel", thSb);
         var thLabel = new Label { Text = "TH", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
         thLabel.AddThemeFontSizeOverride("font_size", 12);
