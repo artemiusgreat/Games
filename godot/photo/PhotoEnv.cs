@@ -539,7 +539,14 @@ void fragment() {
             Uv1Scale = new Vector3(0.03f, 0.03f, 0.03f)
         };
         var rng = new RandomNumberGenerator { Seed = 90210 };
-        for (int i = 0; i < (WorldConfig.BackdropPeaks ? 12 : 0); i++)
+        // The City biome gets NO peak ring (owner's report,
+        // 2026-11-14: Polis read as spawning inside a mountain
+        // — the twelve craggy cones ringed the arena while the
+        // biome's own backdrop rule below already gives the
+        // city no ring at all; the cones also contradicted the
+        // map's identity: a dead city, not a crater).
+        bool peaks = WorldConfig.BackdropPeaks && WorldConfig.Biome != WorldConfig.BiomeKind.City;
+        for (int i = 0; i < (peaks ? 12 : 0); i++)
         {
             float a = i / 12f * Mathf.Tau + rng.RandfRange(-0.14f, 0.14f);
             float dist = rng.RandfRange(330f, 520f) * (mission ? bs * 0.55f : 1f);
@@ -565,7 +572,11 @@ void fragment() {
         // the desert gets bare rock outcrops; the city gets no
         // ring (owner: no procedural buildings outside the map —
         // every city building is a gameplay building inside it).
-        if (WorldConfig.Biome == WorldConfig.BiomeKind.City) return;
+        if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
+        {
+            GD.Print("PHOTO backdrop: apron only (city — no ring, no peaks)");
+            return;
+        }
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
         {
             for (int i = 0; i < 18; i++)
