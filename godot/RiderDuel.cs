@@ -322,7 +322,15 @@ public partial class RiderDuel : Node3D
     private string _lastDenied = "";
     private int _rocketsLaunched, _beamsSpawned;
 
-    public override void _Ready()
+    private bool _built; // staged build finished (loading fix, owner 2026-11-14)
+    private CanvasLayer _buildCover;
+
+    private async System.Threading.Tasks.Task BuildFrame()
+    {
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    public override async void _Ready()
     {
         foreach (var arg in OS.GetCmdlineUserArgs())
         {
@@ -512,6 +520,23 @@ public partial class RiderDuel : Node3D
         ApplyMapSky(duelEnv, sun);
         AddChild(new WorldEnvironment { Environment = duelEnv });
 
+        // Staged build (owner, 2026-11-14: 'ripple effect is
+        // not visible on load, line is not moving'): the duel
+        // scene used to build everything in one synchronous
+        // _Ready, so the loading cover's last frame froze for
+        // the whole load. The cover goes up first and the
+        // world builds in chunks between frames — the ripple
+        // keeps sweeping while terrain, dressing and riders
+        // stream in. _Process and _Input stay gated on _built
+        // until the last chunk lands.
+        _buildCover = new CanvasLayer { Layer = 10 };
+        var buildBg = new ColorRect { Color = FlowUi.LoadingBg };
+        buildBg.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _buildCover.AddChild(buildBg);
+        _buildCover.AddChild(FlowUi.MakeLoadingArt());
+        AddChild(_buildCover);
+        await BuildFrame();
+
         BuildTerrain();
         Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
         Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.BlobDecks.Clear(); Main.Walls.Clear();
@@ -553,6 +578,8 @@ public partial class RiderDuel : Node3D
             PhotoEnv.AddBackdrop(this);
         }
 
+        await BuildFrame(); // staged build: dressing done, riders next
+
         // Spawns: the three pads (owner: a bigger map, a hill in
         // the middle, no sightlines at load). Test choreographies
         // teleport to their own marks immediately after.
@@ -583,6 +610,7 @@ public partial class RiderDuel : Node3D
             _foe.Walker.Teleport(pos, yaw);
             _foe.Yaw = yaw; _foe.PrevRoot = pos;
         }
+        await BuildFrame(); // staged build: seats done, teammates and the HUD next
         BuildAllies();
         BuildBracketNPCs();
         RefreshHitCaps();
@@ -621,6 +649,9 @@ public partial class RiderDuel : Node3D
 
         _lastPlayerPos = _player.RootPos;
         InitSfx();
+        _built = true;
+        _buildCover.QueueFree();
+        _buildCover = null;
         GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest} props={_props.Count} circles");
         if (_terrainTest) TerrainSelfCheck();
         if (_weaponsTest)
@@ -854,6 +885,7 @@ public partial class RiderDuel : Node3D
 
     public override void _Process(double delta)
     {
+        if (!_built) return; // staged build in progress — the loading cover is up
         if (_pointTest && _pointHectorFirst && !_pointSwapDone && _player != null && _player.IsReady)
         {
             // Select Hector the way the owner does — in the lab,

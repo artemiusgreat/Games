@@ -27,6 +27,7 @@ public partial class RiderDuel
 
     public override void _Input(InputEvent e)
     {
+        if (!_built) return; // staged build in progress — the loading cover is up
         if (!OS.HasFeature("windows") && e is InputEventKey ck && ck.Pressed && !ck.Echo && ck.Keycode == Key.Capslock)
             _capsLockOn = !_capsLockOn;
         // While the RiderLab is open the mouse belongs to the GUI: the
