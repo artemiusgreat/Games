@@ -3,7 +3,7 @@ using System;
 
 // Pre-game RiderLab (owner's ask, after the MW4/MW5 labs in his
 // screenshots): drag weapons from the catalog onto the rider's
-// hardpoints. Slot type and slot weight capacity rule what fits — a
+// hardpoints. Slot type and slot weight capacity rule what fits - a
 // light rider cannot carry a heavy rider's gun. Click-to-select +
 // click-to-assign works alongside drag-and-drop. The screen owns no
 // game state: it edits the shared LoadoutState and reports START.
@@ -44,7 +44,7 @@ public partial class RiderLab : Control
     private string _selectedWeapon; // click-to-assign path
     // Live slot anchors (owner): viewport position of each
     // hardpoint's part on the rider, projected from the 3D view
-    // every frame — the paperdoll dots track the real parts at
+    // every frame - the paperdoll dots track the real parts at
     // any window size, instead of fixed fractions that drifted
     // when the screen was resized.
     public System.Func<string, Vector2?> AnchorProjector;
@@ -62,7 +62,7 @@ public partial class RiderLab : Control
     }
 
     // The weapon TILE (owner): the small square icon is the drag
-    // handle and the click target — the row's text is inert.
+    // handle and the click target - the row's text is inert.
     private sealed partial class DragTile : Control
     {
         public string WeaponId;
@@ -92,7 +92,7 @@ public partial class RiderLab : Control
     {
         _selectedWeapon = id;
         var w = WeaponCatalog.ById(id);
-        SetHint($"{w.Name} selected — click a hardpoint to install it, or drag its icon.");
+        SetHint($"{w.Name} selected - click a hardpoint to install it, or drag its icon.");
     }
 
     // Short tile text per weapon.
@@ -225,8 +225,8 @@ public partial class RiderLab : Control
     }
 
     // MW4-style paperdoll (owner): the hardpoint panels float at
-    // rider-schematic positions — missile pods up at the shoulders,
-    // arms out at the sides — with connector lines to a center
+    // rider-schematic positions - missile pods up at the shoulders,
+    // arms out at the sides - with connector lines to a center
     // node, over the orbiting rider behind the lab. Panels are
     // positioned by slot id whenever the area resizes.
     private sealed partial class PaperdollArea : Control
@@ -234,12 +234,12 @@ public partial class RiderLab : Control
         private readonly System.Collections.Generic.Dictionary<string, Control> _panels = new();
         private readonly System.Collections.Generic.Dictionary<string, Vector2> _live = new();
         // Each live panel's side and stacking order come from its
-        // DOT (anchor vs the body center, and the dot's height) —
+        // DOT (anchor vs the body center, and the dot's height) -
         // never from the placed panel's own center (owner, round
         // 29: on a window resize a wide panel whose dot sits near
         // the body's midline had its center cross the middle, the
         // overlap sweep then grouped it with the WRONG side's
-        // stack and dragged it down it — Enyo's right missile
+        // stack and dragged it down it - Enyo's right missile
         // panel ended up flipped under the energy panel).
         private readonly System.Collections.Generic.Dictionary<string, int> _side = new();
         private readonly System.Collections.Generic.Dictionary<string, float> _anchorY = new();
@@ -303,9 +303,9 @@ public partial class RiderLab : Control
             // Panels WITH a live anchor sit ALONG THE BODY
             // (owner, 2026-10-31): each panel is placed outward
             // from the rider's center through its own dot, so it
-            // hugs the silhouette near the part it names — pods
+            // hugs the silhouette near the part it names - pods
             // up by the shoulders, arms out at arm height, the
-            // waist gun below — instead of the two ruler-straight
+            // waist gun below - instead of the two ruler-straight
             // columns the flip fix used. The direction comes from
             // the measured anchors themselves (the torso anchor
             // is the center when present, else the centroid), so
@@ -335,13 +335,13 @@ public partial class RiderLab : Control
                         _anchorY[id] = an0.Y;
                     }
                 // Fixed panel height (owner, round 30): every
-                // live panel gets the SAME height — the header
+                // live panel gets the SAME height - the header
                 // plus a scroll viewport of two weapon rows,
                 // dropping to one row when a side's stack would
                 // not otherwise fit the area. Width still pins
                 // to content (unpinned Sizes drift well past
-                // their minimums — 227-321px tall against
-                // 133-180 minimums measured in round 28 — and
+                // their minimums - 227-321px tall against
+                // 133-180 minimums measured in round 28 - and
                 // the packing math goes phantom). Layout runs
                 // every frame, so the pin holds.
                 int maxSide = 0;
@@ -373,7 +373,7 @@ public partial class RiderLab : Control
                     var dir = an - center;
                     if (dir.Length() < 14f)
                     {
-                        // The dot sits (almost) at the center —
+                        // The dot sits (almost) at the center -
                         // the chest: push it out along its
                         // fractional fallback direction instead.
                         dir = Anchors.TryGetValue(id, out var fr)
@@ -398,7 +398,7 @@ public partial class RiderLab : Control
                 // the first dot's height and clamped to fit the
                 // area. Heights are fixed (above) and the
                 // stack's total fits by construction, so overlap
-                // is impossible at any window size — the sweeps
+                // is impossible at any window size - the sweeps
                 // this replaces could only separate panels when
                 // their content heights happened to fit, and
                 // Hector's five tall panels did not (owner's
@@ -434,7 +434,7 @@ public partial class RiderLab : Control
                 // Level-pair spread: at the same stack level the
                 // two sides' panels can still overlap in X when
                 // the area is narrower than the two panels side
-                // by side (215 + 215 in a 376px area) — the
+                // by side (215 + 215 in a 376px area) - the
                 // radial placement already gives the geometric
                 // minimum overlap, but the graze lands on the
                 // panels' content. Push the pair apart by the
@@ -520,7 +520,7 @@ public partial class RiderLab : Control
     {
         // Fonts (owner, 2026-11-13): the lab's texts are Open
         // Sans EXPLICITLY (its headings already take Cinzel via
-        // FlowUi.Heading) — a local theme pins the default font
+        // FlowUi.Heading) - a local theme pins the default font
         // for the whole lab subtree, with the game's label and
         // button shadow colours kept from game_theme.tres.
         var labTheme = new Theme { DefaultFont = FlowUi.BodyFont };
@@ -530,7 +530,7 @@ public partial class RiderLab : Control
         // Anchors AND offsets: SetAnchorsPreset alone left this
         // code-created control at a 0x0 rect under its CanvasLayer
         // (measured live), which collapsed the backdrop ColorRect
-        // to nothing while the containers overflowed visibly — the
+        // to nothing while the containers overflowed visibly - the
         // lab's text sat directly on the bright scene.
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.55f) }; // light dim (owner): the rider is the lab's centerpiece and must read clearly through it; panels and rows carry their own opaque backgrounds
@@ -539,7 +539,7 @@ public partial class RiderLab : Control
 
         var root = new VBoxContainer();
         root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        root.AddThemeConstantOverride("separation", 10);
+        root.AddThemeConstantOverride("separation", 6);
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
@@ -575,11 +575,15 @@ public partial class RiderLab : Control
         // to fill it, and the paperdoll's panels spill back over
         // the rows' backdrops. Anything wider clips in the scroll
         // instead of widening the column. (A CustomMaximumSize
-        // here collapsed the column entirely — measured.)
+        // here collapsed the column entirely - measured.)
         // Sidebar (owner, 2026-11-14): the catalog column is a
-        // semi-transparent panel with two tabs — Weapons (the
+        // semi-transparent panel with two tabs - Weapons (the
         // catalog below) and Equipment (jets, same row format).
-        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(400, 0) };
+        // Slightly taller (owner, 2026-11-14): the lists show
+        // their first four rows in full. The minimum height
+        // below is what guarantees it on a short window; the
+        // root's tighter separation above pays for it.
+        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(400, 330) };
         var sideSb = new StyleBoxFlat
         {
             BgColor = new Color(0.045f, 0.065f, 0.105f, 0.85f),
@@ -616,12 +620,12 @@ public partial class RiderLab : Control
         rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var rowsMargin = new MarginContainer();
         rowsMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill; // rows take the sidebar's full width, like the equipment page (owner, 2026-11-14): without the expand flag the scroll's child chain kept its content minimum and the rows stopped short
-        rowsMargin.AddThemeConstantOverride("margin_right", 14); // air between the rows and the scrollbar (owner)
+        rowsMargin.AddThemeConstantOverride("margin_right", 10); // air between the rows and the scrollbar: equal to the panel padding on the scrollbar's other side (owner, 2026-11-14)
         rowsMargin.AddChild(rowsBox);
         scroll.AddChild(rowsMargin);
         // The catalog is three stacked lists (owner): Lasers,
         // Cannons, Missiles. The group heading replaces the type
-        // named in every row — which also buys back the width
+        // named in every row - which also buys back the width
         // the mono font took: the widest row shrinks by the
         // type segment, the paperdoll gets the room, and the
         // slot backdrops stop spilling over the catalog's.
@@ -640,26 +644,18 @@ public partial class RiderLab : Control
             gh.AddThemeFontSizeOverride("font_size", 13);
             gh.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
             rowsBox.AddChild(gh);
+            int rowsInGroup = 0;
             foreach (var w in WeaponCatalog.All)
             {
             if (w.Type != gType || !w.CatalogListed) continue;
             // Row = [draggable tile] + inert text (owner: drag and
-            // click live on the square icon, not the text).
-            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true, SizeFlagsHorizontal = SizeFlags.ExpandFill }; // row sized to fit the tile with air around it
-            StyleBoxFlat RowBox()
-            {
-                // Same backdrop as the slot panels (owner): one
-                // visual family across the lab — same fill, same
-                // border, same radius.
-                var b = new StyleBoxFlat { BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f), ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
-                b.SetBorderWidthAll(2);
-                b.SetCornerRadiusAll(6);
-                return b;
-            }
-            rowPanel.AddThemeStyleboxOverride("panel", RowBox());
-            var hb = new HBoxContainer();
+            // click live on the square icon, not the text). Rows
+            // carry no boxes of their own (owner, 2026-11-14): a
+            // single line separates items in the list.
+            if (rowsInGroup > 0) rowsBox.AddChild(RowSeparator());
+            rowsInGroup++;
+            var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 52) };
             hb.AddThemeConstantOverride("separation", 16); // clear gap between tile and name (owner)
-            rowPanel.AddChild(hb);
             var drag = new DragTile { WeaponId = w.Id, Lab = this };
             drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
             drag.MouseExited += () => drag.Modulate = Colors.White;
@@ -677,7 +673,7 @@ public partial class RiderLab : Control
             st.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
             texts.AddChild(st);
             hb.AddChild(texts);
-            rowsBox.AddChild(rowPanel);
+            rowsBox.AddChild(hb);
             }
         }
 
@@ -689,19 +685,13 @@ public partial class RiderLab : Control
         equipBox.AddThemeConstantOverride("separation", 4);
         catBox.AddChild(equipBox);
         _pageEquipment = equipBox;
-        var jetsRow = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true };
-        // Same backdrop recipe as the catalog rows (their
-        // RowBox() helper is scoped to the catalog loop).
-        var jetsSb = new StyleBoxFlat { BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f), ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
-        jetsSb.SetBorderWidthAll(2);
-        jetsSb.SetCornerRadiusAll(6);
-        jetsRow.AddThemeStyleboxOverride("panel", jetsSb);
-        var jhb = new HBoxContainer();
+        // A plain row, like the weapons list (owner,
+        // 2026-11-14): no box of its own.
+        var jhb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 52) };
         jhb.AddThemeConstantOverride("separation", 16);
-        jetsRow.AddChild(jhb);
         // The TH tile carries the weapon icons' framed look
         // (owner, 2026-11-14): a bordered square, not a plain
-        // button face. The Button itself is faceless — the
+        // button face. The Button itself is faceless - the
         // frame and the 'TH' are children that ignore the
         // mouse, so the press lands on the button.
         _jetsTileBtn = new Button { CustomMinimumSize = new Vector2(40, 40) };
@@ -725,7 +715,7 @@ public partial class RiderLab : Control
         _jetsTileBtn.Pressed += () =>
         {
             Loadout.JumpJets = !Loadout.JumpJets;
-            SetHint(Loadout.JumpJets ? "Thrusters fitted — hold Space in the duel to fly." : "Thrusters removed — this rider stays grounded.");
+            SetHint(Loadout.JumpJets ? "Thrusters fitted - hold Space in the duel to fly." : "Thrusters removed - this rider stays grounded.");
             Refresh();
         };
         jhb.AddChild(_jetsTileBtn);
@@ -740,7 +730,7 @@ public partial class RiderLab : Control
         _jetsLine.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
         jtexts.AddChild(_jetsLine);
         jhb.AddChild(jtexts);
-        equipBox.AddChild(jetsRow);
+        equipBox.AddChild(jhb);
         ShowLabTab(true);
 
         // -- Hardpoints (right): MW4-style paperdoll over the rider --
@@ -772,7 +762,7 @@ public partial class RiderLab : Control
             // The weapon list scrolls inside the panel (owner,
             // round 30): the panel's height is fixed by the
             // layout, the list shows a viewport of one or two
-            // rows and scrolls for the rest — however many
+            // rows and scrolls for the rest - however many
             // weapons the slot carries, the panel never grows
             // into its neighbors.
             panel.Scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -829,14 +819,14 @@ public partial class RiderLab : Control
         _speed.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
         statusBox.AddChild(_speed);
         // No standing instruction text (owner): the line starts
-        // empty — it only speaks as action feedback via SetHint.
+        // empty - it only speaks as action feedback via SetHint.
         _hint = new Label();
         _hint.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
         root.AddChild(_hint);
         var btnRow = new HBoxContainer();
         btnRow.AddThemeConstantOverride("separation", 12);
         root.AddChild(btnRow);
-        // Back to the briefing / arena screen (owner) — only
+        // Back to the briefing / arena screen (owner) - only
         // when the front-end flow brought the player here; a
         // standalone duel has nowhere to go back to.
         if (FlowMain.FromFlow)
@@ -870,6 +860,14 @@ public partial class RiderLab : Control
     // except the lab title they read 'Prometheus'.
     private static string NameCase(string n) =>
         string.IsNullOrEmpty(n) ? n : char.ToUpper(n[0]) + n.Substring(1).ToLowerInvariant();
+
+    // The single line between list items (owner, 2026-11-14).
+    private static HSeparator RowSeparator()
+    {
+        var sep = new HSeparator();
+        sep.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(0.5f, 0.56f, 0.62f, 0.35f), Thickness = 1 });
+        return sep;
+    }
 
     // Dev-flag support (--lab-tab=equip): open the sidebar
     // on the Equipment tab for captures.
@@ -918,7 +916,7 @@ public partial class RiderLab : Control
         }
     }
 
-    // Team section (owner, teams stage — reworked at his word:
+    // Team section (owner, teams stage - reworked at his word:
     // the chip row was not clear). A separate panel holding a
     // scrollable strip of rider CARDS (like his MechWarrior
     // Online reference): clicking a card makes the lab display
@@ -954,7 +952,7 @@ public partial class RiderLab : Control
         var h = new Label { Text = "Team" };
         h.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
         head.AddChild(h);
-        var count = new Label { Text = $"{TeamNames.Length} of 4 riders — click a card to display that rider in the lab" };
+        var count = new Label { Text = $"{TeamNames.Length} of 4 riders - click a card to display that rider in the lab" };
         count.AddThemeColorOverride("font_color", new Color(0.62f, 0.70f, 0.78f));
         count.AddThemeFontSizeOverride("font_size", 12);
         count.VerticalAlignment = VerticalAlignment.Center;
@@ -964,18 +962,18 @@ public partial class RiderLab : Control
         row.AddThemeConstantOverride("separation", 10);
         pv.AddChild(row);
         // The strip hugs its cards (no ExpandFill). The width
-        // is set explicitly — a ScrollContainer with Auto
+        // is set explicitly - a ScrollContainer with Auto
         // scrolling reports zero minimum width and collapsed
         // shut in the first capture of this layout, hiding the
         // cards entirely. It still scrolls when the window is
         // too narrow for the full team. Add/Remove live IN the
         // strip (owner, 2026-11-14): a card-sized '+' card adds
         // a rider, and every card from the second on carries
-        // its own '−' in the corner — the main rider's card
+        // its own '−' in the corner - the main rider's card
         // (slot 1) never does.
         int totalCards = TeamNames.Length + (TeamNames.Length < 4 ? 1 : 0);
         // The '+' button is half a card wide (owner, 2026-11-14
-        // — width only, its height stays the cards' 82).
+        // - width only, its height stays the cards' 82).
         float cardsW = TeamNames.Length * 176f + (TeamNames.Length < 4 ? 88f : 0f)
             + Mathf.Max(0, totalCards - 1) * 8f;
         var scroll = new ScrollContainer
@@ -1017,7 +1015,7 @@ public partial class RiderLab : Control
             host.AddChild(cv);
             var nm = new Label { Text = $"{i + 1}. {NameCase(TeamNames[i])}", MouseFilter = MouseFilterEnum.Ignore };
             // Cards with a '−' run the name in a narrower column
-            // (the minus overlaps a long name at 16px — 'PROMETHEUS'
+            // (the minus overlaps a long name at 16px - 'PROMETHEUS'
             // clipped under it in the capture); clip as a backstop
             // so text can never draw under the button.
             nm.AddThemeFontSizeOverride("font_size", i >= 1 ? 14 : 16);
@@ -1095,7 +1093,7 @@ public partial class RiderLab : Control
     }
 
     // Slideshow selector (owner): chips don't scale to tens of
-    // riders — arrows cycle through the registry, wrapping around.
+    // riders - arrows cycle through the registry, wrapping around.
     private Control RiderSelector(string role, bool playerSide)
     {
         var box = new HBoxContainer();
@@ -1148,7 +1146,7 @@ public partial class RiderLab : Control
     private static string Metrics(WeaponDef d) => StatsLine(d, full: false);
 
     // Dev measurement: panel centers vs live projected anchors,
-    // in viewport pixels — the slot-flip investigation record.
+    // in viewport pixels - the slot-flip investigation record.
     public string DumpLayout()
     {
         var sb = new System.Text.StringBuilder();
@@ -1174,7 +1172,7 @@ public partial class RiderLab : Control
             _jetsTileBtn.Disabled = !Spec.JumpCapable;
             _jetsTileBtn.Modulate = Spec.JumpCapable ? Colors.White : new Color(1f, 1f, 1f, 0.45f);
             _jetsLine.Text = !Spec.JumpCapable ? "This chassis cannot fit thrusters"
-                : Loadout.JumpJets ? "Fitted — hold Space in the duel to fly" : "Not fitted";
+                : Loadout.JumpJets ? "Fitted - hold Space in the duel to fly" : "Not fitted";
         }
         foreach (var (id, panel) in _slots)
         {
@@ -1183,13 +1181,13 @@ public partial class RiderLab : Control
             panel.HeadLabel.Text = $"{slotDef?.Type} · {Loadout.SlotWeight(id):F0}/{slotDef?.MaxWeight:F0}t";
             // Fitted weapons as a list (owner): each row carries
             // the weapon's icon tile with its abbreviation, the
-            // name, and slash-separated metrics — the same visual
+            // name, and slash-separated metrics - the same visual
             // language as the catalog. Clicking a row removes
             // exactly that weapon.
             // Panel width need (owner: a fitted weapon is two
             // lines, never clipped mid-word at this size): the
             // rows live inside the panel's scroll, whose minimum
-            // size reports ~0, so measure the texts directly —
+            // size reports ~0, so measure the texts directly -
             // panel margins + scrollbar + tile + gap + the
             // longest name/metrics line.
             {
@@ -1207,7 +1205,7 @@ public partial class RiderLab : Control
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
             {
-                var empty = new Label { Text = "— EMPTY —" };
+                var empty = new Label { Text = "- EMPTY -" };
                 empty.AddThemeFontSizeOverride("font_size", 12);
                 empty.AddThemeColorOverride("font_color", new Color(0.55f, 0.5f, 0.45f));
                 panel.ListBox.AddChild(empty);
@@ -1231,7 +1229,7 @@ public partial class RiderLab : Control
                 rhb.AddChild(tile);
                 // ExpandFill is load-bearing: an HBox gives a
                 // plain child only its minimum width, and the
-                // metrics label's minimum is ~0 (ClipText) — the
+                // metrics label's minimum is ~0 (ClipText) - the
                 // texts column collapsed to the name's width and
                 // the metrics clipped at ~10 characters (measured).
                 var texts = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -1240,7 +1238,7 @@ public partial class RiderLab : Control
                 nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
                 texts.AddChild(nm);
                 // No wrap (owner): a fitted weapon is exactly two
-                // lines — name, metrics. The label's full-width
+                // lines - name, metrics. The label's full-width
                 // minimum is what sizes the panel; if a panel is
                 // ever capped narrower, ClipText shortens the line
                 // instead of wrapping it onto extra lines.
@@ -1257,7 +1255,7 @@ public partial class RiderLab : Control
                 {
                     Text = $"G{Loadout.GroupAt(sid, idx)}",
                     CustomMinimumSize = new Vector2(38, 40),
-                    TooltipText = "Firing group — click to change"
+                    TooltipText = "Firing group - click to change"
                 };
                 grpBtn.AddThemeFontSizeOverride("font_size", 12);
                 grpBtn.Pressed += () =>
