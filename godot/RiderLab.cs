@@ -890,7 +890,12 @@ public partial class RiderLab : Control
             cv.OffsetLeft = 10; cv.OffsetTop = 8; cv.OffsetRight = i >= 1 ? -44 : -10; cv.OffsetBottom = -8;
             host.AddChild(cv);
             var nm = new Label { Text = $"{i + 1}. {TeamNames[i]}", MouseFilter = MouseFilterEnum.Ignore };
-            nm.AddThemeFontSizeOverride("font_size", 16);
+            // Cards with a '−' run the name in a narrower column
+            // (the minus overlaps a long name at 16px — 'PROMETHEUS'
+            // clipped under it in the capture); clip as a backstop
+            // so text can never draw under the button.
+            nm.AddThemeFontSizeOverride("font_size", i >= 1 ? 14 : 16);
+            nm.ClipContents = true;
             nm.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.95f, 0.97f, 1f));
             FlowUi.Heading(nm, false);
             cv.AddChild(nm);
