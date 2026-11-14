@@ -158,6 +158,7 @@ public partial class RiderDuel : Node3D
     private Foe _foe;
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private bool _ffaTest; // --ffa-test: staged three-way AI probe
+    private bool _teamTest; // --team-test: staged Story-team probe (allies fight, orders, leader pass, mission end)
     private bool _missionTest; // --mission-test: Mission front smoke (world facts, base/vista captures, AI march)
     private bool _longshotTest; // --longshot-test: shell line vs sight line at 600u (parallel-fire proof)
     private bool _rangeTest; // --range-test: per-weapon Range enforcement proofs (laser reach, LRM clamp, shell burnout)
@@ -349,6 +350,7 @@ public partial class RiderDuel : Node3D
             if (arg.StartsWith("--player-rider=")) _playerSpec = RiderSpecs.ById(arg.Substring("--player-rider=".Length));
             if (arg.StartsWith("--enemy-rider=")) _enemySpec = RiderSpecs.ById(arg.Substring("--enemy-rider=".Length));
             if (arg == "--ffa-test") _ffaTest = true;
+            if (arg == "--team-test") { _teamTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--view-shot") _viewShot = true;
             if (arg == "--point-test") _pointTest = true;
@@ -545,7 +547,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -1006,6 +1008,7 @@ public partial class RiderDuel : Node3D
             else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
+            else if (_teamTest) UpdateTeamTest(dt);
             else if (_missionTest && !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRATEST")) && WorldConfig.TerracedCity) UpdateTerraceTest(dt);
             else if (_missionTest) UpdateMissionTest(dt);
             else if (_longshotTest) UpdateLongshotTest(dt);

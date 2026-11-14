@@ -1234,6 +1234,125 @@ public partial class RiderDuel
         }
     }
 
+    // ---------- team test (--team-test) ----------
+    // The Story team under fire: three roster riders staged in
+    // engagement range of defender 1's base. Asserts, in order:
+    // the allies close and fire under the default order while
+    // the defender engages the team; FULL STOP freezes movement
+    // and fire; killing the leader passes command to the first
+    // living ally; killing both defenders completes the mission
+    // on the team rule.
+    private float _teamT;
+    private bool _teamStaged;
+    private int _teamPhase;
+    private Vector3 _teamAllyHome0, _teamAllyHome1, _teamHoldPos;
+    private int _teamHoldShots, _teamWantSlot;
+    private string _teamWantSpec;
+
+    private static float FlatDist(Vector3 a, Vector3 b) =>
+        new Vector2(a.X - b.X, a.Z - b.Z).Length();
+
+    private static HitModel.Result DummyHit(RiderWalker w, string role) => new()
+    {
+        Hit = true, Target = role, Zone = "torso", Point = w.RootPos + Vector3.Up * 8f
+    };
+
+    private void TeamFail(string why)
+    {
+        GD.PrintErr($"TEAMTEST FAIL: {why}");
+        GetTree().Quit(1);
+    }
+
+    private void UpdateTeamTest(float dt)
+    {
+        _teamT += dt;
+        if (!_teamStaged)
+        {
+            _teamStaged = true;
+            if (_allies.Count != 2) { TeamFail($"expected 2 allies from the seeded roster, got {_allies.Count}"); return; }
+            GD.Print($"TEAMTEST staged: leader slot {_leaderSlot} {_playerSpec.Id}, allies {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
+            var eBase = PadPos(Main.SpawnPads[1]);
+            var hBase = PadPos(Main.SpawnPads[0]);
+            var dir = hBase - eBase; dir.Y = 0; dir = dir.Normalized();
+            var pPos = eBase + dir * 150f; pPos.Y = Main.HeightAt(pPos.X, pPos.Z);
+            float face = RiderWalker.YawOf(-dir);
+            _player.Teleport(pPos, face);
+            _playerYaw = face;
+            foreach (var a in _allies)
+            {
+                var ap = eBase + dir * 138f + new Vector3(-dir.Z, 0, dir.X) * (a.Slot == 1 ? -14f : 14f);
+                ap.Y = Main.HeightAt(ap.X, ap.Z);
+                a.Walker.Teleport(ap, face);
+                a.Yaw = face;
+                a.PrevRoot = a.Walker.RootPos;
+            }
+            _teamAllyHome0 = _allies[0].Walker.RootPos;
+            _teamAllyHome1 = _allies[1].Walker.RootPos;
+            return;
+        }
+        PassCommandIfNeeded();
+        UpdateEnemyAI(dt);
+        if (_foe != null) UpdateFoeAI(dt);
+        UpdateAlliesAI(dt);
+        _player.SetDrive(_playerYaw, 0f);
+
+        if (_teamPhase == 0 && _teamT > 26f)
+        {
+            float m0 = FlatDist(_allies[0].Walker.RootPos, _teamAllyHome0);
+            float m1 = FlatDist(_allies[1].Walker.RootPos, _teamAllyHome1);
+            GD.Print($"TEAMTEST fight: allyMoved={m0:F1}/{m1:F1} allyShots={_allyShots} enemyShots={_enemyShots} engaged={_foe0Engaged} hpE={_hpEnemy:F0} hpF={(_foe?.Hp ?? -1):F0} teamHp={_hpPlayer:F0}/{_allies[0].Hp:F0}/{_allies[1].Hp:F0}");
+            if (m0 + m1 <= 15f) { TeamFail("allies did not move to engage"); return; }
+            if (_allyShots <= 0) { TeamFail("allies never fired"); return; }
+            if (!_foe0Engaged) { TeamFail("defender never engaged the team"); return; }
+            GD.Print("TEAMTEST FIGHT PASS allies closed and fired; the defender engaged the team");
+            QueueCapture("/tmp/team_fight.png", "teamfight", CamModes.Chase);
+            SetTeamOrder(TeamOrder.Hold);
+            _teamHoldPos = _allies[0].Walker.RootPos + _allies[1].Walker.RootPos;
+            _teamHoldShots = _allyShots;
+            _teamPhase = 1;
+        }
+        else if (_teamPhase == 1 && _teamT > 31f)
+        {
+            var now = _allies[0].Walker.RootPos + _allies[1].Walker.RootPos;
+            float drift = (now - _teamHoldPos).Length();
+            GD.Print($"TEAMTEST hold: drift={drift:F2} shots {_teamHoldShots}->{_allyShots}");
+            if (drift > 2.5f) { TeamFail("FULL STOP did not freeze the team"); return; }
+            if (_allyShots != _teamHoldShots) { TeamFail("allies fired under FULL STOP"); return; }
+            GD.Print("TEAMTEST HOLD PASS full stop froze movement and fire");
+            _teamPhase = 2;
+        }
+        else if (_teamPhase == 2)
+        {
+            Ally want = null;
+            foreach (var a in _allies) if (!a.Dead && (want == null || a.Slot < want.Slot)) want = a;
+            if (want == null) { TeamFail("no living ally to take command"); return; }
+            _teamWantSlot = want.Slot;
+            _teamWantSpec = want.Spec.Id;
+            ApplyDamage(_player, 99999f, DummyHit(_player, Roles.Player), Roles.Enemy);
+            if (!_playerDead) { TeamFail("leader death did not register"); return; }
+            _teamPhase = 3; // the pass lands at the top of the next frame
+        }
+        else if (_teamPhase == 3)
+        {
+            if (_leaderSlot != _teamWantSlot || _playerSpec.Id != _teamWantSpec)
+            { TeamFail($"command pass wrong: leaderSlot={_leaderSlot} spec={_playerSpec.Id}, wanted {_teamWantSlot}/{_teamWantSpec}"); return; }
+            if (_playerDead) { TeamFail("the new leader is still flagged dead"); return; }
+            GD.Print($"TEAMTEST PASS PASS command passed to slot {_leaderSlot} ({_playerSpec.Id})");
+            _teamDialog?.Open(TeamRows());
+            QueueCapture("/tmp/team_screen.png", "teamscreen", CamModes.Chase);
+            _teamPhase = 4;
+        }
+        else if (_teamPhase == 4 && _teamT > 35f)
+        {
+            if (!_enemyDead) ApplyDamage(_enemy, 99999f, DummyHit(_enemy, Roles.Enemy), Roles.Player);
+            if (_foe != null && !_foe.Dead) ApplyDamage(_foe.Walker, 99999f, DummyHit(_foe.Walker, Roles.Foe), Roles.Player);
+            if (!_missionDone) { TeamFail("mission did not complete with both defenders down and the team standing"); return; }
+            GD.Print("TEAMTEST END PASS mission completed on the team rule");
+            GD.Print("TEAMTEST DONE");
+            GetTree().Quit(0);
+        }
+    }
+
     private static bool AnyPartDamaged(RiderParts parts)
     {
         foreach (var id in new[] { "head", "torso", "arm_L", "arm_R", "gun", "pod_L", "pod_R", "leg_L", "leg_R" })

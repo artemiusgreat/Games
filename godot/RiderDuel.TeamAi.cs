@@ -22,6 +22,7 @@ public partial class RiderDuel
     private enum TeamOrder { AttackTarget, AttackNearby, ProtectLeader, Hold }
 
     private TeamOrder _teamOrder = TeamOrder.AttackNearby;
+    private int _allyShots; // harness counter (the team test reads it)
 
     private void SetTeamOrder(TeamOrder o)
     {
@@ -120,7 +121,7 @@ public partial class RiderDuel
                 if (a.Cd <= 0f && a.DefBallistic != null)
                     UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                         a.Role, TagOf(tgt), tgt, VelOf(tgt),
-                        () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; });
+                        () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _allyShots++; });
             }
             else
             {
