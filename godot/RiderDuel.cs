@@ -302,6 +302,7 @@ public partial class RiderDuel : Node3D
     private Label _feedLabel, _lblWeaponStatus, _lblThr;
     private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
     private LeaveOverlay _leaveDialog;
+    private TeamOverlay _teamDialog;
     private CanvasLayer _labLoad; // loading cover held over the lab until the warmup settles (owner)
     private Control _labLoadArt; // the blinking loading art inside the cover (owner)
     private double _labLoadT;
@@ -1022,6 +1023,7 @@ public partial class RiderDuel : Node3D
             else
             {
                 if (_gaitShot) UpdateGaitShot(dt); // dev capture rides the live branch (AI walks the enemy)
+                PassCommandIfNeeded();
                 UpdatePlayerInput(dt);
                 MaintainTorsoWorldYaw();
                 UpdateEnemyAI(dt);

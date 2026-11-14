@@ -244,6 +244,16 @@ public partial class RiderDuel
         _leaveDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; };
         layer.AddChild(_leaveDialog);
 
+        // The team screen rides the same pause/unpause contract.
+        _teamDialog = new TeamOverlay();
+        _teamDialog.LeaderChosen += slot =>
+        {
+            if (SetLeader(slot)) AddFeed($"LEADER: {_playerSpec.Name}");
+        };
+        _teamDialog.LeaveRequested += OnLeaveConfirmed;
+        _teamDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; };
+        layer.AddChild(_teamDialog);
+
         // Death banner.
         _banner = MakeLabel(46, Colors.White);
         _banner.SetAnchorsPreset(Control.LayoutPreset.Center);
@@ -403,7 +413,7 @@ public partial class RiderDuel
             root.AddChild(frame);
         }
 
-        private static Button MakeBtn(string text, bool dark)
+        internal static Button MakeBtn(string text, bool dark)
         {
             var b = new Button { Text = text, CustomMinimumSize = new Vector2(148, 38) };
             b.AddThemeFontSizeOverride("font_size", 15);
@@ -441,6 +451,157 @@ public partial class RiderDuel
                 GetViewport().SetInputAsHandled();
             }
         }
+    }
+
+    // The team screen (owner, teams stage step 4): in a mission
+    // with a team, Esc opens THIS instead of the plain exit
+    // confirmation — the player's riders listed with their
+    // state; clicking a living teammate takes command of it
+    // (the leader is whoever the player drives), RESUME closes,
+    // EXIT MISSION leaves. Same visual idiom as the exit popup:
+    // dimmed game, dark panel, corner brackets, Cinzel title.
+    // Runs on ProcessMode.Always behind the pause.
+    private sealed partial class TeamOverlay : Control
+    {
+        public event System.Action<int> LeaderChosen;
+        public event System.Action LeaveRequested;
+        private readonly VBoxContainer _rows;
+        private readonly Control _root;
+        private ulong _openedAt;
+
+        public TeamOverlay()
+        {
+            ProcessMode = ProcessModeEnum.Always;
+            Visible = false;
+            SetAnchorsPreset(LayoutPreset.FullRect);
+            MouseFilter = MouseFilterEnum.Stop;
+
+            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.45f) };
+            dim.SetAnchorsPreset(LayoutPreset.FullRect);
+            AddChild(dim);
+
+            var center = new CenterContainer();
+            center.SetAnchorsPreset(LayoutPreset.FullRect);
+            AddChild(center);
+
+            _root = new Control { CustomMinimumSize = new Vector2(520, 300) };
+            center.AddChild(_root);
+
+            var panel = new PanelContainer();
+            panel.SetAnchorsPreset(LayoutPreset.FullRect);
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f) });
+            _root.AddChild(panel);
+
+            var v = new VBoxContainer();
+            v.SetAnchorsPreset(LayoutPreset.FullRect);
+            v.OffsetLeft = 30; v.OffsetTop = 26; v.OffsetRight = -30; v.OffsetBottom = -24;
+            v.AddThemeConstantOverride("separation", 10);
+            _root.AddChild(v);
+
+            var title = new Label { Text = "TEAM", HorizontalAlignment = HorizontalAlignment.Center };
+            title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
+            title.AddThemeFontSizeOverride("font_size", 21);
+            title.AddThemeColorOverride("font_color", Colors.White);
+            v.AddChild(title);
+            var sub = new Label
+            {
+                Text = "Select a rider to take command of it, or exit the mission.",
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            sub.AddThemeFontSizeOverride("font_size", 13);
+            sub.AddThemeColorOverride("font_color", new Color(0.85f, 0.88f, 0.92f));
+            v.AddChild(sub);
+
+            _rows = new VBoxContainer();
+            _rows.AddThemeConstantOverride("separation", 8);
+            v.AddChild(_rows);
+
+            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 18);
+            v.AddChild(row);
+            // The owner's button rule: Back on the left,
+            // Continue on the right.
+            var resume = LeaveOverlay.MakeBtn("RESUME", dark: false);
+            resume.Pressed += () => Visible = false;
+            row.AddChild(resume);
+            row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            var exit = LeaveOverlay.MakeBtn("EXIT MISSION", dark: true);
+            exit.Pressed += () => LeaveRequested?.Invoke();
+            row.AddChild(exit);
+
+            var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
+            frame.SetAnchorsPreset(LayoutPreset.FullRect);
+            frame.OffsetLeft = -7; frame.OffsetTop = -7; frame.OffsetRight = 7; frame.OffsetBottom = 7;
+            _root.AddChild(frame);
+        }
+
+        public void Open(System.Collections.Generic.List<(string Name, float HpFrac, bool Dead, bool Leader, int Slot)> members)
+        {
+            foreach (var ch in _rows.GetChildren()) ch.QueueFree();
+            foreach (var m in members)
+            {
+                int slot = m.Slot;
+                string pct = $"{Mathf.RoundToInt(Mathf.Clamp(m.HpFrac, 0f, 1f) * 100f)}%";
+                var b = new Button
+                {
+                    CustomMinimumSize = new Vector2(0, 42),
+                    Alignment = HorizontalAlignment.Left
+                };
+                b.AddThemeFontSizeOverride("font_size", 15);
+                StyleBoxFlat S(Color c) => new() { BgColor = c };
+                if (m.Leader)
+                {
+                    b.Text = $"{slot + 1}. {m.Name} — LEADER · HP {pct}";
+                    b.Disabled = true;
+                    b.AddThemeStyleboxOverride("disabled", S(new Color(0.16f, 0.13f, 0.04f, 0.95f)));
+                    b.AddThemeColorOverride("font_disabled_color", new Color(0.98f, 0.80f, 0.35f));
+                }
+                else if (m.Dead)
+                {
+                    b.Text = $"{slot + 1}. {m.Name} — DESTROYED";
+                    b.Disabled = true;
+                    b.AddThemeStyleboxOverride("disabled", S(new Color(0.05f, 0.05f, 0.06f, 0.9f)));
+                    b.AddThemeColorOverride("font_disabled_color", new Color(0.55f, 0.5f, 0.48f));
+                }
+                else
+                {
+                    b.Text = $"{slot + 1}. {m.Name} — TAKE COMMAND · HP {pct}";
+                    b.AddThemeStyleboxOverride("normal", S(new Color(0.08f, 0.11f, 0.17f, 0.95f)));
+                    b.AddThemeStyleboxOverride("hover", S(new Color(0.14f, 0.18f, 0.26f, 0.98f)));
+                    b.AddThemeStyleboxOverride("pressed", S(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
+                    b.AddThemeStyleboxOverride("focus", S(new Color(0.08f, 0.11f, 0.17f, 0.95f)));
+                    b.AddThemeColorOverride("font_color", Colors.White);
+                    b.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.80f, 0.35f));
+                    b.Pressed += () => { Visible = false; LeaderChosen?.Invoke(slot); };
+                }
+                _rows.AddChild(b);
+            }
+            _root.CustomMinimumSize = new Vector2(520, 196 + members.Count * 50);
+            _openedAt = Time.GetTicksMsec();
+            Visible = true;
+        }
+
+        public override void _Input(InputEvent e)
+        {
+            if (!Visible) return;
+            if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening Esc
+            if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
+            {
+                Visible = false;
+                GetViewport().SetInputAsHandled();
+            }
+        }
+    }
+
+    // Rows for the team screen, in slot order.
+    private System.Collections.Generic.List<(string Name, float HpFrac, bool Dead, bool Leader, int Slot)> TeamRows()
+    {
+        var rows = new System.Collections.Generic.List<(string Name, float HpFrac, bool Dead, bool Leader, int Slot)>();
+        foreach (var m in TeamMembers())
+            rows.Add((m.Spec.Name, m.Spec.MaxHp > 0f ? m.Hp / m.Spec.MaxHp : 0f, m.Dead, m.Slot == _leaderSlot, m.Slot));
+        rows.Sort((x, y) => x.Slot.CompareTo(y.Slot));
+        return rows;
     }
 
     private static readonly Color CdNormal = new Color(0.95f, 0.8f, 0.3f);

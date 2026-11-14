@@ -167,6 +167,67 @@ public partial class RiderDuel
         if (_allies.Count > 0) GD.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
     }
 
+    // Take command of a teammate (owner, teams stage step 4):
+    // the player drives the chosen rider; the previously driven
+    // rider becomes an NPC in the freed seat. State moves
+    // between the player fields and the Ally record — walkers
+    // and parts objects never move, so every closure and
+    // registry keyed on them (part-break handlers, hit
+    // resolvers) stays correct; the roles follow the seats.
+    private bool SetLeader(int slot)
+    {
+        if (slot == _leaderSlot) return false;
+        var ally = AllyBySlot(slot);
+        if (ally == null || ally.Dead) return false;
+        // Pack the current driven rider into the freed seat.
+        string eb = SlotOf(_playerSpec, WeaponSlotType.Ballistic);
+        var old = new Ally
+        {
+            Walker = _player, Parts = _partsPlayer, Spec = _playerSpec, Loadout = _loadout,
+            Hp = _hpPlayer, Dead = _playerDead, Role = ally.Role, Slot = _leaderSlot,
+            Yaw = _playerYaw, PrevRoot = _player.RootPos, Vel = _playerVel,
+            DroopT = _playerDroopT,
+            SpawnPos = PadPos(Main.SpawnPads[0]), SpawnYaw = SpawnYaw(Main.SpawnPads[0]),
+            BallisticSlot = eb,
+            DefBallistic = eb == null ? null : WeaponCatalog.ById(_loadout.WeaponIn(eb))
+        };
+        // The packed rider's parts were bound to the _partsPlayer
+        // FIELD in their OnBreak closure (the lab rebuild idiom);
+        // rebind them to the record so a break on the NPC seat
+        // reports on the right rider.
+        old.Parts.OnBreak = (id, c) => OnPartBroken(old.Parts, id, c);
+        // Promote the chosen teammate into the player fields.
+        _player = ally.Walker; _partsPlayer = ally.Parts; _playerSpec = ally.Spec;
+        _loadout = ally.Loadout; _hpPlayer = ally.Hp; _playerDead = false;
+        _playerDroopT = ally.DroopT;
+        _playerYaw = ally.Yaw;
+        _torsoWorldYaw = _playerYaw + _player.TorsoTwist;
+        _prevPlayerRoot = _player.RootPos; _playerVel = ally.Vel;
+        _leaderSlot = slot;
+        _allies.Remove(ally);
+        _allies.Add(old);
+        _allies.Sort((x, y) => x.Slot.CompareTo(y.Slot));
+        _weaponSel = 0;
+        RefreshHitCaps();
+        ApplyLoadout();
+        GD.Print($"TEAM leader now slot {slot} ({_playerSpec.Id})");
+        return true;
+    }
+
+    // The driven rider died with teammates standing: command
+    // passes to the first living teammate in slot order. Runs
+    // at the top of a frame, never inside damage resolution.
+    private void PassCommandIfNeeded()
+    {
+        if (!_pendingLeaderPass) return;
+        _pendingLeaderPass = false;
+        var next = _allies.Where(a => !a.Dead).OrderBy(a => a.Slot).FirstOrDefault();
+        if (next == null) return;
+        string fell = _playerSpec.Name;
+        if (SetLeader(next.Slot))
+            AddFeed($"{fell} DESTROYED — {next.Spec.Name} TAKES COMMAND");
+    }
+
     // R reset: teammates restored with everyone else — full
     // pools, parts restored, back on their muster points.
     private void ResetAllies(bool live)
