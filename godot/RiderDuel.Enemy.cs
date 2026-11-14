@@ -35,12 +35,15 @@ public partial class RiderDuel
 
     // The engagement latch, with hysteresis: trips in at
     // AggroRange, out at LeashRange, so a defender on the boundary
-    // does not flicker between states.
+    // does not flicker between states. The reference is the
+    // nearest living rider of the player's TEAM (teams stage) —
+    // with a solo team that is the player, the original rule.
     private bool GuardGate(RiderWalker self, ref bool engaged)
     {
-        float dp = self.RootPos.DistanceTo(_player.RootPos);
-        if (_playerDead) engaged = false;
-        else if (!engaged && dp < AggroRange) engaged = true;
+        var near = NearestTeamWalker(self.RootPos);
+        if (near == null) { engaged = false; return false; }
+        float dp = self.RootPos.DistanceTo(near.RootPos);
+        if (!engaged && dp < AggroRange) engaged = true;
         else if (engaged && dp > LeashRange) engaged = false;
         return engaged;
     }
@@ -135,10 +138,10 @@ public partial class RiderDuel
                     ref _foe0Patrol, ref _foe0PatrolT, Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed), delta);
                 return;
             }
-            _foe0TargetW = _player;
+            _foe0TargetW = NearestTeamWalker(_enemy.RootPos) ?? _player;
             UpdateFoeMovement(_enemy, _partsEnemy,
-                PaceFor(_enemySpec, _enemy.RootPos.DistanceTo(_player.RootPos)),
-                ref _enemyYaw, ref _orbitDir, ref _orbitTimer, _player, delta);
+                PaceFor(_enemySpec, _enemy.RootPos.DistanceTo(_foe0TargetW.RootPos)),
+                ref _enemyYaw, ref _orbitDir, ref _orbitTimer, _foe0TargetW, delta);
             return;
         }
         var (target, _, _) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, delta);
@@ -160,10 +163,10 @@ public partial class RiderDuel
                     ref _foe.Patrol, ref _foe.PatrolT, Mathf.Min(_foe.Spec.MaxSpeed, EnemyMaxSpeed), delta);
                 return;
             }
-            _foeTargetW = _player;
+            _foeTargetW = NearestTeamWalker(_foe.Walker.RootPos) ?? _player;
             UpdateFoeMovement(_foe.Walker, _foe.Parts,
-                PaceFor(_foe.Spec, _foe.Walker.RootPos.DistanceTo(_player.RootPos)),
-                ref _foe.Yaw, ref _foe.OrbitDir, ref _foe.OrbitTimer, _player, delta);
+                PaceFor(_foe.Spec, _foe.Walker.RootPos.DistanceTo(_foeTargetW.RootPos)),
+                ref _foe.Yaw, ref _foe.OrbitDir, ref _foe.OrbitTimer, _foeTargetW, delta);
             return;
         }
         var (target, _, _) = PickTarget(_foe.Walker, _foeTargetW, ref _foe.ThinkT, delta);
@@ -237,8 +240,22 @@ public partial class RiderDuel
         if (_enemyDead) return;
         if (WorldConfig.IsMission && !_foe0Engaged) return;
         if (_cdEnemy > 0f) return;
-        var (target, vel, tag) = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, 0f);
-        if (target == null) return;
+        // Missions: gunnery shoots what the movement brain is
+        // fighting — the nearest team rider (the guard gate's
+        // pick). The Arena keeps the free-for-all re-pick.
+        RiderWalker target; Vector3 vel; string tag;
+        if (WorldConfig.IsMission)
+        {
+            target = _foe0TargetW;
+            if (target == null || IsDead(target)) return;
+            vel = VelOf(target); tag = TagOf(target);
+        }
+        else
+        {
+            var t = PickTarget(_enemy, _foe0TargetW, ref _foe0ThinkT, 0f);
+            if (t.W == null) return;
+            (target, vel, tag) = t;
+        }
         UpdateFoeGunnery(_enemy, _partsEnemy, _defEnemyBallistic, _enemyBallisticSlot,
             Roles.Enemy, tag, target, vel, () =>
             {
@@ -251,8 +268,19 @@ public partial class RiderDuel
     {
         if (_foe.Dead || _foe.Cd > 0f) return;
         if (WorldConfig.IsMission && !_foe.Engaged) return;
-        var (target, vel, tag) = PickTarget(_foe.Walker, _foeTargetW, ref _foe.ThinkT, 0f);
-        if (target == null) return;
+        RiderWalker target; Vector3 vel; string tag;
+        if (WorldConfig.IsMission)
+        {
+            target = _foeTargetW;
+            if (target == null || IsDead(target)) return;
+            vel = VelOf(target); tag = TagOf(target);
+        }
+        else
+        {
+            var t = PickTarget(_foe.Walker, _foeTargetW, ref _foe.ThinkT, 0f);
+            if (t.W == null) return;
+            (target, vel, tag) = t;
+        }
         UpdateFoeGunnery(_foe.Walker, _foe.Parts, _foe.DefBallistic, _foe.BallisticSlot,
             Roles.Foe, tag, target, vel, () => { _foe.Cd = _foe.DefBallistic?.Cooldown ?? 0.85f; _foeShots++; });
     }

@@ -54,6 +54,28 @@ public partial class RiderDuel
         }
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
         {
+            // Team orders (owner, teams stage step 5): SHIFT+1..4
+            // command the NPC teammates. Intercepted before the
+            // weapon-group keys below — a shifted number is an
+            // order, not a group switch.
+            if (e is InputEventKey ok && ok.Pressed && !ok.Echo && ok.ShiftPressed
+                && WorldConfig.IsMission && _allies.Count > 0)
+            {
+                TeamOrder? ord = ok.Keycode switch
+                {
+                    Key.Key1 => TeamOrder.AttackTarget,
+                    Key.Key2 => TeamOrder.AttackNearby,
+                    Key.Key3 => TeamOrder.ProtectLeader,
+                    Key.Key4 => TeamOrder.Hold,
+                    _ => null
+                };
+                if (ord.HasValue)
+                {
+                    SetTeamOrder(ord.Value);
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+            }
             // Weapon selection (owner's groups): keys 1-6 pick
             // the group by its lab number, the wheel cycles the
             // groups that exist.

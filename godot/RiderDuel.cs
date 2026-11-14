@@ -1026,6 +1026,7 @@ public partial class RiderDuel : Node3D
                 MaintainTorsoWorldYaw();
                 UpdateEnemyAI(dt);
                 if (_foe != null) UpdateFoeAI(dt);
+                UpdateAlliesAI(dt);
                 _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
