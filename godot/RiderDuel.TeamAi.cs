@@ -16,12 +16,13 @@ using Godot;
 // With no enemy in reach, allies fall back to a loose
 // formation behind the leader and march at full chassis speed
 // to keep up on the big map (PaceFor, the defenders' rule).
-// The standing order before any key is pressed is SHIFT+2's.
+// The standing order before any key is pressed is SHIFT+1's
+// (owner's ruling: the default behaviour is Attack my target).
 public partial class RiderDuel
 {
     private enum TeamOrder { AttackTarget, AttackNearby, ProtectLeader, Hold }
 
-    private TeamOrder _teamOrder = TeamOrder.AttackNearby;
+    private TeamOrder _teamOrder = TeamOrder.AttackTarget;
     private int _allyShots; // harness counter (the team test reads it)
 
     private void SetTeamOrder(TeamOrder o)
