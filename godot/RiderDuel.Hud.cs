@@ -649,8 +649,13 @@ public partial class RiderDuel
         if (_targetFrame == null) return;
         bool show = _panelHealth.Visible && !_labOpen && _cam != null;
         RiderWalker w = null; RiderSpec spec = null; bool dead = true;
-        if (_targetIdx == 0) { w = _enemy; spec = _enemySpec; dead = _enemyDead; }
-        else if (_foe != null) { w = _foe.Walker; spec = _foe.Spec; dead = _foe.Dead; }
+        var tlist = OpposingTargets();
+        if (tlist.Count > 0)
+        {
+            if (_targetIdx < 0 || _targetIdx >= tlist.Count) _targetIdx = 0;
+            var t = tlist[_targetIdx];
+            w = t.W; spec = t.Spec; dead = t.Dead;
+        }
         if (!show || w == null || spec == null || dead) { _targetFrame.Show = false; _targetFrame.QueueRedraw(); return; }
         var org = w.RootPos;
         float r = spec.Radius, hgt = spec.Height;
@@ -693,13 +698,10 @@ public partial class RiderDuel
         // and the red bar belongs to the active one only — and
         // even then it appears only while at least one living
         // weapon group can reach that enemy.
-        var foes = new (RiderSpec Spec, float Hp, bool Dead, RiderWalker W)[]
-        {
-            (_enemySpec, _hpEnemy, _enemyDead, _enemy),
-            _foe != null ? (_foe.Spec, _foe.Hp, _foe.Dead, _foe.Walker) : (null, 0f, true, null)
-        };
+        var foes = OpposingTargets();
+        if (_targetIdx < 0 || _targetIdx >= foes.Count) _targetIdx = 0;
         if (foes[_targetIdx].Dead)
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < foes.Count; i++)
                 if (!foes[i].Dead) { _targetIdx = i; break; }
         var tgt = foes[_targetIdx];
         float tgtRange = tgt.W != null

@@ -42,23 +42,22 @@ public partial class RiderDuel
     // target), or null when it is down.
     private RiderWalker ActiveTargetWalker()
     {
-        if (_targetIdx == 0) return _enemyDead ? null : _enemy;
-        return _foe != null && !_foe.Dead ? _foe.Walker : null;
+        var list = OpposingTargets();
+        if (list.Count == 0) return null;
+        if (_targetIdx < 0 || _targetIdx >= list.Count) _targetIdx = 0;
+        var t = list[_targetIdx];
+        return t.Dead ? null : t.W;
     }
 
     private RiderWalker NearestEnemyWalker(Vector3 from, float maxDist)
     {
         RiderWalker best = null;
         float bd = maxDist * maxDist;
-        if (!_enemyDead)
+        foreach (var t in OpposingTargets())
         {
-            float d = from.DistanceSquaredTo(_enemy.RootPos);
-            if (d < bd) { bd = d; best = _enemy; }
-        }
-        if (_foe != null && !_foe.Dead)
-        {
-            float d = from.DistanceSquaredTo(_foe.Walker.RootPos);
-            if (d < bd) { bd = d; best = _foe.Walker; }
+            if (t.Dead || t.W == null) continue;
+            float d = from.DistanceSquaredTo(t.W.RootPos);
+            if (d < bd) { bd = d; best = t.W; }
         }
         return best;
     }

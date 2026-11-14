@@ -72,6 +72,38 @@ public partial class RiderDuel
         : _foe != null && w == _foe.Walker ? _foeTeam
         : AllyOf(w)?.Team ?? -1;
 
+    // One opposing rider for targeting purposes (the Tab
+    // cycle, the HUD's active-enemy bar, the allies' target
+    // pool): the enemy seat, the foe seat when built, then —
+    // in Tournament — every hostile NPC record. In missions
+    // this is exactly the two defender seats it has always
+    // been. The list is a shared scratch buffer: consume it
+    // immediately, never hold it across calls.
+    private struct TargetInfo
+    {
+        public RiderSpec Spec; public RiderWalker W; public float Hp; public bool Dead;
+    }
+
+    private readonly System.Collections.Generic.List<TargetInfo> _targetsScratch = new();
+
+    private System.Collections.Generic.List<TargetInfo> OpposingTargets()
+    {
+        var list = _targetsScratch;
+        list.Clear();
+        list.Add(new TargetInfo { Spec = _enemySpec, W = _enemy, Hp = _hpEnemy, Dead = _enemyDead });
+        if (_foe != null)
+            list.Add(new TargetInfo { Spec = _foe.Spec, W = _foe.Walker, Hp = _foe.Hp, Dead = _foe.Dead });
+        if (!WorldConfig.IsMission)
+        {
+            foreach (var a in _allies)
+            {
+                if (a.Team == 0) continue;
+                list.Add(new TargetInfo { Spec = a.Spec, W = a.Walker, Hp = a.Hp, Dead = a.Dead });
+            }
+        }
+        return list;
+    }
+
     // The harness modes stage their own calibrated fields; the
     // team exists only in the live game.
     private bool AnyHarness => _test || _weaponsTest || _breakTest || _terrainTest

@@ -86,14 +86,24 @@ public partial class RiderDuel
         thinkT -= dt;
         if (cur != null && thinkT > 0f && !IsDead(cur)) return (cur, VelOf(cur), TagOf(cur));
         thinkT = 0.75f;
+        // Nearest living rider of ANOTHER team (Stage D3):
+        // the candidate pool is every rider on the field —
+        // in the classic three-seat arena all teams differ,
+        // so this reduces to the old free-for-all exactly.
+        int myTeam = TeamOf(self);
         RiderWalker best = null;
         float bd = float.MaxValue;
-        foreach (var cand in new[] { _player, _enemy, _foe?.Walker })
+        void Scan(RiderWalker cand)
         {
-            if (cand == null || cand == self || IsDead(cand)) continue;
+            if (cand == null || cand == self || IsDead(cand)) return;
+            if (TeamOf(cand) == myTeam) return;
             float d = self.RootPos.DistanceSquaredTo(cand.RootPos);
             if (d < bd) { bd = d; best = cand; }
         }
+        Scan(_player);
+        Scan(_enemy);
+        if (_foe != null) Scan(_foe.Walker);
+        foreach (var a in _allies) Scan(a.Walker);
         return best == null ? (null, Vector3.Zero, "") : (best, VelOf(best), TagOf(best));
     }
 

@@ -40,13 +40,17 @@ public partial class RiderDuel
         }
         if (e is InputEventKey tk && tk.Pressed && !tk.Echo && tk.Keycode == Key.Tab)
         {
-            // Cycle the ONE active enemy among the living foes
-            // (owner); handled here so Tab never moves UI focus.
+            // Cycle the ONE active enemy among the living
+            // opponents (owner); handled here so Tab never
+            // moves UI focus. The cycle spans every opposing
+            // rider on the field (Stage D3) — in the classic
+            // arena that is the two AI seats, as before.
+            var cyc = OpposingTargets();
             int next = _targetIdx;
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < cyc.Count; i++)
             {
-                next = (next + 1) % 2;
-                if (next == 0 ? !_enemyDead : _foe != null && !_foe.Dead) break;
+                next = (next + 1) % cyc.Count;
+                if (!cyc[next].Dead) break;
             }
             _targetIdx = next;
             GetViewport().SetInputAsHandled();
