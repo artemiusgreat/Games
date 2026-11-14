@@ -932,6 +932,10 @@ public partial class RiderLab : Control
     private Control TeamSection()
     {
         var panel = new PanelContainer();
+        // On top of the paperdoll's leader lines and anchor
+        // dots (owner, 2026-11-14): the paperdoll draws
+        // unclipped and its lines can cross the band.
+        panel.ZIndex = 1;
         panel.AddThemeStyleboxOverride("panel", LabPanel(new Color(0.045f, 0.065f, 0.105f, 0.96f), new Color(0.42f, 0.48f, 0.56f, 0.8f)));
         // Inner padding (owner, 2026-11-14): the section's
         // content sat flush against the panel border.
