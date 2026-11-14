@@ -2,7 +2,7 @@
 """Fetch the CC0 photoreal probe assets from Poly Haven.
 
 Textures (ground/wall sets): 2K JPG Diffuse + nor_gl + arm maps.
-Models: raw GLTF at 1K into models_raw/ — Poly Haven's trees and
+Models: raw GLTF at 1K into models_raw/ - Poly Haven's trees and
 rocks are full photogrammetry scans (tens of MB of geometry), so
 decimate_models.py (Blender) turns them into game-weight assets
 under models/ afterwards. Grass ships small and is used as-is.

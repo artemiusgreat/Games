@@ -33,7 +33,7 @@ public partial class Crosshair : Control
     public override void _Draw()
     {
         var c = (ReticlePos.X > -100f ? ReticlePos : GetViewportRect().Size * 0.5f) + Sway;
-        // Owner's ask: the reticle must be unmissable — longer, thicker
+        // Owner's ask: the reticle must be unmissable - longer, thicker
         // arms in bright amber over a dark outline pass, so it reads
         // against sky, terrain and the rider's own hull alike.
         var col = new Color(1f, 0.88f, 0.25f, 1f);

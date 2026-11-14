@@ -1,9 +1,9 @@
 using Godot;
 
-// Wizard step 1 (both modes, owner — teams stage): pick the
+// Wizard step 1 (both modes, owner - teams stage): pick the
 // planet. The existing planet selector stays on the left; on
 // the right, instead of the planet disc, a clickable Freelancer-
-// style universe map — the player can select the planet with
+// style universe map - the player can select the planet with
 // the slider or by clicking its node on the chart. The mission
 // selector is GONE from this screen (missions are the next
 // step, in the bar). Menu: Back on the left, Continue on the
@@ -41,7 +41,7 @@ public partial class PlanetScreen : Control
         menu.AddChild(back);
         // Back on the left, Continue on the right (owner's
         // standing button rule). The Reset story button is
-        // removed at the owner's word — he sees no purpose
+        // removed at the owner's word - he sees no purpose
         // for it; StoryProgress.Reset stays as data API.
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var next = FlowUi.MakeButton(IsMission ? "To missions" : "To arenas", 14);

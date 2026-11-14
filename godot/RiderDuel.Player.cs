@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 // RiderDuel module: player input: throttle/turn, torso bearing, thruster key.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
     // ---------- input ----------
@@ -27,7 +27,7 @@ public partial class RiderDuel
 
     public override void _Input(InputEvent e)
     {
-        if (!_built) return; // staged build in progress — the loading cover is up
+        if (!_built) return; // staged build in progress - the loading cover is up
         if (!OS.HasFeature("windows") && e is InputEventKey ck && ck.Pressed && !ck.Echo && ck.Keycode == Key.Capslock)
             _capsLockOn = !_capsLockOn;
         // While the RiderLab is open the mouse belongs to the GUI: the
@@ -44,7 +44,7 @@ public partial class RiderDuel
             // Cycle the ONE active enemy among the living
             // opponents (owner); handled here so Tab never
             // moves UI focus. The cycle spans every opposing
-            // rider on the field (Stage D3) — in the classic
+            // rider on the field (Stage D3) - in the classic
             // arena that is the two AI seats, as before.
             var cyc = OpposingTargets();
             int next = _targetIdx;
@@ -61,7 +61,7 @@ public partial class RiderDuel
         {
             // Team orders (owner, teams stage step 5): SHIFT+1..4
             // command the NPC teammates. Intercepted before the
-            // weapon-group keys below — a shifted number is an
+            // weapon-group keys below - a shifted number is an
             // order, not a group switch.
             if (e is InputEventKey ok && ok.Pressed && !ok.Echo && ok.ShiftPressed
                 && WorldConfig.IsMission && _allies.Count > 0)
@@ -147,7 +147,7 @@ public partial class RiderDuel
     // Round 7: the mouse owns the torso's WORLD bearing. A/D turns
     // the legs underneath; each frame the twist is re-derived so the
     // torso (and the camera riding it) stays where the mouse put it
-    // instead of being dragged around by leg rotation — the two
+    // instead of being dragged around by leg rotation - the two
     // inputs no longer fight over the same yaw. The walker's clamp
     // still bounds the twist, and reading the clamped value back
     // re-anchors the bearing so the mouse never winds up against
@@ -170,19 +170,19 @@ public partial class RiderDuel
 
     // The player's drive, with the keys passed in so the duel harness
     // can exercise the REAL input path. Leg damage does NOT gate this:
-    // the round-1 "a lost leg immobilizes" rule was retired — a wrecked
+    // the round-1 "a lost leg immobilizes" rule was retired - a wrecked
     // leg only throttles the walker (SpeedFactor: limp 0.55 / crawl
     // 0.25) and turns slower by the same factor. (The retired gate
     // survived here after the walker-side rework and left the player
     // permanently stuck the moment a leg was wrecked: no forward, no
-    // reverse, no turn — the owner's playtest report.)
+    // reverse, no turn - the owner's playtest report.)
     private void ApplyPlayerInput(float delta, bool w, bool s, bool a, bool d, bool shift)
     {
         float f = _player.SpeedFactor;
         if (a) _playerYaw += TurnRate * f * delta;
         if (d) _playerYaw -= TurnRate * f * delta;
         // Run mode (RunFactor x walk speed): SHIFT held, or
-        // Caps Lock on (owner round 6); W only — reverse
+        // Caps Lock on (owner round 6); W only - reverse
         // stays at walk pace.
         _running = (shift || _capsLockOn) && w;
         float spd = 0f;

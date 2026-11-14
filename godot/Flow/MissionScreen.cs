@@ -1,13 +1,13 @@
 using Godot;
 using System.Collections.Generic;
 
-// Wizard step 2 (Story, owner — teams stage): pick the mission.
+// Wizard step 2 (Story, owner - teams stage): pick the mission.
 // Left: the mission selector (slider) with the briefing monitor
-// and the offer rows — every available mission with its own
+// and the offer rows - every available mission with its own
 // Accept button (the old "Command center" top button is gone).
 // Right: the 3D port bar; the patrons standing in it are the
 // people offering the missions on the left, name-labelled and
-// CLICKABLE — clicking a patron selects their mission in the
+// CLICKABLE - clicking a patron selects their mission in the
 // slider, exactly like clicking the offer row. Accept signs
 // the mission and advances to the Rider Lab.
 public partial class MissionScreen : Control
@@ -42,7 +42,7 @@ public partial class MissionScreen : Control
         margin.AddChild(root);
 
         // ---- menu bar: Back on the left; Rider Lab (once a
-        // mission is signed on this planet) on the right —
+        // mission is signed on this planet) on the right -
         // the owner's standing button rule ----
         var menu = new HBoxContainer();
         menu.AddThemeConstantOverride("separation", 10);
@@ -157,11 +157,11 @@ public partial class MissionScreen : Control
         _briefBody.Text =
             $"Mission: {m.Name}\nType: {m.Type}\nTerrain: {m.Biome}\nEmployer: {m.Employer}\n" +
             $"Payment: {m.Payment:N0} credits\nThreat: {FlowUi.ThreatPips(m.Threat)}\n\n" +
-            $"{m.Site} — {m.Briefing}";
+            $"{m.Site} - {m.Briefing}";
         var signed = WorldConfig.SelectedMission;
         _status.Text = signed != null && signed.Planet == Planet
             ? $"Mission signed: {signed.Name}. Accepting another replaces it."
-            : "Click a patron in the bar, or a contract below — Accept signs and deploys.";
+            : "Click a patron in the bar, or a contract below - Accept signs and deploys.";
 
         foreach (var c in _offers.GetChildren()) c.QueueFree();
         foreach (int mi in StoryProgress.UnlockedList(FlowMain.PlanetIndex))

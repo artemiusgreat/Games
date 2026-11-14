@@ -8,7 +8,7 @@ public partial class Main : Node3D
 	public static int TerrainSegs => WorldConfig.TerrainSegs;
 
 	// The three spawn pads / Mission bases, 120 degrees apart.
-	// Tournament: r=80 (pairwise ~139u — far beyond first-sight
+	// Tournament: r=80 (pairwise ~139u - far beyond first-sight
 	// range). Mission: the base triangle at r=620 (~1075u apart).
 	// RawHeight flattens the ground at each. Index 0 is the player's.
 	public static Vector2[] SpawnPads => WorldConfig.Pads;
@@ -83,13 +83,13 @@ public partial class Main : Node3D
 	// middle of the map, ~34u over the arena floor, so the three
 	// spawn pads have no sightline to each other. Measured
 	// geometry: every pad pair's sightline passes r=40 from the
-	// center, where the dome still stands ~23u — above the
+	// center, where the dome still stands ~23u - above the
 	// highest pad eye line (pads flatten to at most 3u, +~11.5
 	// eye height). Added AFTER the arena modulation so the
 	// center damping cannot flatten it away. The top is a mesa
 	// (flat inside r=14): the old pure Gaussian put the center
 	// test marks on a 2.3u relative slope, which moved shot
-	// attribution from torso to thigh — a fighting plateau is
+	// attribution from torso to thigh - a fighting plateau is
 	// also simply better ground to duel on.
 	private static float DomeHeight(float x, float z)
 	{
@@ -100,7 +100,7 @@ public partial class Main : Node3D
 
 	// Canyon country for the terraced city (owner: the map's
 	// edge reads as canyon / mountains, with several valleys
-	// connected by pathways — each valley hosts its multilevel
+	// connected by pathways - each valley hosts its multilevel
 	// city): ridged mountains everywhere, a walkable pass
 	// carved along each base-to-base road, and a flat basin
 	// floor at each base for its city.
@@ -111,7 +111,7 @@ public partial class Main : Node3D
 		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
 		float h = 12f + n * 34f + rg * rg * 62f + Smooth(640f, 920f, sq) * 85f;
 		var p = new Vector2(x, z);
-		// Valley rims (owner: "looks like you removed canyon" —
+		// Valley rims (owner: "looks like you removed canyon" -
 		// the basins were flat discs in low rolling ground, so
 		// from inside a valley nothing read as canyon): a ridge
 		// ring just outside each basin puts every valley in a
@@ -138,7 +138,7 @@ public partial class Main : Node3D
 			if (d < 64f)
 			{
 				// Max(0, ...): Sin(Pi * 1) in floats is a tiny
-				// NEGATIVE, and Pow(neg, 0.8) is NaN — that
+				// NEGATIVE, and Pow(neg, 0.8) is NaN - that
 				// poisoned the heightfield (and both AI spawns)
 				// beyond the pb endpoints before this guard.
 				float passH = 3f + 23f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Mathf.Pi * t)), 0.8f);
@@ -158,7 +158,7 @@ public partial class Main : Node3D
 		// The terraced-city contract gets the canyon/valley
 		// terrain (basins at the bases, passes on the roads).
 		if (WorldConfig.TerracedCity) return ValleyHeight(x, z);
-		// Flat maps use no height map at all — every street,
+		// Flat maps use no height map at all - every street,
 		// road and base on one level plane.
 		if (WorldConfig.FlatWorld) return 0f;
 		float h = BaseHeight(x, z);
@@ -171,7 +171,7 @@ public partial class Main : Node3D
 			if (d < flatR)
 			{
 				// Arena pads sit LOW (at most 3u) whatever the local
-				// relief says — the hollows the dome math assumes.
+				// relief says - the hollows the dome math assumes.
 				// Mission bases flatten to their own plateau height.
 				float padH = WorldConfig.IsMission
 					? BaseHeight(pad.X, pad.Y)
@@ -181,7 +181,7 @@ public partial class Main : Node3D
 		}
 		// City district plateau (owner: Harbor Stacks should
 		// read as actual streets and blocks): on a kit contract
-		// the map center levels into a building platform — the
+		// the map center levels into a building platform - the
 		// dome and the relief blend out across the district, so
 		// the street grid sits flat.
 		if (WorldConfig.IsMission && WorldConfig.CityKit >= 0)
@@ -238,7 +238,7 @@ public partial class Main : Node3D
 
 	// Terrain height: bilinear sample of the heightfield grid (constant
 	// outside the world, clamped to the rim). Called constantly by the
-	// gait, the hit model and the debris sim — keep it allocation-free.
+	// gait, the hit model and the debris sim - keep it allocation-free.
 	public static float HeightAt(float x, float z)
 	{
 		float half = TerrainSize / 2f;
@@ -260,7 +260,7 @@ public partial class Main : Node3D
 	// building is destroyed. Axis-aligned rectangles with a top.
 	// Under: the surface's underside height when the space
 	// below it is open (terrace decks, lift pads, the island
-	// bridge slab) — thruster flight bonks against it (owner:
+	// bridge slab) - thruster flight bonks against it (owner:
 	// collision works both ways). 0 = solid / no underside.
 	public struct RoofRect { public float Cx, Cz, Hx, Hz, Top, Under; }
 	public static readonly System.Collections.Generic.List<RoofRect> Roofs = new();
@@ -274,7 +274,7 @@ public partial class Main : Node3D
 	// Round standable tops (the Harbor island deck). Kept as
 	// the SHOT-collision approximation for blob decks (ray
 	// vs disc planes/cylinder in HitModel); walkers ground
-	// on the exact BlobDeck outlines below instead — a union
+	// on the exact BlobDeck outlines below instead - a union
 	// of discs overhangs ramp corridors by metres (a disc
 	// centred on a diagonal reaches sideways past the rect
 	// edge), which read as feet floating at deck height over
@@ -284,13 +284,13 @@ public partial class Main : Node3D
 
 	// A connection sector: the angular span (centre angle,
 	// half-width) where a ramp, lift or bridge meets a blob
-	// platform — inside it the outline stays at the rect
+	// platform - inside it the outline stays at the rect
 	// boundary so no bulge roofs a connection corridor.
 	public struct Sector { public float Ang, Half; public Sector(float ang, float half) { Ang = ang; Half = half; } }
 
 	// A round, curvy platform (owner, 2026-11-11 round 5):
 	// the outline is the polar radius function BlobRadius
-	// around (Cx, Cz) over the rect half-extents (Hx, Hz) —
+	// around (Cx, Cz) over the rect half-extents (Hx, Hz) -
 	// the deck a walker stands on is EXACTLY the deck he
 	// sees, evaluated per query, no disc approximation.
 	public struct BlobDeck { public float Cx, Cz, Hx, Hz, Seed, Top, Under, RMax; public Sector[] Sectors; }
@@ -349,7 +349,7 @@ public partial class Main : Node3D
 
 	// Ground height for a walker at (x, z): the terrain, or a
 	// roof's top when the walker's soles are already at that level
-	// — refY is the sole level plus a small step tolerance, so a
+	// - refY is the sole level plus a small step tolerance, so a
 	// walker standing ON the roof (or falling onto it) grounds on
 	// it, while a walker on the ground beside the building, whose
 	// refY sits far below the top, keeps the terrain and is still
@@ -359,13 +359,13 @@ public partial class Main : Node3D
 		// Ledge adoption (owner: thruster landings on the Harbor
 		// decks): an AIRBORNE walker whose hips are already above
 		// a top and whose soles hang within ledgeSlack below it
-		// grounds on it — he clambers up the last few units. A
+		// grounds on it - he clambers up the last few units. A
 		// walker UNDER the same deck (hips below the top) never
 		// adopts it, so decks stay walkable from underneath.
 		bool Ledge(float top) => ledgeSlack > 0f && ledgeRootY > top && refY >= top - ledgeSlack;
 		// Step-up allowance (owner's ramp-lip fall-through,
 		// 2026-11-10): a climbing walker plants its next foot up
-		// to ~2.5u above its current sole — a stride's rise.
+		// to ~2.5u above its current sole - a stride's rise.
 		// Roofs need the same allowance ramps always had: just
 		// past a ramp's lip the deck is the only surface under
 		// the leading foot, and with a long stride the trailing
@@ -391,7 +391,7 @@ public partial class Main : Node3D
 	}
 
 	// The lowest underside strictly above aboveY in this
-	// column (owner: platforms collide from below too — a
+	// column (owner: platforms collide from below too - a
 	// thrustering rider must not pass through a deck). Counts
 	// deck/pad undersides and ramp wedge undersides (the wedge
 	// box is 3.5 thick, its top face on the slope line, so the
@@ -423,7 +423,7 @@ public partial class Main : Node3D
 		return new Vector3(-dhdx, 1f, -dhdz).Normalized();
 	}
 
-	// Roads: pure coloring — HeightAt is untouched, so gait, hit
+	// Roads: pure coloring - HeightAt is untouched, so gait, hit
 	// tests and collisions never notice them. Distance is to the
 	// nearer centerline. The arena has two strips crossing at
 	// (-14, 6); the Mission front gets dirt roads along the three
@@ -451,7 +451,7 @@ public partial class Main : Node3D
 		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return 1e6f;
 		float p = CityGrid.Pitch;
 		// Terraced city: the street lattice repeats per
-		// valley — except the home valley (owner, 2026-11-11
+		// valley - except the home valley (owner, 2026-11-11
 		// round 7): no city stands there (rounds 4/6 emptied
 		// it), so no streets are painted there either. The
 		// lattice across the empty home floor was the
@@ -493,8 +493,8 @@ public partial class Main : Node3D
 		// Biome palettes (owner's map types): Forest keeps the
 		// original greens; Desert runs sand; City runs urban
 		// concrete. The city tint varies SMOOTHLY (the patch
-		// field): the old per-block quantised tint — Floor(x/26)
-		// hashed per 26u block — read as a checkerboard over
+		// field): the old per-block quantised tint - Floor(x/26)
+		// hashed per 26u block - read as a checkerboard over
 		// every city floor, worst where no buildings cover it
 		// (owner, 2026-11-11 round 5: 'checkerboard needs to
 		// be removed everywhere').

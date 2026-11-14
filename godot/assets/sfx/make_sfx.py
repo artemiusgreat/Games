@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Procedural sound effects for the mech duel — synthesized WAVs,
+"""Procedural sound effects for the mech duel - synthesized WAVs,
 no external samples. Run: python3 make_sfx.py (writes next to itself).
 22050 Hz mono 16-bit PCM."""
 import math, random, struct, wave, os
@@ -27,8 +27,8 @@ def brown_noise(n, leak=0.985):
     return out
 
 def laser():
-    # Fast whoosh (owner, 2026-10-31): the rocket's recipe — noise
-    # through a swelling lowpass with an arch envelope — compressed
+    # Fast whoosh (owner, 2026-10-31): the rocket's recipe - noise
+    # through a swelling lowpass with an arch envelope - compressed
     # from 0.6s to 0.16s with a higher, snappier cutoff sweep. A
     # LOCAL rng keeps the shared sequence untouched, so every other
     # WAV regenerates byte-identical.

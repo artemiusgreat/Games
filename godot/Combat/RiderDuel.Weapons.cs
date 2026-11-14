@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 
 // RiderDuel module: firing, projectiles, damage and part consequences.
-// (Aiming — the aim ray and reticle — lives in Combat/RiderDuel.Aiming.cs;
+// (Aiming - the aim ray and reticle - lives in Combat/RiderDuel.Aiming.cs;
 // this file is part of the Combat folder: everything that aims or shoots.)
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
 
@@ -37,7 +37,7 @@ public partial class RiderDuel
 
     // Torso gun (the Hector's waist AC/20): torso bone origin plus a
     // right/up/forward offset in the torso frame. Used by whichever
-    // seat pilots an Hector — its shells leave from the waist gun,
+    // seat pilots an Hector - its shells leave from the waist gun,
     // not the fist.
     private Vector3 TorsoGunMuzzle(RiderWalker w)
     {
@@ -85,7 +85,7 @@ public partial class RiderDuel
         foreach (var g in fired) maxRange = Mathf.Max(maxRange, g.Def.Range);
         // Round 20 (owner, two repros): the hit resolves on the
         // CAMERA's ray, not on a re-cast from the muzzle. The muzzle
-        // re-cast kept disagreeing with the reticle by parallax —
+        // re-cast kept disagreeing with the reticle by parallax -
         // aiming at sky just over a crest, the lower muzzle line
         // clipped the hill (a hit the cursor never touched); aiming
         // just above a building, the beam ran to the muzzle line's
@@ -99,7 +99,7 @@ public partial class RiderDuel
         bool camTruth = _camMode == CamModes.Chase && !_labOpen;
         if (camTruth)
         {
-            // The view line is the camera's axis — AimDirWorld,
+            // The view line is the camera's axis - AimDirWorld,
             // the SAME direction the chase camera looks and
             // TorsoAimPoint casts. Round 20's first cut used the
             // camera's raw forward (-Basis.Z) under the OLD
@@ -115,7 +115,7 @@ public partial class RiderDuel
                 _laserRescues++;
                 GD.Print("WPN LASER fallback-rescue (camera verdict disagreed with the harness aim point)");
                 // Harness shots aim by explicit point from cameras
-                // that may still be settling between phases — when
+                // that may still be settling between phases - when
                 // the camera's verdict disagrees with the point the
                 // harness asked for, the muzzle cast is the truth
                 // there. Live play never takes this branch.
@@ -131,7 +131,7 @@ public partial class RiderDuel
         // The beams end where the shot ends (owner): on a hit a
         // beam ends on the hit when ITS weapon reaches it, else
         // in mid-air at its own range along the shot line; on a
-        // miss — the sky — every beam ends at the cursor's own
+        // miss - the sky - every beam ends at the cursor's own
         // point (the round-20 rule, test-asserted). Every fitted
         // laser fires its own beam from its own hardpoint
         // (multi-fit volley); the hit itself was resolved once,
@@ -170,7 +170,7 @@ public partial class RiderDuel
     // out; solving ballistics for THAT point made rockets mortar
     // almost vertically (their up-compensation grows with the solved
     // range) while flat cannon shells still crossed the enemy on the
-    // line — the owner's screenshot. Capping the solution range
+    // line - the owner's screenshot. Capping the solution range
     // keeps every weapon's launch angle proportional to where the
     // pointer actually is. Real duel ranges are 15-60u: unaffected.
     private const float ConvergeMax = 75f;
@@ -191,7 +191,7 @@ public partial class RiderDuel
         // its own hardpoint on the pointer line. No clamp needed:
         // the cannon fires the line directly with no range
         // compensation, so a far aim point changes nothing but
-        // parallax. (Rockets were the mortar case — LaunchRocket.)
+        // parallax. (Rockets were the mortar case - LaunchRocket.)
         foreach (var (slot, def) in fired)
         {
             var muzzle = MuzzleForSlot(slot, true);
@@ -200,7 +200,7 @@ public partial class RiderDuel
             // one within reach. When it rests beyond the cast
             // (_aimParallel), converge on the point where it
             // actually rests (the long cast's distance, 1500u
-            // for sky) instead of the 220u far point — shells
+            // for sky) instead of the 220u far point - shells
             // then land on the crosshair at any range instead
             // of crossing the sight line at 220u and sailing
             // over far targets.
@@ -208,9 +208,9 @@ public partial class RiderDuel
                 ? (_cam.GlobalPosition + _aimDir * _farConverge - muzzle).Normalized()
                 : toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             // Shell speed lives on the weapon def (WeaponDef.cs:
-            // MuzzleSpeed) — one place to tune it for every
+            // MuzzleSpeed) - one place to tune it for every
             // cannon, player and AI alike. Ballistic shells fly
-            // STRAIGHT (owner): no gravity, no drop — the line
+            // STRAIGHT (owner): no gravity, no drop - the line
             // the crosshair draws is the line the shell flies.
             // (Rockets keep their solved arcs.)
             (float spd, float grav) = (def.MuzzleSpeed, 0f);
@@ -287,7 +287,7 @@ public partial class RiderDuel
 
     private Vector3 PodMuzzle(bool left)
     {
-        // Rig-true: rockets leave from the pod part's actual center —
+        // Rig-true: rockets leave from the pod part's actual center -
         // a chassis may carry a single rack, on either shoulder.
         string id = left ? SlotIds.PodL : SlotIds.PodR;
         if (_partsPlayer != null && _partsPlayer.Has(id))
@@ -321,7 +321,7 @@ public partial class RiderDuel
         // farther aim point solves onto the max-range point on
         // the same line (the salvo falls short, honestly).
         if (toAim.Length() > def.Range) toAim = toAim.Normalized() * def.Range;
-        // The lob is solved for the TRUE aim point at any range —
+        // The lob is solved for the TRUE aim point at any range -
         // what is capped now is the TIME OF FLIGHT, not the range.
         // History: round 7 capped the solved range at 75u because
         // solving for a 200u hillside point mortared the rockets
@@ -329,7 +329,7 @@ public partial class RiderDuel
         // tof). But the range cap silently broke every longer
         // shot: measured by --lrm-probe (2026-10-31), a 110u shot
         // from the mesa landed 16/16 rockets on terrain, on
-        // average 12u short and 9u BELOW the aim point — the
+        // average 12u short and 9u BELOW the aim point - the
         // owner's "rockets land lower than the cursor from the
         // hill". Capping tof bounds the lob AND the flight time
         // (long shots simply fly faster past ~79u), and the solve
@@ -340,8 +340,8 @@ public partial class RiderDuel
         // and behind that line, so a salvo solved from the pod
         // flies the pod's shallower line and clips terrace lips
         // the crosshair clears by metres. The arc is therefore
-        // solved from a VIRTUAL MUZZLE — the pod's projection onto
-        // the aim axis — and the rocket, still spawned at the pod,
+        // solved from a VIRTUAL MUZZLE - the pod's projection onto
+        // the aim axis - and the rocket, still spawned at the pod,
         // opens with guidance (Projectile.Step) that bends it onto
         // that arc within the first fraction of a second; after
         // that it flies the exact solution and passes through the
@@ -484,7 +484,7 @@ public partial class RiderDuel
         if (isPlayer ? _playerDead : isFoe ? _foe.Dead : isAlly ? ally.Dead : _enemyDead) return;
         var parts = isPlayer ? _partsPlayer : isFoe ? _foe.Parts : isAlly ? ally.Parts : _partsEnemy;
         // Damage routing (owner, 2026-11-03): EVERY hit burns the
-        // main pool, whatever part it lands on — arms, legs, head,
+        // main pool, whatever part it lands on - arms, legs, head,
         // pods all count. Parts additionally take their own damage
         // toward breaking or wrecking, exactly as before. Counters still record the nominal damage once per
         // hit event. Attribution: a box-ray hit already carries its part
@@ -501,7 +501,7 @@ public partial class RiderDuel
         float poolMax = isPlayer ? _playerSpec.MaxHp : isFoe ? _foe.Spec.MaxHp : isAlly ? ally.Spec.MaxHp : _enemySpec.MaxHp;
         // Arm-break gate (owner, 2026-11-12; PartRules):
         // while the pool after this hit is still above the
-        // gate, arm damage is capped so the arm keeps 1 HP —
+        // gate, arm damage is capped so the arm keeps 1 HP -
         // shot to pieces but attached. Once the rider is
         // critical the cap lifts and the arm can come off.
         // The pool itself burns exactly as before.
@@ -553,7 +553,7 @@ public partial class RiderDuel
     }
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
-    // the fire/gunnery checks — every mount answers to its own part
+    // the fire/gunnery checks - every mount answers to its own part
     // (arm_L -> lasers, the waist gun -> the Hector's AC/20, pods -> salvo
     // size, Hector head -> spread + tracking lag), so
     // the stateful consequences latched here are the legs and the player's
@@ -637,7 +637,7 @@ public partial class RiderDuel
 
     // Recompute a walker's leg state from its parts. Owner's rule
     // (current): a destroyed leg never falls off and never fells or
-    // kills the rider — it stays attached, darkened and deformed, and
+    // kills the rider - it stays attached, darkened and deformed, and
     // the rider LIMPS: one wrecked leg = 55% speed with a lean and the
     // wrecked leg keeps stepping at the throttled pace; both legs
     // wrecked = a 25% crawl.
@@ -684,7 +684,7 @@ public partial class RiderDuel
         OnDeath(w);
         // The driven rider is down but the team fights on:
         // command passes to a living teammate (owner, teams
-        // stage step 4 — the leader is whoever the player
+        // stage step 4 - the leader is whoever the player
         // drives). Deferred to the next frame: Die runs inside
         // damage resolution, and swapping the driven rider
         // re-enters ApplyLoadout.
@@ -709,13 +709,13 @@ public partial class RiderDuel
             int before = StoryProgress.UnlockedIn(FlowMain.PlanetIndex);
             StoryProgress.Complete(FlowMain.PlanetIndex, FlowMain.MissionIndex);
             AddFeed(StoryProgress.UnlockedIn(FlowMain.PlanetIndex) > before
-                ? "MISSION COMPLETE — NEW MISSION AVAILABLE"
+                ? "MISSION COMPLETE - NEW MISSION AVAILABLE"
                 : "MISSION COMPLETE");
         }
         else if (!TeamAlive)
         {
             _missionDone = true;
-            AddFeed("MISSION FAILED — TEAM DESTROYED");
+            AddFeed("MISSION FAILED - TEAM DESTROYED");
         }
     }
 

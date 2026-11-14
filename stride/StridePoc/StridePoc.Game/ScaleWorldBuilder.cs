@@ -83,10 +83,10 @@ namespace StridePoc
     /// 512x512 PBR ground material (texture baked in code from the height
     /// function + value noise: grass / dirt / rock by height and slope),
     /// 200 trees + 100 rocks as THREE instanced draws (InstancingComponent /
-    /// InstancingUserArray — one ModelComponent per prop kind, 300 matrices
+    /// InstancingUserArray - one ModelComponent per prop kind, 300 matrices
     /// total), the scene's single directional light already has shadows
     /// enabled (MainScene), player capsule walks by height sampling.
-    /// Heightfield collider: still no code-first path (see NOTES) — sampling.
+    /// Heightfield collider: still no code-first path (see NOTES) - sampling.
     /// </summary>
     public static class ScaleWorldBuilder
     {
@@ -274,7 +274,7 @@ namespace StridePoc
                                 + Math.Abs(HeightBig(x, z + 2f) - HeightBig(x, z - 2f));
                     float noise = 0.5f + 0.5f * MathF.Sin(x * 1.31f + MathF.Sin(z * 1.73f) * 2.1f) * MathF.Sin(z * 1.13f + MathF.Sin(x * 0.71f) * 1.7f);
                     float detail = 0.85f + 0.3f * noise;
-                    // NOTE: Stride Color.R/G/B are bytes — keep components as
+                    // NOTE: Stride Color.R/G/B are bytes - keep components as
                     // floats here or they clamp to white (found via --tex-diag).
                     float r, g, b;
                     if (slope > 2.6f || h > 11f) { r = 0.42f; g = 0.40f; b = 0.38f; }        // rock

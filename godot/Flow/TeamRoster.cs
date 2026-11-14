@@ -5,7 +5,7 @@ using System.Collections.Generic;
 // the flow scene and the duel scene (the lab's Back button
 // reloads the flow; DEPLOY loads the duel).
 //
-// Story: the player's team — 1 to 4 riders formed in the Rider
+// Story: the player's team - 1 to 4 riders formed in the Rider
 // Lab (step 3). Slot 0 is the main player's rider; the leader
 // is chosen in the mission (step 4) and can change there, so
 // the roster itself carries no leader flag.
@@ -32,7 +32,7 @@ public static class TeamRoster
         if (StorySlot < 0 || StorySlot >= Story.Count) StorySlot = 0;
     }
 
-    // Tournament: the bracket formed on the team selector —
+    // Tournament: the bracket formed on the team selector -
     // a list of teams, each a list of riders. Team 0 is the
     // player's own; its slot 0 is the rider he prepares in the
     // lab (step 4). At least two teams always stand and every

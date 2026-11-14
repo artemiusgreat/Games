@@ -21,7 +21,7 @@ vec3 hash33(vec3 p) {
 // star, placed off-centre by a hash; brightness follows a steep
 // power curve so most stars are faint and a few are bright.
 // Stars are tight points (owner, 2026-11-13: the first cut's wide
-// halo read as soft blue dots) — a star is its core plus a whisper
+// halo read as soft blue dots) - a star is its core plus a whisper
 // of tight glow, nothing disc-like.
 vec3 star_layer(vec3 dir, float scale, float density, float gain) {
 	vec3 p = dir * scale;
@@ -58,7 +58,7 @@ void sky() {
 	vec2 uv = vec2(atan(dir.x, -dir.z) / 6.2831853 + 0.5,
 			acos(clamp(dir.y, -1.0, 1.0)) / 3.1415927);
 	// The photo's own saturated-blue stars are cleaned in the
-	// texture itself (owner, 2026-11-13: baked de-blue pass —
+	// texture itself (owner, 2026-11-13: baked de-blue pass -
 	// blue-excess pixels neutralized to their luminance; the
 	// shader's earlier mute block is retired with it).
 	vec3 col = texture(panorama, uv).rgb;

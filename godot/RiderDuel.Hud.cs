@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 // RiderDuel module: cockpit panel, radar readouts, cooldown rows, droop.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
     private static FontFile _hudFont; // IBM Plex Mono Medium, loaded once
@@ -13,7 +13,7 @@ public partial class RiderDuel
         var l = new Label { Text = "" };
         // Dashboard text is BOLDER than the game's default
         // (owner): every HUD label renders in Open Sans Semibold
-        // (the game-wide font change, 2026-11-13 — it succeeds
+        // (the game-wide font change, 2026-11-13 - it succeeds
         // Plex Mono Medium in this role).
         _hudFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
         if (_hudFont != null) l.AddThemeFontOverride("font", _hudFont);
@@ -29,7 +29,7 @@ public partial class RiderDuel
 
     // No base markers at all (owner, 2026-11-11: the enemy
     // marker went in round 2, 'remove Home base indicator'
-    // in round 3 — the projected base labels are gone).
+    // in round 3 - the projected base labels are gone).
 
     private void BuildHud(CanvasLayer layer)
     {
@@ -87,7 +87,7 @@ public partial class RiderDuel
         _panelRadar.AddChild(_radar);
         // No outer corner-bracket frame around the radar
         // (owner, 2026-11-11 round 4: 'remove one external
-        // border around radar') — the panel's own border is
+        // border around radar') - the panel's own border is
         // the only frame now.
         _targetFrame = new TargetFrame { MouseFilter = Control.MouseFilterEnum.Ignore };
         _targetFrame.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -150,13 +150,13 @@ public partial class RiderDuel
             var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             // Every bar stretches to the row's right edge (owner:
-            // the bars' start and end X must match across rows —
+            // the bars' start and end X must match across rows -
             // a fixed label width plus an expanding bar leaves no
             // per-row drift from longer weapon names).
             bar.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             row.AddChild(bar);
             // The active-weapon triangle sits at the END of the
-            // bar (owner) — a fixed slot after the bar, so rows
+            // bar (owner) - a fixed slot after the bar, so rows
             // never shift when the selection moves. It is a DRAWN
             // polygon, not a font glyph: the glyph's ink sat
             // ~1.5px below the bar's center inside its line box
@@ -199,7 +199,7 @@ public partial class RiderDuel
         var rowThr = CdRow("THRUST");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         // No controls hint line (owner: remove the introductory
-        // text) — the panel ends at the THRUST row.
+        // text) - the panel ends at the THRUST row.
         _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
         _lblWeaponStatus.AutowrapMode = TextServer.AutowrapMode.Word;
         midBox.AddChild(_lblWeaponStatus);
@@ -314,7 +314,7 @@ public partial class RiderDuel
             DrawLine(b, new Vector2(b.X - L, b.Y), col, w);
             DrawLine(new Vector2(a.X, b.Y), new Vector2(a.X + L, b.Y), col, w);
             DrawLine(new Vector2(a.X, b.Y - L), new Vector2(a.X, b.Y), col, w);
-            // Frame only — no marker on top (owner, 2026-11-11:
+            // Frame only - no marker on top (owner, 2026-11-11:
             // 'remove triangle on top of the enemy, keep only
             // frame'; the chevron from the same day's first
             // cut is gone again).
@@ -343,7 +343,7 @@ public partial class RiderDuel
 
     // The exit confirmation (owner's reference): dimmed game
     // behind a dark panel with white corner brackets, white
-    // title and subtitle, and two flat wide buttons — YES dark
+    // title and subtitle, and two flat wide buttons - YES dark
     // on the left, NO white on the right and focused by default.
     // Runs on ProcessMode.Always so it works while the tree is
     // paused behind it; Esc inside it means NO.
@@ -443,7 +443,7 @@ public partial class RiderDuel
             if (!Visible) return;
             // The Esc that OPENED the popup reaches this handler
             // in the same dispatch (parent first, then children)
-            // — ignore Esc for a beat after opening.
+            // - ignore Esc for a beat after opening.
             if (Time.GetTicksMsec() - _openedAt < 200) return;
             if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
             {
@@ -455,7 +455,7 @@ public partial class RiderDuel
 
     // The team screen (owner, teams stage step 4): in a mission
     // with a team, Esc opens THIS instead of the plain exit
-    // confirmation — the player's riders listed with their
+    // confirmation - the player's riders listed with their
     // state; clicking a living teammate takes command of it
     // (the leader is whoever the player drives), RESUME closes,
     // EXIT MISSION leaves. Same visual idiom as the exit popup:
@@ -552,21 +552,21 @@ public partial class RiderDuel
                 StyleBoxFlat S(Color c) => new() { BgColor = c };
                 if (m.Leader)
                 {
-                    b.Text = $"{slot + 1}. {m.Name} — LEADER · HP {pct}";
+                    b.Text = $"{slot + 1}. {m.Name} - LEADER · HP {pct}";
                     b.Disabled = true;
                     b.AddThemeStyleboxOverride("disabled", S(new Color(0.16f, 0.13f, 0.04f, 0.95f)));
                     b.AddThemeColorOverride("font_disabled_color", new Color(0.98f, 0.80f, 0.35f));
                 }
                 else if (m.Dead)
                 {
-                    b.Text = $"{slot + 1}. {m.Name} — DESTROYED";
+                    b.Text = $"{slot + 1}. {m.Name} - DESTROYED";
                     b.Disabled = true;
                     b.AddThemeStyleboxOverride("disabled", S(new Color(0.05f, 0.05f, 0.06f, 0.9f)));
                     b.AddThemeColorOverride("font_disabled_color", new Color(0.55f, 0.5f, 0.48f));
                 }
                 else
                 {
-                    b.Text = $"{slot + 1}. {m.Name} — TAKE COMMAND · HP {pct}";
+                    b.Text = $"{slot + 1}. {m.Name} - TAKE COMMAND · HP {pct}";
                     b.AddThemeStyleboxOverride("normal", S(new Color(0.08f, 0.11f, 0.17f, 0.95f)));
                     b.AddThemeStyleboxOverride("hover", S(new Color(0.14f, 0.18f, 0.26f, 0.98f)));
                     b.AddThemeStyleboxOverride("pressed", S(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
@@ -688,14 +688,14 @@ public partial class RiderDuel
         if (_barPlayer == null) return;
         UpdateTargetFrame();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
-        _lblPlayerHp.Text = $"{_playerSpec.Name} — {_hpPlayer:F0} HP";
+        _lblPlayerHp.Text = $"{_playerSpec.Name} - {_hpPlayer:F0} HP";
         // Group aliveness (owner's lab groups): a group is
         // dead when every mounting part that carries it is lost.
         var grpDead = new bool[_groups.Count];
         for (int gi = 0; gi < _groups.Count; gi++) grpDead[gi] = !WeaponAlive(gi);
 
         // ONE active enemy (owner): Tab cycles the living foes,
-        // and the red bar belongs to the active one only — and
+        // and the red bar belongs to the active one only - and
         // even then it appears only while at least one living
         // weapon group can reach that enemy.
         var foes = OpposingTargets();
@@ -721,10 +721,10 @@ public partial class RiderDuel
         _barEnemy.Visible = tgtShown;
         if (tgtShown)
         {
-            _lblEnemyHp.Text = $"{tgt.Spec.Name} — {tgt.Hp:F0} HP";
+            _lblEnemyHp.Text = $"{tgt.Spec.Name} - {tgt.Hp:F0} HP";
             _barEnemy.Value = tgt.Hp / tgt.Spec.MaxHp;
         }
-        // The second foe's own readout is retired — one target only.
+        // The second foe's own readout is retired - one target only.
         _lblFoeHp.Visible = false;
         _barFoe.Visible = false;
         // Per-weapon rows (owner, MW4-style): group number,
@@ -758,7 +758,7 @@ public partial class RiderDuel
         }
         for (; wi < MaxWeaponRows; wi++) _wpnRows[wi].Visible = false;
         // Thrusters (owner): charge readout alongside the weapon
-        // cooldowns — teal when the full jump charge is ready.
+        // cooldowns - teal when the full jump charge is ready.
         if (_cdBarThr != null)
         {
             bool fitted = _player.JumpJets;
@@ -767,7 +767,7 @@ public partial class RiderDuel
             if (tfg != null) tfg.BgColor = !fitted ? CdDead
                 : _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
             _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
-            _lblThr.Text = !fitted ? "THRUST —" : _player.Airborne ? "THRUST ▲" : "THRUST";
+            _lblThr.Text = !fitted ? "THRUST -" : _player.Airborne ? "THRUST ▲" : "THRUST";
         }
 
         // Per-part status cells (player rider).
@@ -790,8 +790,8 @@ public partial class RiderDuel
 
         // Systems readouts. TARGET RANGE is a reticle
         // rangefinder (owner): the distance from the rider to
-        // whatever the crosshair rests on — building, tree,
-        // enemy, ground — not just the active target. The cast
+        // whatever the crosshair rests on - building, tree,
+        // enemy, ground - not just the active target. The cast
         // runs far past weapon reach (1500u) so Mission
         // sightlines read true; past that it reports the cap.
         // Non-chase views (harness cameras) keep the old
@@ -805,17 +805,17 @@ public partial class RiderDuel
         }
         else
             _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {tgtRange:F1} u";
-        _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " — RUN" : "");
+        _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
-            : !lLeg && !rLeg ? "LEGS: BOTH WRECKED — CRAWL"
-            : lLeg ? "LEGS: RIGHT WRECKED — LIMPING" : "LEGS: LEFT WRECKED — LIMPING";
+            : !lLeg && !rLeg ? "LEGS: BOTH WRECKED - CRAWL"
+            : lLeg ? "LEGS: RIGHT WRECKED - LIMPING" : "LEGS: LEFT WRECKED - LIMPING";
         _lblLegs.AddThemeColorOverride("font_color",
             lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
         if (_radar != null)
         {
             // Refresh EVERY reference every frame (owner,
-            // 2026-11-11 round 7: 'radar is still broken' —
+            // 2026-11-11 round 7: 'radar is still broken' -
             // measured off his screenshot: both contacts sat
             // at exactly +/-30 degrees, rim-clamped, the view
             // from the HOME PAD at spawn yaw. The lab rebuilds
@@ -841,24 +841,24 @@ public partial class RiderDuel
         }
         if (_player.IsKnockedDown)
         {
-            _lblLegs.Text = "STATUS: DOWN — LEG LOST";
+            _lblLegs.Text = "STATUS: DOWN - LEG LOST";
             _lblLegs.AddThemeColorOverride("font_color", new Color(1f, 0.42f, 0.32f));
         }
 
         var status = new System.Collections.Generic.List<string>();
         for (int gi = 0; gi < _groups.Count; gi++)
-            if (grpDead[gi]) status.Add($"GROUP {_groups[gi].Num} DESTROYED — ALL MOUNTS LOST");
+            if (grpDead[gi]) status.Add($"GROUP {_groups[gi].Num} DESTROYED - ALL MOUNTS LOST");
         // Pod status: only for pods the chassis actually HAS (the
-        // Hector carries a single rack — an absent right pod is not
+        // Hector carries a single rack - an absent right pod is not
         // a "lost" one). Wording follows the equipped pod weapon.
         string podName = (_defPodL ?? _defPodR)?.Short ?? "LRM";
         bool hasPodL = _partsPlayer.Has("pod_L"), hasPodR = _partsPlayer.Has("pod_R");
         int podRocketsL = 0, podRocketsR = 0;
         foreach (var g in _podGunsL) podRocketsL += g.Def.Rockets;
         foreach (var g in _podGunsR) podRocketsR += g.Def.Rockets;
-        if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L") && (podRocketsR > 0 || !hasPodR)) status.Add($"{podName} DEGRADED — LEFT POD LOST ({podRocketsL} ROCKETS)");
-        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R") && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED — RIGHT POD LOST ({podRocketsR} ROCKETS)");
-        if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED — CROSSHAIR SWAY");
+        if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L") && (podRocketsR > 0 || !hasPodR)) status.Add($"{podName} DEGRADED - LEFT POD LOST ({podRocketsL} ROCKETS)");
+        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R") && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED - RIGHT POD LOST ({podRocketsR} ROCKETS)");
+        if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED - CROSSHAIR SWAY");
         _lblWeaponStatus.Text = string.Join("\n", status);
 
         _feedLabel.Text = string.Join("\n",

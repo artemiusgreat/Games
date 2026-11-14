@@ -3,12 +3,12 @@ using System.Collections.Generic;
 
 // RiderDuel module: the opponent brains: movement AI, torso tracking,
 // gunnery. Split from the single-file build (round 22 cleanup); the
-// class stays one partial class — see RiderDuel.cs for the field
+// class stays one partial class - see RiderDuel.cs for the field
 // block.
 //
 // Free-for-all (owner, 2026-10-31): two AI opponents share this
-// brain. Each picks the nearest living opponent — the player or
-// the other AI — and plays the same range game against it. No
+// brain. Each picks the nearest living opponent - the player or
+// the other AI - and plays the same range game against it. No
 // teams, no collaboration: a foe will happily finish off the
 // other foe while the player watches.
 public partial class RiderDuel
@@ -16,7 +16,7 @@ public partial class RiderDuel
     // Mission guard duty (owner, 2026-11-06): on the big map the
     // defenders PATROL their own base and only engage when the
     // player closes inside AggroRange; past LeashRange they break
-    // off and go back to patrolling. No new AI framework — a
+    // off and go back to patrolling. No new AI framework - a
     // two-state latch (patrol/engaged) around the existing range
     // game, which still runs the fight once engaged. Tournament
     // keeps the free-for-all hunt untouched.
@@ -36,7 +36,7 @@ public partial class RiderDuel
     // The engagement latch, with hysteresis: trips in at
     // AggroRange, out at LeashRange, so a defender on the boundary
     // does not flicker between states. The reference is the
-    // nearest living rider of the player's TEAM (teams stage) —
+    // nearest living rider of the player's TEAM (teams stage) -
     // with a solo team that is the player, the original rule.
     private bool GuardGate(RiderWalker self, ref bool engaged)
     {
@@ -87,7 +87,7 @@ public partial class RiderDuel
         if (cur != null && thinkT > 0f && !IsDead(cur)) return (cur, VelOf(cur), TagOf(cur));
         thinkT = 0.75f;
         // Nearest living rider of ANOTHER team (Stage D3):
-        // the candidate pool is every rider on the field —
+        // the candidate pool is every rider on the field -
         // in the classic three-seat arena all teams differ,
         // so this reduces to the old free-for-all exactly.
         int myTeam = TeamOf(self);
@@ -192,8 +192,8 @@ public partial class RiderDuel
     // The range game, shared by both foes: advance beyond 38u,
     // back off inside 26u, orbit in the band; the torso tracks the
     // target (snapping while the head lives, lagging at 0.6 rad/s
-    // once it is gone). A downed foe has a leg gone, so it limps —
-    // the walker's SpeedFactor throttles its drive — and keeps
+    // once it is gone). A downed foe has a leg gone, so it limps -
+    // the walker's SpeedFactor throttles its drive - and keeps
     // playing.
     private void UpdateFoeMovement(RiderWalker w, RiderParts parts, float pace,
         ref float yaw, ref float orbitDir, ref float orbitTimer,
@@ -223,7 +223,7 @@ public partial class RiderDuel
 
     // Torso tracking: snaps to the target bearing while the head
     // (sensor suite) lives; head destroyed, the twist closes at
-    // 0.6 rad/s — a visible, measurable lag.
+    // 0.6 rad/s - a visible, measurable lag.
     private void TrackTorso(RiderWalker w, RiderParts parts, float yaw, float yawTo, float dt)
     {
         float desiredTwist = RiderWalker.WrapAngle(yawTo - yaw);
@@ -251,7 +251,7 @@ public partial class RiderDuel
         if (WorldConfig.IsMission && !_foe0Engaged) return;
         if (_cdEnemy > 0f) return;
         // Missions: gunnery shoots what the movement brain is
-        // fighting — the nearest team rider (the guard gate's
+        // fighting - the nearest team rider (the guard gate's
         // pick). The Arena keeps the free-for-all re-pick.
         RiderWalker target; Vector3 vel; string tag;
         if (WorldConfig.IsMission)

@@ -624,7 +624,7 @@ namespace StridePoc
             // Counter label (top-left) + crosshair (centre). Font first,
             // because the crosshair rides the same route as the label:
             // attempt 1 used two Border bars for the crosshair and they never
-            // rendered (0 bright pixels outside the label in the proof frame —
+            // rendered (0 bright pixels outside the label in the proof frame -
             // a content-less Border in a Canvas measures 0 and its
             // BackgroundColor is not drawn), so the crosshair is a TextBlock
             // "+" glyph on the proven text path (texture image in fallback).

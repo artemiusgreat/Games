@@ -1,7 +1,7 @@
 // Round 2 code-first asset import tool (Probe 1).
 // Uses Stride's OWN importer (ThreeDAssetImporter, Assimp-based) to import a
 // source model file and writes the resulting .sdm3d/.sdskel/.sdanim/.sdmat/
-// .sdtex YAML asset descriptors with Stride's AssetFileSerializer — the same
+// .sdtex YAML asset descriptors with Stride's AssetFileSerializer - the same
 // code path Game Studio's import dialog uses, driven from a console app.
 // Usage: ImportTool <source model file abs path> <output assets dir>
 // NOTE: imported assets are NOT compiled into the game build until they are

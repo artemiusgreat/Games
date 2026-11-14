@@ -11,7 +11,7 @@ namespace StridePoc
     /// <summary>
     /// Round 2 / Probe 1: animated asset import + playback.
     /// Loads the Khronos glTF "Fox" (imported directly from .gltf via Stride's
-    /// Assimp-based ThreeDAssetImporter — see stride/NOTES.md), wires its
+    /// Assimp-based ThreeDAssetImporter - see stride/NOTES.md), wires its
     /// Survey clip as the stationary "idle" and its Walk clip to forward
     /// auto-movement, code-driven through AnimationComponent crossfades.
     /// Fox has no true idle clip; Survey (standing, looking around) is the
@@ -62,7 +62,7 @@ namespace StridePoc
                 // Walk diagonally (-X,-Z) so the follow camera sees the fox's
                 // lit flank in 3/4 view: the scene's single directional light
                 // leaves the side facing away from it near-black (same as the
-                // round-1 terrain's back slopes — verified via pose captures).
+                // round-1 terrain's back slopes - verified via pose captures).
                 var dir = new Vector3(-0.55f, 0f, -0.835f);
                 var pos = Entity.Transform.Position;
                 pos += dir * 2.0f * dt;

@@ -1,6 +1,6 @@
 """Build a Catapult-style heavy mech in Blender, rigged, clay presentation.
 
-PASS 2 — fidelity iteration: sculpted lofted cab with layered plates and chin
+PASS 2 - fidelity iteration: sculpted lofted cab with layered plates and chin
 cluster, recessed framed tube panels with real tube rims, thick doors with
 inset panels + ribs (leaning back past vertical, as in the reference),
 armored legs with shell plates, hydraulic pistons, slatted shin guards and
@@ -595,7 +595,7 @@ print(f"MECH built: {len(MECH_OBJECTS)} mesh objects, "
       f"{len(arm_data.bones)} bones: {[b.name for b in arm_data.bones]}")
 
 # ----------------------------------------------------------------------------
-# save .blend (mech only), exports, poly count — all BEFORE studio objects
+# save .blend (mech only), exports, poly count - all BEFORE studio objects
 # exist, so the ground/lights/cameras never leak into the exports
 # ----------------------------------------------------------------------------
 blend_path = os.path.join(HERE, "catapult.blend")

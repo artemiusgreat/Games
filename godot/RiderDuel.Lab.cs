@@ -3,10 +3,10 @@ using System.Collections.Generic;
 
 // RiderDuel module: RiderLab glue: construction from specs, selection, loadout application.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
-    // Viewport position of a slot's part on the player's rider —
+    // Viewport position of a slot's part on the player's rider -
     // the lab's paperdoll dots are drawn there, so the mapping
     // survives any window size or aspect (owner). Null when the
     // chassis lacks the part or it is off-screen: the lab falls
@@ -22,7 +22,7 @@ public partial class RiderDuel
         return sp;
     }
 
-    // Viewport position of the rider's pelvis — the paperdoll's
+    // Viewport position of the rider's pelvis - the paperdoll's
     // radial center for panel placement. The slot anchors all
     // sit in the upper body, so their own centroid rides too
     // high and the panels bunch at the top; the pelvis is the
@@ -146,7 +146,7 @@ public partial class RiderDuel
             _hit.Riders.Add(new HitModel.RiderCap { Id = a.Role, Root = () => a.Walker.RootPos, Radius = a.Spec.Radius, Height = a.Spec.Height });
     }
 
-    // The foe (free-for-all): the partner chassis — the first
+    // The foe (free-for-all): the partner chassis - the first
     // entry on the roster's partner-priority list that the
     // enemy slot does not already hold. No chassis names in
     // engine code; the list is roster data.
@@ -250,7 +250,7 @@ public partial class RiderDuel
             else if (_bracketActive && TeamRoster.Tourney.Count > 0)
             {
                 // Tournament: the lab prepares team 1's first
-                // rider — a chassis change re-points its slot.
+                // rider - a chassis change re-points its slot.
                 var m = TeamRoster.Tourney[0][0];
                 m.Spec = _playerSpec;
                 m.Loadout = _loadout;

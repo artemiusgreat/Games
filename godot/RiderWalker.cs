@@ -105,7 +105,7 @@ public partial class RiderWalker : Node3D
     // Thrusters (owner, replacing the ballistic jump): HOLD the
     // key to fly. SetThrust is the held state; while held with
     // charge remaining the jets climb (capped ~10.5 u/s) and drain
-    // the full charge in ~2.2s of burn — enough to rise well above
+    // the full charge in ~2.2s of burn - enough to rise well above
     // a 14u enemy. Release the key or empty the tanks and gravity
     // (24 u/s^2, terminal -18) brings the rider down. A partial
     // charge flies proportionally lower. The charge auto-refills
@@ -125,14 +125,14 @@ public partial class RiderWalker : Node3D
     // substep as backward travel: a per-substep MAGNITUDE
     // ratio reads it as full progress (advance +0.027, snap
     // back -0.026 -> |net| = the wanted step) and can never
-    // fire — measured on the phase-12 trace, 2026-11-11.
+    // fire - measured on the phase-12 trace, 2026-11-11.
     // Signed projection over a window cancels the pair:
     // advance and snap-back sum to ~0 while the asked-for
     // travel keeps accumulating. Sustained near-zero
     // progress while driving means the way is blocked.
     // TELEMETRY ONLY since round 3 (owner, 2026-11-11:
     // 'remove any special conditions for leg movement when
-    // blocked — I want to see how it acts naturally at
+    // blocked - I want to see how it acts naturally at
     // colliders'): nothing in the gait reads this any more;
     // the harness uses it to time its phase-12 verdict.
     private Vector2 _cohPrev; private bool _cohInit;
@@ -161,7 +161,7 @@ public partial class RiderWalker : Node3D
     public float Speed => _speed;
 
     // The walker's current sole level: the higher planted sole, or
-    // — airborne — the soles hanging ~10.5u under the root. Roof
+    // - airborne - the soles hanging ~10.5u under the root. Roof
     // grounding (GroundHere) and the duel's roof collision gate
     // both key on this: it is what "already at roof level" means.
     public float SoleLevel
@@ -202,7 +202,7 @@ public partial class RiderWalker : Node3D
         set => _torsoPitch = Mathf.Clamp(value, -0.32f, 0.48f);
     }
     // The AIM pitch (owner, round 13): the mouse target is NOT bound
-    // by the torso's clamp — the reticle must reach the
+    // by the torso's clamp - the reticle must reach the
     // ground in front of the feet and the sky above. The torso mesh
     // follows TorsoPitch to its stops; the aim direction uses this
     // wider range (RiderDuel owns the live value; NaN there means
@@ -216,7 +216,7 @@ public partial class RiderWalker : Node3D
     public float Droop { get; set; }
 
     // Breakable-parts state (owner-driven): a wrecked (disabled) leg
-    // keeps stepping with the gait — the whole rider is slower via
+    // keeps stepping with the gait - the whole rider is slower via
     // SpeedFactor, and the wrecked leg moves at that same reduced
     // pace (owner's round-7 call; the earlier rigid drag read as the
     // leg floating). LimpRoll leans the body (toward the model's left
@@ -227,7 +227,7 @@ public partial class RiderWalker : Node3D
     // Fallen state (owner's rule, third iteration): a rider falls ONLY
     // when it loses a leg, and it never gets back up. The fall tips the
     // root toward _fallDirW by up to ~76 degrees over 0.5s and drops the
-    // hips to rest height — then it stays there until reset. While down
+    // hips to rest height - then it stays there until reset. While down
     // the drive is suppressed and no new steps begin, but the torso can
     // still twist and the weapons still fire (a prone turret).
     private float _fallT = -1f;
@@ -259,13 +259,13 @@ public partial class RiderWalker : Node3D
     public Vector3 SolePos(bool left) => (left ? _legL : _legR).SoleTarget;
 
     // Foot-target clamp (owner, 2026-11-11: leg-collider
-    // option 1 — 'clamp the foot targets'): the OWNER may
+    // option 1 - 'clamp the foot targets'): the OWNER may
     // supply a clamp that pulls a step's landing point out
     // of obstacle footprints before the step begins, so a
     // foot plants short of a wall instead of inside it.
     // Null = no clamping (standalone walker use). The
     // stride simply shortens on the blocked side; no gait
-    // mode changes — the same generic trigger fires.
+    // mode changes - the same generic trigger fires.
     public System.Func<Vector3, Vector3> FootClamp;
     public Vector3 VelocityVec => HeadingVec(_legsYaw) * _speed;
 
@@ -359,12 +359,12 @@ public partial class RiderWalker : Node3D
         {
             // Plantigrade flip (owner round 22, sharpened same
             // day): the pole becomes the PURE sagittal axis on the
-            // flipped side of the leg — zero lateral component.
+            // flipped side of the leg - zero lateral component.
             // From the front or back the hip, knee and ankle then
             // share one lateral coordinate and the leg reads as a
             // straight line; the entire bend shows only from the
             // side. (The sculpt's rest pole carries a +-0.559
-            // lateral part — knees splayed — and an axis
+            // lateral part - knees splayed - and an axis
             // reflection mirrored it inward; both read as offsets
             // from the front, which the owner ruled out.)
             var lateral = (_legR.Hrest - _legL.Hrest).Normalized();
@@ -516,7 +516,7 @@ public partial class RiderWalker : Node3D
             _fallT += (float)delta;
             float t = _fallT;
             if (t < 0.5f) { float u = t / 0.5f; _fallAmt = u * u; }
-            else _fallAmt = 1f; // down for good — no rise, ever
+            else _fallAmt = 1f; // down for good - no rise, ever
         }
         _acc += Mathf.Min(delta, 0.1);
         const float h = 1f / 120f;
@@ -557,7 +557,7 @@ public partial class RiderWalker : Node3D
     }
 
     // FootBasisAt for a level floor (normal = +Y): the hang
-    // pose's foot basis. It MUST share FootBasisAt's axes —
+    // pose's foot basis. It MUST share FootBasisAt's axes -
     // the flight code used YawBasis() here before, which is
     // the same frame spun 180 degrees about Y, so the feet
     // rendered toes-back/twisted for the whole burn (owner's
@@ -602,7 +602,7 @@ public partial class RiderWalker : Node3D
                 leg.StepTo = new Vector3(ct.X, GroundHere(ct.X, ct.Z), ct.Z);
         }
         // Swing endpoints in the FACING frame (owner: leg motion
-        // must read in the sagittal plane from the front — a
+        // must read in the sagittal plane from the front - a
         // world-space lerp cuts across the body whenever the rider
         // turns mid-step, the 'needs to pee' scissor). AdvanceLeg
         // re-projects both endpoints through the CURRENT yaw every
@@ -701,7 +701,7 @@ public partial class RiderWalker : Node3D
         // and the body stands TargetHeight tall on it. (The
         // first cut charged only TargetHeight - 10.5 against
         // the ceiling, so the head and most of the body came
-        // through the deck before the clamp bit — the owner's
+        // through the deck before the clamp bit - the owner's
         // 'no collision from the bottom' report, 2026-11-11;
         // the old bonk test passed because it capped the root
         // by the same wrong allowance instead of the head.)
@@ -720,7 +720,7 @@ public partial class RiderWalker : Node3D
             }
         }
         if (!_thrustHeld && JumpCharge < 1f)
-            JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released — ground or air (owner round 22) — and a held key on empty tanks stays dead instead of sputtering
+            JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released - ground or air (owner round 22) - and a held key on empty tanks stays dead instead of sputtering
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
         _prevYaw = _legsYaw;
 
@@ -728,12 +728,12 @@ public partial class RiderWalker : Node3D
         float dv = _cfg.Accel * h;
         if (Mathf.Abs(tgt) < Mathf.Abs(_speed) - 0.001f)
         {
-            // Braking (owner, 2026-10-31): no inertia — a stop from
+            // Braking (owner, 2026-10-31): no inertia - a stop from
             // ANY speed completes within one second, whatever the
             // chassis weighs (the spec Accel made the 100t Hector
             // glide 5+ seconds from a run). The brake rate is the
             // episode's peak speed, captured and held, so the stop
-            // is linear at >= 1x speed per second — not an
+            // is linear at >= 1x speed per second - not an
             // exponential glide that never quite arrives. The 1.15
             // factor keeps the measured stop (which includes a
             // frame of detection lag) inside the second, and the
@@ -784,7 +784,7 @@ public partial class RiderWalker : Node3D
             }
             // No blocked special case (owner, 2026-11-11
             // round 3): the two gait behaviours tried earlier
-            // today — stand still, then march in place — are
+            // today - stand still, then march in place - are
             // both REMOVED. Against a collider the generic
             // trigger below is all there is: whatever the rig
             // does at a wall is what it does everywhere.
@@ -794,7 +794,7 @@ public partial class RiderWalker : Node3D
         AdvanceLeg(_legR, h);
         // Dynamic ground (owner: Harbor lift pads): a surface
         // moving under a planted foot carries the foot with
-        // it — up always, down when the gap is small (a
+        // it - up always, down when the gap is small (a
         // descending pad). Static ground re-samples identical,
         // so ordinary walking is untouched.
         if (!_freezeLegs) foreach (var leg in new[] { _legL, _legR })
@@ -806,7 +806,7 @@ public partial class RiderWalker : Node3D
                 leg.SoleTarget = new Vector3(leg.SoleTarget.X, g, leg.SoleTarget.Z);
         }
         // A wrecked leg steps like any other (see the state comment
-        // above): no drag override — its stride shortens naturally
+        // above): no drag override - its stride shortens naturally
         // with the rider's throttled speed.
 
         UpdateRoot(h);
@@ -814,7 +814,7 @@ public partial class RiderWalker : Node3D
         {
             // The hang pose (owner, 2026-11-11 round 5): each
             // sole sits directly under its hip, a touch below
-            // full leg extension — SolveLeg clamps the ankle
+            // full leg extension - SolveLeg clamps the ankle
             // to reach along the hip->target line, so an
             // over-long drop renders the leg straight down.
             // Recomputed from the live skeleton transform
@@ -822,7 +822,7 @@ public partial class RiderWalker : Node3D
             // stepping, swinging or stretching. (Round 4's
             // rigid carry of the liftoff pose is REMOVED: it
             // fed DesiredRootY and pumped the root's ground
-            // reference to 'outer space' — see UpdateRoot.)
+            // reference to 'outer space' - see UpdateRoot.)
             float st = _skelGlobal.Basis.X.Length();
             foreach (var leg in new[] { _legL, _legR })
             {
@@ -852,7 +852,7 @@ public partial class RiderWalker : Node3D
         // In thruster flight the root's ground reference is
         // the surface under the ROOT, never the feet (owner
         // round 5: with the feet feeding DesiredRootY, the
-        // root chased its own carried feet upward — the
+        // root chased its own carried feet upward - the
         // rider climbed to 'outer space' and hovered there
         // until a step re-planted a foot on real ground).
         float yT = _freezeLegs
@@ -865,11 +865,11 @@ public partial class RiderWalker : Node3D
             yT = Mathf.Lerp(yT, restY, _fallAmt);
         }
         _groundY = Mathf.Lerp(_groundY, yT, 1f - Mathf.Exp(-8f * h));
-        _rootPos.Y = _groundY + _jumpH; // the arc itself is NOT smoothed — full ballistic height
+        _rootPos.Y = _groundY + _jumpH; // the arc itself is NOT smoothed - full ballistic height
 
         // Lateral pelvis sway REMOVED (owner, round 22 follow-up):
         // shifting the pelvis sideways over the stance foot slants
-        // the support leg inward against its planted foot — from
+        // the support leg inward against its planted foot - from
         // the front the legs must read straight, so the pelvis
         // stays centered between the feet and only the vertical
         // bob remains. (GAITDBG audit: sway displaced the hips
@@ -950,7 +950,7 @@ public partial class RiderWalker : Node3D
         // torso renders 180 degrees off the legs.
         // Pitch sign: the trailing Yaw(Pi) rest-flip conjugates the
         // X rotation, so feeding +pitch here rendered the torso nose-
-        // DOWN while the aim model treats +pitch as up — mouse up
+        // DOWN while the aim model treats +pitch as up - mouse up
         // visibly dipped the rider (owner's report). Feed (Droop -
         // pitch): rendered pitch = pitch - Droop, so +pitch points
         // the torso UP (-18/+27 deg working range) and the death
@@ -974,7 +974,7 @@ public partial class RiderWalker : Node3D
     }
 
     // The torso's facing as the engine actually renders it, Y
-    // included — the ground truth for pitch direction checks.
+    // included - the ground truth for pitch direction checks.
     public Vector3 EngineTorsoFacing()
     {
         if (_torsoBone < 0 || _skel == null) return Vector3.Forward;
@@ -1101,11 +1101,11 @@ public partial class RiderWalker : Node3D
 
     public void FlashPulse() => FlashPulse(new Color(1f, 0.55f, 0.2f), 2.4f);
 
-    // Round 8: the hit flash carries the WEAPON's color and strength —
+    // Round 8: the hit flash carries the WEAPON's color and strength -
     // a laser sting is cyan and brief-feeling, a cannon hit is a warm
     // white slam, a rocket is deep orange. Before this every hit
     // blinked the same orange (owner's report).
-    // Round 20 (owner): the flash is LOCAL to the hit — only meshes
+    // Round 20 (owner): the flash is LOCAL to the hit - only meshes
     // whose bind-pose AABB center sits near the impact point glow.
     // The whole-rider white-out is gone; a leg hit lights the leg, a
     // shoulder hit lights the arm/pod area.

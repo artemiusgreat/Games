@@ -2,7 +2,7 @@ using Godot;
 using System.Collections.Generic;
 
 // The terraced canyon city (owner, 2026-11-10): the city is
-// no longer a disc in the middle of the map — the whole map
+// no longer a disc in the middle of the map - the whole map
 // is the city. The canyon terrain (Main.ValleyHeight) holds
 // three valley basins, one at each base, joined by road
 // passes with rock tunnel arches; every valley hosts its
@@ -11,7 +11,7 @@ using System.Collections.Generic;
 // carrying the kit buildings, wide ramps and lift pads
 // between levels, flat bridges between same-level
 // platforms, a leadership landmark on the top platform,
-// and — in the home valley — an island district across a
+// and - in the home valley - an island district across a
 // water channel. Platforms and ramps wear a procedural
 // stone texture; each level carries its own trim colour.
 // Everything registers through the standing surface system
@@ -21,7 +21,7 @@ using System.Collections.Generic;
 public partial class RiderDuel
 {
     // Level heights (owner): decks high enough that a rider
-    // walking UNDER a platform — chase camera included —
+    // walking UNDER a platform - chase camera included -
     // fits beneath it: the +22 underside is 19.8, above the
     // tallest rider (14) and its camera anchor (~16).
     private const float TerraceL1 = 22f, TerraceL2 = 44f, TerraceL3 = 66f;
@@ -47,7 +47,7 @@ public partial class RiderDuel
     public readonly List<(Vector2 C, Vector2 H, float R, float Top)> TestPlatforms = new();
 
     // Platform layout per valley, in plot indices (pitch 32)
-    // — the reference model's arrangement: several INDEPENDENT
+    // - the reference model's arrangement: several INDEPENDENT
     // platforms per level, not one filled tier.
     //   L1 (+22): four 96x64 platforms in a loose ring
     //   L2 (+44): two 96x64 platforms, north and south
@@ -148,7 +148,7 @@ public partial class RiderDuel
     // Bumpy metal plate for the ramp walking surface (owner:
     // 'the walking area is bumpy metal with some pattern
     // mounted inside the stone'): 2x2 tread plates per tile,
-    // dark seams, rivets at the corners, per-plate tint —
+    // dark seams, rivets at the corners, per-plate tint -
     // albedo plus a matching normal map (seams recessed,
     // rivets raised). Generated once.
     private static ImageTexture _plateTex, _plateNrm;
@@ -199,7 +199,7 @@ public partial class RiderDuel
         };
     }
     // Darker stone for the columns (owner: round, bevelled,
-    // rough) — same rock, deeper tint, full roughness.
+    // rough) - same rock, deeper tint, full roughness.
     private static StandardMaterial3D ColumnMat() => new()
     {
         AlbedoColor = new Color(0.45f, 0.48f, 0.58f), AlbedoTexture = StoneTexture(),
@@ -251,8 +251,8 @@ public partial class RiderDuel
         // bases (owner, 2026-11-11 round 3: 'multi-level
         // city is needed only around enemy bases, remove it
         // from the home base'): the home valley is a flat
-        // ground-level city — no platforms, ramps, lifts,
-        // bridges or island district. Connections first —
+        // ground-level city - no platforms, ramps, lifts,
+        // bridges or island district. Connections first -
         // they register the skip rects the block placement
         // respects. Platform spans (plot centres ±16):
         // A x[-144,-48] z[-80,-16]; B mirrored +x; C/D
@@ -299,7 +299,7 @@ public partial class RiderDuel
         // each same-level plot group; the statics register
         // the roofs/columns/lights the blocks then respect).
         if (!home) BuildPlatformClusters(ctr);
-        // Plots: exact grid (platforms must TILE — jittered
+        // Plots: exact grid (platforms must TILE - jittered
         // centres once left ground-data slits riders fell
         // through), platform membership by plot index.
         int hb = Mathf.CeilToInt(CityGrid.Radius / p);
@@ -316,7 +316,7 @@ public partial class RiderDuel
             if (l == 0f && (c - ctr).Length() < 62f) continue;
             // Home valley: no buildings at all (owner,
             // 2026-11-11 round 4: 'home base should be a
-            // flat area, no buildings') — the whole valley
+            // flat area, no buildings') - the whole valley
             // stays open ground around the base.
             if (!home) PlaceCityBlock(rng, c, ref placed, l);
         }
@@ -405,10 +405,10 @@ public partial class RiderDuel
             }
             // The lintel is an obstacle and a floor (owner,
             // round 7: 'the arc at the enemy base doesn't
-            // have collider — everything meant to be an
+            // have collider - everything meant to be an
             // obstacle should have collider and preferably
             // allow to walk on it'): a FLAT ramp rect across
-            // the pass — same 3.5-thick wedge the ramps use —
+            // the pass - same 3.5-thick wedge the ramps use -
             // gives it ground, ceiling, side push-out and
             // shot planes in one registration. Its top is
             // the mesh top: (top + 1.7) + 3.5/2 = top + 3.45.
@@ -430,7 +430,7 @@ public partial class RiderDuel
     }
 
     // Ceiling lights under a deck (owner, 2026-11-11: 'when
-    // I am under the platform, I can't see rider — add some
+    // I am under the platform, I can't see rider - add some
     // lights at the ceiling'): a glowing fixture strip on the
     // underside plus ONE shadowless omni per deck/bridge,
     // ranged to its own footprint so the ground underneath is
@@ -526,7 +526,7 @@ public partial class RiderDuel
     }
 
     // The platform outline (owner, 2026-11-11 round 5):
-    // the platform ITSELF is round and curvy — a radial
+    // the platform ITSELF is round and curvy - a radial
     // amoeba around the cluster centre, not a rectangle
     // with smoothed edges. The radius in every direction
     // is the cluster rect's boundary distance times a
@@ -540,7 +540,7 @@ public partial class RiderDuel
     // the angular spans where a ramp, lift or bridge meets
     // the platform. Inside a sector the outline stays AT
     // the rect boundary (lobe excess scaled to 0, blended
-    // over 0.65 rad) — a bulge over a ramp corridor would
+    // over 0.65 rad) - a bulge over a ramp corridor would
     // roof the climbing rider (the deck underside at
     // top-2.2 vs the ramp surface a few units below it).
     // The radius function itself lives in Main (BlobRadius)
@@ -588,7 +588,7 @@ public partial class RiderDuel
     // Platforms are built per CLUSTER (a flood-filled group
     // of same-level plots), not per plot (owner, 2026-11-11:
     // curvy platform shapes, visible borders, no more
-    // per-plot trim slabs — whose coplanar overlaps also
+    // per-plot trim slabs - whose coplanar overlaps also
     // z-fought into stray triangles under the decks).
     private void BuildPlatformClusters(Vector2 ctr)
     {
@@ -638,7 +638,7 @@ public partial class RiderDuel
         // Rectangular clusters are ROUND platforms now: their
         // standable area is a union of discs following the
         // amoeba outline (registered below), so the per-plot
-        // rect roofs are skipped for them — columns and
+        // rect roofs are skipped for them - columns and
         // ceiling lights stay per plot, inside the outline.
         foreach (var (i, j) in group)
             PlatformStatics(ctr + new Vector2(i * p, j * p), lvlTop, roof: !rect);
@@ -656,7 +656,7 @@ public partial class RiderDuel
         ClusterSectors.TryGetValue(key, out var secs);
         // The walker grounds on the EXACT outline: one
         // BlobDeck registration (Main evaluates BlobRadius
-        // per query — a disc union overhangs the ramp
+        // per query - a disc union overhangs the ramp
         // corridors by metres and floated feet at deck
         // height over the ramp heads). The 32 discs remain
         // only as the shot-collision approximation.
@@ -679,7 +679,7 @@ public partial class RiderDuel
 
     // One round, curvy deck over a rectangular plot cluster
     // (owner, 2026-11-11 round 5: 'make the platform itself
-    // round and curvy' — NOT a rectangle with smoothed
+    // round and curvy' - NOT a rectangle with smoothed
     // edges): the outline is the radial amoeba of
     // Main.BlobRadius, sampled at 72 points around the
     // cluster centre. The shape is star-convex, so the top
@@ -778,7 +778,7 @@ public partial class RiderDuel
         float run = d.Length();
         // The box's top face lies exactly ON the slope line
         // (holder at mid-height minus half the box) and extends
-        // only 1u past each end — a longer nose poked ~1.1u
+        // only 1u past each end - a longer nose poked ~1.1u
         // above the upper deck at the lip and read as the
         // rider sinking into the ramp (owner fall report).
         float len = Mathf.Sqrt(run * run + (h1 - h0) * (h1 - h0)) + 2f;
@@ -790,7 +790,7 @@ public partial class RiderDuel
         float pitch = -Mathf.Atan2(h1 - h0, run);
         holder.Rotation = new Vector3(pitch, yaw, 0f);
         // Walking surface: a bumpy metal plate inset in stone
-        // (owner, 2026-11-11) — the plate's top lies on the
+        // (owner, 2026-11-11) - the plate's top lies on the
         // slope line, the stone curbs frame it as a visible
         // border standing slightly proud, each carrying the
         // level's glow line.

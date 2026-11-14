@@ -31,7 +31,7 @@ public static class CityKits
         // Scan a bounded index range and SKIP missing
         // models: the kit's roster is whatever files are
         // present. (Owner, 2026-11-12: the seven heavy
-        // towers were deleted from kit4 outright — the old
+        // towers were deleted from kit4 outright - the old
         // stop-at-first-gap scan would have emptied the
         // whole kit and fallen back to procedural boxes.)
         for (int i = 0; i < 64; i++)

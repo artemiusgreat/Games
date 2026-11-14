@@ -2,16 +2,16 @@ using Godot;
 
 // RiderDuel module: the NPC teammates' brain and the leader's
 // orders (owner, teams stage step 5). Allies run the SAME
-// range game and cannon gunnery as the AI foes — no second AI
+// range game and cannon gunnery as the AI foes - no second AI
 // framework; the team order only decides WHAT they engage and
 // where they stand when there is nothing to engage:
 //
-//   SHIFT+1 Attack my target   — focus the leader's Tab-selected enemy
-//   SHIFT+2 Attack nearby enemy — each ally picks its own nearest foe
-//   SHIFT+3 Protect my target  — guard the leader: engage what
+//   SHIFT+1 Attack my target   - focus the leader's Tab-selected enemy
+//   SHIFT+2 Attack nearby enemy - each ally picks its own nearest foe
+//   SHIFT+3 Protect my target  - guard the leader: engage what
 //                                closes on him, otherwise hold
 //                                formation on him
-//   SHIFT+4 Full stop          — freeze: no movement, no fire
+//   SHIFT+4 Full stop          - freeze: no movement, no fire
 //
 // With no enemy in reach, allies fall back to a loose
 // formation behind the leader and march at full chassis speed
@@ -74,7 +74,7 @@ public partial class RiderDuel
         return _player.RootPos + r * side - f * back;
     }
 
-    // Walk to a point and stop there — the patrol steering
+    // Walk to a point and stop there - the patrol steering
     // idiom (turn-clamped heading, torso on the walk bearing).
     private void MoveToward(Ally a, Vector3 point, float dt)
     {
@@ -137,7 +137,7 @@ public partial class RiderDuel
     private int _bracketShots;
 
     // Tournament hostile NPCs (Stage D3c): the seats' own
-    // game with no leader to follow — PickTarget chooses the
+    // game with no leader to follow - PickTarget chooses the
     // nearest rider of another team (a teammate is never
     // picked), the shared range game closes on it, and the
     // shared cannon gunnery fires the record's ballistic

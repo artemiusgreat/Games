@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel: two-rider duel — a PLAYER rider vs an ENEMY rider, each
+// RiderDuel: two-rider duel - a PLAYER rider vs an ENEMY rider, each
 // fielding a chassis chosen in the RiderLab (Enyo / Hector
 // are the two chassis in Data/RiderSpec.cs; code names the ROLES,
 // the specs name the machines). W/S throttle along the legs
@@ -31,12 +31,12 @@ public partial class RiderDuel : Node3D
     private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
     // Mission fronts: beyond engagement range the AI MARCHES at full
     // chassis speed toward its target instead of creeping at the
-    // tactical cap — a 1000u approach at 2.2 u/s would take 8 minutes.
+    // tactical cap - a 1000u approach at 2.2 u/s would take 8 minutes.
     private float PaceFor(RiderSpec spec, float distToTarget) =>
         WorldConfig.IsMission && distToTarget > 130f ? spec.MaxSpeed
         : Mathf.Min(spec.MaxSpeed, EnemyMaxSpeed);
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
-    private const float TurnRate = 1.35f; // A/D leg turn, rad/s (owner, 2026-11-11: 'keys A and D should rotate rider faster' — was 0.85)
+    private const float TurnRate = 1.35f; // A/D leg turn, rad/s (owner, 2026-11-11: 'keys A and D should rotate rider faster' - was 0.85)
     private static float WorldBound => WorldConfig.WorldBound; // arena 115 (260 world); Mission front 915 (1900 world)
 
     private RiderWalker _player;
@@ -69,7 +69,7 @@ public partial class RiderDuel : Node3D
     private bool _flipbookTest; // TEMP probe: Freelancer flipbook fireball (explosion prototype)
     private bool _grassStaged;
     private Vector3 _grassPos;
-    private bool _gaitShot; // --gait-shot: dev flag — capture the enemy mid-stride (enemySide), quit
+    private bool _gaitShot; // --gait-shot: dev flag - capture the enemy mid-stride (enemySide), quit
     private float _gaitT;
     private float _gaitDumpT;
     private int _photoPhase;
@@ -127,7 +127,7 @@ public partial class RiderDuel : Node3D
     private LoadoutState _enemyLoadout = LoadoutState.DefaultFor(RiderSpecs.Hector);
 
     // Free-for-all (owner, 2026-10-31): the match fields TWO AI
-    // opponents — a Enyo and an Hector — and every rider
+    // opponents - a Enyo and an Hector - and every rider
     // fights every other; there are no teams. The legacy enemy
     // keeps its fields above; the foe is this record. The foe
     // is not built in the precision test modes (duel / weapons /
@@ -160,7 +160,7 @@ public partial class RiderDuel : Node3D
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private bool _ffaTest; // --ffa-test: staged three-way AI probe
     private bool _teamTest; // --team-test: staged Story-team probe (allies fight, orders, leader pass, mission end)
-    private bool _bracketTest; // --bracket-test: staged Tournament bracket probe (NOT in AnyHarness — the bracket alignment under test is live-path code)
+    private bool _bracketTest; // --bracket-test: staged Tournament bracket probe (NOT in AnyHarness - the bracket alignment under test is live-path code)
     private bool _deployTest; // --deploy-test: staged lab->deploy roster rebuild probe (also NOT in AnyHarness, same reason)
     private bool _missionTest; // --mission-test: Mission front smoke (world facts, base/vista captures, AI march)
     private bool _longshotTest; // --longshot-test: shell line vs sight line at 600u (parallel-fire proof)
@@ -304,7 +304,7 @@ public partial class RiderDuel : Node3D
     private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblThr;
-    private int _targetIdx; // the ONE active enemy (owner: Tab switches) — an index into OpposingTargets()
+    private int _targetIdx; // the ONE active enemy (owner: Tab switches) - an index into OpposingTargets()
     private LeaveOverlay _leaveDialog;
     private TeamOverlay _teamDialog;
     private CanvasLayer _labLoad; // loading cover held over the lab until the warmup settles (owner)
@@ -388,7 +388,7 @@ public partial class RiderDuel : Node3D
         }
         if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
-        // the roster's currently edited slot — its spec and
+        // the roster's currently edited slot - its spec and
         // loadout drive the lab preview now and the leader at
         // deploy. A --player-rider harness flag outranks it.
         if (WorldConfig.IsMission)
@@ -412,7 +412,7 @@ public partial class RiderDuel : Node3D
             // team 1's first slot (bracket index 0); the enemy
             // seat hosts the opposing team's first rider; the
             // foe seat hosts the next opposing rider in (team,
-            // slot) order — or is not built at all when the
+            // slot) order - or is not built at all when the
             // bracket fields a single opposing rider, so a
             // formed 1v1 stays a 1v1. Explicit --player-rider /
             // --enemy-rider arguments outrank the bracket.
@@ -456,7 +456,7 @@ public partial class RiderDuel : Node3D
             ShadowEnabled = true,
             // Shadow depth (owner, 2026-11-11 round 6:
             // 'rider's shadow looks too bright and
-            // unrealistic — make it darker, but keep the
+            // unrealistic - make it darker, but keep the
             // under-city illumination bright'): 0.28 leaked
             // so much sun that a rider in shadow read as
             // fully lit. 0.55 restores real shade; the
@@ -479,7 +479,7 @@ public partial class RiderDuel : Node3D
         _heroLight = new OmniLight3D
         {
             // Gentler fill (owner round 6): at 0.55 the
-            // shadowless pool flattened the rider — no dark
+            // shadowless pool flattened the rider - no dark
             // side anywhere. 0.30 keeps him readable in shade
             // while his shadow side can actually go dark.
             LightEnergy = 0.30f,
@@ -529,7 +529,7 @@ public partial class RiderDuel : Node3D
         // scene used to build everything in one synchronous
         // _Ready, so the loading cover's last frame froze for
         // the whole load. The cover goes up first and the
-        // world builds in chunks between frames — the ripple
+        // world builds in chunks between frames - the ripple
         // keeps sweeping while terrain, dressing and riders
         // stream in. _Process and _Input stay gated on _built
         // until the last chunk lands.
@@ -546,7 +546,7 @@ public partial class RiderDuel : Node3D
         Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.BlobDecks.Clear(); Main.Walls.Clear();
         // Round-1 ARENA props at fixed spots around the origin.
         // Arena only (owner: "random pieces of building are
-        // sticking out of the ground" — in a 1900u mission
+        // sticking out of the ground" - in a 1900u mission
         // world the origin is open wilderness; on Harbor it is
         // a mountain, so these four buildings planted
         // themselves on the slope there, half-buried. Missions
@@ -562,7 +562,7 @@ public partial class RiderDuel : Node3D
             AddTree(new Vector3(-32f, 0f, -6f));
             AddTree(new Vector3(26f, 0f, 30f));
             // Larger (owner, 2026-10-31): footprints 10-15u, heights
-            // 11-16u — real cover next to a 13-14u rider, and every
+            // 11-16u - real cover next to a 13-14u rider, and every
             // roof stays under the ~24u thruster apex so a jump-jet
             // rider can land on top.
             AddBuilding(new Vector3(-20f, 0f, 14f), new Vector3(13f, 11f, 11f));
@@ -578,7 +578,7 @@ public partial class RiderDuel : Node3D
             var propPts = new System.Collections.Generic.List<(Vector2 P, float R)>();
             foreach (var c in _props) propPts.Add((c.P, c.R));
             if (WorldConfig.Biome == WorldConfig.BiomeKind.Forest)
-                PhotoEnv.AddGrassField(this, _buildingPts, propPts); // the scanned grass is lush green — forest only
+                PhotoEnv.AddGrassField(this, _buildingPts, propPts); // the scanned grass is lush green - forest only
             PhotoEnv.AddBackdrop(this);
         }
 
@@ -889,10 +889,10 @@ public partial class RiderDuel : Node3D
 
     public override void _Process(double delta)
     {
-        if (!_built) return; // staged build in progress — the loading cover is up
+        if (!_built) return; // staged build in progress - the loading cover is up
         if (_pointTest && _pointHectorFirst && !_pointSwapDone && _player != null && _player.IsReady)
         {
-            // Select Hector the way the owner does — in the lab,
+            // Select Hector the way the owner does - in the lab,
             // before the duel starts (hectorcam's ritual). A
             // MID-RUN swap is invalid measurement: a stale scorch
             // entry from the old walker makes UpdateCombat throw
@@ -987,7 +987,7 @@ public partial class RiderDuel : Node3D
         // The capture waits for BOTH wall time and a frame
         // count: on a software rasterizer the first frame alone
         // can take ~19s (shader compilation), so a wall-clock-only
-        // trigger photographed frame 1 — before the recreated
+        // trigger photographed frame 1 - before the recreated
         // lab's first _Process had run its live layout even once.
         if (_labShot) _labShotFrames++;
         if (_labShot && _lab != null && Time.GetTicksMsec() > 19500 && _labShotFrames > 45 && !_layoutDumped)
@@ -1020,7 +1020,7 @@ public partial class RiderDuel : Node3D
                 _labLoadT += delta;
             }
             // The duel waits behind the RiderLab: a showroom view
-            // (owner, MW4-style) — the rider stands front three-
+            // (owner, MW4-style) - the rider stands front three-
             // quarter in the paperdoll area, lit by a lab fill, so
             // the slot panels sit ON the machine. A fixed angle
             // (plus a barely-there sway) replaces the orbit: the
@@ -1031,8 +1031,8 @@ public partial class RiderDuel : Node3D
                 // Shader warmup (#6, photo mode only): while the lab
                 // is up, sweep the camera through the duel's
                 // viewpoints and fire one underground FX burst, so
-                // every pipeline — splat terrain, foliage, fog,
-                // beams, particles — compiles BEFORE the duel
+                // every pipeline - splat terrain, foliage, fog,
+                // beams, particles - compiles BEFORE the duel
                 // instead of hitching mid-fight. Timing is
                 // wall-clock with a 2-frame minimum per pose, so the
                 // sweep completes on any hardware (a raw delta sum
@@ -1136,7 +1136,7 @@ public partial class RiderDuel : Node3D
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {
                     // One trigger: the left mouse button fires the SELECTED
-                    // weapon (1/2/3 or wheel to switch — see the panel).
+                    // weapon (1/2/3 or wheel to switch - see the panel).
                     var aim = _aimPoint;
                     if (Input.IsMouseButtonPressed(MouseButton.Left))
                         FireSelected(aim);

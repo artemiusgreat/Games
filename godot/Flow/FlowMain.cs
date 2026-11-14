@@ -1,7 +1,7 @@
 using Godot;
 
 // The game's front door (project main scene). A quiet orbital
-// backdrop — star panorama and a slowly turning planet — behind a
+// backdrop - star panorama and a slowly turning planet - behind a
 // stack of full-screen UI steps. Both modes are step wizards
 // (owner, teams stage); every step has a Back button:
 //
@@ -210,14 +210,14 @@ public partial class FlowMain : Node3D
         GoPlanet();
     }
 
-    // Wizard step 1 (both modes): the planet screen — selector
+    // Wizard step 1 (both modes): the planet screen - selector
     // on the left, the clickable universe map on the right.
     public void GoPlanet()
     {
         Show(new PlanetScreen { Name = "planet", Flow = this });
     }
 
-    // Wizard step 2 (Story): the bar — mission slider on the
+    // Wizard step 2 (Story): the bar - mission slider on the
     // left, clickable patrons on the right.
     public void GoMissions()
     {
@@ -230,7 +230,7 @@ public partial class FlowMain : Node3D
         Show(new ArenaScreen { Name = "arena", Flow = this });
     }
 
-    // Wizard step 3 (Tournament): the team selector — teams
+    // Wizard step 3 (Tournament): the team selector - teams
     // on the left, the open team's riders on the right,
     // Randomize in the control panel. From there, Continue
     // goes to the lab to prepare the player's own rider.
@@ -244,7 +244,7 @@ public partial class FlowMain : Node3D
     // the contract; from the bar, the signed contract stands.
     public void EnterLab(bool fromPlanet = false)
     {
-        // The orbital pick becomes the contract FIRST — reading
+        // The orbital pick becomes the contract FIRST - reading
         // its biome before this assignment threw on a null
         // SelectedMission and the Command center button read as
         // dead (owner's report).
@@ -290,7 +290,7 @@ public partial class FlowMain : Node3D
     // The duel scene takes seconds to build (terrain, textures,
     // riders), which used to read as a freeze. Show the loading
     // overlay, let it paint, then load the scene on a thread and
-    // swap when it is ready — the overlay's last frame stays up
+    // swap when it is ready - the overlay's last frame stays up
     // through the brief instantiation hitch.
     private async void EnterLabScene()
     {

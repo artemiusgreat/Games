@@ -46,7 +46,7 @@ def process(mid, target):
         # Foliage keeps its alpha-card structure: collapse decimation
         # at tree-wide ratios shredded the canopies (probe run 2 read
         # as bare winter trees), so leaves decimate gently and the
-        # wood — the bulk of a scan's waste — decimate hard.
+        # wood - the bulk of a scan's waste - decimate hard.
         names = " ".join(
             [ob.name] + [ms.material.name.lower() if ms.material else ""
                          for ms in ob.material_slots])

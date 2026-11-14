@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 // RiderDuel module: test choreography: duel/weapons/breakable/terrain/photo drivers.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
     // ---------- test choreography ----------
@@ -52,7 +52,7 @@ public partial class RiderDuel
                     }
                     GD.Print("LABTEST CAPACITY PASS slot caps sum to chassis tonnage for every rider");
                     // Multi-fit (owner): a hardpoint fits several
-                    // weapons up to its cap — cumulative tonnage is
+                    // weapons up to its cap - cumulative tonnage is
                     // the limit, not one weapon per slot.
                     var multi = new LoadoutState();
                     if (multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
@@ -71,9 +71,9 @@ public partial class RiderDuel
                     // a single mount.
                     if (RiderSpecs.Hector.Slots.Length < RiderSpecs.Enyo.Slots.Length)
                     { GD.PrintErr("DUEL FAIL: the 100t Hector must carry at least as many hardpoints as the 75t Enyo"); GetTree().Quit(1); return; }
-                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: Enyo {RiderSpecs.Enyo.Slots.Length}, Hector {RiderSpecs.Hector.Slots.Length} (tied since Enyo's three-type chest mount; Hector's mounts are the roster's largest — 30t gun, 28t pod)");
+                    GD.Print($"LABTEST DISTRIBUTION PASS hardpoints: Enyo {RiderSpecs.Enyo.Slots.Length}, Hector {RiderSpecs.Hector.Slots.Length} (tied since Enyo's three-type chest mount; Hector's mounts are the roster's largest - 30t gun, 28t pod)");
                     // Rider selection (round 22): swap both chassis and
-                    // verify the duel follows — parts layout, pools
+                    // verify the duel follows - parts layout, pools
                     // and equipped defs all follow the spec.
                     SetRiderSelection("hector", "enyo");
                     if (_playerSpec.Id != "hector" || _enemySpec.Id != "enyo"
@@ -87,7 +87,7 @@ public partial class RiderDuel
                 // Keep the swapped chassis deployed across many real
                 // frames before restoring: swapping forth and back
                 // inside one call never lets UpdateHud run against
-                // the Hector parts — which is exactly how the pod_L
+                // the Hector parts - which is exactly how the pod_L
                 // KeyNotFound crash shipped (it froze the player's
                 // camera in the live game while this test stayed
                 // green). If UpdateHud throws now, the frame aborts
@@ -151,7 +151,7 @@ public partial class RiderDuel
                     });
                 }
                 break;
-            case 3: // STOMP: drive straight at the tree at (6,16) — it must NOT stop the rider; the rider crushes it and walks through
+            case 3: // STOMP: drive straight at the tree at (6,16) - it must NOT stop the rider; the rider crushes it and walks through
                 _player.SetDrive(0f, 2.6f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 {
@@ -303,7 +303,7 @@ public partial class RiderDuel
                     if (dxz < 5f)
                     { GD.PrintErr($"DUEL FAIL: torso twist does not steer the aim (dxz={dxz:F2})"); GetTree().Quit(1); break; }
                     // WIDE AIM (round 13, round-27 form): the mouse
-                    // target is not bound by the torso clamp — with
+                    // target is not bound by the torso clamp - with
                     // AimPitchWide driven to -1.05 the convergence
                     // must land on the ground right in front of the
                     // feet, under the center crosshair (the aim
@@ -326,7 +326,7 @@ public partial class RiderDuel
                     // Reticle TRUTH (round 27): at every pitch the
                     // crosshair must BE the screen center, and the
                     // convergence point (what the weapons converge
-                    // on) must project onto that same center — the
+                    // on) must project onto that same center - the
                     // camera axis is the aim, so cursor and impact
                     // can never disagree. (The round-8 contract,
                     // restated for center-crosshair aiming.)
@@ -356,7 +356,7 @@ public partial class RiderDuel
                     _cdLaser = 0f;
                     // Round 27: hunt the pitch that puts the center
                     // crosshair on the Hector, the way a player
-                    // does — the fixed -0.10 fixture belonged to
+                    // does - the fixed -0.10 fixture belonged to
                     // the old free-reticle geometry.
                     bool onFoe = false;
                     for (float tp = -0.05f; tp >= -0.50f; tp -= 0.025f)
@@ -379,13 +379,13 @@ public partial class RiderDuel
                     // camera's far-terrain verdict disagrees on the
                     // endpoint while agreeing on the miss.)
                     if (_laserRescues != rescues0)
-                    { GD.PrintErr("DUEL FAIL: the laser needed the harness fallback for a stable hitting shot — the live camera path is broken (round 20 regression guard)"); GetTree().Quit(1); break; }
+                    { GD.PrintErr("DUEL FAIL: the laser needed the harness fallback for a stable hitting shot - the live camera path is broken (round 20 regression guard)"); GetTree().Quit(1); break; }
                     int evAfterHit = _enemyDmgEvents;
                     _cdLaser = 0f;
                     // 1.0 rad, not the old 0.30: on the domed map
                     // (round 25) the test pair stands on the center
                     // hill, and the crest behind the Hector is higher
-                    // than his head — a 0.30 line to the crest point
+                    // than his head - a 0.30 line to the crest point
                     // legitimately clips his torso box on the way.
                     // The phase's contract is "cursor clearly above
                     // him => a miss", so the fixture aims clearly
@@ -396,7 +396,7 @@ public partial class RiderDuel
                     if (_enemyDmgEvents > evAfterHit)
                     { GD.PrintErr("DUEL FAIL: cursor above the Hector but a shot still hit him"); GetTree().Quit(1); break; }
                     // Beam length on a miss (owner): the ray stops
-                    // at the cursor's point — it must NOT run to
+                    // at the cursor's point - it must NOT run to
                     // the raycast's 140u no-hit endpoint.
                     float beamLen = -1f;
                     for (int i = _fx.Count - 1; i >= 0; i--)
@@ -406,7 +406,7 @@ public partial class RiderDuel
                     { GD.PrintErr($"DUEL FAIL: sky-shot beam runs {beamLen:F1}u but the cursor point is {wantLen:F1}u from the muzzle"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL BEAMEND PASS sky-shot beam stops at the cursor point ({beamLen:F1}u, not the 140u raycast end)");
                     // Torso twist is UNCLAMPED (owner, 2026-10-29):
-                    // a 195° command must stick — the torso rotates
+                    // a 195° command must stick - the torso rotates
                     // the full 360°, fully backward included.
                     _player.TorsoTwist = 3.4f;
                     if (_player.TorsoTwist < 3.39f)
@@ -441,7 +441,7 @@ public partial class RiderDuel
                     { GD.PrintErr($"DUEL FAIL: rendered torso does not pitch DOWN with -pitch (facingY={fDn.Y:F3})"); GetTree().Quit(1); break; }
                     GD.Print($"DUEL AIM RENDER PASS rendered torso follows the pitch: up facingY={_aimUpY:F3}, down facingY={fDn.Y:F3}");
                     // Rocket-lob check (round 7): pitch up at the sky
-                    // over the Hector and loose a salvo — the first
+                    // over the Hector and loose a salvo - the first
                     // rocket's launch elevation must track the
                     // pointer (bounded lob), not mortar vertically.
                     _player.TorsoTwist = 0f;
@@ -462,10 +462,10 @@ public partial class RiderDuel
                         { GD.PrintErr($"DUEL FAIL: sky-aim rocket mortared at elevation {elev:F2} rad (pointer was 0.30)"); GetTree().Quit(1); break; }
                         if (elev < 0.15f)
                         { GD.PrintErr($"DUEL FAIL: sky-aim rocket barely rose (elevation {elev:F2})"); GetTree().Quit(1); break; }
-                        GD.Print($"DUEL AIM ROCKET PASS sky-aim launch elevation={elev:F2} rad vs pointer 0.30 — the lob is bounded");
+                        GD.Print($"DUEL AIM ROCKET PASS sky-aim launch elevation={elev:F2} rad vs pointer 0.30 - the lob is bounded");
                         // Torso-independence setup (round 7): anchor
                         // the mouse bearing here, then spin the LEGS
-                        // for a second — the torso's world bearing
+                        // for a second - the torso's world bearing
                         // must not follow them.
                         _torsoWorldYaw = _player.TorsoYawWorld;
                         _aimWorld0 = _player.TorsoYawWorld;
@@ -497,7 +497,7 @@ public partial class RiderDuel
                         // frame (the spin left the legs yawed away).
                         _playerYaw = _aimLegs0;
                         _player.SetDrive(_playerYaw, 0f);
-                        // Proof frame: torso pitched up — the reticle
+                        // Proof frame: torso pitched up - the reticle
                         // sits on the true aim point above the Hector.
                         _player.TorsoTwist = 0f;
                         _player.TorsoPitch = 0.18f;
@@ -612,7 +612,7 @@ public partial class RiderDuel
         };
         _player.Teleport(pp, Mathf.Pi);
         _enemy.Teleport(ep, 0f);
-        _hpPlayer = 100000f; // the target shoots back (shared combat step) — keep the shooter whole
+        _hpPlayer = 100000f; // the target shoots back (shared combat step) - keep the shooter whole
         _partsPlayer.RestoreAll(); // and the pods intact, so every case fires a full salvo
         GD.Print($"LRMPROBE stage case={c} player={pp} enemy={ep}");
     }
@@ -625,7 +625,7 @@ public partial class RiderDuel
     private bool _ffaStaged;
     private Vector3 _ffaHome0, _ffaHome1;
 
-    // --view-shot: the owner's hilltop case — the player low at
+    // --view-shot: the owner's hilltop case - the player low at
     // the mesa foot, a foe standing on the top. Round 27 form:
     // BEFORE frame at a level view (crosshair on the flats, foe
     // above it); then the wide pitch sweeps its full travel and
@@ -634,7 +634,7 @@ public partial class RiderDuel
     private float _viewT;
     private int _viewStage = -1;
     private float _viewPitch, _viewBest, _viewBestPitch;
-    // --point-test (owner, 2026-11-01: "lookup is clamped — I
+    // --point-test (owner, 2026-11-01: "lookup is clamped - I
     // couldn't point the reticle at the top of the hill"): a
     // player simulation. The foe stands on the mesa top; the
     // player stands at a ladder of ranges on the flats and the
@@ -642,8 +642,8 @@ public partial class RiderDuel
     // the real per-frame path. For each stand, report the closest
     // the foe's chest ever gets to the SCREEN CENTER on screen:
     // under round-27 center-crosshair aiming the center IS the
-    // reticle — if no pitch puts the chest on it, pointing at
-    // the hilltop is impossible from there — measured, not argued.
+    // reticle - if no pitch puts the chest on it, pointing at
+    // the hilltop is impossible from there - measured, not argued.
     // (The probe originally measured the free reticle point and
     // found the close-steep dead zone that decided round 27.)
     private static readonly float[] PointRanges = { 80f, 65f, 58f, 45f, 35f, 26f };
@@ -667,13 +667,13 @@ public partial class RiderDuel
             int idx = _pointNext;
             _pointStage = idx;
             float r = ActivePointRanges[idx];
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, r), r), 0f); // yaw 0 faces -Z (the mesa) directly — no staging turn to pollute the early samples
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, r), r), 0f); // yaw 0 faces -Z (the mesa) directly - no staging turn to pollute the early samples
             float foeZ = _pointClose ? 11f : (_pointCenter ? 0f : 10f);
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, foeZ), foeZ), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _hpPlayer = 100000f; _hpEnemy = 100000f;
-            _pointPitch = -1.35f; // round 27: sweep the FULL wide travel — under center-crosshair aiming a close top-edge target is crossed at NEGATIVE pitch (the camera hovers above its chest)
+            _pointPitch = -1.35f; // round 27: sweep the FULL wide travel - under center-crosshair aiming a close top-edge target is crossed at NEGATIVE pitch (the camera hovers above its chest)
             _pointDbgNext = -1.33f;
             _pointBest = 1e9f;
             _pointBestPitch = 0f;
@@ -708,7 +708,7 @@ public partial class RiderDuel
                 int idx = _pointStage;
                 float r = ActivePointRanges[idx];
                 GD.Print($"POINTTEST {(_pointHector ? "hector" : "enyo")} stand r={r:F0} bestCenterMiss={_pointBest:F0}px at pitch {_pointBestPitch:F2} " +
-                    (_pointBest <= 10f ? "REACHABLE" : "UNREACHABLE — the crosshair never lands on the hilltop chest"));
+                    (_pointBest <= 10f ? "REACHABLE" : "UNREACHABLE - the crosshair never lands on the hilltop chest"));
                 _pointNext = idx + 1;
                 _pointStage = -1;
             }
@@ -718,7 +718,7 @@ public partial class RiderDuel
     // --boom-shot (round 28, owner: "the player's rider should
     // be always visible"): sweep the full pitch travel on two
     // stands (flats, mesa skirt) and print the rider's head/feet
-    // screen positions per step — the measured visibility
+    // screen positions per step - the measured visibility
     // envelope of the boom camera. Captures at the extremes and
     // level on the flats.
     private int _boomStage = -1;
@@ -822,14 +822,14 @@ public partial class RiderDuel
     // --boom-check (round 28 follow-up, owner repeated "the
     // player's rider should be always visible" after the boom
     // shipped): stage the live-play cases the static sweep did
-    // not cover — the rider backed up against a building (does
+    // not cover - the rider backed up against a building (does
     // the boom put the camera inside it?) at level and at a
     // mesa-aim pitch, and (photo scene) a level chase frame.
-    // Round 29 probe (owner reports): (1) camera lag — one frame
+    // Round 29 probe (owner reports): (1) camera lag - one frame
     // after a hard mouse flick, how far is the chase camera from
     // its boom target, and how many frames until it settles?
-    // (2) rocks — can the rider walk THROUGH a rock's center
-    // (only tall objects should block movement)? (3) trees — a
+    // (2) rocks - can the rider walk THROUGH a rock's center
+    // (only tall objects should block movement)? (3) trees - a
     // rider staged just outside the old stomp trigger but inside
     // body reach: does the tree die before contact?
     private int _lagStage = -1;
@@ -905,7 +905,7 @@ public partial class RiderDuel
                 _lagT = 0f;
                 var rp = new Vector2(_player.RootPos.X, _player.RootPos.Z);
                 float dist = rp.DistanceTo(_lagRock.P);
-                GD.Print($"LAGCHECK ROCK endDist={dist:F2} minDist={_lagRockMin:F2} rockR={_lagRock.R:F2} oldWallAt={_lagRock.R + _player.CollisionRadius:F2} {(_lagRockMin < _lagRock.R ? "CROSSED the rock disc — walked through" : "STOPPED outside it")}");
+                GD.Print($"LAGCHECK ROCK endDist={dist:F2} minDist={_lagRockMin:F2} rockR={_lagRock.R:F2} oldWallAt={_lagRock.R + _player.CollisionRadius:F2} {(_lagRockMin < _lagRock.R ? "CROSSED the rock disc - walked through" : "STOPPED outside it")}");
                 _player.SetDrive(_playerYaw, 0f);
                 _lagTree = null;
                 foreach (var d in _destructibles)
@@ -1033,7 +1033,7 @@ public partial class RiderDuel
         {
             // The mouse sweeps its full travel: the foe's chest
             // must cross the screen center (the crosshair) at some
-            // pitch — the round-27 acceptance for the owner's
+            // pitch - the round-27 acceptance for the owner's
             // hilltop case.
             _player.AimPitchWide = _viewPitch;
             _player.TorsoPitch = _viewPitch;
@@ -1062,7 +1062,7 @@ public partial class RiderDuel
         }
     }
 
-    // --brake-test: the owner's no-inertia rule (2026-10-31) —
+    // --brake-test: the owner's no-inertia rule (2026-10-31) -
     // from a full RUN (12.6 u/s) with the throttle released, EVERY
     // chassis must be at a standstill within one second. Measured
     // on the Enyo, then the player is swapped to the Hector (the
@@ -1088,7 +1088,7 @@ public partial class RiderDuel
                 _brakeT = 0f;
                 _player.SetDrive(_player.LegsYaw, 0f);
                 _brakeStage++;
-                GD.Print($"BRAKE released at speed {_player.Speed:F2} — timing the stop");
+                GD.Print($"BRAKE released at speed {_player.Speed:F2} - timing the stop");
             }
             return;
         }
@@ -1112,11 +1112,11 @@ public partial class RiderDuel
         }
     }
 
-    // --roof-test: the owner's rooftop case (2026-10-31) — the
+    // --roof-test: the owner's rooftop case (2026-10-31) - the
     // Enyo jump-jets from beside the (22,8) building, flies over
     // its roof, cuts the thrusters and must LAND AND STAND on the
     // roof (soles at roof level, not sunk to the terrain, not
-    // pushed out by the wall colliders) — then walk on it.
+    // pushed out by the wall colliders) - then walk on it.
     private int _roofStage = -1;
     private float _roofT, _roofTop;
     private Vector3 _roofCenter, _roofWalkFrom;
@@ -1133,25 +1133,25 @@ public partial class RiderDuel
             if (_roofTop <= 0f) { GD.Print("ROOF FAIL no roof registered for the (22,8) building"); GetTree().Quit(); return; }
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
             // A running approach, like real play: the burn budget
-            // (2.2s) cannot lift from a standstill AND cross — the
+            // (2.2s) cannot lift from a standstill AND cross - the
             // horizontal Accel is only 4.2. Walk in from x=6, light
             // the thrusters at x=10.5, and momentum plus burn carry
             // him over the edge (x=16) just as his soles reach the
             // roof line.
             _player.Teleport(new Vector3(6f, Main.HeightAt(6f, 8f), 8f), RiderWalker.YawOf(Vector3.Right));
             _player.SetDrive(_player.LegsYaw, 4.2f);
-            GD.Print($"ROOF staged: roofTop={_roofTop:F1} terrainAtBuilding={Main.HeightAt(22f, 8f):F1} — walking in, thrusters at x=10.5");
+            GD.Print($"ROOF staged: roofTop={_roofTop:F1} terrainAtBuilding={Main.HeightAt(22f, 8f):F1} - walking in, thrusters at x=10.5");
             return;
         }
         if (_roofT > 40f) { GD.Print($"ROOF FAIL timeout in stage {_roofStage} (root={_player.RootPos} sole={_player.SoleLevel:F1} jumpH={_player.JumpHeight:F1} charge={_player.JumpCharge:F2})"); GetTree().Quit(); return; }
         switch (_roofStage)
         {
-            case 0: // walking in — light the thrusters at the mark
+            case 0: // walking in - light the thrusters at the mark
                 if (_player.RootPos.X >= 10.5f)
                 {
                     _player.SetThrust(true);
                     _roofStage = 1;
-                    GD.Print($"ROOF thrusters lit at x={_player.RootPos.X:F1} — climbing over the edge");
+                    GD.Print($"ROOF thrusters lit at x={_player.RootPos.X:F1} - climbing over the edge");
                 }
                 break;
             case 1: // over the roof (or set down on it early): cut
@@ -1162,7 +1162,7 @@ public partial class RiderDuel
                     _player.SetDrive(_player.LegsYaw, 0f);
                     _roofStage = 2;
                     _roofT = 0f;
-                    GD.Print($"ROOF over the roof at x={_player.RootPos.X:F1} — thrusters cut, settling");
+                    GD.Print($"ROOF over the roof at x={_player.RootPos.X:F1} - thrusters cut, settling");
                 }
                 break;
             case 2: // land and settle
@@ -1361,7 +1361,7 @@ public partial class RiderDuel
             if (_bracketNpc == null || _bracketNpc.Team != 2)
             { BracketFail("Medea should be a team-3 NPC record"); return; }
             // Muster check: every bracket rider stands at its
-            // own team's anchor, not on a fixed pad — the foe
+            // own team's anchor, not on a fixed pad - the foe
             // seat (Prometheus, team 2) included.
             if (FlatDist(_foe.Walker.RootPos, TeamAnchor(1)) > 20f)
             { BracketFail($"foe seat musters off its team anchor: {FlatDist(_foe.Walker.RootPos, TeamAnchor(1)):F1}u"); return; }
@@ -1405,7 +1405,7 @@ public partial class RiderDuel
         }
         else if (_bracketPhase == 1)
         {
-            // Last team standing: kill team 2's seats — teams
+            // Last team standing: kill team 2's seats - teams
             // 1 and 3 remain, so no decision yet. Then kill
             // Medea: team 1 alone remains and the arena is
             // announced decided.
@@ -1529,7 +1529,7 @@ public partial class RiderDuel
     // suite and the live game use the real defaults.
     // Weapons-range mannequin (2026-11-12): the firing
     // suites (weapons + breakable) calibrate weapon
-    // BEHAVIOUR — damage, routing, reactions, salvo counts —
+    // BEHAVIOUR - damage, routing, reactions, salvo counts -
     // on single fits: one energy arm, one ballistic arm, two
     // missile pods. Since the owner's mirrored-symmetry
     // ruling, no shipped rider has that layout (Enyo, the
@@ -1621,10 +1621,10 @@ public partial class RiderDuel
                     if (_enemyDmgEvents != 3 || Mathf.Abs(_enemyDmgTotal - 36f) > 0.01f)
                         WFail($"laser events={_enemyDmgEvents} dmg={_enemyDmgTotal:F1} (want 3 / 36)");
                     if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"laser hectorHp={_hpEnemy:F1} (want 304)");
-                    // Round 8: the reaction must carry the weapon —
+                    // Round 8: the reaction must carry the weapon -
                     // a laser hit flashes CYAN and lights the impact.
                     var lfc = _enemy.LastFlashColor;
-                    if (!(lfc.B > lfc.R + 0.2f)) { WFail($"laser hit flashed {lfc} — want cyan"); return; }
+                    if (!(lfc.B > lfc.R + 0.2f)) { WFail($"laser hit flashed {lfc} - want cyan"); return; }
                     if (_fxLights <= 0) { WFail("laser hit lit no impact light"); return; }
                     GD.Print($"WPNTEST LASER PASS events=3 dmg=36 hectorHp={_hpEnemy:F0} (hit reaction: cyan flash + impact light)");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
@@ -1652,7 +1652,7 @@ public partial class RiderDuel
                     if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f)
                         WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 90 = untouched, shells routed to torso)");
                     var cfc = _enemy.LastFlashColor;
-                    if (!(cfc.R > cfc.B + 0.3f && cfc.G > cfc.B + 0.2f)) { WFail($"cannon hit flashed {cfc} — want warm white"); return; }
+                    if (!(cfc.R > cfc.B + 0.3f && cfc.G > cfc.B + 0.2f)) { WFail($"cannon hit flashed {cfc} - want warm white"); return; }
                     if (_wJoltSeen < 0.3f) { WFail($"cannon hits barely rocked the Hector (jolt env peak {_wJoltSeen:F2})"); return; }
                     GD.Print($"WPNTEST AC PASS events=2 dmg=52 hectorHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: warm flash + jolt {_wJoltSeen:F2})");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
@@ -1671,7 +1671,7 @@ public partial class RiderDuel
                 {
                     if (_enemyDmgEvents < 5) WFail($"lrm damaging rockets={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1}");
                     var rfc = _enemy.LastFlashColor;
-                    if (!(rfc.R > 0.9f && rfc.B < 0.3f)) { WFail($"rocket hit flashed {rfc} — want deep orange"); return; }
+                    if (!(rfc.R > 0.9f && rfc.B < 0.3f)) { WFail($"rocket hit flashed {rfc} - want deep orange"); return; }
                     GD.Print($"WPNTEST LRM PASS rocketsDamaging={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1} hectorHp={_hpEnemy:F1} (reaction: orange flash)");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     WSetup(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f));
@@ -1711,11 +1711,11 @@ public partial class RiderDuel
             case 5: // Hector return fire vs a strafing player.
                     // The player reverses every 0.9s at full speed. At the
                     // original 50 u/s shell the 0.9s flight let a reversal
-                    // land inside the lead window — strafing genuinely
+                    // land inside the lead window - strafing genuinely
                     // dodged. Since 2026-10-29 the AC/20 flies at 150
                     // (owner: Hector matches the player's cannon changes,
                     // symmetric rules), flight is ~0.3s, the strafe
-                    // displaces ~1.2u — inside the target's own radius —
+                    // displaces ~1.2u - inside the target's own radius -
                     // so return fire is RELIABLE now, by design. The
                     // owner flagged this as provisional: if Hector feels
                     // unfair in his visual test, the speed reverts.
@@ -1773,18 +1773,18 @@ public partial class RiderDuel
                 if (_enemyDead && _wPhaseT > _wDeathT + 1.8 && !_wDeadShotQueued)
                 {
                     // Death comes only from the HP pool now (owner):
-                    // wrecked legs limp, they never kill — so a dead
+                    // wrecked legs limp, they never kill - so a dead
                     // Hector must show hp == 0 exactly.
                     if (_hpEnemy != 0f)
                     { WFail($"dead hector hp={_hpEnemy:F1} (want pool kill, hp 0)"); return; }
                     if (!_enemy.Halted) { WFail("dead hector walker not halted"); return; }
                     // No centre banner for a destruction (owner,
-                    // round 4 — the game's current contract: the
+                    // round 4 - the game's current contract: the
                     // wreck, the feed and the target readout
                     // carry the news). The banner must stay DOWN
                     // and the readout must say DESTROYED.
                     if (_banner.Visible)
-                    { WFail($"kill raised the centre banner ('{_banner.Text}') — destructions must not"); return; }
+                    { WFail($"kill raised the centre banner ('{_banner.Text}') - destructions must not"); return; }
                     if (!_lblRange.Text.Contains("DESTROYED"))
                     { WFail($"target readout does not carry the kill: '{_lblRange.Text}'"); return; }
                     GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, no banner, readout '{_lblRange.Text}'");
@@ -1811,7 +1811,7 @@ public partial class RiderDuel
                     // own death (owner, round 4): R still resets,
                     // but nothing raises the centre banner.
                     if (_banner.Visible)
-                    { WFail($"player death raised the centre banner ('{_banner.Text}') — it must not"); return; }
+                    { WFail($"player death raised the centre banner ('{_banner.Text}') - it must not"); return; }
                     GD.Print("WPNTEST PLAYERDEATH PASS death certified, no banner (round-4 contract)");
                 }
                 if (_wShotsFired == 1 && _wPhaseT > 0.9)
@@ -1884,7 +1884,7 @@ public partial class RiderDuel
                     fp2.Y = Main.HeightAt(fp2.X, fp2.Z);
                     _player.Teleport(fp2, RiderWalker.YawOf((tc - fp2).Normalized()));
                     _playerYaw = _player.LegsYaw;
-                    // The owner's live scenario, scripted — twice
+                    // The owner's live scenario, scripted - twice
                     // over. He aims at the tree's VISIBLE center: the
                     // crown, ~1.5u off the trunk axis at 0.75 height.
                     // Round 11 converged on the trunk but the crown
@@ -1894,7 +1894,7 @@ public partial class RiderDuel
                     // land on it, and one hit must drop the tree.
                     _player.TorsoTwist = 0f;
                     // Aim the way the player does: hunt the pitch
-                    // until the RETICLE sits on the crown — the
+                    // until the RETICLE sits on the crown - the
                     // camera-ray convergence reports the prop. With
                     // the high camera that pitch is steeper than the
                     // torso-to-crown line (the round-12 offset the
@@ -1906,7 +1906,7 @@ public partial class RiderDuel
                     {
                         _player.TorsoPitch = pp;
                         conv = TorsoAimPoint();
-                        // Any PROP along the view line is not enough —
+                        // Any PROP along the view line is not enough -
                         // the convergence must be ON this tree's crown.
                         if (_aimTarget == Roles.Prop && conv.DistanceTo(crownCtr) < 3.5f) { onCrown = true; break; }
                     }
@@ -1947,14 +1947,14 @@ public partial class RiderDuel
                 {
                     // The weapons suite's captures leave _camMode on
                     // a proof pose, which disables TorsoAimPoint's
-                    // camera-ray branch — every ENV hunt before this
+                    // camera-ray branch - every ENV hunt before this
                     // line silently ran on the chest fallback (the
                     // far Hector passed through it, masking the fact).
                     // Live play is always chase; restore it here.
                     _camMode = CamModes.Chase;
                     // FAR TARGET (owner, round 13): at 85u the old
                     // 60u convergence cap rejected the cursor's hit
-                    // and shots fell back to the free point — in the
+                    // and shots fell back to the free point - in the
                     // sky. Hunt the pitch until the cursor sits on
                     // the Hector, then require exact laser damage.
                     _hpEnemy = _enemySpec.MaxHp;
@@ -1984,9 +1984,9 @@ public partial class RiderDuel
                     // assumed, so the harness tries pads x facings
                     // with the game's own aim math and keeps the
                     // first setup where a pitch hunt finds a far
-                    // TERRAIN convergence — the same search a player
+                    // TERRAIN convergence - the same search a player
                     // does when he turns toward a slope. Round 27:
-                    // the hunt band extends to -0.60 — the old
+                    // the hunt band extends to -0.60 - the old
                     // free-reticle ray descended by parallax inside
                     // the old band, while the center axis is level
                     // at pitch 0, so far slopes are met lower.
@@ -2003,7 +2003,7 @@ public partial class RiderDuel
                             float a = k * Mathf.Tau / 16f;
                             // Teleport applies the yaw NOW; SetDrive
                             // would only take effect on the next
-                            // walker step — the first search swept one
+                            // walker step - the first search swept one
                             // lane sixteen times (measured: no far
                             // convergence anywhere, because every
                             // 'facing' was still yaw 0).
@@ -2072,7 +2072,7 @@ public partial class RiderDuel
     }
 
     // Harness damage through the real ApplyDamage path (attribution runs
-    // on the part's own largest-volume center — a point guaranteed to
+    // on the part's own largest-volume center - a point guaranteed to
     // sit inside the part). Same precedent as the weapons test's crafted
     // player-death hit.
     private void CraftHit(RiderWalker target, string partId, float dmg, float weaponWeight = 0f)
@@ -2269,10 +2269,10 @@ public partial class RiderDuel
                 {
                     // Arm-break gate (owner, 2026-11-12): at a
                     // FULL pool, four 26-dmg arm hits must NOT
-                    // break the arm — damage caps at 1 HP left.
+                    // break the arm - damage caps at 1 HP left.
                     _hpPlayer = _playerSpec.MaxHp;
                     for (int i = 0; i < 4; i++) CraftHit(_player, "arm_L", 26f);
-                    if (!_partsPlayer.Alive("arm_L")) BFail("arm_L broke at full pool — gate not holding");
+                    if (!_partsPlayer.Alive("arm_L")) BFail("arm_L broke at full pool - gate not holding");
                     if (Mathf.Abs(_partsPlayer.HpOf("arm_L") - 1f) > 0.01f)
                         BFail($"arm_L hp after gated hits = {_partsPlayer.HpOf("arm_L"):F1} (want exactly 1)");
                     GD.Print($"BRKTEST ARMGATE PASS arm capped at 1 HP while pool healthy (pool {_hpPlayer:F0}/{_playerSpec.MaxHp:F0})");
@@ -2284,7 +2284,7 @@ public partial class RiderDuel
                     // one more hit takes the arm off.
                     _hpPlayer = _playerSpec.MaxHp * 0.19f;
                     CraftHit(_player, "arm_L", 26f);
-                    if (_partsPlayer.Alive("arm_L")) BFail("arm_L survived at 19% pool — gate did not lift");
+                    if (_partsPlayer.Alive("arm_L")) BFail("arm_L survived at 19% pool - gate did not lift");
                     if (_partsPlayer.DebrisOf("arm_L") == null) BFail("arm_L debris missing after gated break");
                     GD.Print("BRKTEST ARMGATE-OPEN PASS arm breaks once the pool is critical");
                     _bCount1 = _beamsSpawned;
@@ -2327,7 +2327,7 @@ public partial class RiderDuel
                     {
                         var d = new Vector2(_enemy.RootPos.X - _bVec1.X, _enemy.RootPos.Z - _bVec1.Z).Length();
                         _bV1 = d / BStepT;
-                        GD.Print($"BRKTEST BASESPEED hector baseline={_bV1:F2} u/s (cmd 2.2; unified clock — the walker now covers the full commanded speed)");
+                        GD.Print($"BRKTEST BASESPEED hector baseline={_bV1:F2} u/s (cmd 2.2; unified clock - the walker now covers the full commanded speed)");
                         if (_bV1 < 1.2f) BFail($"baseline speed implausible: {_bV1:F2}");
                         BStep(2);
                     }
@@ -2345,7 +2345,7 @@ public partial class RiderDuel
                         var legPart = _partsEnemy.GetPart("leg_L");
                         if (!legPart.Wrecked) BFail("leg_L not in wrecked state");
                         foreach (var rec in legPart.Meshes)
-                            if (rec.Detached) BFail("leg_L mesh DETACHED — legs must never fall off");
+                            if (rec.Detached) BFail("leg_L mesh DETACHED - legs must never fall off");
                         if (_enemy.IsKnockedDown) BFail("leg wreck felled the rider (retired fall rule)");
                         if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f) BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 (limp)");
                         GD.Print("BRKTEST LEGWRECK PASS leg_L destroyed but ATTACHED (wrecked), rider upright, limp factor 0.55");
@@ -2378,14 +2378,14 @@ public partial class RiderDuel
                         float ratio = _bV1 > 0.1f ? v2 / _bV1 : 0f;
                         GD.Print($"BRKTEST LIMP hector limpSpeed={v2:F2} baseline={_bV1:F2} ratio={ratio:F2}");
                         if (ratio < 0.35f || ratio > 0.78f) { BFail($"limp speed ratio {ratio:F2} (want ~0.55 of baseline)"); return; }
-                        if (!_bSawWreckSwing) { BFail("wrecked leg never left the ground while limping — it must keep stepping, not drag"); return; }
+                        if (!_bSawWreckSwing) { BFail("wrecked leg never left the ground while limping - it must keep stepping, not drag"); return; }
                         GD.Print("BRKTEST LIMP PASS wrecked leg -> rider keeps walking at ~55% speed, leg attached AND still stepping");
                         SetBPhase(6);
                     }
                 }
                 break;
 
-            case 6: // BOTH LEGS WRECKED: crawl at 25% — alive, upright, attached
+            case 6: // BOTH LEGS WRECKED: crawl at 25% - alive, upright, attached
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
@@ -2393,7 +2393,7 @@ public partial class RiderDuel
                     CraftHit(_enemy, "leg_R", 30f);
                     CraftHit(_enemy, "leg_R", 30f);
                     CraftHit(_enemy, "leg_R", 30f);
-                    if (_enemyDead) BFail("hector DIED from leg damage — legs never kill (owner)");
+                    if (_enemyDead) BFail("hector DIED from leg damage - legs never kill (owner)");
                     if (_enemy.Halted) BFail("hector walker halted by leg damage");
                     if (_banner.Visible) BFail($"banner shown for a leg-wrecked rider: '{_banner.Text}'");
                     if (_enemy.IsKnockedDown) BFail("both-legs wreck felled the rider");
@@ -2522,7 +2522,7 @@ public partial class RiderDuel
                 {
                     ResetDuel();
                     BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
-                    // 36t of autocannon impacts — far past every retired
+                    // 36t of autocannon impacts - far past every retired
                     // knockdown threshold. Legs intact.
                     CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
                     CraftHit(_enemy, "torso", 12f, WeaponCatalog.Autocannon.Weight);
@@ -2532,7 +2532,7 @@ public partial class RiderDuel
                 else if (_bStep == 1 && BStepT > 0.6f)
                 {
                     if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a rider (retired knockdown)");
-                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts — the Hector stands (no knockdown rule remains)");
+                    GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts - the Hector stands (no knockdown rule remains)");
                     _partsEnemy.DamagePart("leg_R", 999f);
                     BStep(2);
                 }
@@ -2543,7 +2543,7 @@ public partial class RiderDuel
                     var lr = _partsEnemy.GetPart("leg_R");
                     if (!lr.Wrecked) { BFail("leg_R not wrecked"); return; }
                     foreach (var rec in lr.Meshes)
-                        if (rec.Detached) { BFail("leg_R mesh DETACHED — legs never fall off"); return; }
+                        if (rec.Detached) { BFail("leg_R mesh DETACHED - legs never fall off"); return; }
                     if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f)
                     { BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 after leg wreck"); return; }
                     GD.Print("LEGRULE PASS leg wrecked: attached + darkened, rider upright, limping at 0.55x");
@@ -2605,7 +2605,7 @@ public partial class RiderDuel
     }
 
     // The clearest steep spot the arena offers (the arena is gentle by
-    // design — max grade ~0.08 — so take the best clear candidate).
+    // design - max grade ~0.08 - so take the best clear candidate).
     private bool FindSlopeSpot(out Vector3 spot, out float uphillYaw)
     {
         spot = Vector3.Zero; uphillYaw = 0f;
@@ -2637,11 +2637,11 @@ public partial class RiderDuel
 
     // Mission front smoke: world facts (size, pad plateau flatness,
     // base buildings), base + vista captures, then 50 s of AI march
-    // — both foes must close real distance toward their targets.
+    // - both foes must close real distance toward their targets.
     // --longshot-test: the owner's 500u+ repro, staged exactly.
     // The player holds at the home base and fires ONE ballistic
     // volley along the chase axis (pitched up 2 degrees, nothing
-    // within the 220u convergence cast — the far-target case).
+    // within the 220u convergence cast - the far-target case).
     // The shell's perpendicular distance to the SIGHT LINE is
     // measured when its along-axis distance reaches 600u: with
     // convergence on the 220u far point it must read the muzzle
@@ -2670,7 +2670,7 @@ public partial class RiderDuel
             var ap = TorsoAimPoint();
             if (!_aimParallel && _player.AimPitchWide < 0.1f)
             {
-                // Something pokes into the cast — raise the line
+                // Something pokes into the cast - raise the line
                 // once and retry, the case under test is the
                 // no-hit one.
                 _player.AimPitchWide = 0.09f; _lsT = 0f;
@@ -2683,7 +2683,7 @@ public partial class RiderDuel
             // Track the autocannon shell, not the volley's last
             // shell: the same slot also fires the rider's machine
             // guns, whose shells (85 u/s) burn out at their own
-            // 200u range — tracking one of those reads as a
+            // 200u range - tracking one of those reads as a
             // vanish at ~200u. (The range test learned this first.)
             _lsProj = null;
             for (int i = before; i < _shots.Count; i++)
@@ -2700,7 +2700,7 @@ public partial class RiderDuel
         {
             // The shell now burns out at its 600u range (owner's
             // per-weapon caps), and under llvmpipe a frame can
-            // step ~100u of flight — the shell may die between
+            // step ~100u of flight - the shell may die between
             // the last sub-600 sample and the next. Judge from
             // the last live sample projected to burnout: death
             // along = along + speed x remaining life (straight
@@ -2730,10 +2730,10 @@ public partial class RiderDuel
     // in the Mission world against the stock Enyo loadout with
     // the Sarna MW4 ranges (Large Laser 600, Autocannon 600,
     // LRM 1000):
-    //   A: laser at the enemy 1074u away — no damage (600 < 1074)
-    //   B: laser at 180u — damage lands (180 < 600)
-    //   C: LRM salvo base-to-base at 1074u — clamps to 1000
-    //   D: autocannon at the sky — the shell dies at ~600u along
+    //   A: laser at the enemy 1074u away - no damage (600 < 1074)
+    //   B: laser at 180u - damage lands (180 < 600)
+    //   C: LRM salvo base-to-base at 1074u - clamps to 1000
+    //   D: autocannon at the sky - the shell dies at ~600u along
     // Aiming: the chase axis is iterated onto the enemy's chest
     // from the settled camera (3 passes), so the ray is exact.
     private float _rgT; private int _rgPhase;
@@ -2741,7 +2741,7 @@ public partial class RiderDuel
     private float _rgLastAlong; private int _rgTry;
     private bool AimAxisAt(Vector3 p)
     {
-        // Yaw is set by teleport (instant, exact — the walker's
+        // Yaw is set by teleport (instant, exact - the walker's
         // turn rate would lag a SetDrive target); pitch is then
         // iterated from the settled chase camera, whose boom
         // rides the aim axis, so three passes converge the axis
@@ -2773,7 +2773,7 @@ public partial class RiderDuel
             AimAxisAt(chest);
             _rgHp0 = _hpEnemy;
             FireLaser(TorsoAimPoint());
-            GD.Print($"RANGE A fired: dist={d0:F0} enemyHp={_rgHp0:F0} (Large Laser range 600 — must NOT reach)");
+            GD.Print($"RANGE A fired: dist={d0:F0} enemyHp={_rgHp0:F0} (Large Laser range 600 - must NOT reach)");
             _rgPhase = 1; _rgT = 0f;
         }
         else if (_rgPhase == 1 && _rgT > 0.6f)
@@ -2820,7 +2820,7 @@ public partial class RiderDuel
             // Re-stage base-to-base (1074u) for the missile
             // clamp: the LRM's Sarna range is 1000, so from the
             // home pad the salvo must fall ~74u short of the
-            // enemy base. No lane search — it just must not arrive.
+            // enemy base. No lane search - it just must not arrive.
             var homeC = PadWorld(0); homeC.Y = Main.HeightAt(homeC.X, homeC.Z);
             var baseC = PadWorld(1); baseC.Y = Main.HeightAt(baseC.X, baseC.Z);
             var dirC = (baseC - homeC); dirC.Y = 0f; dirC = dirC.Normalized();
@@ -2828,7 +2828,7 @@ public partial class RiderDuel
             _enemy.Teleport(baseC, RiderWalker.YawOf(-dirC));
             AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
             FireLrmSalvo(TorsoAimPoint());
-            GD.Print("RANGE C salvo fired base-to-base at 1074u (LRM range 1000 — must fall short)");
+            GD.Print("RANGE C salvo fired base-to-base at 1074u (LRM range 1000 - must fall short)");
             _rgPhase = 4; _rgT = 0f;
         }
         else if (_rgPhase == 4 && _rgT > 6f)
@@ -2836,13 +2836,13 @@ public partial class RiderDuel
             if (_hpEnemy < _rgHp0 - 0.01f) { GD.PrintErr("RANGE FAIL C: rockets reached past their range"); GetTree().Quit(1); return; }
             if (_rocketsLaunched == 0) { GD.PrintErr("RANGE FAIL C: no rockets launched"); GetTree().Quit(1); return; }
             GD.Print($"RANGE C PASS: {_rocketsLaunched} rockets, enemy untouched");
-            _player.AimPitchWide = 0.16f; // climbs clear of the proven laser lane — only the range cap may end this flight
+            _player.AimPitchWide = 0.16f; // climbs clear of the proven laser lane - only the range cap may end this flight
             UpdateCamera(0f);
             int before = _shots.Count;
             FireAutocannon(TorsoAimPoint());
             if (_shots.Count <= before) { GD.PrintErr("RANGE FAIL D: no shell"); GetTree().Quit(1); return; }
             // The volley also fires the rider's machine guns
-            // (85 u/s — an early run tracked one of those by
+            // (85 u/s - an early run tracked one of those by
             // mistake and watched IT burn out at its own cap).
             // Track the fast shell: the autocannon's.
             _rgShell = null;
@@ -2880,7 +2880,7 @@ public partial class RiderDuel
 
     // Terrace test (AOT_TERRATEST=1 on a terraced mission):
     // drive the player up a ramp, ride a lift, cross the
-    // bridge to the island — sole levels are the verdicts.
+    // bridge to the island - sole levels are the verdicts.
     private void UpdateTerraceTest(float dt)
     {
         _xPhaseT += dt;
@@ -2963,7 +2963,7 @@ public partial class RiderDuel
                 // a building that stands ON an L1 deck and
                 // drive straight through its XZ. The building's
                 // collision circle used to run from below the
-                // terrain to its roof — an invisible wall under
+                // terrain to its roof - an invisible wall under
                 // the deck. With the base gate the rider walks
                 // under the deck, through the building's
                 // footprint, and out the other side.
@@ -3072,7 +3072,7 @@ public partial class RiderDuel
         }
     }
 
-    // Phase 7: platform tiling invariant — sample GroundAt
+    // Phase 7: platform tiling invariant - sample GroundAt
     // on a grid inside every valley-0 platform rect; every
     // sample must read the platform top (no holes, no slits).
     // The plaza and the ground under the top platform must
@@ -3080,7 +3080,7 @@ public partial class RiderDuel
     // Phase 8 (owner: intermittent fall-through at the TOP of a
     // ramp, where it meets the higher level): instead of driving
     // the walker (stride-phase luck), sweep the exact plant
-    // geometry — for every leading-foot target around the lip and
+    // geometry - for every leading-foot target around the lip and
     // every stride length, GroundAt with the trailing foot's sole
     // as refY must return (nearly) the analytic surface. A miss
     // is a foot that would plant through the deck.
@@ -3117,13 +3117,13 @@ public partial class RiderDuel
 
     // Deck-shot proof (owner: platforms must collide with
     // weapons): the shared HitModel ray against the home L1
-    // platform — top from above, underside from below, side
+    // platform - top from above, underside from below, side
     // band from the side, a clear pass UNDER the deck, the
     // ramp slope, and a rider standing on the deck.
     // City audit (owner: "random pieces of building are
     // sticking out of the ground"): every destructible
     // building whose base sits below the terrain at its
-    // centre or corners is buried there — print them all.
+    // centre or corners is buried there - print them all.
     private void RunCityAudit()
     {
         int buried = 0, total = 0;
@@ -3186,7 +3186,7 @@ public partial class RiderDuel
         Check("side", h3.Hit && h3.Point.X <= pc.X - ph.X + 8f && Mathf.Abs(h3.Point.Y - (ptop - 1f)) < 0.6f,
             $"hit={h3.Hit} tgt={h3.Target} x={h3.Point.X:F1} want <= {pc.X - ph.X + 8f:F1}");
         // 4. Control: a shot UNDER the deck (below the band,
-        // started inside the deck's span) flies through — no
+        // started inside the deck's span) flies through - no
         // phantom slab.
         var h4 = _hit.Ray(new Vector3(pc.X - 20f, ptop - 5f, pc.Y),
             Vector3.Right, 40f, Roles.Player);
@@ -3214,7 +3214,7 @@ public partial class RiderDuel
     // Phase 17 (owner round 7: 'radar is still broken'):
     // the lab rebuilds walkers on a rider swap, so the
     // radar's walker references must be refreshed by the
-    // HUD update — poison them, update once, expect live
+    // HUD update - poison them, update once, expect live
     // references back; then assert the scope geometry
     // (dead ahead = top centre, dead right = right).
     private void RunRadarCheck()
@@ -3248,7 +3248,7 @@ public partial class RiderDuel
     }
 
     // Phase 16 (owner round 7): obstacles must block shots
-    // and the arch must be walkable — columns (movement-only
+    // and the arch must be walkable - columns (movement-only
     // before), arch pillars, the arch lintel (nothing before),
     // and the ramp wedge BAND (only the slope plane before).
     private void RunShotBlock()
@@ -3284,7 +3284,7 @@ public partial class RiderDuel
         Check("lintel-walk", Mathf.Abs(gTop - lintelTop) < 0.35f, $"groundAt={gTop:F2} want {lintelTop:F2}");
         // Approach along the road (the lintel's long face):
         // from beside the pass the hillside itself is in the
-        // way — that is terrain doing its job, not a gap.
+        // way - that is terrain doing its job, not a gap.
         var hl = _hit.Ray(new Vector3(amid.X - adir.X * 8.5f, atop + 1.7f, amid.Y - adir.Y * 8.5f),
             new Vector3(adir.X, 0f, adir.Y), 30f, Roles.Player);
         Check("lintel-band", hl.Hit && hl.Target == Roles.Terrain && Mathf.Abs(hl.T - 6.0f) < 1.1f,
@@ -3346,7 +3346,7 @@ public partial class RiderDuel
     private float _bkMaxRoot; private bool _bkOnDeck; private float _bkMaxHead;
     private int _lpCyc; private bool _lpUp; private int _lpFalls; private float _lpLogT; // phase 8: ramp-lip crossing probe (owner fall-through report)
     private float _rsMinPerp; private Vector2 _rsPerp, _rsCentre;
-    private void UpdateRampSideTest(float dt) // phase 13: drive at a ramp's side — the wedge must be solid (owner, 2026-11-11)
+    private void UpdateRampSideTest(float dt) // phase 13: drive at a ramp's side - the wedge must be solid (owner, 2026-11-11)
     {
         _player.SetDrive(RiderWalker.YawOf(new Vector3(-_rsPerp.X, 0f, -_rsPerp.Y)), 3.2f);
         var rel = new Vector2(_player.RootPos.X, _player.RootPos.Z) - _rsCentre;
@@ -3369,7 +3369,7 @@ public partial class RiderDuel
     // Phase 14: thruster flight discipline (owner rounds 4-5).
     // THREE burn cycles with the drive held: no step may
     // complete while airborne, and the rider must come back
-    // to the ground after every cycle — round 5's 'fly to
+    // to the ground after every cycle - round 5's 'fly to
     // outer space and never land' regression (the rigid
     // foot-carry pumped the root's ground reference through
     // DesiredRootY) is exactly what the altitude terms
@@ -3381,7 +3381,7 @@ public partial class RiderDuel
     {
         _xPhaseT += dt;
         _player.SetDrive(0f, 3.6f);
-        if (_xPhaseT > 15f) // 15s: llvmpipe dt quanta halve the effective stride speed (~1.9 u/s measured) — the pass line needs ~10s
+        if (_xPhaseT > 15f) // 15s: llvmpipe dt quanta halve the effective stride speed (~1.9 u/s measured) - the pass line needs ~10s
         {
             float z = _player.RootPos.Z;
             GD.Print($"UNDERDECK rootZ={z:F1} targetZ={_udTarget.Y:F1} sole={_player.SoleLevel:F1}");
@@ -3463,7 +3463,7 @@ public partial class RiderDuel
         foreach (var r in rows)
             GD.Print($"TRILIST total={r.T} count={r.C} each={r.E} {r.K}");
     }
-    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block — root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
+    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block - root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
     {
         if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
         _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f);
@@ -3486,7 +3486,7 @@ public partial class RiderDuel
                 if (pen > _bwFootPen) _bwFootPen = pen;
             }
         }
-        if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only — steps AFTER this are the march metric
+        if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only - steps AFTER this are the march metric
         if (_xPhaseT > 10.5f && !_bwShot)
         {
             _bwShot = true;
@@ -3539,7 +3539,7 @@ public partial class RiderDuel
         }
         // Phase 5: climb the test ramp on a DIAGONAL line
         // (aim 5u off the corridor centre) and track the worst
-        // dip of the sole below the ramp's analytic height —
+        // dip of the sole below the ramp's analytic height -
         // the owner's fall-through: feet leaving a narrow
         // corridor and grounding far below.
         var perp = new Vector2(-TestRampDir.Y, TestRampDir.X);
@@ -3591,7 +3591,7 @@ public partial class RiderDuel
         {
             // Patrol phase: the player holds at home, 1074u away.
             // Both defenders must MOVE (patrol) yet STAY at their
-            // own bases — the old march assertion is inverted.
+            // own bases - the old march assertion is inverted.
             _player.SetDrive(_playerYaw, 0f);
             UpdateEnemyAI(dt);                 // test branches drive the AI themselves (cf. FFA test)
             if (_foe != null) UpdateFoeAI(dt);
@@ -3604,7 +3604,7 @@ public partial class RiderDuel
                 if (_mMaxDisp < 10f) { GD.PrintErr("MISSION FAIL: enemy did not patrol"); GetTree().Quit(1); return; }
                 if (_mMaxHome > 130f || _mMaxHomeF > 130f) { GD.PrintErr("MISSION FAIL: a defender left its base"); GetTree().Quit(1); return; }
                 // Aggro phase: put the player 190u from the enemy
-                // base — inside the 260u aggro ring — and watch the
+                // base - inside the 260u aggro ring - and watch the
                 // defender come out to fight.
                 var home = PadWorld(1);
                 var dirIn = (Vector3.Zero - home); dirIn.Y = 0f; dirIn = dirIn.Normalized();
@@ -3704,7 +3704,7 @@ public partial class RiderDuel
                     _tPhase = 99;
                 }
                 break;
-            case 3: // RUN: full run-mode speed (walk x RunFactor) — gait must hold.
+            case 3: // RUN: full run-mode speed (walk x RunFactor) - gait must hold.
                     // Speed is judged on the steady-state segment (after the
                     // 4.2 u/s^2 acceleration ramp), not the whole window.
                 _player.SetDrive(0f, _playerSpec.MaxSpeed * RunFactor);
@@ -3737,7 +3737,7 @@ public partial class RiderDuel
                     _tPhase = 4; _tPhaseT = 0;
                 }
                 break;
-            case 4: // FLY: hold-to-thrust — burn, flyover, descent, partial burn, recharge.
+            case 4: // FLY: hold-to-thrust - burn, flyover, descent, partial burn, recharge.
                 if (_tJumpStage == 1) ApplyPlayerInput(0.016f, true, false, false, false, false); // W held: drive + jet push
                 else _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
@@ -3766,7 +3766,7 @@ public partial class RiderDuel
                             _tJumpStage = 1;
                         }
                         break;
-                    case 1: // full burn, W held — climb past enemy height while the jets push forward
+                    case 1: // full burn, W held - climb past enemy height while the jets push forward
                         if (!_tParked && _player.JumpHeight > 12f)
                         {
                             _tJumpXZ = new Vector2(_player.RootPos.X, _player.RootPos.Z);
@@ -3833,11 +3833,11 @@ public partial class RiderDuel
 
     // Photoreal probe driver: settle, capture the overview and the
     // ground frame, report draw calls / primitives / fps (fps on
-    // this GPU-less VM is llvmpipe software rendering — the number
+    // this GPU-less VM is llvmpipe software rendering - the number
     // that matters is measured on the owner's laptop).
     // TEMP probe (square-grass report): census the hero-clump
-    // MultiMesh — which sub-mesh it carries, its AABB and tri
-    // count — then capture one instance close, from directly
+    // MultiMesh - which sub-mesh it carries, its AABB and tri
+    // count - then capture one instance close, from directly
     // above, and the field from a chase-like elevation.
     private void UpdateGrassShot(float dt)
     {
@@ -3892,7 +3892,7 @@ public partial class RiderDuel
                 {
                     long draws = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame);
                     long prims = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame);
-                    GD.Print($"PHOTO STATS drawCalls={draws} primitives={prims} avgFps={(_fpsN > 0 ? _fpsSum / _fpsN : 0f):F1} (llvmpipe — not representative)");
+                    GD.Print($"PHOTO STATS drawCalls={draws} primitives={prims} avgFps={(_fpsN > 0 ? _fpsSum / _fpsN : 0f):F1} (llvmpipe - not representative)");
                     GD.Print("PHOTO DONE");
                     GetTree().Quit();
                 })));

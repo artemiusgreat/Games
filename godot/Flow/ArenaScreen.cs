@@ -1,9 +1,9 @@
 using Godot;
 
-// Wizard step 2 (Tournament, owner — teams stage): pick the
+// Wizard step 2 (Tournament, owner - teams stage): pick the
 // arena. Left: the info slider (the arena selector with its
 // briefing on a monitor); right: the arena visualized top-down.
-// The three arenas are predefined maps — desert, forest, city —
+// The three arenas are predefined maps - desert, forest, city -
 // with Greek names (owner). Menu: [Back] [Continue].
 public partial class ArenaScreen : Control
 {
@@ -27,7 +27,7 @@ public partial class ArenaScreen : Control
             Name = "Forest",
             Sub = "Woodland hills · Tree cover · Broken sightlines",
             Desc = "Rolling woodland. Tree crowns stop shells and break every " +
-                   "sightline — but a trunk falls to a touch, so cover is spent " +
+                   "sightline - but a trunk falls to a touch, so cover is spent " +
                    "as the fight goes."
         },
         new()
@@ -170,7 +170,7 @@ public partial class ArenaScreen : Control
         _arenaName.Text = a.Name;
         var bt = BiomeText(a.Biome);
         _arenaBody.Text =
-            $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: 260u\nFormat: Team battle — teams are formed on the next step\n" +
+            $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: 260u\nFormat: Team battle - teams are formed on the next step\n" +
             $"Purse: Last team standing\n\n{bt.Desc}";
         _view.Texture = FlowUi.ArenaTexture(512, (int)a.Biome);
     }

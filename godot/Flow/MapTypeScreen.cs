@@ -66,7 +66,7 @@ public partial class MapTypeScreen : Control
         cards.AddChild(Card(
             "TOURNAMENT", "SELECT YOUR CHAMPION",
             "res://assets/flow/card_tournament.jpg",
-            "Arena duel on a compact battlefield. Three riders enter — one leaves. " +
+            "Arena duel on a compact battlefield. Three riders enter - one leaves. " +
             "The classic test of machine and pilot, fought around the mesa under tournament rules.",
             "ENTER TOURNAMENT", featured: true, icon: CardIcon.Kind.Compass,
             go: () => OnTournament?.Invoke()));
@@ -102,7 +102,7 @@ public partial class MapTypeScreen : Control
     // height is what's left of the card after the fixed
     // interior (card margins 62, separations 70, header 56,
     // rule 2, spacer 4, action bar 50) and the description's
-    // height — the first cut scaled the art by a ratio of the
+    // height - the first cut scaled the art by a ratio of the
     // card height and the interior overflowed at short
     // windows, pushing the action bar past the card's bottom
     // edge over the telemetry line (owner's screenshot,
@@ -242,13 +242,13 @@ public partial class MapTypeScreen : Control
 
         // Fixed 4px spacer (owner's rule): with the two 14px
         // separations around it, the gap between the text and
-        // the button is 32 — exactly the button's bottom
+        // the button is 32 - exactly the button's bottom
         // margin to the card's lower edge. Leftover height
         // goes to the art (ExpandFill), never to this gap.
         var spacer = new Control { CustomMinimumSize = new Vector2(0f, 4f) };
         v.AddChild(spacer);
 
-        // Action bar: a chamfered plate — solid gold on the
+        // Action bar: a chamfered plate - solid gold on the
         // featured card, dark with a steel frame on the other.
         var barWrap = new Control { CustomMinimumSize = new Vector2(0f, 50f) };
         v.AddChild(barWrap);
@@ -299,7 +299,7 @@ public partial class MapTypeScreen : Control
 // its four corners cut at 45 degrees, drawn as a filled
 // polygon with a stroked frame. State colours are set by the
 // owning button. When focused, a second frame is drawn a few
-// pixels outside the first — the keyboard focus indicator.
+// pixels outside the first - the keyboard focus indicator.
 public partial class CutPanel : Control
 {
     public float Cut = 16f;
@@ -347,7 +347,7 @@ public partial class CutPanel : Control
 }
 
 // The screen's instrument frame: a hairline border inset
-// from the window edge with gold corner brackets — the
+// from the window edge with gold corner brackets - the
 // control-panel bezel the cards sit inside.
 public partial class DeckFrame : Control
 {
@@ -379,7 +379,7 @@ public partial class DeckFrame : Control
 
 // The cards' line icons, drawn as vector strokes (no glyph
 // fonts): a compass rose for Tournament, a targeting reticle
-// for Mission — the concept's two marks.
+// for Mission - the concept's two marks.
 public partial class CardIcon : Control
 {
     public enum Kind { Compass, Target }

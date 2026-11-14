@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 // RiderDuel module: procedural sound: loading, the player pool, footsteps.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
     // ---- sound (round 21, owner): fully procedural WAVs in
-    // assets/sfx (make_sfx.py — no external samples), played
+    // assets/sfx (make_sfx.py - no external samples), played
     // through a small pool of 3D players so distance attenuates.
     private AudioStream _sfxLaser, _sfxCannon, _sfxRocket, _sfxHit, _sfxTree, _sfxExplosion, _sfxStepA, _sfxStepB;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();

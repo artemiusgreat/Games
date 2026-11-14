@@ -4,7 +4,7 @@ using Godot;
 // the same day to NON-LINEAR): all three planets are visible
 // from the start, but each planet shows only its first
 // mission. Completing a mission unlocks the next mission ON
-// THAT PLANET — the planets progress independently, in any
+// THAT PLANET - the planets progress independently, in any
 // order the player chooses. Progress persists between
 // sessions in user://story_progress.cfg (one unlocked-count
 // per planet, comma-separated).

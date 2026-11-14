@@ -1,4 +1,4 @@
-# Flax 1.13.7012 — notes
+# Flax 1.13.7012 - notes
 
 ## Verdict
 Code complete and **compiling clean for both Game and GameEditor targets** via
@@ -13,12 +13,12 @@ project) is an editor function.
   Extracted to `_tools/flax-1.13/` (617 MB). No account, no installer.
 - Requirements met: .NET 10 SDK, Vulkan (llvmpipe), libcurl present.
 
-## BLOCKER — editor crashes at startup on this VM
+## BLOCKER - editor crashes at startup on this VM
 `FlaxEditor` (tried Development, Release, and Debug configs; with/without Xvfb;
 `-headless`, `-null` renderer, `-CoreLimit=1`, `MALLOC_CHECK_=0`, GC heap caps)
 aborts within ~0.03–1.5 s with glibc heap assertions:
 `malloc(): corrupted top size` / `malloc(): invalid size (unsorted)` /
-`Fatal glibc error: malloc.c:2599 (sysmalloc)` — during engine Content asset
+`Fatal glibc error: malloc.c:2599 (sysmalloc)` - during engine Content asset
 registration, right after hostfxr load. `ldd` clean (no missing libs).
 VM context: 7.9 GB RAM total but ~7.5 GB already committed by other tenants
 (~0.5 GB available, ~1 GB of the 4 GB commit limit free; FlaxGame itself
@@ -55,13 +55,13 @@ therefore impossible; scaffolded from the official BasicTemplate sample instead
 - Color: one parameterized base material (copied from the FPS template sample)
   + per-object `MaterialInstance` tints in code (`Entries[0].Material` accepts
   `MaterialBase`). The tint loop sets any parameter named Color/Base Color/
-  Albedo — **the one runtime-unverified bit**: if the shipped base material
+  Albedo - **the one runtime-unverified bit**: if the shipped base material
   names its color parameter differently, objects render in its default color
   until the name is matched.
 - Terrain winding: Flax is left-handed and the docs specify **clockwise**
   triangles; used (a,b,c),(b,d,c). If the terrain ever renders inside-out on a
-  real machine, flip the index order — flagged as the second unverified bit.
-- Player: height sampling (same call as Stride — Flax has a CharacterController
+  real machine, flip the index order - flagged as the second unverified bit.
+- Player: height sampling (same call as Stride - Flax has a CharacterController
   but it needs cooked collider surfaces; sampling is less code and zero-risk).
   Named input axes: `Input.GetAxis("Horizontal"/"Vertical"/"Mouse X")`;
   run = `KeyboardKeys.Shift`; exit = `Engine.RequestExit()`.
@@ -73,5 +73,5 @@ therefore impossible; scaffolded from the official BasicTemplate sample instead
 ## To run this on a normal machine
 1. Install Flax 1.13 (launcher or the same zips).
 2. If building via CLI, recreate the symlink bridge above (or just open the
-   project in the editor once — the editor generates everything itself).
+   project in the editor once - the editor generates everything itself).
 3. Build & Run; for the smoke test pass `--walk-test`.

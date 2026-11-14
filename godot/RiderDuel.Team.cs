@@ -7,7 +7,7 @@ using System.Linq;
 // Story) takes the field in missions: the leader is the rider
 // the player drives (the plain _player state, exactly as
 // before teams existed); every other member is an NPC teammate
-// — an Ally record below, driven by the shared foe brain under
+// - an Ally record below, driven by the shared foe brain under
 // the current team order (RiderDuel.TeamAi.cs).
 //
 // Solo missions (a one-rider roster) build no allies and play
@@ -16,7 +16,7 @@ using System.Linq;
 // two/three-rider fields.
 public partial class RiderDuel
 {
-    // One NPC teammate. Mirrors the Foe record's shape — the
+    // One NPC teammate. Mirrors the Foe record's shape - the
     // shared AI/gunnery/damage code dispatches on walker
     // identity, and allies join those dispatches through the
     // AllyOf* helpers below.
@@ -53,7 +53,7 @@ public partial class RiderDuel
 
     // Tournament bracket state (Stage D3): the two AI seats
     // carry team indices (the classic arena fields them as
-    // teams 1 and 2 — the free-for-all; in missions both
+    // teams 1 and 2 - the free-for-all; in missions both
     // defenders are team 1, one guard side). When a bracket is
     // active the seats HOST bracket members: the enemy seat is
     // team 1's first rider, the foe seat the next opposing
@@ -66,7 +66,7 @@ public partial class RiderDuel
     private int _foeMemberTeam = 2;
 
     // Tournament (Stage D3c): the arena is decided when
-    // exactly one team still fields a living rider —
+    // exactly one team still fields a living rider -
     // announced in the feed once; the fight itself plays on
     // (Esc / R leave or reset it, as always).
     private void CheckBracketEnd()
@@ -81,7 +81,7 @@ public partial class RiderDuel
         _bracketDecided = true;
         int win = 0;
         foreach (var t in living) win = t;
-        AddFeed(win == 0 ? "YOUR TEAM — LAST TEAM STANDING" : $"TEAM {win + 1} — LAST TEAM STANDING");
+        AddFeed(win == 0 ? "YOUR TEAM - LAST TEAM STANDING" : $"TEAM {win + 1} - LAST TEAM STANDING");
     }
 
     // Which team a walker fights for: the driven rider is
@@ -94,8 +94,8 @@ public partial class RiderDuel
 
     // One opposing rider for targeting purposes (the Tab
     // cycle, the HUD's active-enemy bar, the allies' target
-    // pool): the enemy seat, the foe seat when built, then —
-    // in Tournament — every hostile NPC record. In missions
+    // pool): the enemy seat, the foe seat when built, then -
+    // in Tournament - every hostile NPC record. In missions
     // this is exactly the two defender seats it has always
     // been. The list is a shared scratch buffer: consume it
     // immediately, never hold it across calls.
@@ -150,7 +150,7 @@ public partial class RiderDuel
 
     private bool TeamAlive => !_playerDead || _allies.Any(a => !a.Dead);
 
-    // The living team rider nearest a point — the defenders'
+    // The living team rider nearest a point - the defenders'
     // engagement reference (a solo team resolves to the player,
     // the pre-teams behaviour exactly).
     private RiderWalker NearestTeamWalker(Vector3 from)
@@ -171,7 +171,7 @@ public partial class RiderDuel
         return best;
     }
 
-    // Parts registry by combat role — the hit model's resolver
+    // Parts registry by combat role - the hit model's resolver
     // delegates read through here, so a leader swap only has to
     // move state between the player fields and one Ally record;
     // the roles follow the seats automatically.
@@ -194,7 +194,7 @@ public partial class RiderDuel
 
     // One NPC record, fully built: walker, parts registry,
     // pool, and the lab loadout's ballistic weapon for the
-    // shared AI gunnery — the same rule the foe fights by.
+    // shared AI gunnery - the same rule the foe fights by.
     private Ally MakeAlly(TeamMember member, string role, int slot, int team,
         Vector3 pos, float yaw, string nodeName)
     {
@@ -249,12 +249,12 @@ public partial class RiderDuel
         if (_allies.Count > 0) GD.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
     }
 
-    // The lab edits the roster AFTER _Ready built the team —
+    // The lab edits the roster AFTER _Ready built the team -
     // members added there never took the field and the player
     // deployed alone (owner's bug report, 2026-11-14). At
     // DEPLOY the NPC team is rebuilt from the roster as it now
     // stands, unless it already matches exactly (same leader
-    // slot, same members by spec and loadout reference — the
+    // slot, same members by spec and loadout reference - the
     // lab mutates a member's loadout in place, so loadout
     // edits alone never force a rebuild).
     private void RebuildAlliesForDeploy()
@@ -329,7 +329,7 @@ public partial class RiderDuel
     // Take command of a teammate (owner, teams stage step 4):
     // the player drives the chosen rider; the previously driven
     // rider becomes an NPC in the freed seat. State moves
-    // between the player fields and the Ally record — walkers
+    // between the player fields and the Ally record - walkers
     // and parts objects never move, so every closure and
     // registry keyed on them (part-break handlers, hit
     // resolvers) stays correct; the roles follow the seats.
@@ -384,10 +384,10 @@ public partial class RiderDuel
         if (next == null) return;
         string fell = _playerSpec.Name;
         if (SetLeader(next.Slot))
-            AddFeed($"{fell} DESTROYED — {next.Spec.Name} TAKES COMMAND");
+            AddFeed($"{fell} DESTROYED - {next.Spec.Name} TAKES COMMAND");
     }
 
-    // R reset: teammates restored with everyone else — full
+    // R reset: teammates restored with everyone else - full
     // pools, parts restored, back on their muster points.
     private void ResetAllies(bool live)
     {

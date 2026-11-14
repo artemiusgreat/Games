@@ -1,6 +1,6 @@
 // One home for the values that repeat across the engine's
 // files (owner: no magic strings or numbers scattered through
-// the code). Pure data — no engine references, like the rest
+// the code). Pure data - no engine references, like the rest
 // of the Data folder, so every subsystem reads the same values.
 
 /// <summary>
@@ -16,7 +16,7 @@ public static class Roles
     public const string Foe = "FOE";
     // Story team (owner, teams stage): an NPC teammate's role
     // is the prefix + its roster slot ("ALLY1", "ALLY2", ...).
-    // Roles attach to the NPC seat, not the rider — when the
+    // Roles attach to the NPC seat, not the rider - when the
     // player takes command of a teammate, that walker becomes
     // Roles.Player and the old leader takes the freed seat's
     // role.
@@ -29,7 +29,7 @@ public static class Roles
 /// Aim-cast reaches (world units). ConvergenceRange is the
 /// crosshair's close cast: inside it, the aim point is the
 /// cast's hit exactly. FarRange is the far cast and the HUD
-/// rangefinder's reach — what weapons converge on when the
+/// rangefinder's reach - what weapons converge on when the
 /// crosshair rests past the close cast, out to the Mission
 /// world's long sightlines.
 /// </summary>
@@ -49,13 +49,13 @@ public static class CamModes
 /// The well-known hardpoint ids. Each rider's Slots table in
 /// the roster data defines which of these it actually carries
 /// (and their capacities); engine code that dispatches on a
-/// hardpoint — muzzle resolution, pod lookup — reads these
+/// hardpoint - muzzle resolution, pod lookup - reads these
 /// constants instead of spelling the ids itself. The same ids
 /// key the breakable-parts layouts.
 /// </summary>
 /// <summary>
 /// Part-break rules (owner, 2026-11-12): a rider cannot lose
-/// an ARM while its body is sound — early arm loss wrecked
+/// an ARM while its body is sound - early arm loss wrecked
 /// the opening of a duel. Arm parts take damage as normal,
 /// but the break itself is gated: an arm comes off only
 /// once the main pool is at or below this fraction. (Legs

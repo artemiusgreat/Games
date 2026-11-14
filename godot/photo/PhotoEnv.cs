@@ -2,7 +2,7 @@ using Godot;
 using System.Collections.Generic;
 
 // Photoreal probe environment (owner ask, 2026-10-29): the duel's
-// world rebuilt from CC0 photogrammetry — Poly Haven texture sets
+// world rebuilt from CC0 photogrammetry - Poly Haven texture sets
 // splat-blended over the SAME heightfield, scanned tree/rock models
 // at the SAME prop positions, an instanced grass field, and a
 // mountain backdrop. Everything here is visual only: HeightAt,
@@ -83,7 +83,7 @@ uniform vec4 asph_tint : source_color = vec4(1.0);
 // inside a zone (xy = centre XZ, z = radius, w = strength)
 // the splat's rock/grass/dirt weights freeze to the zone
 // centre's own mix, so the patch and paving noise that
-// read as blotches/checkerboard cannot vary the surface —
+// read as blotches/checkerboard cannot vary the surface -
 // while the detail textures, normals and road weight stay
 // fully live. The ground is the same material as anywhere
 // else; it just stops changing its recipe mid-valley.
@@ -163,7 +163,7 @@ void fragment() {
                     Mathf.Abs(Main.HeightAt(x + e, z) - h),
                     Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e; // rise per unit
                 // Blurry-cloud variation (owner, 2026-11-12):
-                // the ground must carry NO obvious shapes — no
+                // the ground must carry NO obvious shapes - no
                 // blotches, no stripes, no rims. Every weight
                 // below therefore crosses a WIDE smoothstep at
                 // reduced strength, so the recipe drifts like
@@ -175,18 +175,18 @@ void fragment() {
                             + ValueNoise(x * 0.09f, z * 0.09f) * 0.15f;
                 // Rock is a SLOPE material only (owner,
                 // 2026-11-11 round 7: 'ground should not
-                // look the same as mountains — the grass/
+                // look the same as mountains - the grass/
                 // stone mix should end where the mountain
                 // goes into the ground'). The old height
                 // term (+0.7 above h=13) dragged stone onto
-                // every elevated flat — the pass floors wore
+                // every elevated flat - the pass floors wore
                 // the mountain's face. Steep faces keep it.
                 float rock = Mathf.SmoothStep(0.30f, 0.62f, slope);
                 float dirt = Mathf.SmoothStep(0.30f, 0.85f, patch) * 0.6f * (1f - rock);
                 float grass = Mathf.Max(0f, 1f - rock - dirt);
                 // No full-strength core on the road either
                 // (splat audit, 2026-11-12: the +-1.4u plateau
-                // still drew a bright stripe down its middle) —
+                // still drew a bright stripe down its middle) -
                 // a pure gradient from a 0.65 peak, gone by
                 // 7.5u. The district streets drop to a faint
                 // wash: at full strength their grid lattice IS
@@ -194,8 +194,8 @@ void fragment() {
                 float road = (1f - Mathf.SmoothStep(0f, 7.5f, Main.RoadDistance(x, z))) * 0.65f;
                 float street = (1f - Mathf.SmoothStep(2f, 16f, Main.DistrictStreetDistance(x, z))) * 0.3f;
                 // Plaza carve (splat audit round 2): the open
-                // ground around a pad — the patrol plaza where
-                // fights happen — carries no street wash at
+                // ground around a pad - the patrol plaza where
+                // fights happen - carries no street wash at
                 // all; the lattice there was the last crisp
                 // pattern left in the weights. Streets fade
                 // back in between 58u and 92u from a pad.
@@ -209,7 +209,7 @@ void fragment() {
                 road = Mathf.Max(road, street);
                 // Biome weights (owner's map types): the desert
                 // runs sand (dirt channel, tinted) with only a
-                // scrub of grass; the city paves its blocks —
+                // scrub of grass; the city paves its blocks -
                 // asphalt spreads by coarse blocks over flat
                 // ground, grass all but vanishes.
                 if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
@@ -227,9 +227,9 @@ void fragment() {
                 }
                 // City district ground stays UNIFORM (owner,
                 // 2026-11-11 round 5: the checkerboard comes
-                // out everywhere): the old plot/lane split —
+                // out everywhere): the old plot/lane split -
                 // dirt plots against asphalt lanes on the 32u
-                // grid — read as a crisp checkerboard wherever
+                // grid - read as a crisp checkerboard wherever
                 // no buildings covered it, worst across the
                 // emptied home valley. No district term: the
                 // ground flows on the smooth patch field like
@@ -271,7 +271,7 @@ void fragment() {
         if (WorldConfig.SnowGround)
         {
             // Snow cover (owner): the ground matches a snowy
-            // sky — every channel lifts to blue-white snow,
+            // sky - every channel lifts to blue-white snow,
             // asphalt stays a paler plowed grey.
             gt = new Color(1.55f, 1.65f, 1.95f); dt = new Color(1.45f, 1.55f, 1.85f);
             rt = new Color(1.35f, 1.45f, 1.75f); at = new Color(1.05f, 1.12f, 1.30f);
@@ -279,7 +279,7 @@ void fragment() {
         // Uniform ground zones (owner round 6, corrected
         // round 7): on mission city maps the valley floors
         // (and the Gate City disc) freeze their splat
-        // recipe to the pad centre's mix in the shader —
+        // recipe to the pad centre's mix in the shader -
         // same ground as everywhere else, minus the patch
         // blotches. (Round 6 first rendered them as one
         // flat colour: a blue plastic sheet. Replaced.)
@@ -351,7 +351,7 @@ void fragment() {
     }
 
     // Photographic wall sets (Poly Haven, CC0): one per
-    // building variant — the photoreal pass (owner, 2026-11-07)
+    // building variant - the photoreal pass (owner, 2026-11-07)
     // so buildings stop sharing a single concrete block.
     private static readonly string[] WallSets =
     {
@@ -398,7 +398,7 @@ void fragment() {
         List<(Vector2 P, float R)> props)
     {
         // Scanned hero clumps ONLY (the full grass patch, 24.7k
-        // tris, used sparingly — 320 instances ≈ 8M tris). The
+        // tris, used sparingly - 320 instances ≈ 8M tris). The
         // blade-card layer (60k crossed-quad tufts) was REMOVED
         // at the owner's word (2026-10-31): the crossed quads
         // read as intersecting flat planes, worst of all where
@@ -465,7 +465,7 @@ void fragment() {
                 Multimesh = hmm,
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             });
-            GD.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed — owner)");
+            GD.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed - owner)");
         }
     }
 
@@ -541,7 +541,7 @@ void fragment() {
         var rng = new RandomNumberGenerator { Seed = 90210 };
         // The City biome gets NO peak ring (owner's report,
         // 2026-11-14: Polis read as spawning inside a mountain
-        // — the twelve craggy cones ringed the arena while the
+        // - the twelve craggy cones ringed the arena while the
         // biome's own backdrop rule below already gives the
         // city no ring at all; the cones also contradicted the
         // map's identity: a dead city, not a crater).
@@ -570,11 +570,11 @@ void fragment() {
         // Backdrop ring by biome: forest keeps its tree ring
         // (visual only; on the Mission front it rings the rim),
         // the desert gets bare rock outcrops; the city gets no
-        // ring (owner: no procedural buildings outside the map —
+        // ring (owner: no procedural buildings outside the map -
         // every city building is a gameplay building inside it).
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
         {
-            GD.Print("PHOTO backdrop: apron only (city — no ring, no peaks)");
+            GD.Print("PHOTO backdrop: apron only (city - no ring, no peaks)");
             return;
         }
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
@@ -618,7 +618,7 @@ void fragment() {
         // Optimization #2 (owner): fewer, cheaper cascades + probe
         // occlusion; convergence cost is spread thinner, which
         // flattens frame times. Quality at arena scale is unchanged
-        // in practice — 4 cascades cover 170u comfortably.
+        // in practice - 4 cascades cover 170u comfortably.
         env.SdfgiCascades = WorldConfig.IsMission ? 6 : 4;
         env.SdfgiUseOcclusion = true;
         env.SdfgiMinCellSize = 0.35f;
@@ -639,8 +639,8 @@ void fragment() {
         env.GlowIntensity = 0.15f;
         env.GlowStrength = 0.7f;
         // Look pass (owner: fog + bright light overilluminated the
-        // scene). The wash came from stacked ambient terms — sky
-        // ambient 0.42 + full-strength SDFGI bounce + bright fog —
+        // scene). The wash came from stacked ambient terms - sky
+        // ambient 0.42 + full-strength SDFGI bounce + bright fog -
         // so the fix is to let the SUN carry the image and deepen
         // everything else: lower exposure, weaker ambient and
         // bounce, darker fog, and a gentle filmic contrast/

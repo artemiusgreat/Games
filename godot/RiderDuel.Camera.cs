@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 // RiderDuel module: capture pipeline and the proof/live camera modes.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
@@ -33,7 +33,7 @@ public partial class RiderDuel
         {
             GD.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
-            // actual view) before quitting — framing proof for cam changes.
+            // actual view) before quitting - framing proof for cam changes.
             QueueCapture("res://proof/duel_chase.png", CamModes.Chase, CamModes.Chase);
         }
         else if (tag == CamModes.Chase)
@@ -75,7 +75,7 @@ public partial class RiderDuel
         else if (_camMode == "blockedcam")
         {
             // Beside the blocked-walk test rider, at hip
-            // height: the marching pose reads here — feet
+            // height: the marching pose reads here - feet
             // under the body, normal cycle (AOT_TERRATEST=12).
             var p = _player.RootPos;
             _cam.GlobalPosition = p + new Vector3(-21f, 9f, 17f);
@@ -105,7 +105,7 @@ public partial class RiderDuel
         {
             // High south-west of the HOME pad, looking across
             // its valley: since round 3 the home valley must
-            // read as a FLAT ground-level city — no platforms,
+            // read as a FLAT ground-level city - no platforms,
             // ramps or island (AOT_TERRATEST=11).
             var hp = Main.SpawnPads[0];
             _cam.GlobalPosition = new Vector3(hp.X - 150f, 62f, hp.Y + 150f);
@@ -116,7 +116,7 @@ public partial class RiderDuel
             // On the road at the home->pad2 saddle, rider
             // height, looking along the road through the arch
             // (owner round 7: the pass floor must not wear
-            // the mountain's grass/stone mix — the mix ends
+            // the mountain's grass/stone mix - the mix ends
             // where the slope meets the ground).
             var a = Main.SpawnPads[0]; var b = Main.SpawnPads[1];
             var mid = (a + b) * 0.5f;
@@ -129,7 +129,7 @@ public partial class RiderDuel
         {
             // Gate City sky check (owner: 'Saturn ring still
             // broken'): from the home base, pitched up at the
-            // ringed planet's azimuth — the planet rides ~124
+            // ringed planet's azimuth - the planet rides ~124
             // degrees clockwise from panorama centre; in the
             // mission world that bearing lands past pad 2, so
             // aim from pad 0 toward pad 2 and tilt up.
@@ -298,7 +298,7 @@ public partial class RiderDuel
         {
             // Boom framing (round 28, owner: "the player's rider
             // should be always visible"): the camera rides a boom
-            // ON the aim axis — anchored above the rider's head,
+            // ON the aim axis - anchored above the rider's head,
             // positioned behind the anchor along the aim direction.
             // The boom rotates rigidly with the aim pitch, so the
             // rider's framing is the same at EVERY pitch: it hangs
@@ -307,7 +307,7 @@ public partial class RiderDuel
             // frame. (Round 27's fixed high perch pitched the view
             // along the mouse but left the camera in place, so
             // looking up dropped the rider out of the bottom of
-            // the frame — the owner's report.) Centered, no
+            // the frame - the owner's report.) Centered, no
             // sideways offset (owner, round 12); distances scale
             // with the chassis height, as before.
             float k = _playerSpec.Height / 13f;
@@ -323,7 +323,7 @@ public partial class RiderDuel
             // up-pitch swings the boom down behind the rider;
             // where the full boom would sink it into the ground,
             // shorten the boom instead of lifting the camera off
-            // the axis — the camera stays ON the aim line (the
+            // the axis - the camera stays ON the aim line (the
             // rider centered on it, seen from below) down to the
             // last length that keeps it above the terrain under
             // the anchor. The floor clamp below stays as a
@@ -335,7 +335,7 @@ public partial class RiderDuel
                 boom = Mathf.Min(boom, Mathf.Max(8f * k, clearance / aimDir.Y));
             }
             // Occlusion pull-in: never let an obstacle behind
-            // the rider hide it — backed against a building and
+            // the rider hide it - backed against a building and
             // pitching up, the boom left the camera just behind
             // the roofline, and the rider vanished behind the
             // facade (owner's repeated report; reproduced by
@@ -343,9 +343,9 @@ public partial class RiderDuel
             // peeking over the roof). The axis ray alone misses
             // this: it clears the roof by a hair while the sight-
             // lines into the rider's mass cross the wall. So the
-            // boom is tested twice — on the axis and 0.35 heights
+            // boom is tested twice - on the axis and 0.35 heights
             // below it, bracketing the sight-line bundle into the
-            // rider — and pulls in to the nearest blocker. (A
+            // rider - and pulls in to the nearest blocker. (A
             // ground-level third ray was tried and dropped: it
             // false-fired on terrain undulation and collapsed
             // the boom onto the rider.) The pull-in slides along
@@ -365,14 +365,14 @@ public partial class RiderDuel
                 // Blocked. First try lifting the camera over the
                 // obstacle: the framing survives, the whole rider
                 // stays in view over the roofline, and the
-                // crosshair's line is unaffected — the convergence
+                // crosshair's line is unaffected - the convergence
                 // cast always starts at the real camera position.
                 // (Pulling straight in was tried first: at the
                 // resulting ~9u boom the rider jammed against the
                 // frame's bottom edge, mostly behind the panel.)
                 bool cleared = false;
                 // Probes: head and chest. The feet are not a
-                // probe — a roofline between the camera and the
+                // probe - a roofline between the camera and the
                 // rider legitimately hides the legs (the same
                 // compromise as the steep-pitch envelope), while
                 // head + torso in view is the rider being visible.
@@ -405,19 +405,19 @@ public partial class RiderDuel
             // No position smoothing (owner, round 29): the
             // camera sits exactly on the boom target every
             // frame. The exponential glide this replaces (rate
-            // 6/s) trailed every mouse flick — measured by
+            // 6/s) trailed every mouse flick - measured by
             // --lag-check on the old code: one frame after a
             // hard flick the camera was still 24.6u short of
             // its target and needed 62 frames (~1s) to settle,
             // so the world kept panning after the mouse had
             // stopped, which read as the (fixed) crosshair
-            // still moving — jittery aim. The aim state is set
+            // still moving - jittery aim. The aim state is set
             // directly by the input events; the camera now
             // is too.
             _cam.GlobalPosition = target;
             // Center-crosshair aiming (owner's pick, round 27):
             // the camera looks along the aim direction itself
-            // (AimDirWorld — the mouse's yaw/pitch), so the fixed
+            // (AimDirWorld - the mouse's yaw/pitch), so the fixed
             // center crosshair, the rendered view and the weapons'
             // convergence ray are one and the same line at every
             // range and angle. This replaces the reticle servo of

@@ -2,7 +2,7 @@ using Godot;
 using System.Collections.Generic;
 
 // Cockpit radar (owner): a SQUARE, semi-transparent panel in
-// the top-right corner carrying a CIRCULAR scope — the
+// the top-right corner carrying a CIRCULAR scope - the
 // square stays (it matches the dashboard), the plot inside
 // is round (owner, 2026-11-11: 'the inner part needs to be
 // a circle'). HEADING-UP (owner, 2026-11-11): the plot
@@ -15,8 +15,8 @@ using System.Collections.Generic;
 // ticks around the rim every 10 degrees (major at 30). NO
 // numbers anywhere (owner: 'remove numbers, they are fake
 // anyway'). The player is a fixed up-triangle in the center,
-// enemies are red contacts clamped to the rim — buildings
-// are NOT shown (owner). Pure presentation — it reads
+// enemies are red contacts clamped to the rim - buildings
+// are NOT shown (owner). Pure presentation - it reads
 // walker positions each redraw and owns no state.
 public partial class RadarView : Control
 {
@@ -35,7 +35,7 @@ public partial class RadarView : Control
     public readonly List<(RiderWalker W, bool Down)> Foes = new();
 
     // Scope range in world units (owner, 2026-11-11 round 6:
-    // 'radar seems broken, dot positions don't change' — at
+    // 'radar seems broken, dot positions don't change' - at
     // the old fixed 90u the mission enemies sat ~1,074u away,
     // so both contacts were rim-clamped for the entire
     // approach and only their bearing crept). Set by the HUD
@@ -149,7 +149,7 @@ public partial class RadarView : Control
         // Friendly contacts in the player's green.
         foreach (var (aw, adown) in Allies)
             DrawContact(aw, adown, c, px, half - 6f, new Color(0.45f, 0.95f, 0.55f, 0.95f));
-        // Player triangle: fixed, pointing up — up IS the
+        // Player triangle: fixed, pointing up - up IS the
         // player's facing on a heading-up scope.
         var pts = new[]
         {

@@ -3,10 +3,10 @@ using System.Collections.Generic;
 
 // RiderDuel module: terrain, props, destructibles, debris chunks, collisions.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
-    private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on — a rider entirely below it (under the deck it stands on) is NOT blocked. Pass: the circle never blocks movement (stones — owner, round 29: only TALL objects block a rider)
+    private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on - a rider entirely below it (under the deck it stands on) is NOT blocked. Pass: the circle never blocks movement (stones - owner, round 29: only TALL objects block a rider)
 
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees ignite, burn for 3s, then smoke
@@ -303,7 +303,7 @@ public partial class RiderDuel
         }
         AddChild(tree);
         float r = 0.7f * scale;
-        // Owner's rule: trees do NOT block movement — a rider that walks
+        // Owner's rule: trees do NOT block movement - a rider that walks
         // into one stomps it flat (see StompCheck). Only buildings (and
         // rocks) keep movement circles. The hit cylinder stays, so
         // trees still block shots and can be shot/burned.
@@ -311,8 +311,8 @@ public partial class RiderDuel
         _hit.Props.Add(treeCyl);
         // The canopy is a collider too (owner, three reports): the
         // visible crown spans ~+-2u (branches + leaf blobs) but only
-        // the 0.7u trunk collided, so shots through the leaves —
-        // aimed at the tree's visible center — passed through
+        // the 0.7u trunk collided, so shots through the leaves -
+        // aimed at the tree's visible center - passed through
         // nothing. A tree now collides as it looks.
         var canopyCyl = new HitModel.PropCyl
         {
@@ -334,7 +334,7 @@ public partial class RiderDuel
 
     // Low-poly rock: squashed, randomly tilted icosphere-ish blob. Gets a
     // hit cylinder (shots still collide) and a movement circle marked
-    // Pass: stones do NOT block riders (owner, round 29 — a rider got
+    // Pass: stones do NOT block riders (owner, round 29 - a rider got
     // stuck in a tree-and-stone patch; only tall objects, buildings
     // and other riders, may block movement).
     private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
@@ -376,7 +376,7 @@ public partial class RiderDuel
     // Grass tufts REMOVED (round 28, owner report 2026-11-01:
     // "square grass wasn't removed"): the ~2,400 crossed-quad
     // tufts that used to be built here read as dark filled
-    // squares from above — the same crossed-plane technique the
+    // squares from above - the same crossed-plane technique the
     // owner rejected in the photo scene in round 25 (that round
     // removed PhotoEnv's own blade cards; this base-scene system
     // ran in BOTH scenes and was missed). Measured by the
@@ -389,7 +389,7 @@ public partial class RiderDuel
     {
         // The lanes and pads below are TOURNAMENT test
         // choreography around the arena origin. In Mission mode
-        // they are meaningless — the riders spawn 620u out — and
+        // they are meaningless - the riders spawn 620u out - and
         // they sat exactly on the city district, silently eating
         // a third of its plots (measured: 13 plots + 46 block
         // slots rejected). Mission keeps only the prop spacing.
@@ -500,7 +500,7 @@ public partial class RiderDuel
     };
 
     // Photo-scene shades over the shared concrete set (owner:
-    // buildings must not all look the same) — blue-grey, teal,
+    // buildings must not all look the same) - blue-grey, teal,
     // warm sand, pale, brick-warm, slate, cycled per building
     // with a small hash jitter on top.
     private static readonly Color[] BuildingTints =
@@ -511,10 +511,10 @@ public partial class RiderDuel
     };
 
     // Procedural facade (terrain-detail ask): a window grid with lit and
-    // dark panes, a door at street level and a darker parapet band —
+    // dark panes, a door at street level and a darker parapet band -
     // drawn once per building into a 256px image texture.
     // Facade texture, second detail pass (owner): real masonry instead
-    // of flat paint — brick courses with mortar lines and per-brick
+    // of flat paint - brick courses with mortar lines and per-brick
     // tone jitter, or ashlar stone blocks with bevel shading on the
     // alternate buildings. Windows are NOT painted here anymore: each
     // window is a dark frame quad with a real transparent glass pane in
@@ -587,7 +587,7 @@ public partial class RiderDuel
             Roughness = 0.06f, Metallic = 0.35f
         };
         // Lit panes (owner's city references: no two facades
-        // alike) — a seeded share of the panes glow warm or cool
+        // alike) - a seeded share of the panes glow warm or cool
         // on a third, emissive surface of the same mesh.
         var litWarm = new StandardMaterial3D
         {
@@ -616,7 +616,7 @@ public partial class RiderDuel
         // The grid itself varies per building (seeded cell size),
         // a few panes are missing outright, and the lit share is
         // the caller's (higher in the city, where dusk facades
-        // glow — the owner's screenshots).
+        // glow - the owner's screenshots).
         float cellW = 2.1f + (BrickHash(seed, 7, 1) % 100) / 100f * 0.9f;
         float cellH = 2.5f + (BrickHash(seed, 3, 11) % 100) / 100f * 0.8f;
         int faceI = 0;
@@ -702,7 +702,7 @@ public partial class RiderDuel
         idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
     }
 
-    // Mission fronts: a base cluster on each flattened plateau —
+    // Mission fronts: a base cluster on each flattened plateau -
     // four structures and a comms mast around the spawn court, so
     // every base reads as a place from across the map and fights
     // like the arena's building blocks (same HP, roofs, colliders).
@@ -721,7 +721,7 @@ public partial class RiderDuel
         for (int b = 0; b < Main.SpawnPads.Length; b++)
         {
             // The HOME base stands empty (owner, 2026-11-11
-            // round 6: 'remove buildings in the home base') —
+            // round 6: 'remove buildings in the home base') -
             // the player spawns on open ground; the two enemy
             // bases keep their structures.
             if (b == 0) continue;
@@ -731,7 +731,7 @@ public partial class RiderDuel
             {
                 var o = offs[i].Rotated(rot);
                 // Per-base size jitter (owner: buildings must not
-                // all look the same) — deterministic per base and
+                // all look the same) - deterministic per base and
                 // structure, footprints ±10%, heights ±13%.
                 float sx = 1f + ((b * 3 + i) % 4 - 1.5f) * 0.07f;
                 float sy = 1f + ((b + i * 2) % 3 - 1) * 0.13f;
@@ -751,13 +751,13 @@ public partial class RiderDuel
 
     // ---- Building detail (owner: buildings read as primitives;
     // they need roofs, doors, balconies, fire escapes) ----
-    // One merged mesh per building, three materials — trim
+    // One merged mesh per building, three materials - trim
     // (parapets, canopies, balcony slabs, cornices: the wall
     // concrete in the photo scene), metal (rails, fire escapes,
     // HVAC), dark (doors, storefront glass). Every building gets
     // a parapet, roof clutter and a front door with a canopy;
     // taller ones add one seeded character: balcony rows, a
-    // zigzag fire escape, or cornice bands. Visual only — the
+    // zigzag fire escape, or cornice bands. Visual only - the
     // pieces hug the walls inside the collider margin, and they
     // ride the building node when it collapses.
     private static readonly Dictionary<bool, Material[]> _detailMats = new();
@@ -945,8 +945,8 @@ public partial class RiderDuel
 
     // The building box as a two-surface ArrayMesh (a BoxMesh
     // carries one material only): walls on surface 0, the roof
-    // face on surface 1. UVs are 0..1 per face — the mapping
-    // BoxMesh used — so each material's Uv1Scale keeps its
+    // face on surface 1. UVs are 0..1 per face - the mapping
+    // BoxMesh used - so each material's Uv1Scale keeps its
     // meaning. Faces are (origin, right, up) triples with
     // right x up = the outward normal, wound like the panes.
     private static ArrayMesh BuildingBoxMesh(Vector3 size, Material wallMat, Material roofMat)
@@ -1001,7 +1001,7 @@ public partial class RiderDuel
         // City kits (owner): when the active contract carries a
         // building kit, the placement instances a real building
         // model from the kit, uniformly scaled to the requested
-        // height — and `size` becomes the model's scaled AABB,
+        // height - and `size` becomes the model's scaled AABB,
         // so the colliders, roof floor and destruction below all
         // match the model. Any placement the kit can't serve
         // (it returns null) stays procedural.
@@ -1032,7 +1032,7 @@ public partial class RiderDuel
             }
         }
         // The big footprints (owner, 2026-10-31: larger buildings)
-        // sit on slopes — sink the base well into the grade so no
+        // sit on slopes - sink the base well into the grade so no
         // corner hovers; the roof top is the walkable surface.
         const float Sink = 2.4f;
         float roofTop = groundY + size.Y - Sink;
@@ -1043,7 +1043,7 @@ public partial class RiderDuel
         {
             // The container stays a MeshInstance3D (destruction
             // types it as one) with no mesh of its own; the model
-            // sits with its base at the sunk ground line — the
+            // sits with its base at the sunk ground line - the
             // container's origin is the building's center, so the
             // holder goes half the height down. A seeded quarter
             // turn varies the street faces (colliders are
@@ -1198,11 +1198,11 @@ public partial class RiderDuel
 
     // City biome: extra gameplay buildings on the same rules as
     // the arena's and the bases' (destructible, blocking,
-    // standable) — a town center and street clusters in Mission,
+    // standable) - a town center and street clusters in Mission,
     // blocks between the mesa and the pads in Tournament. Sizes
     // vary widely (owner: no two alike). Pads, roads and the
     // mesa stay clear.
-    // Kit contracts: the town is a real street grid — blocks of
+    // Kit contracts: the town is a real street grid - blocks of
     // kit buildings on the level district plateau (Main), with
     // the ground between the plots colored as streets. One
     // central plot stays empty as a plaza; a few plots skip at
@@ -1214,9 +1214,9 @@ public partial class RiderDuel
         if (WorldConfig.TerracedCity) { BuildTerracedCity(rng, ref placed); return; }
         // The dense city (owner: "so dense the rider can have
         // space to walk only between the houses or jump on their
-        // roofs — no open space"): every plot in the disc is
+        // roofs - no open space"): every plot in the disc is
         // built, no plaza, no gap plots; the lanes between the
-        // blocks are the only ground left open. No ScatterFree —
+        // blocks are the only ground left open. No ScatterFree -
         // the pads and bases sit 600u+ away, and the pad roads
         // ARE these streets now.
         float p = CityGrid.Pitch;
@@ -1261,7 +1261,7 @@ public partial class RiderDuel
 
     // One district plot becomes a city block in the owner's
     // reference image: several buildings of MIXED heights on a
-    // single block — low podiums beside a tower — with the gaps
+    // single block - low podiums beside a tower - with the gaps
     // between blocks reading as streets. 2x2 sub-plots, 2-4
     // filled; every block carries at least one low building
     // (9-16u) and one tall one (26-39u).
@@ -1307,7 +1307,7 @@ public partial class RiderDuel
                 (float)(rng.NextDouble() * 1.6 - 0.8));
             // Footprints ~10u on 11u slot spacing: the block
             // fills its plot and the lane left between blocks is
-            // ~10u wall to wall — a rider fits between the
+            // ~10u wall to wall - a rider fits between the
             // houses, or goes over the roofs.
             float fw = 9.8f + (float)rng.NextDouble() * 0.8f;
             var size = new Vector3(fw, heights[k],
@@ -1406,7 +1406,7 @@ public partial class RiderDuel
         var d = b - a;
         float dist = d.Length();
         float min = wa.CollisionRadius + wb.CollisionRadius;
-        // Flyover (owner): a jumping rider passes OVER the other —
+        // Flyover (owner): a jumping rider passes OVER the other -
         // no separation push while either is high above the ground.
         if (dist < min && wa.JumpHeight < 12f && wb.JumpHeight < 12f)
         {
@@ -1422,7 +1422,7 @@ public partial class RiderDuel
 
     // Any rider whose body is about to reach a standing tree crushes
     // it first (owner, round 29: the tree must explode BEFORE the
-    // collision is noticeable — the old trigger fired only once the
+    // collision is noticeable - the old trigger fired only once the
     // rider's center was within CollisionRadius + 0.35 of the trunk,
     // i.e. after the body was already inside the trunk disc). The
     // trigger is the body's reach (collision radius + trunk radius)
@@ -1475,8 +1475,8 @@ public partial class RiderDuel
     // Foot-target clamp (owner, 2026-11-11: leg-collider
     // option 1). The root resolves against the obstacle
     // set in ResolveOne; a foot's step TARGET now clamps
-    // against the SAME set — circles, terrace walls, ramp
-    // wedges — with the same exemptions, judged at the
+    // against the SAME set - circles, terrace walls, ramp
+    // wedges - with the same exemptions, judged at the
     // foot's own level: a building whose roof the foot is
     // stepping onto is not a wall to that foot, a building
     // standing on a deck does not reach the ground under
@@ -1530,7 +1530,7 @@ public partial class RiderDuel
         for (int iter = 0; iter < 2; iter++)
         {
             // Terrace walls (owner: Harbor levels): rect sides
-            // with a top — a walker below the top is pushed out,
+            // with a top - a walker below the top is pushed out,
             // a walker at deck level walks on freely.
             foreach (var wl in Main.Walls)
             {
@@ -1539,14 +1539,14 @@ public partial class RiderDuel
             }
             foreach (var c in _props)
             {
-                // A building's walls stop a rider on the ground —
+                // A building's walls stop a rider on the ground -
                 // but not one standing on its roof or flying over
                 // it: at roof level the circle is not a wall.
                 if (c.RoofTop > 0f && w.SoleLevel + 1.5f >= c.RoofTop) continue;
                 // A building standing on a deck does not reach
                 // the ground under it (owner, 2026-11-11 round
                 // 6: 'why does rider sometimes get stuck under
-                // the platform?' — the circles were full-height
+                // the platform?' - the circles were full-height
                 // columns from below the terrain to the roof,
                 // so the under-deck was full of invisible walls
                 // shaped like the buildings above).
@@ -1557,7 +1557,7 @@ public partial class RiderDuel
             // Ramp wedges are solid from the side (owner,
             // 2026-11-11: 'I can walk through the ramp if I
             // come from the side'). GroundAt alone only refuses
-            // the FOOT — the root walked on under the wedge and
+            // the FOOT - the root walked on under the wedge and
             // out the other side. A walker whose soles are
             // below the slope at its position (beyond the
             // step-up it could legitimately climb) and whose
@@ -1599,7 +1599,7 @@ public partial class RiderDuel
         // Attribution by the destructible's OWN hit cylinders: a hit
         // point belongs to a prop when it lands on (or within reach
         // of) one of its cylinders, in that cylinder's height band.
-        // (Center-distance attribution broke twice — the laser's
+        // (Center-distance attribution broke twice - the laser's
         // inflated entry point, then the tree canopy's edge.)
         Destructible best = null;
         float bestD = float.MaxValue;
@@ -1646,10 +1646,10 @@ public partial class RiderDuel
         d.PhaseLen = 3.4f;
         RemovePropColliders(d); // falling masonry no longer blocks or stops riders
         // Round 21 (owner): the original building HIDES the moment
-        // it is destroyed — no more sliding/squashing underground.
+        // it is destroyed - no more sliding/squashing underground.
         // Only the pieces and the dust animate from here.
         if (d.Node is Node3D bn) bn.Visible = false;
-        // Destruction is an EVENT now (round 7 — it used to sink
+        // Destruction is an EVENT now (round 7 - it used to sink
         // silently): an explosion burst at the base, a dust flash, and
         // the facade breaks into chunks that fly, tumble and settle
         // as rubble around the footprint.
@@ -1676,7 +1676,7 @@ public partial class RiderDuel
         GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");
     }
 
-    // Owner's current rule: a tree is destroyed by ANY interaction —
+    // Owner's current rule: a tree is destroyed by ANY interaction -
     // a single weapon hit of any kind, or a stomp. Its colliders come
     // off immediately (shots and riders pass from that frame) and the
     // mesh smokes out over ~1s. This supersedes the round-2 spec
@@ -1691,7 +1691,7 @@ public partial class RiderDuel
         RemovePropColliders(d);
         var top = d.Center + Vector3.Up * d.Height * 0.7f;
         // Destruction FX (round 7): a fire flash, an ember burst and
-        // wooden splinters that scatter and settle — a hit tree goes
+        // wooden splinters that scatter and settle - a hit tree goes
         // out with a burst of sparks, then smokes out.
         _envFxEvents++;
         SpawnFlash(top, new Color(1f, 0.5f, 0.16f), 1.1f, 0.24f);
@@ -1775,7 +1775,7 @@ public partial class RiderDuel
         if (tex == null) { GD.PrintErr($"SKY texture missing: {path}"); return; }
         // Hybrid sky (owner's pick, 2026-11-13): where the
         // contract asks for it, the painted panorama is sampled
-        // by a sky shader that adds a procedural star layer —
+        // by a sky shader that adds a procedural star layer -
         // the photo keeps the nebula, the stars go sharp. Any
         // other painted sky keeps the plain panorama material.
         bool starsOn = false;

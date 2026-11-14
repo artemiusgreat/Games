@@ -1,12 +1,12 @@
 using Godot;
 using System;
 
-// Wizard step 3 (Tournament, owner — teams stage): form the
-// teams. Left: the teams, a scrollable list — at least two
+// Wizard step 3 (Tournament, owner - teams stage): form the
+// teams. Left: the teams, a scrollable list - at least two
 // teams always stand; every row carries its own '−' (the
 // player's team and the two-team minimum are protected),
 // and ADD TEAM sits as a row right below the last team.
-// Right: the selected team's riders, a scrollable list —
+// Right: the selected team's riders, a scrollable list -
 // each slot picks its rider from a DROPDOWN, at least one
 // rider per team, ADD RIDER right below the last rider.
 // RANDOMIZE sits in the top menu, before the Continue
@@ -67,7 +67,7 @@ public partial class TeamSelectScreen : Control
 
     // One of the two list panels: heading, count line, the
     // scrollable rows. The add buttons live INSIDE the scroll,
-    // right below the last row (owner) — no panel footer.
+    // right below the last row (owner) - no panel footer.
     private Control ListPanel(bool teams)
     {
         var panel = new PanelContainer
@@ -155,13 +155,13 @@ public partial class TeamSelectScreen : Control
         var spec = RiderSpecs.All[specIndex];
         if (team[idx].Spec.Id == spec.Id) return;
         // A chassis change refits the slot with the new
-        // chassis's default loadout — the lab's standing rule.
+        // chassis's default loadout - the lab's standing rule.
         team[idx] = TeamRoster.Make(spec);
         Refresh();
     }
 
     // A fresh bracket: 2-4 teams of 1-3 riders, dealt at
-    // random — except the player's own seat (team 1, rider 1),
+    // random - except the player's own seat (team 1, rider 1),
     // which keeps the rider he is about to prepare.
     private void RandomizeBracket()
     {
@@ -237,7 +237,7 @@ public partial class TeamSelectScreen : Control
                 host.AddChild(cover);
             }
             var lbl = FlowUi.MakeLabel(
-                $"TEAM {t + 1} — {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : ""),
+                $"TEAM {t + 1} - {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : ""),
                 15, selected ? FlowUi.Gold : FlowUi.Ink);
             lbl.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             lbl.OffsetLeft = 12f; lbl.OffsetRight = -44f;
@@ -266,13 +266,13 @@ public partial class TeamSelectScreen : Control
         addTeam.Disabled = TeamRoster.Tourney.Count >= TeamRoster.MaxTeams;
         addTeam.Pressed += AddTeam;
         _teamRows.AddChild(addTeam);
-        _teamCount.Text = $"{TeamRoster.Tourney.Count} OF {TeamRoster.MaxTeams} TEAMS — at least two teams always stand";
+        _teamCount.Text = $"{TeamRoster.Tourney.Count} OF {TeamRoster.MaxTeams} TEAMS - at least two teams always stand";
 
         // ---- riders of the open team: dropdown per slot ----
         var open = TeamRoster.Tourney[sel];
-        _riderHead.Text = $"Team {sel + 1} riders" + (sel == 0 ? " — your team" : "");
+        _riderHead.Text = $"Team {sel + 1} riders" + (sel == 0 ? " - your team" : "");
         _riderCount.Text = $"{open.Count} OF {TeamRoster.MaxPerTeam} RIDERS" +
-            (sel == 0 ? " — rider 1 is yours, prepared in the lab next" : "");
+            (sel == 0 ? " - rider 1 is yours, prepared in the lab next" : "");
         foreach (var ch in _riderRows.GetChildren()) ch.QueueFree();
         for (int r = 0; r < open.Count; r++)
         {

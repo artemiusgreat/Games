@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 // Contract data for the Mission path (front-end flow). Planets are
 // picked on the orbital screen, contracts are signed in the bar.
-// Pure data — the duel reads WorldConfig.SelectedMission.
+// Pure data - the duel reads WorldConfig.SelectedMission.
 public sealed class PlanetDef
 {
     public string Name;         // "Chronos"
@@ -41,11 +41,11 @@ public sealed class MissionDef
     // texture in assets/skies/. "" = the procedural sky.
     public string SkyTex = "";
     // Procedural star layer over the painted sky (owner:
-    // hybrid sky — the photo carries the nebula, a sky shader
+    // hybrid sky - the photo carries the nebula, a sky shader
     // adds resolution-independent stars). Atlantis only.
     public bool ProceduralStars;
     // Flat maps (owner): the contract's world builds with no
-    // height map at all — every street level. The Harbor Stacks.
+    // height map at all - every street level. The Harbor Stacks.
     public bool FlatTerrain;
     // Snow-covered ground (owner): the map's ground matches
     // a snowy painted sky (Gate City under the ice panorama).
@@ -98,7 +98,7 @@ public static class MissionCatalog
         M(ares, "Troy", "Troy", -0.38f, 0.30f,
             "Base Assault", "House Asterion", 480000, 4,
             "Move overland to the Troy depot and destroy the Corvane garrison before their relief column arrives. " +
-            "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion — the new mission depends on her signature.",
+            "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion - the new mission depends on her signature.",
             "Colonel Mara Voss", "Asterion needs that depot rubble by dawn. You look like dawn to me.", WorldConfig.BiomeKind.Desert);
         M(ares, "Syracuse", "Athens", 0.34f, -0.18f,
             "Convoy Escort", "Asterion Logistics", 210000, 2,
@@ -108,7 +108,7 @@ public static class MissionCatalog
         M(ares, "Erebus", "Erebus", 0.28f, 0.40f,
             "Recon Sweep", "Boreas Research Trust", 180000, 2,
             "A Trust survey team went silent on Erebus six days ago. Cross the shelf, find their " +
-            "beacon, and bring back the data core — or word of what found them first.",
+            "beacon, and bring back the data core - or word of what found them first.",
             "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         var thalassa = new PlanetDef
         {
@@ -127,14 +127,14 @@ public static class MissionCatalog
         // planet's first available mission in Story mode.
         M(thalassa, "Atlantis", "Atlantis", -0.60f, 0.28f,
             "Base Defense", "Meridian Combine", 390000, 4,
-            "The Atlantis stacks rise straight out of the storm water — ten thousand windows over the " +
+            "The Atlantis stacks rise straight out of the storm water - ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
             "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true, stars: true);
         M(thalassa, "Pharos", "Pharos", -0.30f, -0.34f,
             "Base Defense", "Meridian Combine", 390000, 4,
             "Pirates riding out of the storm belt hit Pharos at every low tide. Hold the port until the " +
-            "Combine's own lance lands — three days of raids, paid per day held, and the port bar tab is on them.",
+            "Combine's own lance lands - three days of raids, paid per day held, and the port bar tab is on them.",
             "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
         M(thalassa, "Helios", "Helios", 0.42f, 0.22f,
             "Raid", "House Corvane", 520000, 5,

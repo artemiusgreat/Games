@@ -27,9 +27,9 @@ public partial class Projectile : Node3D
     // (GuideOrigin, GuideVel0) but physically launched from a pod
     // off that axis (GuideStart). While guided, the position is an
     // explicit smoothstep blend between the pod-launched arc and
-    // the axis arc — the two differ by the constant offset
+    // the axis arc - the two differ by the constant offset
     // GuideOrigin - GuideStart, so the blend is the pod arc shifted
-    // by beta * offset — and the velocity is that blend's exact
+    // by beta * offset - and the velocity is that blend's exact
     // derivative. At the end of the window the rocket sits ON the
     // solved arc with the arc's own velocity, so the ballistic
     // continuation is the exact solution (a velocity-chasing

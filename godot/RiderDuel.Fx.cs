@@ -3,12 +3,12 @@ using System.Collections.Generic;
 
 // RiderDuel module: particles, lights, flashes, scorch, damage numbers, death feedback.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class — see RiderDuel.cs for the field block.
+// stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
     // ---------- GPU particles (round 9) ----------
     // The mesh-box puffs and short flashes did not read at cockpit
-    // range — the owner reported seeing no fire, explosion or smoke
+    // range - the owner reported seeing no fire, explosion or smoke
     // twice. These are real particle systems: one-shot bursts for
     // impacts and explosions, and burning emitters that keep a wreck
     // smoking for seconds. Verified by captured frames at burst
@@ -18,7 +18,7 @@ public partial class RiderDuel
     private int _laserRescues; // test-fallback rescues inside FireLaser; the duel AIM phase asserts zero during stable shots
     private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
     // Round 20 (owner: the fire looked like "a couple of yellow
-    // bubbles" — it WAS bubbles: the draw pass was a low-poly
+    // bubbles" - it WAS bubbles: the draw pass was a low-poly
     // SPHERE mesh in flat orange). Fire, smoke and dust are now
     // billboarded quads with procedural sprites and lifetime color
     // ramps: a flame is a noisy teardrop that runs white-yellow ->
@@ -28,7 +28,7 @@ public partial class RiderDuel
     {
         const int N = 128;
         var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
-        // A narrow, tall teardrop with a pointed tip — v1's fat
+        // A narrow, tall teardrop with a pointed tip - v1's fat
         // round blob mass read as a pale rounded SQUARE in the
         // proof frame (the burn emitter's flames), not as fire.
         var blobs = new (float X, float Y, float R, float W)[]
@@ -77,7 +77,7 @@ public partial class RiderDuel
                 a += Mathf.Exp(-d2 * 2.2f);
             }
             // A radial window guarantees ZERO alpha at the quad's
-            // border — the first version let a blob reach the edge,
+            // border - the first version let a blob reach the edge,
             // and the dust read as crisp white plaques in the proof
             // frame instead of a soft cloud.
             float r = new Vector2(u - 0.5f, v - 0.5f).Length() * 2f;
@@ -158,7 +158,7 @@ public partial class RiderDuel
         PrimitiveMesh mesh;
         if (mat.BillboardMode == BaseMaterial3D.BillboardModeEnum.Particles)
             // Flames stand taller than wide; puffs stay square.
-            // Round 21 (owner): fire still read as bubbles — the
+            // Round 21 (owner): fire still read as bubbles - the
             // particles are notably SMALLER now, bursts denser.
             mesh = new QuadMesh { Size = mat == FireParticleMat
                 ? new Vector2(meshRadius * 1.05f, meshRadius * 1.9f)
@@ -221,7 +221,7 @@ public partial class RiderDuel
         }
     }
 
-    // A brief real light at an impact or destruction — the one FX
+    // A brief real light at an impact or destruction - the one FX
     // that reads at any range (round 8: flashes and 0.14u puffs were
     // too small and short to see). Faded and freed by UpdateCombat.
     private readonly System.Collections.Generic.List<(OmniLight3D Light, float Life, float Max, float Energy0)> _lights = new();
@@ -260,7 +260,7 @@ public partial class RiderDuel
         _fx.Add((f, life, 0));
     }
 
-    // Electric spark burst — the laser's impact signature: a spray of
+    // Electric spark burst - the laser's impact signature: a spray of
     // bright cyan-white sparks with light gravity.
     private void SpawnSparks(Vector3 point, Color col, int count, float speed)
     {
@@ -332,7 +332,7 @@ public partial class RiderDuel
         _timedFx.Add((s, seconds + 0.1f, false));
     }
 
-    // Rocket impact bundle: core flash, fireball and smoke — the
+    // Rocket impact bundle: core flash, fireball and smoke - the
     // mini-explosion the owner asked for.
     private void SpawnExplosionFx(Vector3 point)
     {
@@ -399,7 +399,7 @@ public partial class RiderDuel
     private void OnDamaged(RiderWalker target, float dmg, Vector3 point, string source, string kind = "")
     {
         // Round 8: the reaction carries the weapon. Color + jolt per
-        // kind — before this, every hit blinked the same orange and
+        // kind - before this, every hit blinked the same orange and
         // the body never moved (owner's report).
         var (flashCol, flashEnergy, jolt) = kind switch
         {
@@ -431,7 +431,7 @@ public partial class RiderDuel
     {
         // Death is an explosion now, not a gray-out (owner): a flash
         // sequence at the torso, camera shake, and the whole rider comes
-        // apart — every part, torso core included, becomes debris that
+        // apart - every part, torso core included, becomes debris that
         // rains down and settles on the terrain.
         var parts = PartsOf(w);
         var center = w.RootPos + Vector3.Up * 6.5f;
@@ -453,10 +453,10 @@ public partial class RiderDuel
         w.SetDarkened(true);
         // No centre banner for a destruction (owner: the
         // "NAME DESTROYED / press R to reset" text overlapped
-        // the exit confirmation popup) — the wreck, the feed
+        // the exit confirmation popup) - the wreck, the feed
         // and the target readout carry the news; R still
         // resets. The match-end VICTORY banner is removed
-        // too (owner, 2026-11-11 round 4) — nothing raises
+        // too (owner, 2026-11-11 round 4) - nothing raises
         // the centre banner any more.
     }
 

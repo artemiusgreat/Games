@@ -1,4 +1,4 @@
-// Pure game data — no engine references, so the catalog, the loadout
+// Pure game data - no engine references, so the catalog, the loadout
 // rules and the knockdown math can move to another engine as-is.
 // Weapon weights drive two things: the RiderLab slot capacities and the
 // knockdown rule (cumulative impact weight vs rider tonnage).
@@ -20,13 +20,13 @@ public sealed class WeaponDef
     public int Rockets;         // missile packs only: rockets per salvo
     public float Splash;        // splash radius, 0 = direct only
     // Ballistic weapons only: the shell's muzzle velocity (u/s).
-    // THE place to tune bullet speed — the player volley and the
+    // THE place to tune bullet speed - the player volley and the
     // AI gunnery both read it from here. All cannons share the
     // autocannon's 420 (owner: medium and large match the
     // smallest cannon); the machine gun keeps its slow 85 u/s
     // tracer stream (owner's standing exception).
     public float MuzzleSpeed;
-    // Effective range in world units, as shown in the lab — and
+    // Effective range in world units, as shown in the lab - and
     // ENFORCED by the firing code (owner): each weapon reaches
     // exactly its own Range and no further. Lasers/PPC resolve
     // per weapon on the view ray up to their Range; ballistic
@@ -44,10 +44,10 @@ public sealed class WeaponDef
     public float Range;
     // True when the RiderLab offers this weapon for mounting.
     // Resolution (ById, loadouts, knockdown weight) never
-    // consults it — it only filters the lab's pick list.
+    // consults it - it only filters the lab's pick list.
     public bool CatalogListed = true;
     // Presentation and ballistics that used to be per-id
-    // conditionals in the firing code — data now, read
+    // conditionals in the firing code - data now, read
     // generically like every other field.
     public BeamKind Beam;          // energy weapons: beam look
     public float SfxPitch;         // cannon report: pitch offset (semitones)
@@ -83,7 +83,7 @@ public static class WeaponCatalog
     public static readonly WeaponDef Lrm = new()
     { Id = "lrm", Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f, Range = 1000f, RocketBaseSpeed = 36f, RocketGravity = 11f, RocketTofMax = 2.2f };
 
-    // The AC/20 is a catalog weapon like any other — it ships
+    // The AC/20 is a catalog weapon like any other - it ships
     // fitted in the default fits that carry it (Hector's waist
     // gun, Prometheus's arm). It is excluded only from the
     // lab's mount list (CatalogListed = false), never from

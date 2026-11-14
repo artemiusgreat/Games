@@ -5,7 +5,7 @@ using System.Collections.Generic;
 // model (which meshes belong to which part, per-part HP), per-mesh hit
 // volumes anchored to skeleton bones, and hit attribution.
 //
-// Part mapping (from the imported node names + per-vertex skin weights —
+// Part mapping (from the imported node names + per-vertex skin weights -
 // every mesh in both FBXs is rigidly bound 100% to a single bone):
 //   TW    torso = Torso core + TorsoPin + Waist (the main HP pool)
 //         pod_L/pod_R = the LRM ear boxes, SPLIT out of the single Torso
@@ -139,7 +139,7 @@ public sealed class RiderParts
             // model: |x| <= 1.3, top front). The missile pod on
             // the LEFT shoulder (owner, 2026-11-12: 'obvious pods
             // for missiles on its left shoulder') is fused into
-            // the same Torso mesh — the census puts it at
+            // the same Torso mesh - the census puts it at
             // X 1.10..2.28, height 10.6..12.1 (610 verts, a
             // distinct block above the shoulder line; axis
             // mapping cross-checked against Enyo's pod census),
@@ -148,7 +148,7 @@ public sealed class RiderParts
             {
                 ("Pod_L", p => p.X >= 1.12f && p.Y >= 10.55f),
                 // Classification space note: measured on the
-                // built model — the cockpit is the top of the
+                // built model - the cockpit is the top of the
                 // torso's dense front slab, which lands at
                 // Z >= -0.72 in this space (region census +
                 // per-mesh AABB checks), not at the gait-front
@@ -230,9 +230,9 @@ public sealed class RiderParts
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
             // and fall back to a single torso part (the whole
-            // model) so the duel still runs — author a real
+            // model) so the duel still runs - author a real
             // layout here before shipping the rider.
-            GD.PrintErr($"PARTS: no layout for '{riderId}' — torso-only fallback; author a layout in RiderParts.cs");
+            GD.PrintErr($"PARTS: no layout for '{riderId}' - torso-only fallback; author a layout in RiderParts.cs");
             var all = new string[byName.Count];
             byName.Keys.CopyTo(all, 0);
             AddPart("torso", "TORSO", 0f, byName, all);
@@ -567,7 +567,7 @@ public sealed class RiderParts
     public bool Has(string id) => _parts.ContainsKey(id);
     // Tolerant lookups: a chassis may simply not HAVE a part (the
     // Hector has no missile pods). Absent reads as destroyed / 0 HP /
-    // null rather than throwing — a hard dictionary lookup here
+    // null rather than throwing - a hard dictionary lookup here
     // crashed every frame for an Hector player and froze the camera
     // mid-duel (owner's report, 2026-10-30).
     public Part GetPart(string id) => _parts.TryGetValue(id, out var p) ? p : null;
@@ -717,7 +717,7 @@ public sealed class RiderParts
         if (partId == "leg_L" || partId == "leg_R" || partId == "head")
         {
             // Owner's rule: legs NEVER fall off. A destroyed leg stays
-            // attached — darkened and deformed — and the rider limps.
+            // attached - darkened and deformed - and the rider limps.
             // The head stays on too (owner, 2026-10-31): a shot-off
             // head left the torso a hollow shell you could see
             // through from behind. A wrecked head stays attached,
@@ -743,7 +743,7 @@ public sealed class RiderParts
 
     // The leg-wreck look: a charred translucent overlay darkens the
     // leg's own texture, and the meshes are crushed slightly (shorter,
-    // wider) and tilted — deformation without detachment.
+    // wider) and tilted - deformation without detachment.
     private void WreckPart(Part part)
     {
         part.Destroyed = true;
@@ -772,7 +772,7 @@ public sealed class RiderParts
         }
     }
 
-    // Death explosion: EVERY part detaches into debris at once —
+    // Death explosion: EVERY part detaches into debris at once -
     // including the torso core, which normal damage can never break
     // (its MaxHp 0 marks it as the pool itself). OnBreak still fires
     // per part; the owner suppresses the usual consequences while a
@@ -835,7 +835,7 @@ public sealed class RiderParts
         if (dt <= 0f) return;
         // Substep at 120 Hz like the gait: with a raw frame dt the
         // gravity increment per step (20*dt) can exceed the settle
-        // threshold outright — at dt 0.2 a resting piece gains
+        // threshold outright - at dt 0.2 a resting piece gains
         // -4 u/s every frame, bounces at 0.22 restitution forever,
         // and never settles (measured: breakable POD phase timing
         // out at slow render rates; the same class of bug as the

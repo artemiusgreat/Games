@@ -11,8 +11,8 @@ public static class WorldConfig
 
     public static MapMode Mode = InitMode();
 
-    // The map type (owner): every map — a tournament arena or a
-    // mission contract's ground — is one of three biomes,
+    // The map type (owner): every map - a tournament arena or a
+    // mission contract's ground - is one of three biomes,
     // PREDEFINED by that arena/contract (never a player choice;
     // EnterLab copies the selected map's biome here). Default
     // Forest, which is the game's
@@ -90,7 +90,7 @@ public static class WorldConfig
     }
 
     // Flat maps (owner): a contract whose streets must all be
-    // level — The Harbor Stacks — skips the height map entirely;
+    // level - The Harbor Stacks - skips the height map entirely;
     // its world builds at height 0 everywhere. EnterLab copies
     // the contract's flag here; AOT_FLAT=1 forces it.
     public static bool FlatWorld = InitFlat();
@@ -104,7 +104,7 @@ public static class WorldConfig
 
     public static bool IsMission => Mode == MapMode.Mission;
 
-    // Tournament: the 260u arena. Mission: a 1900u front — bases sit
+    // Tournament: the 260u arena. Mission: a 1900u front - bases sit
     // ~1075u apart, a ~4.5 minute walk or ~90 seconds at a run for a
     // Heavy rider, so crossing the map is a decision, not a stroll.
     public static int WorldSize => IsMission ? 1900 : 260;

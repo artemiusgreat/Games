@@ -1,20 +1,20 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: AIMING — the torso aim ray, the camera-ray
+// RiderDuel module: AIMING - the torso aim ray, the camera-ray
 // convergence that defines the aim point every weapon uses,
 // and the reticle that rides that point on screen. Part of
 // the Combat folder: everything that aims or shoots lives
 // here (firing itself is in Combat/RiderDuel.Weapons.cs).
-// The class stays one partial class — see RiderDuel.cs.
+// The class stays one partial class - see RiderDuel.cs.
 public partial class RiderDuel
 {
-    // Aim (owner's model, round 27 — center crosshair, his pick
+    // Aim (owner's model, round 27 - center crosshair, his pick
     // over the free reticle point): the crosshair is fixed at the
     // screen center and the CAMERA's axis is the aim. The mouse
     // steers yaw/pitch (AimDirWorld); the chase camera looks along
     // exactly that direction, and this method casts that same axis
-    // from the camera — the weapons converge on its first hit, at
+    // from the camera - the weapons converge on its first hit, at
     // any range or angle. The torso still twists/pitches after the
     // mouse to its mechanical stops, as a visual. This retires the
     // free 40u reticle point (rounds 9-26): its projection against
@@ -28,7 +28,7 @@ public partial class RiderDuel
     // 220u convergence cast (a Mission sightline, open sky):
     // there is no hit point to converge on, so ballistic shells
     // must fly PARALLEL to the aim axis instead of converging
-    // on the 220u far point — converging there makes them cross
+    // on the 220u far point - converging there makes them cross
     // the sight line at 220u and diverge above it beyond,
     // sailing over far targets (owner's repro at 500u+).
     private bool _aimParallel;
@@ -38,7 +38,7 @@ public partial class RiderDuel
     private float _farConverge = Aim.FarRange;
     // The one aim direction: the mouse's world yaw and the
     // effective pitch (the wide mouse pitch when the player has
-    // taken it past the torso clamp, else the torso's own pitch —
+    // taken it past the torso clamp, else the torso's own pitch -
     // every harness phase drives TorsoPitch directly). The chase
     // camera, the convergence cast and the laser's truth ray all
     // use this, so they can never disagree about where "aim" is.
@@ -58,7 +58,7 @@ public partial class RiderDuel
         _aimDir = dir;
         _aimParallel = false;
         _reticlePoint = from + dir * AimDepth;
-        // Round 27: converge on the point UNDER THE CROSSHAIR —
+        // Round 27: converge on the point UNDER THE CROSSHAIR -
         // a ray from the CAMERA along the aim axis (the direction
         // the chase camera is looking). Its first hit of ANY kind
         // is where every weapon goes: what the center crosshair
@@ -94,20 +94,20 @@ public partial class RiderDuel
         return _reticlePoint;
     }
 
-    // The reticle rides a fixed-depth point on the aim ray — AND
+    // The reticle rides a fixed-depth point on the aim ray - AND
     // (round 9) the weapons converge on that same point, which is
     // what makes both of the owner's demands true at once:
     // round 6: the target must move FREELY (projecting the ray's
-    // hit point made it stick to surfaces and jump between boxes —
+    // hit point made it stick to surfaces and jump between boxes -
     // round 8's model, and he reported it as grid-snapped within
     // the day). Round 8: shots must land where the cursor points
-    // (a free cursor the weapons ignored was a lie — cannons hit
+    // (a free cursor the weapons ignored was a lie - cannons hit
     // under a high cursor because the chest ray still crossed the
     // enemy). Now the cursor IS the convergence point: every
     // weapon's line is drawn to it, and the first thing on that
     // line is what gets hit. Cursor above him = the lines pass
     // above him. When the torso points behind the camera (deep
-    // twist), the projection mirrors — flip through the center and
+    // twist), the projection mirrors - flip through the center and
     // clamp to the screen edge.
     private string _aimTarget = "";
     private Vector3 _reticlePoint;
@@ -115,7 +115,7 @@ public partial class RiderDuel
     private void UpdateReticle()
     {
         // Center crosshair (round 27): the reticle is the viewport
-        // center, always — the camera axis is the aim, so there is
+        // center, always - the camera axis is the aim, so there is
         // no world point left to project. (_reticlePoint still
         // tracks the convergence point for the weapon code.)
         var vp = GetViewport().GetVisibleRect().Size;

@@ -59,7 +59,7 @@ public sealed class HitModel
     public readonly List<RiderCap> Riders = new();
 
     // inflateProps widens PROP cylinders for this cast only (the
-    // laser's hit thickness — the beam visual stays hair-thin).
+    // laser's hit thickness - the beam visual stays hair-thin).
     public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId, float inflateProps = 0f)
     {
         dir = dir.Normalized();
@@ -67,7 +67,7 @@ public sealed class HitModel
         float tt = RayTerrain(from, dir, maxDist);
         if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = Roles.Terrain; }
         // Built surfaces (owner: platforms must collide with
-        // weapons — beams and shells were ending at the terrain
+        // weapons - beams and shells were ending at the terrain
         // behind/under a deck while the reticle rested on it):
         // deck tops, undersides and side bands, island discs and
         // ramp slopes, competing by distance like everything else.
@@ -84,7 +84,7 @@ public sealed class HitModel
             var root = m.Root();
             // The capsule stands on the rider's LIVE sole level
             // (its root), not the terrain: on a deck the root is
-            // at deck height while HeightAt still says ground —
+            // at deck height while HeightAt still says ground -
             // the capsule used to stay buried under the platform
             // and shots at the visible rider sailed over it.
             float baseY = root.Y;
@@ -173,7 +173,7 @@ public sealed class HitModel
     }
 
     // Ray vs the built surfaces registered in Main: roof rects
-    // (decks and building roofs — top plane, underside plane and
+    // (decks and building roofs - top plane, underside plane and
     // the side band between them), island discs (same three) and
     // ramp slopes (the inclined plane inside the ramp rect).
     // Returns the nearest t within maxT, or -1.
@@ -262,7 +262,7 @@ public sealed class HitModel
                 }
             }
             // Wedge band (owner round 7): the solid under the
-            // slope plane is 3.5 thick — a level shot into the
+            // slope plane is 3.5 thick - a level shot into the
             // wedge's side, or up into its underside, must
             // stop too, not just a shot landing on the plane.
             // Underside plane first (same math, hMid - 3.5):

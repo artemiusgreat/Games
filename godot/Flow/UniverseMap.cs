@@ -2,7 +2,7 @@ using Godot;
 using System.Collections.Generic;
 
 // The universe map (owner, teams stage): a Freelancer-style star
-// chart for the planet step — nebula wash, a faint grid, star
+// chart for the planet step - nebula wash, a faint grid, star
 // dots, decorative neighbour systems joined by trade lanes, and
 // the three playable planets as glowing nodes with route lines
 // between them. Clicking a planet node selects it, in sync with

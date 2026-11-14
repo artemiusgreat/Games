@@ -1,7 +1,7 @@
 using Godot;
 
 // Shared look + procedural art for the front-end flow screens.
-// Palette: deep navy panels, steel borders, champagne-gold headers —
+// Palette: deep navy panels, steel borders, champagne-gold headers -
 // the storefront of the game, matching the RiderLab console.
 public static class FlowUi
 {
@@ -46,7 +46,7 @@ public static class FlowUi
 
     private static FontFile _bodyFont;
     // The body font, applied EXPLICITLY (owner, 2026-11-13:
-    // Cinzel headings + Open Sans text on every screen — set
+    // Cinzel headings + Open Sans text on every screen - set
     // in code, not left to the project theme, so a stale theme
     // cache can never bring the mono back).
     public static FontFile BodyFont => _bodyFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-Regular.ttf");
@@ -159,7 +159,7 @@ public static class FlowUi
 
     private static FontFile _navFont;
     // Navigation screens are Open Sans everywhere (owner,
-    // 2026-11-14) — no Cinzel there. Semibold keeps the
+    // 2026-11-14) - no Cinzel there. Semibold keeps the
     // headings' weight without the serif.
     public static FontFile NavFont =>
         _navFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
@@ -195,7 +195,7 @@ public static class FlowUi
     // A description on a desk monitor: bezel, dark screen,
     // scanlines. The bezel fits BOTH children to its rect
     // directly (a PanelContainer fits every child): the screen,
-    // then the scanlines over it — no intermediate plain
+    // then the scanlines over it - no intermediate plain
     // Control (it silently zeroes the chain's minimum size).
     public static Control Monitor(Control inner)
     {
@@ -383,12 +383,12 @@ public static class FlowUi
     // the same color'): sampled from the art's own edge
     // pixels, used OPAQUELY by every loading cover, so the
     // art's ground and the screen's ground are the same
-    // colour by construction — no seam, at any window size.
+    // colour by construction - no seam, at any window size.
     public static readonly Color LoadingBg = new(4f / 255f, 5f / 255f, 9f / 255f, 1f);
 
     // The loading screen (owner, round 5): his targeting-
-    // reticle rider art, plain — no white corner brackets,
-    // no blinking — over a LoadingBg rect. Under the art, an
+    // reticle rider art, plain - no white corner brackets,
+    // no blinking - over a LoadingBg rect. Under the art, an
     // animated ripple bar instead of a 'Loading...' line
     // (owner, 2026-11-13). Every loading cover in the game
     // builds this.
@@ -421,7 +421,7 @@ public static class FlowUi
 
 // The loading indicator (owner, 2026-11-13): a track line
 // with end ticks and a bright gold segment that sweeps
-// left to right and back on a timer — a ripple, no text.
+// left to right and back on a timer - a ripple, no text.
 // Redraws only while actually on screen.
 public partial class RippleBar : Control
 {

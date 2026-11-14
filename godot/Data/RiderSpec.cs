@@ -1,4 +1,4 @@
-// Pure game data — no engine references. A rider spec is its tonnage
+// Pure game data - no engine references. A rider spec is its tonnage
 // plus the weapon slots the RiderLab can fill. Slot weight capacity is
 // the rule that keeps a light rider from carrying a heavy rider's gun.
 
@@ -49,7 +49,7 @@ public sealed class RiderSpec
 public static class RiderSpecs
 {
     // Weapon capacity rule (owner, 2026-10-31, MW4 RiderLab
-    // model): the chassis tonnage IS the weapon budget — the
+    // model): the chassis tonnage IS the weapon budget - the
     // slot caps sum to exactly the tonnage (75t rider -> 75t of
     // mounts, 100t -> 100t). Per-slot caps still gate what a
     // single mount can hold.
@@ -66,7 +66,7 @@ public static class RiderSpecs
         // chest slot). And because the chassis reads
         // naturally symmetrical, its slot tonnage splits
         // EQUALLY left/right (owner): arms 10 + 10, pods
-        // 21 + 21, the 13t chest mount on the centreline —
+        // 21 + 21, the 13t chest mount on the centreline -
         // caps still sum to the 75t budget.
         Slots = new[]
         {
@@ -79,14 +79,14 @@ public static class RiderSpecs
     };
 
     // Mirrored symmetry (owner, 2026-11-12, final word):
-    // weapon symmetry binds the body's own mounts — arms,
-    // legs, waist — so both arms of a rider carry the SAME
+    // weapon symmetry binds the body's own mounts - arms,
+    // legs, waist - so both arms of a rider carry the SAME
     // type and no weapon type fires from a single arm. The
     // other type lives on the centre mounts (waist gun,
     // turret, torso rack) or pairs on both arms itself
     // (Demeter / Theseus cannons). Pods sit outside the
     // rule, with one constraint: a rider whose rocket pods
-    // exist on one side only uses them as rockets — every
+    // exist on one side only uses them as rockets - every
     // pod on the roster is a missile mount. Every rider
     // also carries all three types (owner, same day):
     // Enyo mirrors energy on both arms and mounts its
@@ -99,7 +99,7 @@ public static class RiderSpecs
         Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 4.8f,
         FlipKneePole = true,
         // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
-        // heavier riders get MORE hardpoints, not just fatter ones —
+        // heavier riders get MORE hardpoints, not just fatter ones -
         // with everything on one arm, losing the arm disarms the
         // rider. Five mounts: both arms, the waist gun, a chest
         // mount, and the SRM rack. Caps sum to the 100t budget.
@@ -113,7 +113,7 @@ public static class RiderSpecs
         }
     };
 
-    // PROMETHEUS (Hellbringer kit, 65t Heavy): three mounts —
+    // PROMETHEUS (Hellbringer kit, 65t Heavy): three mounts -
     // Four mounts: mirrored energy arms, a ballistic torso
     // rack, and the missile pod on the left shoulder (fused
     // into the torso mesh; RiderParts carves it out as a
@@ -139,7 +139,7 @@ public static class RiderSpecs
 
     // Every chassis the lab can offer. Adding a rider = one new
     // RiderSpec + one entry here (+ its RiderParts layout and model).
-    // AJAX (shield mech, original design, 85t Heavy): the wall —
+    // AJAX (shield mech, original design, 85t Heavy): the wall -
     // a turret cannon up top, a twin-AC gun arm, a missile rack
     // on the left shoulder, and a small energy mount in the
     // shield arm. Caps sum to the 85t budget.
@@ -207,7 +207,7 @@ public static class RiderSpecs
     // The free-for-all's third rider is drawn from this
     // priority list: the first entry that is not already the
     // enemy. Roster data (the two original chassis, in
-    // seniority order) — extending the rotation is a data
+    // seniority order) - extending the rotation is a data
     // edit, never an engine branch.
     public static readonly RiderSpec[] FfaPartnerPriority = { Hector, Enyo };
 
@@ -217,7 +217,7 @@ public static class RiderSpecs
         return Enyo;
     }
 
-    // Default fits (owner's rule: every slot filled) — pure
+    // Default fits (owner's rule: every slot filled) - pure
     // data, one row per rider: slot id -> weapon ids in fit
     // order. LoadoutState.DefaultFor builds any rider's factory
     // loadout from its row; there are no per-rider builder
@@ -278,13 +278,13 @@ public sealed class LoadoutState
     // A hardpoint fits as many weapons of its type as its tonnage
     // cap allows (owner, 2026-10-31: with one weapon per slot, the
     // 3-slot Hector fielded less than the 4-slot Enyo despite
-    // the bigger budget — slot count beat tonnage). The tonnage is
+    // the bigger budget - slot count beat tonnage). The tonnage is
     // the real limit now, exactly like the MW4 lab.
     public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> Equipped = new();
 
     // Firing groups (owner): every fitted weapon belongs to a
     // group the PLAYER picks in the lab (the G-button on each
-    // fitted row) — the duel fires a group as one volley and the
+    // fitted row) - the duel fires a group as one volley and the
     // HUD lists groups, not weapon types. Stored parallel to
     // Equipped (same slot, same index). A weapon fitted without
     // an explicit pick takes the type default, which reproduces
@@ -348,10 +348,10 @@ public sealed class LoadoutState
         if (slot == null) return "no such slot";
         if (weapon == null) return "no weapon";
         if (weapon.Type != slot.Type)
-            return $"{weapon.Name} is {weapon.Type} — the {slot.Display} hardpoint takes {slot.Type} only";
+            return $"{weapon.Name} is {weapon.Type} - the {slot.Display} hardpoint takes {slot.Type} only";
         float left = slot.MaxWeight - SlotWeight(slotId);
         if (weapon.Weight > left)
-            return $"{weapon.Name} weighs {weapon.Weight:F0}t — only {left:F0}t left in the {slot.Display} hardpoint ({slot.MaxWeight:F0}t max)";
+            return $"{weapon.Name} weighs {weapon.Weight:F0}t - only {left:F0}t left in the {slot.Display} hardpoint ({slot.MaxWeight:F0}t max)";
         return null;
     }
 
