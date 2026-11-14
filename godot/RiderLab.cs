@@ -699,20 +699,39 @@ public partial class RiderLab : Control
         var jhb = new HBoxContainer();
         jhb.AddThemeConstantOverride("separation", 16);
         jetsRow.AddChild(jhb);
-        _jetsTileBtn = new Button { Text = "JJ", CustomMinimumSize = new Vector2(40, 40) };
-        _jetsTileBtn.AddThemeFontSizeOverride("font_size", 12);
+        // The TH tile carries the weapon icons' framed look
+        // (owner, 2026-11-14): a bordered square, not a plain
+        // button face. The Button itself is faceless — the
+        // frame and the 'TH' are children that ignore the
+        // mouse, so the press lands on the button.
+        _jetsTileBtn = new Button { CustomMinimumSize = new Vector2(40, 40) };
         _jetsTileBtn.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        _jetsTileBtn.TooltipText = "Fit or remove the jump jets";
+        _jetsTileBtn.TooltipText = "Fit or remove the thrusters";
+        foreach (var bst in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            _jetsTileBtn.AddThemeStyleboxOverride(bst, new StyleBoxEmpty());
+        var thFrame = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+        thFrame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var thSb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.16f, 0.95f), BorderColor = new Color(0.62f, 0.68f, 0.75f, 0.95f) };
+        thSb.SetBorderWidthAll(2);
+        thSb.SetCornerRadiusAll(4);
+        thFrame.AddThemeStyleboxOverride("panel", thSb);
+        var thLabel = new Label { Text = "TH", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
+        thLabel.AddThemeFontSizeOverride("font_size", 12);
+        thLabel.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
+        thFrame.AddChild(thLabel);
+        _jetsTileBtn.AddChild(thFrame);
+        _jetsTileBtn.MouseEntered += () => thFrame.Modulate = new Color(1.3f, 1.3f, 1.3f);
+        _jetsTileBtn.MouseExited += () => thFrame.Modulate = Colors.White;
         _jetsTileBtn.Pressed += () =>
         {
             Loadout.JumpJets = !Loadout.JumpJets;
-            SetHint(Loadout.JumpJets ? "Jump jets fitted — hold Space in the duel to fly." : "Jump jets removed — this rider stays grounded.");
+            SetHint(Loadout.JumpJets ? "Thrusters fitted — hold Space in the duel to fly." : "Thrusters removed — this rider stays grounded.");
             Refresh();
         };
         jhb.AddChild(_jetsTileBtn);
         var jtexts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         jtexts.AddThemeConstantOverride("separation", 1);
-        var jnm = new Label { Text = "Jets", MouseFilter = MouseFilterEnum.Ignore };
+        var jnm = new Label { Text = "Thrusters", MouseFilter = MouseFilterEnum.Ignore };
         jnm.AddThemeFontSizeOverride("font_size", 14);
         jnm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
         jtexts.AddChild(jnm);
@@ -1149,7 +1168,8 @@ public partial class RiderLab : Control
         if (_jetsTileBtn != null)
         {
             _jetsTileBtn.Disabled = !Spec.JumpCapable;
-            _jetsLine.Text = !Spec.JumpCapable ? "This chassis cannot fit jets"
+            _jetsTileBtn.Modulate = Spec.JumpCapable ? Colors.White : new Color(1f, 1f, 1f, 0.45f);
+            _jetsLine.Text = !Spec.JumpCapable ? "This chassis cannot fit thrusters"
                 : Loadout.JumpJets ? "Fitted — hold Space in the duel to fly" : "Not fitted";
         }
         foreach (var (id, panel) in _slots)
