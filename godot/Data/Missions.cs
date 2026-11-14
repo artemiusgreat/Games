@@ -9,6 +9,7 @@ public sealed class PlanetDef
     public string Name;         // "Chronos"
     public string Subtitle;     // "Desert war world · Lyran Marches"
     public string Intel;        // orbital-screen info column
+    public Vector2 MapPos;      // position on the universe map (0..1, y down)
     public Color BaseColor;     // planet texture: deep ground
     public Color LandColor;     // planet texture: continents
     public Color PolarColor;    // planet texture: caps / highlands
@@ -85,6 +86,7 @@ public static class MissionCatalog
         var ares = new PlanetDef
         {
             Name = "Chronos",
+            MapPos = new Vector2(0.24f, 0.70f),
             Subtitle = "Desert war world · The Brass Marches",
             Intel = "Chronos changed hands four times in the last decade and the maps never caught up. " +
                     "House Asterion holds the northern forts; House Corvane raids out of the southern flats. " +
@@ -111,6 +113,7 @@ public static class MissionCatalog
         var thalassa = new PlanetDef
         {
             Name = "Meridian",
+            MapPos = new Vector2(0.68f, 0.52f),
             Subtitle = "Harbor world · Rimward Trade Lane",
             Intel = "Nine-tenths ocean, and the tenth that matters is harbor steel. Meridian's platforms pump the " +
                     "fuel every House in the sector burns, which makes them worth raiding weekly. The Combine pays " +
@@ -152,6 +155,7 @@ public static class MissionCatalog
         var kryos = new PlanetDef
         {
             Name = "Orion",
+            MapPos = new Vector2(0.44f, 0.20f),
             Subtitle = "Mountain ice world · The Far Reaches",
             Intel = "Orion keeps what it kills: riders frozen mid-stride still stand in the passes from the first " +
                     "landings. The research stations here pay in hard currency and salvage rights, and the machine " +

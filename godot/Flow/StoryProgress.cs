@@ -72,6 +72,24 @@ public static class StoryProgress
         => planet >= 0 && planet < PlanetCount
            && mission >= 0 && mission < Counts[planet];
 
+    // The unlocked mission indices of a planet, in catalog
+    // order (the front-end's selectors, offer lists and bar
+    // patrons all cycle exactly this set).
+    public static System.Collections.Generic.List<int> UnlockedList(int planet)
+    {
+        var list = new System.Collections.Generic.List<int>();
+        if (planet < 0 || planet >= PlanetCount) return list;
+        for (int m = 0; m < MissionCatalog.Planets[planet].Missions.Count; m++)
+            if (IsUnlocked(planet, m)) list.Add(m);
+        return list;
+    }
+
+    public static int FirstUnlocked(int planet)
+    {
+        var u = UnlockedList(planet);
+        return u.Count > 0 ? u[0] : 0;
+    }
+
     // Mark a mission complete: unlocks the NEXT mission on
     // the same planet. Replays never shrink the unlocked set,
     // and other planets are untouched.

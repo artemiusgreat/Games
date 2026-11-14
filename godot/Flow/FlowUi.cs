@@ -157,6 +157,60 @@ public static class FlowUi
         return l;
     }
 
+    // The front-end's selector row (the owner's "slider"):
+    // ‹ NAME › cycling one entry per press.
+    public static HBoxContainer SelectorRow(out Label name, int fontSize, System.Action<int> step)
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        var prev = MakeButton("‹", 17);
+        prev.CustomMinimumSize = new Vector2(42f, 0f);
+        prev.Pressed += () => step(-1);
+        row.AddChild(prev);
+        name = MakeHeading("", fontSize, Gold, HorizontalAlignment.Center);
+        name.SizeFlagsHorizontal = Control.SizeFlags.Expand;
+        row.AddChild(name);
+        var next = MakeButton("›", 17);
+        next.CustomMinimumSize = new Vector2(42f, 0f);
+        next.Pressed += () => step(1);
+        row.AddChild(next);
+        return row;
+    }
+
+    // A description on a desk monitor: bezel, dark screen,
+    // scanlines. The bezel fits BOTH children to its rect
+    // directly (a PanelContainer fits every child): the screen,
+    // then the scanlines over it — no intermediate plain
+    // Control (it silently zeroes the chain's minimum size).
+    public static Control Monitor(Control inner)
+    {
+        var bezel = new PanelContainer();
+        bezel.AddThemeStyleboxOverride("panel", MonitorBezel());
+        var screen = new PanelContainer();
+        screen.AddThemeStyleboxOverride("panel", MonitorScreen());
+        bezel.AddChild(screen);
+        screen.AddChild(inner);
+        var scan = new TextureRect
+        {
+            Texture = ScanlineTexture(),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
+        bezel.AddChild(scan);
+        return bezel;
+    }
+
+    // Keep a monitor label exactly as wide as its scroll
+    // viewport (minus the scrollbar), so the text reflows to
+    // the full screen width whenever the window changes size.
+    public static void FitTextWidth(ScrollContainer scroll, Label label)
+    {
+        if (scroll == null || label == null) return;
+        float w = scroll.Size.X - 14f;
+        if (w > 40f) label.CustomMinimumSize = new Vector2(w, label.CustomMinimumSize.Y);
+    }
+
     public static string ThreatPips(int threat)
     {
         var sb = new System.Text.StringBuilder();
