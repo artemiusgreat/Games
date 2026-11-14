@@ -46,6 +46,7 @@ public partial class RiderDuel : Node3D
     private OmniLight3D _heroLight; // soft shadowless pool over the player rider: it must stay readable in ANY shadow (owner, 2026-11-11)
     private bool _test;
     private bool _labShot; // dev flag: capture the live RiderLab to /tmp/lab_live.png and quit
+    private bool _labEquipTab; // dev flag: --lab-tab=equip opens the lab capture on the Equipment tab
     private bool _hectorCam; // dev flag: swap player to Hector, force-deploy, capture the chase view
     private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
     private bool _hectorLab; // dev flag: open the lab on the Hector for the --lab-shot capture
@@ -344,6 +345,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--breakable-test") _breakTest = true;
             if (arg == "--terrain-test") _terrainTest = true;
             if (arg == "--lab-shot") _labShot = true;
+            if (arg == "--lab-tab=equip") _labEquipTab = true;
             if (arg == "--photo") _photo = true;
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
             if (arg == "--grass-shot") { _photo = true; _grassShot = true; }
@@ -991,6 +993,7 @@ public partial class RiderDuel : Node3D
         if (_labShot && _lab != null && Time.GetTicksMsec() > 19500 && _labShotFrames > 45 && !_layoutDumped)
         {
             _layoutDumped = true;
+            if (_labEquipTab) _lab.OpenOnEquipmentTab();
             GD.Print(_lab.DumpLayout());
         }
 
