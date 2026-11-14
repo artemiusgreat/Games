@@ -950,7 +950,10 @@ public partial class RiderLab : Control
         // its own '−' in the corner — the main rider's card
         // (slot 1) never does.
         int totalCards = TeamNames.Length + (TeamNames.Length < 4 ? 1 : 0);
-        float cardsW = totalCards * 176f + Mathf.Max(0, totalCards - 1) * 8f;
+        // The '+' button is half a card wide (owner, 2026-11-14
+        // — width only, its height stays the cards' 82).
+        float cardsW = TeamNames.Length * 176f + (TeamNames.Length < 4 ? 88f : 0f)
+            + Mathf.Max(0, totalCards - 1) * 8f;
         var scroll = new ScrollContainer
         {
             CustomMinimumSize = new Vector2(Mathf.Min(cardsW, 928f), 0f),
@@ -1024,7 +1027,7 @@ public partial class RiderLab : Control
         }
         if (TeamNames.Length < 4)
         {
-            var plus = new Button { Text = "+", CustomMinimumSize = new Vector2(176f, 82f) };
+            var plus = new Button { Text = "+", CustomMinimumSize = new Vector2(88f, 82f) };
             plus.AddThemeFontSizeOverride("font_size", 36);
             StyleTeamButton(plus);
             plus.TooltipText = "Add a rider to the team";
