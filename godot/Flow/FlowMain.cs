@@ -2,20 +2,19 @@ using Godot;
 
 // The game's front door (project main scene). A quiet orbital
 // backdrop — star panorama and a slowly turning planet — behind a
-// stack of full-screen UI steps:
+// stack of full-screen UI steps. Both modes are step wizards
+// (owner, teams stage); every step has a Back button:
 //
-//   MapType ──Tournament──► Map select ──► PhotoDuel (arena) ──► lab ──► duel
+//   MapType ──Tournament──► Planet ──► Arena ──► Teams ──► lab ──► duel
 //      │
-//      └────Mission────► Planet ──► Bar ──► PhotoDuel (front) ──► lab ──► duel
-//                          │
-//                          └──── Command Center ──► lab (skips the bar)
+//      └──────Story──────► Planet ──► Missions (bar) ──► lab ──► duel
 //
 // The flow only CHOOSES; WorldConfig carries the choice into the
 // duel scene, which builds the right world and opens the RiderLab
-// as before. Harness: --flowshot=maptype|planet|tournament|bar
+// as before. Harness: --flowshot=maptype|planet|missions|arena|bar
 // renders one screen, saves /tmp/flow_<name>.png and quits;
 // --flowfocus=N injects N ui_down presses before the capture;
-// --flowtest-nav walks Mission -> planet -> lab by itself.
+// --flowtest-nav walks Story -> planet -> missions -> lab alone.
 public partial class FlowMain : Node3D
 {
     // Flow state is static so it survives the trip to the lab
@@ -38,6 +37,7 @@ public partial class FlowMain : Node3D
 
     private CanvasLayer _layer;
     private Control _host;
+    private Control _screen;
     private string _flowshot;
     private double _shotT;
     private CanvasLayer _loadLayer;
@@ -75,20 +75,25 @@ public partial class FlowMain : Node3D
                 break;
             case "planet":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
-                WorldConfig.SelectedMission = MissionCatalog.Planets[0].Missions[0];
                 GoPlanet();
                 break;
             case "tournament":
                 GoTournamentMap();
                 break;
+            case "arena":
+                WorldConfig.Mode = WorldConfig.MapMode.Tournament;
+                GoArena();
+                break;
             case "bar":
+            case "missions":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
-                WorldConfig.SelectedMission = MissionCatalog.Planets[0].Missions[0];
-                GoBar();
+                GoMissions();
                 break;
             default:
                 if (StartScreen == "planet") GoPlanet();
-                else if (StartScreen == "tournament") GoTournamentMap();
+                else if (StartScreen == "missions") GoMissions();
+                else if (StartScreen == "arena" || StartScreen == "tournament") GoArena();
+                else if (StartScreen == "teams") GoTeams();
                 else GoMapType();
                 StartScreen = null;
                 break;
@@ -110,7 +115,12 @@ public partial class FlowMain : Node3D
             else if (_navStep == 1 && _shotT > 1.8)
             {
                 _navStep = 2;
-                EnterLab(fromPlanet: true);
+                GoMissions();
+            }
+            else if (_navStep == 2 && _shotT > 2.6)
+            {
+                _navStep = 3;
+                (_screen as MissionScreen)?.HarnessAcceptFirst();
             }
         }
         if (_focusTarget > 0)
@@ -142,6 +152,7 @@ public partial class FlowMain : Node3D
     {
         foreach (var c in _host.GetChildren()) { _host.RemoveChild(c); c.QueueFree(); }
         _host.AddChild(screen);
+        _screen = screen;
         CallDeferred("GrabFirstFocus");
     }
 
@@ -192,20 +203,35 @@ public partial class FlowMain : Node3D
     {
         WorldConfig.Mode = WorldConfig.MapMode.Tournament;
         WorldConfig.SelectedMission = null;
-        Show(new MapScreen { Name = "tournament", Flow = this });
+        GoPlanet();
     }
 
+    // Wizard step 1 (both modes): the planet screen — selector
+    // on the left, the clickable universe map on the right.
     public void GoPlanet()
     {
-        Show(new MapScreen { Name = "planet", Flow = this });
+        Show(new PlanetScreen { Name = "planet", Flow = this });
     }
 
-    public void GoBar()
+    // Wizard step 2 (Story): the bar — mission slider on the
+    // left, clickable patrons on the right.
+    public void GoMissions()
     {
-        // Entering the bar keeps the orbital selection as the
-        // contract on file until a patron's offer replaces it.
-        WorldConfig.SelectedMission ??= MissionCatalog.Planets[PlanetIndex].Missions[MissionIndex];
-        Show(new BarScreen { Name = "bar", Flow = this });
+        Show(new MissionScreen { Name = "missions", Flow = this });
+    }
+
+    // Wizard step 2 (Tournament): the arena screen.
+    public void GoArena()
+    {
+        Show(new ArenaScreen { Name = "arena", Flow = this });
+    }
+
+    // Wizard step 3 (Tournament): the team selector. Stage D2
+    // builds the screen; until then the wizard goes straight
+    // to the lab, as the flow did before the teams stage.
+    public void GoTeams()
+    {
+        EnterLab();
     }
 
     // Command Center / Rider Lab: load the duel scene, which opens
