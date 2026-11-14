@@ -549,13 +549,12 @@ public partial class RiderLab : Control
         // as clutter). Its own band, first in the column.
         if (TeamMode) root.AddChild(TeamSection());
 
-        var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}"
-            + (TeamMode ? $"  ·  TEAM SLOT {TeamSlot + 1} OF {TeamNames.Length}" : "") };
+        var title = new Label { Text = $"RIDER LAB - {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}" };
         FlowUi.Heading(title);
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
         root.AddChild(title);
-        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint — or click the icon, then click a hardpoint. A hardpoint fits as many weapons of its type as its tonnage allows. Click an occupied hardpoint with nothing selected to remove its last weapon; right-click empties it. The G-button on a fitted weapon sets its firing group (keys 1-6 in the duel)." };
+        var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint - or click the icon, then click a hardpoint. A hardpoint fits as many weapons of its type as its tonnage allows. Click an occupied hardpoint with nothing selected to remove its last weapon; right-click empties it. The G-button on a fitted weapon sets its firing group (keys 1-6 in the duel)." };
         sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
@@ -845,7 +844,17 @@ public partial class RiderLab : Control
             PadButton(backBtn);
         }
         btnRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        btnRow.AddChild(RiderSelector("", true));
+        // The selector wears a semi-transparent background
+        // like Deploy's (owner, 2026-11-14): one panel behind
+        // the arrows and the name, so the group reads as a
+        // single control next to the button.
+        var selPanel = new PanelContainer();
+        var selSb = new StyleBoxFlat { BgColor = new Color(0.07f, 0.09f, 0.13f, 0.85f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f), ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 2, ContentMarginBottom = 2 };
+        selSb.SetBorderWidthAll(2);
+        selSb.SetCornerRadiusAll(6);
+        selPanel.AddThemeStyleboxOverride("panel", selSb);
+        selPanel.AddChild(RiderSelector("", true));
+        btnRow.AddChild(selPanel);
         var start = new Button { Text = "Deploy" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
@@ -1132,6 +1141,15 @@ public partial class RiderLab : Control
         prev.Pressed += () => Cycle(-1);
         var next = new Button { Text = "▶" };
         next.Pressed += () => Cycle(1);
+        // Faceless arrows (owner, 2026-11-14): the selector's
+        // panel carries the face now; a gold tint on hover is
+        // the only feedback.
+        foreach (var ab in new[] { prev, next })
+        {
+            foreach (var bst in new[] { "normal", "hover", "pressed", "focus" })
+                ab.AddThemeStyleboxOverride(bst, new StyleBoxEmpty());
+            ab.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.80f, 0.35f));
+        }
         name.Text = NameCase(RiderSpecs.All[Index()].Name);
         box.AddChild(prev);
         box.AddChild(name);
