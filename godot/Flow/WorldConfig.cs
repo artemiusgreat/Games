@@ -143,28 +143,28 @@ public static class ArenaCatalog
     {
         new ArenaDef
         {
-            Name = "The Proving Grounds", Biome = WorldConfig.BiomeKind.Forest,
-            Sub = "Forest · Tournament arena · 260u · Three riders · Free-for-all",
+            Name = "Hyle", Biome = WorldConfig.BiomeKind.Forest,
+            Sub = "Forest · Tournament arena · 260u",
             Desc = "Rolling woodland. Tree crowns stop shells, rocks stop nothing but the eye.\n\n" +
-                   "The Proving Grounds: a 260-unit basin ringed by high ground, with a flat-topped mesa at its heart. " +
-                   "Three pads, three riders, no teams. Last machine standing takes the purse and the ground."
+                   "Hyle: a 260-unit basin ringed by high ground, with a flat-topped mesa at its heart. " +
+                   "Teams are formed on the next step; the last team standing takes the purse and the ground."
         },
         new ArenaDef
         {
-            Name = "The Dry Basin", Biome = WorldConfig.BiomeKind.Desert,
-            Sub = "Desert · Tournament arena · 260u · Three riders · Free-for-all",
+            Name = "Eremos", Biome = WorldConfig.BiomeKind.Desert,
+            Sub = "Desert · Tournament arena · 260u",
             Desc = "Sand and rock under a hard sun. Long sight lines, almost no cover but the mesa and the ruins.\n\n" +
-                   "The Dry Basin: a 260-unit desert basin ringed by high ground, with a flat-topped mesa at its heart. " +
-                   "Three pads, three riders, no teams. Last machine standing takes the purse and the ground."
+                   "Eremos: a 260-unit desert basin ringed by high ground, with a flat-topped mesa at its heart. " +
+                   "Teams are formed on the next step; the last team standing takes the purse and the ground."
         },
         new ArenaDef
         {
-            Name = "The Ruined Mile", Biome = WorldConfig.BiomeKind.City,
+            Name = "Polis", Biome = WorldConfig.BiomeKind.City,
             SkyTex = "res://assets/skies/sky_jungle.jpg",
-            Sub = "City · Tournament arena · 260u · Three riders · Free-for-all",
+            Sub = "City · Tournament arena · 260u",
             Desc = "A dead city of towers and blocks. Streets channel movement, roofs are high ground, every building falls.\n\n" +
-                   "The Ruined Mile: a 260-unit city basin ringed by high ground, with a flat-topped mesa at its heart. " +
-                   "Three pads, three riders, no teams. Last machine standing takes the purse and the ground."
+                   "Polis: a 260-unit city basin ringed by high ground, with a flat-topped mesa at its heart. " +
+                   "Teams are formed on the next step; the last team standing takes the purse and the ground."
         }
     };
 }
