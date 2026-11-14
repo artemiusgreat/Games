@@ -92,6 +92,7 @@ public partial class RiderDuel
         _lab = lab;
         lab.OnStart = () =>
         {
+            RebuildAlliesForDeploy(); // the roster may have changed in the lab (owner's report)
             ApplyLoadout();
             lab.QueueFree();
             if (_lab == lab) _lab = null;

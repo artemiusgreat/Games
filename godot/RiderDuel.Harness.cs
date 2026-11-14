@@ -1263,6 +1263,53 @@ public partial class RiderDuel
         GetTree().Quit(1);
     }
 
+    // ---------- Deploy rebuild probe (owner's bug, 2026-11-14) ----------
+
+    private float _deployT;
+    private bool _deployStaged;
+
+    private void DeployFail(string why)
+    {
+        GD.PrintErr($"DEPLOYTEST FAIL: {why}");
+        GetTree().Quit(1);
+    }
+
+    // The reported bug, staged exactly: the scene loads with
+    // a one-rider roster (no NPC records), members are added
+    // through the lab's own Add path, and the DEPLOY rebuild
+    // must field them.
+    private void UpdateDeployTest(float dt)
+    {
+        _deployT += dt;
+        if (_deployT > 60f) { DeployFail("timeout"); return; }
+        if (!_deployStaged)
+        {
+            _deployStaged = true;
+            if (_allies.Count != 0) { DeployFail($"expected a solo deploy start, got {_allies.Count} allies"); return; }
+            AddStoryMember();
+            AddStoryMember();
+            if (TeamRoster.Story.Count != 3) { DeployFail($"lab Add path should give 3 roster members, got {TeamRoster.Story.Count}"); return; }
+            RebuildAlliesForDeploy();
+            if (_allies.Count != 2) { DeployFail($"deploy rebuild fielded {_allies.Count} allies, expected 2"); return; }
+            foreach (var a in _allies)
+            {
+                if (a.Walker == null || !IsInstanceValid(a.Walker)) { DeployFail("rebuilt ally has no live walker"); return; }
+                bool capped = false;
+                foreach (var cap in _hit.Riders) if (cap.Id == a.Role) capped = true;
+                if (!capped) { DeployFail($"rebuilt ally {a.Role} missing from the hit caps"); return; }
+            }
+            GD.Print($"DEPLOYTEST REBUILD PASS lab-added members take the field: {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
+            // A second deploy with an unchanged roster is a
+            // no-op: the same walkers stay.
+            var w0 = _allies[0].Walker;
+            RebuildAlliesForDeploy();
+            if (_allies.Count != 2 || _allies[0].Walker != w0) { DeployFail("unchanged roster rebuilt anyway"); return; }
+            GD.Print("DEPLOYTEST NOOP PASS an unchanged roster deploys as-is");
+            GD.Print("DEPLOYTEST DONE");
+            GetTree().Quit(0);
+        }
+    }
+
     // ---------- Tournament bracket probe (Stage D3) ----------
 
     private float _bracketT;

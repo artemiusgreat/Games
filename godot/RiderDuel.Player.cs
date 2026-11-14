@@ -121,7 +121,8 @@ public partial class RiderDuel
             bool teamUp = _teamDialog != null && _teamDialog.Visible;
             if (_leaveDialog != null && !_leaveDialog.Visible && !teamUp)
             {
-                if (WorldConfig.IsMission && _allies.Count > 0 && _teamDialog != null)
+                if (WorldConfig.IsMission && _teamDialog != null
+                    && (_allies.Count > 0 || TeamRoster.Story.Count > 1))
                     _teamDialog.Open(TeamRows());
                 else
                     _leaveDialog.Open();

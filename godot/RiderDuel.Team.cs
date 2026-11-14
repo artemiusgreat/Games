@@ -249,6 +249,39 @@ public partial class RiderDuel
         if (_allies.Count > 0) GD.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
     }
 
+    // The lab edits the roster AFTER _Ready built the team —
+    // members added there never took the field and the player
+    // deployed alone (owner's bug report, 2026-11-14). At
+    // DEPLOY the NPC team is rebuilt from the roster as it now
+    // stands, unless it already matches exactly (same leader
+    // slot, same members by spec and loadout reference — the
+    // lab mutates a member's loadout in place, so loadout
+    // edits alone never force a rebuild).
+    private void RebuildAlliesForDeploy()
+    {
+        if (!WorldConfig.IsMission || AnyHarness) return;
+        TeamRoster.EnsureStory();
+        bool same = _leaderSlot == TeamRoster.StorySlot
+            && _allies.Count == TeamRoster.Story.Count - 1;
+        if (same)
+        {
+            int ai = 0;
+            for (int slot = 0; slot < TeamRoster.Story.Count && same; slot++)
+            {
+                if (slot == TeamRoster.StorySlot) continue;
+                var m = TeamRoster.Story[slot];
+                var a = _allies[ai++];
+                if (a.Spec != m.Spec || a.Loadout != m.Loadout) same = false;
+            }
+        }
+        if (same) return;
+        GD.Print($"TEAM deploy rebuild: roster changed in the lab ({_allies.Count} records -> {TeamRoster.Story.Count - 1})");
+        foreach (var a in _allies) a.Walker.QueueFree();
+        _allies.Clear();
+        BuildAllies();
+        RefreshHitCaps();
+    }
+
     // A team's muster point in the arena: its pad for the
     // first three teams; a fourth team takes the ring point
     // rotated 60 degrees off pad 0, between pads 0 and 1.
