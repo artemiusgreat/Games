@@ -6,8 +6,8 @@ using Godot;
 // style universe map — the player can select the planet with
 // the slider or by clicking its node on the chart. The mission
 // selector is GONE from this screen (missions are the next
-// step, in the bar). Menu: [Back] [Continue] (+ Reset story on
-// the Story path).
+// step, in the bar). Menu: Back on the left, Continue on the
+// right (owner's standing button rule).
 public partial class PlanetScreen : Control
 {
     public FlowMain Flow;
@@ -39,17 +39,14 @@ public partial class PlanetScreen : Control
         var back = FlowUi.MakeButton("Back", 14);
         back.Pressed += () => Flow.GoMapType();
         menu.AddChild(back);
+        // Back on the left, Continue on the right (owner's
+        // standing button rule). The Reset story button is
+        // removed at the owner's word — he sees no purpose
+        // for it; StoryProgress.Reset stays as data API.
+        menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var next = FlowUi.MakeButton(IsMission ? "To missions" : "To arenas", 14);
         next.Pressed += () => { if (IsMission) Flow.GoMissions(); else Flow.GoArena(); };
         menu.AddChild(next);
-        if (IsMission)
-        {
-            var spacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            menu.AddChild(spacer);
-            var resetStory = FlowUi.MakeButton("Reset story", 11);
-            resetStory.Pressed += () => { StoryProgress.Reset(); Flow.GoPlanet(); };
-            menu.AddChild(resetStory);
-        }
 
         // ---- middle: selector | universe map ----
         var mid = new HBoxContainer();

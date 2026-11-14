@@ -63,6 +63,7 @@ public partial class ArenaScreen : Control
         var back = FlowUi.MakeButton("Back", 14);
         back.Pressed += () => Flow.GoPlanet();
         menu.AddChild(back);
+        menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var next = FlowUi.MakeButton("To teams", 14);
         next.Pressed += () => Flow.GoTeams();
         menu.AddChild(next);

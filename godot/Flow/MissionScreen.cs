@@ -41,14 +41,16 @@ public partial class MissionScreen : Control
         root.AddThemeConstantOverride("separation", 10);
         margin.AddChild(root);
 
-        // ---- menu bar: Back (+ Rider Lab once a mission is
-        // signed on this planet) ----
+        // ---- menu bar: Back on the left; Rider Lab (once a
+        // mission is signed on this planet) on the right —
+        // the owner's standing button rule ----
         var menu = new HBoxContainer();
         menu.AddThemeConstantOverride("separation", 10);
         root.AddChild(menu);
         var back = FlowUi.MakeButton("Back", 14);
         back.Pressed += () => Flow.GoPlanet();
         menu.AddChild(back);
+        menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var signed = WorldConfig.SelectedMission;
         if (signed != null && signed.Planet == Planet)
         {
