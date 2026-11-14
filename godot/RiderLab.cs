@@ -803,18 +803,27 @@ public partial class RiderLab : Control
     // scrollable strip of rider CARDS (like his MechWarrior
     // Online reference): clicking a card makes the lab display
     // that rider; the displayed rider's card is gold-framed.
-    // Add / Remove are explicit buttons beside the strip;
-    // Remove takes out the displayed rider. Slot 0 is the main
-    // player's rider and cannot be removed; the team holds at
-    // most four. The RIDER selector below changes the chassis
-    // of the displayed slot.
+    // A card-sized '+' card at the end of the strip adds a
+    // rider; every card from the second on carries its own
+    // '−' (slot 0, the main player's rider, cannot be
+    // removed); the team holds at most four. The RIDER
+    // selector below changes the chassis of the displayed
+    // slot.
     private Control TeamSection()
     {
         var panel = new PanelContainer();
         panel.AddThemeStyleboxOverride("panel", LabPanel(new Color(0.045f, 0.065f, 0.105f, 0.96f), new Color(0.42f, 0.48f, 0.56f, 0.8f)));
+        // Inner padding (owner, 2026-11-14): the section's
+        // content sat flush against the panel border.
+        var pad = new MarginContainer();
+        pad.AddThemeConstantOverride("margin_left", 14);
+        pad.AddThemeConstantOverride("margin_right", 14);
+        pad.AddThemeConstantOverride("margin_top", 10);
+        pad.AddThemeConstantOverride("margin_bottom", 12);
+        panel.AddChild(pad);
         var pv = new VBoxContainer();
         pv.AddThemeConstantOverride("separation", 6);
-        panel.AddChild(pv);
+        pad.AddChild(pv);
         var head = new HBoxContainer();
         head.AddThemeConstantOverride("separation", 10);
         pv.AddChild(head);
@@ -831,18 +840,21 @@ public partial class RiderLab : Control
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 10);
         pv.AddChild(row);
-        // The strip hugs its cards (no ExpandFill): the buttons
-        // sit right beside the last card instead of across an
-        // empty panel (owner: the void read as clutter). The
-        // width is set explicitly — a ScrollContainer with Auto
+        // The strip hugs its cards (no ExpandFill). The width
+        // is set explicitly — a ScrollContainer with Auto
         // scrolling reports zero minimum width and collapsed
         // shut in the first capture of this layout, hiding the
         // cards entirely. It still scrolls when the window is
-        // too narrow for the full team.
-        float cardsW = TeamNames.Length * 176f + Mathf.Max(0, TeamNames.Length - 1) * 8f;
+        // too narrow for the full team. Add/Remove live IN the
+        // strip (owner, 2026-11-14): a card-sized '+' card adds
+        // a rider, and every card from the second on carries
+        // its own '−' in the corner — the main rider's card
+        // (slot 1) never does.
+        int totalCards = TeamNames.Length + (TeamNames.Length < 4 ? 1 : 0);
+        float cardsW = totalCards * 176f + Mathf.Max(0, totalCards - 1) * 8f;
         var scroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(Mathf.Min(cardsW, 744f), 0f),
+            CustomMinimumSize = new Vector2(Mathf.Min(cardsW, 928f), 0f),
             VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Auto
         };
@@ -854,19 +866,29 @@ public partial class RiderLab : Control
         {
             int idx = i;
             bool active = i == TeamSlot;
-            var card = new Button { CustomMinimumSize = new Vector2(176f, 82f) };
+            var card = new PanelContainer { CustomMinimumSize = new Vector2(176f, 82f) };
             var bg = active ? new Color(0.14f, 0.16f, 0.10f, 0.98f) : new Color(0.07f, 0.09f, 0.13f, 0.95f);
             var bd = active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.42f, 0.48f, 0.56f, 0.7f);
-            card.AddThemeStyleboxOverride("normal", LabPanel(bg, bd));
-            card.AddThemeStyleboxOverride("hover", LabPanel(new Color(0.11f, 0.14f, 0.20f, 0.98f), bd));
-            card.AddThemeStyleboxOverride("pressed", LabPanel(bg, bd));
-            card.AddThemeStyleboxOverride("focus", LabPanel(new Color(0, 0, 0, 0), new Color(0.98f, 0.80f, 0.35f), drawCenter: false));
-            if (!active) card.Pressed += () => OnTeamSlot?.Invoke(idx);
+            card.AddThemeStyleboxOverride("panel", LabPanel(bg, bd));
+            var host = new Control();
+            card.AddChild(host);
+            if (!active)
+            {
+                var cover = new Button();
+                cover.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                cover.AddThemeStyleboxOverride("normal", LabPanel(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                cover.AddThemeStyleboxOverride("hover", LabPanel(new Color(0.11f, 0.14f, 0.20f, 0.45f), new Color(0, 0, 0, 0)));
+                cover.AddThemeStyleboxOverride("pressed", LabPanel(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                cover.AddThemeStyleboxOverride("focus", LabPanel(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
+                cover.Pressed += () => OnTeamSlot?.Invoke(idx);
+                host.AddChild(cover);
+            }
             var cv = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             cv.AddThemeConstantOverride("separation", 2);
             cv.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            cv.OffsetLeft = 10; cv.OffsetTop = 8; cv.OffsetRight = -10; cv.OffsetBottom = -8;
-            card.AddChild(cv);
+            // Cards with a '−' keep their text clear of it.
+            cv.OffsetLeft = 10; cv.OffsetTop = 8; cv.OffsetRight = i >= 1 ? -44 : -10; cv.OffsetBottom = -8;
+            host.AddChild(cv);
             var nm = new Label { Text = $"{i + 1}. {TeamNames[i]}", MouseFilter = MouseFilterEnum.Ignore };
             nm.AddThemeFontSizeOverride("font_size", 16);
             nm.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.95f, 0.97f, 1f));
@@ -884,24 +906,28 @@ public partial class RiderLab : Control
             st.AddThemeFontSizeOverride("font_size", 11);
             st.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.62f, 0.70f, 0.78f));
             cv.AddChild(st);
+            if (i >= 1)
+            {
+                var minus = new Button { Text = "−" };
+                minus.AnchorLeft = 1f; minus.AnchorRight = 1f;
+                minus.OffsetLeft = -32f; minus.OffsetTop = 6f; minus.OffsetRight = -6f; minus.OffsetBottom = 32f;
+                minus.AddThemeFontSizeOverride("font_size", 16);
+                StyleTeamButton(minus);
+                minus.TooltipText = "Remove this rider from the team";
+                minus.Pressed += () => OnTeamRemove?.Invoke(idx);
+                host.AddChild(minus);
+            }
             cards.AddChild(card);
         }
-        var btns = new VBoxContainer();
-        btns.AddThemeConstantOverride("separation", 8);
-        row.AddChild(btns);
-        var add = new Button { Text = "ADD RIDER", CustomMinimumSize = new Vector2(132f, 40f) };
-        StyleTeamButton(add);
-        add.Disabled = TeamNames.Length >= 4;
-        add.Pressed += () => OnTeamAdd?.Invoke();
-        btns.AddChild(add);
-        var rem = new Button { Text = "REMOVE", CustomMinimumSize = new Vector2(132f, 40f) };
-        StyleTeamButton(rem);
-        rem.Disabled = TeamSlot == 0 || TeamNames.Length <= 1;
-        rem.TooltipText = TeamSlot == 0
-            ? "The main rider (slot 1) cannot be removed"
-            : "Remove the displayed rider from the team";
-        rem.Pressed += () => OnTeamRemove?.Invoke(TeamSlot);
-        btns.AddChild(rem);
+        if (TeamNames.Length < 4)
+        {
+            var plus = new Button { Text = "+", CustomMinimumSize = new Vector2(176f, 82f) };
+            plus.AddThemeFontSizeOverride("font_size", 36);
+            StyleTeamButton(plus);
+            plus.TooltipText = "Add a rider to the team";
+            plus.Pressed += () => OnTeamAdd?.Invoke();
+            cards.AddChild(plus);
+        }
         return panel;
     }
 
@@ -1012,9 +1038,7 @@ public partial class RiderLab : Control
     {
         if (_jetsBtn != null)
         {
-            _jetsBtn.Text = Spec.JumpCapable
-                ? $"JUMP JETS: {(Loadout.JumpJets ? "FITTED" : "NONE")}"
-                : "JUMP JETS: N/A — CHASSIS";
+            _jetsBtn.Text = Spec.JumpCapable && Loadout.JumpJets ? "Jets: Yes" : "Jets: No";
             _jetsBtn.Disabled = !Spec.JumpCapable;
         }
         foreach (var (id, panel) in _slots)
