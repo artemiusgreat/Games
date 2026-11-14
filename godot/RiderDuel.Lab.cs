@@ -135,11 +135,14 @@ public partial class RiderDuel
 
     private void RefreshHitCaps()
     {
-        _hit.Riders.RemoveAll(m => m.Id == Roles.Player || m.Id == Roles.Enemy || m.Id == Roles.Foe);
+        _hit.Riders.RemoveAll(m => m.Id == Roles.Player || m.Id == Roles.Enemy || m.Id == Roles.Foe
+            || (m.Id != null && m.Id.StartsWith(Roles.AllyPrefix)));
         _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Player, Root = () => _player.RootPos, Radius = _playerSpec.Radius, Height = _playerSpec.Height });
         _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Enemy, Root = () => _enemy.RootPos, Radius = _enemySpec.Radius, Height = _enemySpec.Height });
         if (_foe?.Walker != null)
             _hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Foe, Root = () => _foe.Walker.RootPos, Radius = _foe.Spec.Radius, Height = _foe.Spec.Height });
+        foreach (var a in _allies)
+            _hit.Riders.Add(new HitModel.RiderCap { Id = a.Role, Root = () => a.Walker.RootPos, Radius = a.Spec.Radius, Height = a.Spec.Height });
     }
 
     // The foe (free-for-all): the partner chassis — the first

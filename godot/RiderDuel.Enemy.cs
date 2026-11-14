@@ -97,26 +97,31 @@ public partial class RiderDuel
     private bool IsDead(RiderWalker w) =>
         w == _player ? _playerDead
         : _foe != null && w == _foe.Walker ? _foe.Dead
+        : AllyOf(w) is { } da ? da.Dead
         : _enemyDead;
 
     private Vector3 VelOf(RiderWalker w) =>
         w == _player ? _playerVel
         : _foe != null && w == _foe.Walker ? _foe.Vel
+        : AllyOf(w) is { } va ? va.Vel
         : _enemyVel;
 
     private string TagOf(RiderWalker w) =>
         w == _player ? Roles.Player
         : _foe != null && w == _foe.Walker ? Roles.Foe
+        : AllyOf(w) is { } ta ? ta.Role
         : Roles.Enemy;
 
     private RiderWalker WalkerOf(RiderParts parts) =>
         parts == _partsPlayer ? _player
         : _foe != null && parts == _foe.Parts ? _foe.Walker
+        : AllyOfParts(parts) is { } wa ? wa.Walker
         : _enemy;
 
     private RiderParts PartsOf(RiderWalker w) =>
         w == _player ? _partsPlayer
         : _foe != null && w == _foe.Walker ? _foe.Parts
+        : AllyOf(w) is { } pa ? pa.Parts
         : _partsEnemy;
 
     private void UpdateEnemyAI(float delta)

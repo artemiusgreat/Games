@@ -667,6 +667,8 @@ public partial class RiderDuel
             _radar.EnemyDown = _enemyDead;
             _radar.Enemy2 = _foe?.Walker;
             _radar.Enemy2Down = _foe?.Dead ?? true;
+            _radar.Allies.Clear();
+            foreach (var a in _allies) _radar.Allies.Add((a.Walker, a.Dead));
             _radar.QueueRedraw();
         }
         if (_player.IsKnockedDown)
@@ -764,6 +766,13 @@ public partial class RiderDuel
             _playerDroopT = Mathf.Min(_playerDroopT + dt / 1.5f, 1f);
             float t = _playerDroopT;
             _player.Droop = t * t * (3f - 2f * t) * 0.5f;
+        }
+        foreach (var a in _allies)
+        {
+            if (!a.Dead || a.DroopT >= 1f) continue;
+            a.DroopT = Mathf.Min(a.DroopT + dt / 1.5f, 1f);
+            float t = a.DroopT;
+            a.Walker.Droop = t * t * (3f - 2f * t) * 0.5f;
         }
     }
 

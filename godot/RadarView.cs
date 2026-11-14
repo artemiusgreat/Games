@@ -25,6 +25,11 @@ public partial class RadarView : Control
     public bool EnemyDown;
     public RiderWalker Enemy2;
     public bool Enemy2Down;
+    // Story teammates (owner, teams stage): friendly contacts
+    // in the player's own green. Refreshed by the HUD each
+    // frame like the enemy references (walkers are rebuilt on
+    // lab swaps and leader changes).
+    public readonly List<(RiderWalker W, bool Down)> Allies = new();
 
     // Scope range in world units (owner, 2026-11-11 round 6:
     // 'radar seems broken, dot positions don't change' — at
@@ -59,12 +64,13 @@ public partial class RadarView : Control
         return ToScope(new Vector2(world.X - p.X, world.Z - p.Z));
     }
 
-    private void DrawContact(RiderWalker w, bool down, Vector2 c, float px, float maxOff)
+    private void DrawContact(RiderWalker w, bool down, Vector2 c, float px, float maxOff,
+        Color? col = null)
     {
         if (w == null || down || Player == null) return;
         var d = ScopeOf(w.RootPos) * px;
         if (d.Length() > maxOff) d = d.Normalized() * maxOff; // clamp to the rim
-        DrawCircle(c + d, 4.5f, new Color(1f, 0.3f, 0.22f, 0.95f));
+        DrawCircle(c + d, 4.5f, col ?? new Color(1f, 0.3f, 0.22f, 0.95f));
     }
 
     public override void _Draw()
@@ -135,6 +141,9 @@ public partial class RadarView : Control
         // Enemy contacts, clamped to the rim when out of range.
         DrawContact(Enemy, EnemyDown, c, px, half - 6f);
         DrawContact(Enemy2, Enemy2Down, c, px, half - 6f);
+        // Friendly contacts in the player's green.
+        foreach (var (aw, adown) in Allies)
+            DrawContact(aw, adown, c, px, half - 6f, new Color(0.45f, 0.95f, 0.55f, 0.95f));
         // Player triangle: fixed, pointing up — up IS the
         // player's facing on a heading-up scope.
         var pts = new[]

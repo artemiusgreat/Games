@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 
 // RiderDuel module: firing, projectiles, damage and part consequences.
 // (Aiming — the aim ray and reticle — lives in Combat/RiderDuel.Aiming.cs;
@@ -158,6 +159,7 @@ public partial class RiderDuel
             GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == Roles.Enemy) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
             else if (hit.Target == Roles.Foe && _foe != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
+            else if (AllyByRole(hit.Target) is { } la) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(la.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
             else if (hit.Target == Roles.Prop) foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
         }
         else GD.Print("WPN LASER hit=none");
@@ -393,10 +395,12 @@ public partial class RiderDuel
     {
         RiderWalker direct = hit.Target == Roles.Player ? _player
             : hit.Target == Roles.Foe && _foe != null ? _foe.Walker
-            : hit.Target == Roles.Enemy ? _enemy : null;
+            : hit.Target == Roles.Enemy ? _enemy
+            : AllyByRole(hit.Target)?.Walker;
         if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
         var roster = new System.Collections.Generic.List<(RiderWalker, string)> { (_player, Roles.Player), (_enemy, Roles.Enemy) };
         if (_foe != null) roster.Add((_foe.Walker, Roles.Foe));
+        foreach (var a in _allies) roster.Add((a.Walker, a.Role));
         foreach (var (w, id) in roster)
         {
             if (w == direct) continue;
@@ -462,19 +466,23 @@ public partial class RiderDuel
         if (hit.Target == Roles.Player) SpawnScorch(hit.Point, nrm, _player);
         else if (hit.Target == Roles.Enemy) SpawnScorch(hit.Point, nrm, _enemy);
         else if (hit.Target == Roles.Foe && _foe != null) SpawnScorch(hit.Point, nrm, _foe.Walker);
+        else if (AllyByRole(hit.Target) is { } sa) SpawnScorch(hit.Point, nrm, sa.Walker);
         else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
         string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
         if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
+        else if (AllyByRole(hit.Target) is { } pa) ApplyDamage(pa.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
     }
 
     private void ApplyDamage(RiderWalker target, float dmg, HitModel.Result hit, string source, float weaponWeight = 0f, string kind = "")
     {
         bool isPlayer = target == _player;
         bool isFoe = _foe != null && target == _foe.Walker;
-        if (isPlayer ? _playerDead : isFoe ? _foe.Dead : _enemyDead) return;
-        var parts = isPlayer ? _partsPlayer : isFoe ? _foe.Parts : _partsEnemy;
+        var ally = isPlayer || isFoe ? null : AllyOf(target);
+        bool isAlly = ally != null;
+        if (isPlayer ? _playerDead : isFoe ? _foe.Dead : isAlly ? ally.Dead : _enemyDead) return;
+        var parts = isPlayer ? _partsPlayer : isFoe ? _foe.Parts : isAlly ? ally.Parts : _partsEnemy;
         // Damage routing (owner, 2026-11-03): EVERY hit burns the
         // main pool, whatever part it lands on — arms, legs, head,
         // pods all count. Parts additionally take their own damage
@@ -489,8 +497,8 @@ public partial class RiderDuel
             : parts.AttributePoint(hit.Point);
         if (isPlayer) { _playerDmgEvents++; _playerDmgTotal += dmg; }
         else if (!isFoe) { _enemyDmgEvents++; _enemyDmgTotal += dmg; }
-        float poolNow = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : _hpEnemy;
-        float poolMax = isPlayer ? _playerSpec.MaxHp : isFoe ? _foe.Spec.MaxHp : _enemySpec.MaxHp;
+        float poolNow = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : isAlly ? ally.Hp : _hpEnemy;
+        float poolMax = isPlayer ? _playerSpec.MaxHp : isFoe ? _foe.Spec.MaxHp : isAlly ? ally.Spec.MaxHp : _enemySpec.MaxHp;
         // Arm-break gate (owner, 2026-11-12; PartRules):
         // while the pool after this hit is still above the
         // gate, arm damage is capped so the arm keeps 1 HP —
@@ -507,10 +515,11 @@ public partial class RiderDuel
         {
             if (isPlayer) _hpPlayer = Mathf.Max(_hpPlayer - poolDmg, 0f);
             else if (isFoe) _foe.Hp = Mathf.Max(_foe.Hp - poolDmg, 0f);
+            else if (isAlly) ally.Hp = Mathf.Max(ally.Hp - poolDmg, 0f);
             else _hpEnemy = Mathf.Max(_hpEnemy - poolDmg, 0f);
         }
-        float hp = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : _hpEnemy;
-        GD.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe ? Roles.Foe : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
+        float hp = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : isAlly ? ally.Hp : _hpEnemy;
+        GD.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe ? Roles.Foe : isAlly ? ally.Role : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
@@ -531,6 +540,7 @@ public partial class RiderDuel
         var part = parts.GetPart(partId);
         if (parts == _partsPlayer) AddFeed($"WARNING: {part.Display} DESTROYED");
         else if (_foe != null && parts == _foe.Parts) AddFeed($"{_foe.Spec.Name}: {part.Display} DESTROYED");
+        else if (AllyOfParts(parts) is { } ba) AddFeed($"{ba.Spec.Name}: {part.Display} DESTROYED");
         else AddFeed($"{_enemySpec.Name}: {part.Display} DESTROYED");
         ApplyPartConsequences(parts, partId);
     }
@@ -664,17 +674,47 @@ public partial class RiderDuel
         w.SetDrive(w.LegsYaw, 0f);
         if (w == _player) { _playerDead = true; GD.Print("WPN DEATH PLAYER"); }
         else if (_foe != null && w == _foe.Walker) { _foe.Dead = true; GD.Print("WPN DEATH FOE"); }
+        else if (AllyOf(w) is { } da)
+        {
+            da.Dead = true;
+            GD.Print($"WPN DEATH {da.Role}");
+            AddFeed($"{da.Spec.Name} DESTROYED");
+        }
         else { _enemyDead = true; GD.Print("WPN DEATH ENEMY"); }
         OnDeath(w);
-        // Story progression (owner, 2026-11-13): the mission
-        // is complete when the player outlives every defender.
-        if (WorldConfig.IsMission && !_playerDead && _enemyDead && (_foe == null || _foe.Dead))
+        // The driven rider is down but the team fights on:
+        // command passes to a living teammate (owner, teams
+        // stage step 4 — the leader is whoever the player
+        // drives). Deferred to the next frame: Die runs inside
+        // damage resolution, and swapping the driven rider
+        // re-enters ApplyLoadout.
+        if (w == _player && WorldConfig.IsMission && _allies.Any(a => !a.Dead))
+            _pendingLeaderPass = true;
+        CheckMissionEnd();
+    }
+
+    // Story progression (owner, 2026-11-13; teams stage): the
+    // mission is complete when every defender is down and at
+    // least one team rider still stands; it fails when the
+    // whole team is destroyed. A solo team reduces to the
+    // pre-teams rule (the player must outlive the defenders).
+    private void CheckMissionEnd()
+    {
+        if (!WorldConfig.IsMission || _missionDone) return;
+        bool defendersDead = _enemyDead && (_foe == null || _foe.Dead);
+        if (defendersDead && TeamAlive)
         {
+            _missionDone = true;
             int before = StoryProgress.UnlockedIn(FlowMain.PlanetIndex);
             StoryProgress.Complete(FlowMain.PlanetIndex, FlowMain.MissionIndex);
             AddFeed(StoryProgress.UnlockedIn(FlowMain.PlanetIndex) > before
                 ? "MISSION COMPLETE — NEW MISSION AVAILABLE"
                 : "MISSION COMPLETE");
+        }
+        else if (!TeamAlive)
+        {
+            _missionDone = true;
+            AddFeed("MISSION FAILED — TEAM DESTROYED");
         }
     }
 

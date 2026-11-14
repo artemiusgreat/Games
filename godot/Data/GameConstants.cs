@@ -14,6 +14,13 @@ public static class Roles
     public const string Player = "PLAYER";
     public const string Enemy = "ENEMY";
     public const string Foe = "FOE";
+    // Story team (owner, teams stage): an NPC teammate's role
+    // is the prefix + its roster slot ("ALLY1", "ALLY2", ...).
+    // Roles attach to the NPC seat, not the rider — when the
+    // player takes command of a teammate, that walker becomes
+    // Roles.Player and the old leader takes the freed seat's
+    // role.
+    public const string AllyPrefix = "ALLY";
     public const string Prop = "PROP";
     public const string Terrain = "TERRAIN";
 }

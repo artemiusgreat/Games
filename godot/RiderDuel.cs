@@ -522,17 +522,12 @@ public partial class RiderDuel : Node3D
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest) BuildFoe();
+        BuildAllies();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;
-        _hit.PartResolver = (id, pt) => id == Roles.Player
-            ? _partsPlayer.AttributePoint(pt)
-            : id == Roles.Foe && _foe != null ? _foe.Parts.AttributePoint(pt)
-            : _partsEnemy.AttributePoint(pt);
-        _hit.PartRayCast = (id, from, dir, maxDist) => id == Roles.Player
-            ? _partsPlayer.RaycastParts(from, dir, maxDist)
-            : id == Roles.Foe && _foe != null ? _foe.Parts.RaycastParts(from, dir, maxDist)
-            : _partsEnemy.RaycastParts(from, dir, maxDist);
+        _hit.PartResolver = (id, pt) => PartsForRole(id).AttributePoint(pt);
+        _hit.PartRayCast = (id, from, dir, maxDist) => PartsForRole(id).RaycastParts(from, dir, maxDist);
         _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
         _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
 
@@ -608,6 +603,9 @@ public partial class RiderDuel : Node3D
             _foe.Walker.Droop = 0f;
             _foe.Walker.SetDarkened(false);
         }
+        ResetAllies(live: !_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest);
+        _missionDone = false;
+        _pendingLeaderPass = false;
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
         _lastDenied = "";
         _feed.Clear();
@@ -698,6 +696,7 @@ public partial class RiderDuel : Node3D
         _cdLrm = Mathf.Max(_cdLrm - dt, 0f);
         _cdEnemy = Mathf.Max(_cdEnemy - dt, 0f);
         if (_foe != null) _foe.Cd = Mathf.Max(_foe.Cd - dt, 0f);
+        foreach (var a in _allies) a.Cd = Mathf.Max(a.Cd - dt, 0f);
         foreach (var grp in _groups)
         {
             grp.DenyT = Mathf.Max(grp.DenyT - dt, 0f);
@@ -1040,6 +1039,7 @@ public partial class RiderDuel : Node3D
             StepWalker(_player, delta);
             StepWalker(_enemy, delta);
             if (_foe != null && _foe.Walker.IsReady) StepWalker(_foe.Walker, delta);
+            foreach (var a in _allies) if (a.Walker.IsReady) StepWalker(a.Walker, delta);
             StepSounds();
             UpdateLifts((float)delta);
             ResolveCollisions();
@@ -1064,12 +1064,20 @@ public partial class RiderDuel : Node3D
                     _foe.Vel = _foe.Vel.Lerp(fv, 0.5f);
                     _foe.PrevRoot = _foe.Walker.RootPos;
                 }
+                foreach (var a in _allies)
+                {
+                    var av = (a.Walker.RootPos - a.PrevRoot) / dt;
+                    if (av.Length() > 8f) av = av.Normalized() * 8f;
+                    a.Vel = a.Vel.Lerp(av, 0.5f);
+                    a.PrevRoot = a.Walker.RootPos;
+                }
             }
             UpdateCombat(dt);
             UpdateDroop(dt);
             _partsPlayer.StepDebris(dt);
             _partsEnemy.StepDebris(dt);
             if (_foe != null) _foe.Parts.StepDebris(dt);
+            foreach (var a in _allies) a.Parts.StepDebris(dt);
         }
         UpdateHud();
         // Player head destroyed: the reticle wanders (sensor loss).
