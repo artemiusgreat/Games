@@ -83,7 +83,7 @@ public partial class RiderDuel
             {
                 var sp = TeamRoster.Story[i].Spec;
                 lab.TeamNames[i] = sp.Name;
-                lab.TeamMeta[i] = $"{sp.Tonnage:F0}T · {sp.ClassLabel}";
+                lab.TeamMeta[i] = $"{sp.Tonnage:F0}t · {char.ToUpper(sp.ClassLabel[0]) + sp.ClassLabel.Substring(1).ToLowerInvariant()}";
             }
             lab.OnTeamSlot = i => SetStorySlot(i);
             lab.OnTeamAdd = () => AddStoryMember();

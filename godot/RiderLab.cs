@@ -35,7 +35,11 @@ public partial class RiderLab : Control
 
     private Label _hint;
     private Label _tonnage;
-    private Button _jetsBtn;
+    private Button _tabWeapons, _tabEquipment;
+    private Control _pageWeapons, _pageEquipment;
+    private Button _jetsTileBtn;
+    private Label _jetsLine;
+    private Label _speed;
     private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
     private string _selectedWeapon; // click-to-assign path
     // Live slot anchors (owner): viewport position of each
@@ -556,14 +560,9 @@ public partial class RiderLab : Control
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
 
-        // -- Rider selection row --
-        var selBox = new VBoxContainer();
-        selBox.AddThemeConstantOverride("separation", 6);
-        root.AddChild(selBox);
-        // One selector only (owner, 2026-10-31): yours. The two
-        // opponents are fixed — a Enyo and an Hector field
-        // against you (and each other) on every map.
-        selBox.AddChild(RiderSelector("RIDER", true));
+        // The rider selector lives in the bottom bar now, just
+        // before Deploy, with no 'RIDER:' label (owner,
+        // 2026-11-14).
 
         var mid = new HBoxContainer();
         mid.AddThemeConstantOverride("separation", 28);
@@ -577,13 +576,35 @@ public partial class RiderLab : Control
         // the rows' backdrops. Anything wider clips in the scroll
         // instead of widening the column. (A CustomMaximumSize
         // here collapsed the column entirely — measured.)
-        var catBox = new VBoxContainer { CustomMinimumSize = new Vector2(400, 0) };
-        catBox.AddThemeConstantOverride("separation", 4);
-        mid.AddChild(catBox);
-        var catTitle = new Label { Text = "WEAPONS" };
-        catTitle.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
-        FlowUi.Heading(catTitle, false);
-        catBox.AddChild(catTitle);
+        // Sidebar (owner, 2026-11-14): the catalog column is a
+        // semi-transparent panel with two tabs — Weapons (the
+        // catalog below) and Equipment (jets, same row format).
+        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(400, 0) };
+        var sideSb = new StyleBoxFlat
+        {
+            BgColor = new Color(0.045f, 0.065f, 0.105f, 0.85f),
+            BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f),
+            ContentMarginLeft = 10, ContentMarginRight = 10,
+            ContentMarginTop = 10, ContentMarginBottom = 10
+        };
+        sideSb.SetBorderWidthAll(2);
+        sideSb.SetCornerRadiusAll(6);
+        sidePanel.AddThemeStyleboxOverride("panel", sideSb);
+        mid.AddChild(sidePanel);
+        var catBox = new VBoxContainer();
+        catBox.AddThemeConstantOverride("separation", 8);
+        sidePanel.AddChild(catBox);
+        var tabRow = new HBoxContainer();
+        tabRow.AddThemeConstantOverride("separation", 8);
+        catBox.AddChild(tabRow);
+        _tabWeapons = new Button { Text = "Weapons" };
+        _tabWeapons.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _tabWeapons.Pressed += () => ShowLabTab(true);
+        tabRow.AddChild(_tabWeapons);
+        _tabEquipment = new Button { Text = "Equipment" };
+        _tabEquipment.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _tabEquipment.Pressed += () => ShowLabTab(false);
+        tabRow.AddChild(_tabEquipment);
         // The catalog scrolls (owner): the full list outgrows the
         // screen height once tiles made the rows taller.
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -659,6 +680,49 @@ public partial class RiderLab : Control
             }
         }
 
+        _pageWeapons = scroll;
+        // -- Equipment page (owner, 2026-11-14): the same row
+        // format as the weapons catalog; the jets toggle lives
+        // here now instead of a bottom-bar button.
+        var equipBox = new VBoxContainer { Visible = false };
+        equipBox.AddThemeConstantOverride("separation", 4);
+        catBox.AddChild(equipBox);
+        _pageEquipment = equipBox;
+        var jetsRow = new PanelContainer { CustomMinimumSize = new Vector2(0, 52), ClipContents = true };
+        // Same backdrop recipe as the catalog rows (their
+        // RowBox() helper is scoped to the catalog loop).
+        var jetsSb = new StyleBoxFlat { BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f), ContentMarginLeft = 12f, ContentMarginRight = 10f, ContentMarginTop = 6f, ContentMarginBottom = 6f };
+        jetsSb.SetBorderWidthAll(2);
+        jetsSb.SetCornerRadiusAll(6);
+        jetsRow.AddThemeStyleboxOverride("panel", jetsSb);
+        var jhb = new HBoxContainer();
+        jhb.AddThemeConstantOverride("separation", 16);
+        jetsRow.AddChild(jhb);
+        _jetsTileBtn = new Button { Text = "JJ", CustomMinimumSize = new Vector2(40, 40) };
+        _jetsTileBtn.AddThemeFontSizeOverride("font_size", 12);
+        _jetsTileBtn.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        _jetsTileBtn.TooltipText = "Fit or remove the jump jets";
+        _jetsTileBtn.Pressed += () =>
+        {
+            Loadout.JumpJets = !Loadout.JumpJets;
+            SetHint(Loadout.JumpJets ? "Jump jets fitted — hold Space in the duel to fly." : "Jump jets removed — this rider stays grounded.");
+            Refresh();
+        };
+        jhb.AddChild(_jetsTileBtn);
+        var jtexts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        jtexts.AddThemeConstantOverride("separation", 1);
+        var jnm = new Label { Text = "Jets", MouseFilter = MouseFilterEnum.Ignore };
+        jnm.AddThemeFontSizeOverride("font_size", 14);
+        jnm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        jtexts.AddChild(jnm);
+        _jetsLine = new Label { MouseFilter = MouseFilterEnum.Ignore };
+        _jetsLine.AddThemeFontSizeOverride("font_size", 11);
+        _jetsLine.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
+        jtexts.AddChild(_jetsLine);
+        jhb.AddChild(jtexts);
+        equipBox.AddChild(jetsRow);
+        ShowLabTab(true);
+
         // -- Hardpoints (right): MW4-style paperdoll over the rider --
         var paperdoll = new PaperdollArea();
         _paperdoll = paperdoll;
@@ -682,7 +746,6 @@ public partial class RiderLab : Control
             panel.AddChild(vb);
             var head = new Label { Text = $"{slot.Type} · max {slot.MaxWeight:F0}t" }; // slot names removed (owner): type + capacity only
             panel.HeadLabel = head;
-            FlowUi.Heading(head, false);
             head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
             head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
             vb.AddChild(head);
@@ -730,11 +793,21 @@ public partial class RiderLab : Control
         }
         paperdoll.Layout();
 
-        // -- Bottom bar --
+        // -- Bottom bar (owner, 2026-11-14): Weapons and Speed
+        // stacked on the left with no parenthetical; Strip all
+        // is removed; Deploy sits on the right with the rider
+        // selector just before it.
+        var statusBox = new VBoxContainer();
+        statusBox.AddThemeConstantOverride("separation", 2);
+        root.AddChild(statusBox);
         _tonnage = new Label();
-        _tonnage.AddThemeFontSizeOverride("font_size", 16);
+        _tonnage.AddThemeFontSizeOverride("font_size", 15);
         _tonnage.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
-        root.AddChild(_tonnage);
+        statusBox.AddChild(_tonnage);
+        _speed = new Label();
+        _speed.AddThemeFontSizeOverride("font_size", 15);
+        _speed.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        statusBox.AddChild(_speed);
         // No standing instruction text (owner): the line starts
         // empty — it only speaks as action feedback via SetHint.
         _hint = new Label();
@@ -748,7 +821,7 @@ public partial class RiderLab : Control
         // standalone duel has nowhere to go back to.
         if (FlowMain.FromFlow)
         {
-            var backBtn = new Button { Text = "BACK" };
+            var backBtn = new Button { Text = "Back" };
             backBtn.Pressed += () =>
             {
                 // Back to the previous wizard step (owner, teams
@@ -761,25 +834,52 @@ public partial class RiderLab : Control
             btnRow.AddChild(backBtn);
             PadButton(backBtn);
         }
-        var strip = new Button { Text = "STRIP ALL" };
-        strip.Pressed += () => { Loadout.Strip(); SetHint("All hardpoints emptied."); Refresh(); };
-        btnRow.AddChild(strip);
-        _jetsBtn = new Button();
-        _jetsBtn.Pressed += () =>
-        {
-            Loadout.JumpJets = !Loadout.JumpJets;
-            SetHint(Loadout.JumpJets ? "Jump jets fitted — hold SPACE in the duel to fly." : "Jump jets removed — this rider stays grounded.");
-            Refresh();
-        };
-        btnRow.AddChild(_jetsBtn);
-        if (!Spec.JumpCapable) _jetsBtn.Visible = false; // this chassis cannot mount thrusters
-        var start = new Button { Text = "DEPLOY" };
+        btnRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        btnRow.AddChild(RiderSelector("", true));
+        var start = new Button { Text = "Deploy" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
         btnRow.AddChild(start);
-        PadButton(strip); PadButton(_jetsBtn); PadButton(start);
+        PadButton(start);
 
         Refresh();
+    }
+
+    // Sentence case for display (owner, 2026-11-14): spec
+    // names are stored all-caps ('PROMETHEUS'); everywhere
+    // except the lab title they read 'Prometheus'.
+    private static string NameCase(string n) =>
+        string.IsNullOrEmpty(n) ? n : char.ToUpper(n[0]) + n.Substring(1).ToLowerInvariant();
+
+    // Dev-flag support (--lab-tab=equip): open the sidebar
+    // on the Equipment tab for captures.
+    public void OpenOnEquipmentTab() => ShowLabTab(false);
+
+    // Sidebar tabs (owner, 2026-11-14): Weapons / Equipment.
+    private void ShowLabTab(bool weapons)
+    {
+        if (_pageWeapons != null) _pageWeapons.Visible = weapons;
+        if (_pageEquipment != null) _pageEquipment.Visible = !weapons;
+        StyleTabButton(_tabWeapons, weapons);
+        StyleTabButton(_tabEquipment, !weapons);
+    }
+
+    private static void StyleTabButton(Button b, bool active)
+    {
+        if (b == null) return;
+        b.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.82f, 0.88f, 0.94f));
+        var face = new StyleBoxFlat
+        {
+            BgColor = active ? new Color(0.16f, 0.15f, 0.08f, 0.95f) : new Color(0.08f, 0.10f, 0.15f, 0.9f),
+            BorderColor = active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.42f, 0.48f, 0.56f, 0.7f),
+            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
+        };
+        face.SetBorderWidthAll(2);
+        face.SetCornerRadiusAll(6);
+        b.AddThemeStyleboxOverride("normal", face);
+        b.AddThemeStyleboxOverride("hover", face);
+        b.AddThemeStyleboxOverride("pressed", face);
+        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
     }
 
     // Roomier inner padding for the bottom action chips (owner,
@@ -827,11 +927,10 @@ public partial class RiderLab : Control
         var head = new HBoxContainer();
         head.AddThemeConstantOverride("separation", 10);
         pv.AddChild(head);
-        var h = new Label { Text = "TEAM" };
+        var h = new Label { Text = "Team" };
         h.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
-        FlowUi.Heading(h, false);
         head.AddChild(h);
-        var count = new Label { Text = $"{TeamNames.Length} OF 4 RIDERS — click a card to display that rider in the lab" };
+        var count = new Label { Text = $"{TeamNames.Length} of 4 riders — click a card to display that rider in the lab" };
         count.AddThemeColorOverride("font_color", new Color(0.62f, 0.70f, 0.78f));
         count.AddThemeFontSizeOverride("font_size", 12);
         count.VerticalAlignment = VerticalAlignment.Center;
@@ -889,7 +988,7 @@ public partial class RiderLab : Control
             // Cards with a '−' keep their text clear of it.
             cv.OffsetLeft = 10; cv.OffsetTop = 8; cv.OffsetRight = i >= 1 ? -44 : -10; cv.OffsetBottom = -8;
             host.AddChild(cv);
-            var nm = new Label { Text = $"{i + 1}. {TeamNames[i]}", MouseFilter = MouseFilterEnum.Ignore };
+            var nm = new Label { Text = $"{i + 1}. {NameCase(TeamNames[i])}", MouseFilter = MouseFilterEnum.Ignore };
             // Cards with a '−' run the name in a narrower column
             // (the minus overlaps a long name at 16px — 'PROMETHEUS'
             // clipped under it in the capture); clip as a backstop
@@ -897,7 +996,6 @@ public partial class RiderLab : Control
             nm.AddThemeFontSizeOverride("font_size", i >= 1 ? 14 : 16);
             nm.ClipContents = true;
             nm.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.95f, 0.97f, 1f));
-            FlowUi.Heading(nm, false);
             cv.AddChild(nm);
             var meta = new Label { Text = TeamMeta.Length > i ? TeamMeta[i] : "", MouseFilter = MouseFilterEnum.Ignore };
             meta.AddThemeFontSizeOverride("font_size", 12);
@@ -905,7 +1003,7 @@ public partial class RiderLab : Control
             cv.AddChild(meta);
             var st = new Label
             {
-                Text = active ? "IN LAB" : i == 0 ? "MAIN RIDER" : "TEAM RIDER",
+                Text = active ? "In lab" : i == 0 ? "Main rider" : "Team rider",
                 MouseFilter = MouseFilterEnum.Ignore
             };
             st.AddThemeFontSizeOverride("font_size", 11);
@@ -975,12 +1073,15 @@ public partial class RiderLab : Control
     {
         var box = new HBoxContainer();
         box.AddThemeConstantOverride("separation", 8);
-        var lab = new Label { Text = role + ":", VerticalAlignment = VerticalAlignment.Center };
-        lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
-        box.AddChild(lab);
-        // Wider gap between the role label and the selector
-        // (owner, 2026-11-04).
-        box.AddChild(new Control { CustomMinimumSize = new Vector2(22, 0) });
+        if (!string.IsNullOrEmpty(role))
+        {
+            var lab = new Label { Text = role + ":", VerticalAlignment = VerticalAlignment.Center };
+            lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+            box.AddChild(lab);
+            // Wider gap between the role label and the selector
+            // (owner, 2026-11-04).
+            box.AddChild(new Control { CustomMinimumSize = new Vector2(22, 0) });
+        }
         var name = new Label
         {
             CustomMinimumSize = new Vector2(170, 0),
@@ -1006,7 +1107,7 @@ public partial class RiderLab : Control
         prev.Pressed += () => Cycle(-1);
         var next = new Button { Text = "▶" };
         next.Pressed += () => Cycle(1);
-        name.Text = RiderSpecs.All[Index()].Name;
+        name.Text = NameCase(RiderSpecs.All[Index()].Name);
         box.AddChild(prev);
         box.AddChild(name);
         box.AddChild(next);
@@ -1041,10 +1142,11 @@ public partial class RiderLab : Control
 
     public void Refresh()
     {
-        if (_jetsBtn != null)
+        if (_jetsTileBtn != null)
         {
-            _jetsBtn.Text = Spec.JumpCapable && Loadout.JumpJets ? "Jets: Yes" : "Jets: No";
-            _jetsBtn.Disabled = !Spec.JumpCapable;
+            _jetsTileBtn.Disabled = !Spec.JumpCapable;
+            _jetsLine.Text = !Spec.JumpCapable ? "This chassis cannot fit jets"
+                : Loadout.JumpJets ? "Fitted — hold Space in the duel to fly" : "Not fitted";
         }
         foreach (var (id, panel) in _slots)
         {
@@ -1152,6 +1254,7 @@ public partial class RiderLab : Control
         }
         _paperdoll?.Layout();
         if (_tonnage != null)
-            _tonnage.Text = $"WEAPONS: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis   ·   SPEED {Spec.MaxSpeed:F1} u/s walk / {Spec.MaxSpeed * 3f:F1} run ({Spec.ClassLabel} x{Spec.ClassSpeedFactor:0.00})";
+            _tonnage.Text = $"Weapons: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis";
+            _speed.Text = $"Speed: {Spec.MaxSpeed:F1} u/s walk / {Spec.MaxSpeed * 3f:F1} run";
     }
 }
