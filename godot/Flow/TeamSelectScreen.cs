@@ -3,21 +3,22 @@ using System;
 
 // Wizard step 3 (Tournament, owner — teams stage): form the
 // teams. Left: the teams, a scrollable list — at least two
-// teams always stand, more can be added (to four). Right: the
-// selected team's riders, a scrollable list — at least one
-// rider per team, each slot cycles the roster, more can be
-// added (to four). RANDOMIZE, in the control panel, deals a
-// fresh bracket: a random number of teams with random riders.
-// Team 1 is the player's own; its first rider is the one he
-// prepares in the lab on the next step, so that seat can be
-// re-chosen but never removed, and team 1 itself stands
-// always. Menu: Back on the left, Continue on the right.
+// teams always stand; every row carries its own '−' (the
+// player's team and the two-team minimum are protected),
+// and ADD TEAM sits as a row right below the last team.
+// Right: the selected team's riders, a scrollable list —
+// each slot picks its rider from a DROPDOWN, at least one
+// rider per team, ADD RIDER right below the last rider.
+// RANDOMIZE sits in the top menu, before the Continue
+// button, because it deals BOTH lists: a random number of
+// teams with random riders. Team 1 is the player's own; its
+// first rider is the one he prepares in the lab on the next
+// step, so that seat can be re-chosen but never removed.
 public partial class TeamSelectScreen : Control
 {
     public FlowMain Flow;
 
     private VBoxContainer _teamRows, _riderRows;
-    private Button _addTeam, _removeTeam, _addRider;
     private Label _riderHead, _teamCount, _riderCount;
     private readonly Random _rng = new();
 
@@ -36,7 +37,9 @@ public partial class TeamSelectScreen : Control
         root.AddThemeConstantOverride("separation", 10);
         margin.AddChild(root);
 
-        // ---- menu bar: Back left, Continue right ----
+        // ---- menu bar: Back left; Randomize, then Continue,
+        // on the right (owner: Randomize deals both sections,
+        // so it belongs to neither panel) ----
         var menu = new HBoxContainer();
         menu.AddThemeConstantOverride("separation", 10);
         root.AddChild(menu);
@@ -44,6 +47,9 @@ public partial class TeamSelectScreen : Control
         back.Pressed += () => Flow.GoArena();
         menu.AddChild(back);
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var rand = FlowUi.MakeButton("Randomize", 14);
+        rand.Pressed += RandomizeBracket;
+        menu.AddChild(rand);
         var next = FlowUi.MakeButton("Rider Lab", 14);
         next.Pressed += () => Flow.EnterLab();
         menu.AddChild(next);
@@ -59,10 +65,9 @@ public partial class TeamSelectScreen : Control
         Refresh();
     }
 
-    // One of the two list panels. The teams panel (left) holds
-    // the team rows + ADD/REMOVE TEAM; the riders panel (right)
-    // holds the open team's rider rows + ADD RIDER and the
-    // RANDOMIZE button (the control panel, per the spec).
+    // One of the two list panels: heading, count line, the
+    // scrollable rows. The add buttons live INSIDE the scroll,
+    // right below the last row (owner) — no panel footer.
     private Control ListPanel(bool teams)
     {
         var panel = new PanelContainer
@@ -98,31 +103,7 @@ public partial class TeamSelectScreen : Control
         var rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         rows.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(rows);
-
-        var btns = new HBoxContainer();
-        btns.AddThemeConstantOverride("separation", 10);
-        pv.AddChild(btns);
-        if (teams)
-        {
-            _teamRows = rows;
-            _addTeam = FlowUi.MakeButton("Add team", 13);
-            _addTeam.Pressed += AddTeam;
-            btns.AddChild(_addTeam);
-            _removeTeam = FlowUi.MakeButton("Remove team", 13);
-            _removeTeam.Pressed += RemoveTeam;
-            btns.AddChild(_removeTeam);
-        }
-        else
-        {
-            _riderRows = rows;
-            _addRider = FlowUi.MakeButton("Add rider", 13);
-            _addRider.Pressed += AddRider;
-            btns.AddChild(_addRider);
-            btns.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-            var rand = FlowUi.MakeButton("Randomize", 13);
-            rand.Pressed += RandomizeBracket;
-            btns.AddChild(rand);
-        }
+        if (teams) _teamRows = rows; else _riderRows = rows;
         return panel;
     }
 
@@ -141,12 +122,13 @@ public partial class TeamSelectScreen : Control
         Refresh();
     }
 
-    private void RemoveTeam()
+    private void RemoveTeam(int idx)
     {
-        int t = TeamRoster.TourneyTeam;
-        if (t <= 0 || TeamRoster.Tourney.Count <= 2) return; // team 1 stands; two teams minimum
-        TeamRoster.Tourney.RemoveAt(t);
-        TeamRoster.TourneyTeam = Math.Min(t, TeamRoster.Tourney.Count - 1);
+        if (idx <= 0 || TeamRoster.Tourney.Count <= 2) return; // team 1 stands; two teams minimum
+        TeamRoster.Tourney.RemoveAt(idx);
+        if (TeamRoster.TourneyTeam > idx) TeamRoster.TourneyTeam--;
+        if (TeamRoster.TourneyTeam >= TeamRoster.Tourney.Count)
+            TeamRoster.TourneyTeam = TeamRoster.Tourney.Count - 1;
         Refresh();
     }
 
@@ -167,11 +149,11 @@ public partial class TeamSelectScreen : Control
         Refresh();
     }
 
-    private void CycleRider(int idx, int d)
+    private void SetRider(int idx, int specIndex)
     {
         var team = TeamRoster.Tourney[TeamRoster.TourneyTeam];
-        int i = Array.FindIndex(RiderSpecs.All, s => s.Id == team[idx].Spec.Id);
-        var spec = RiderSpecs.All[(i + d + RiderSpecs.All.Length) % RiderSpecs.All.Length];
+        var spec = RiderSpecs.All[specIndex];
+        if (team[idx].Spec.Id == spec.Id) return;
         // A chassis change refits the slot with the new
         // chassis's default loadout — the lab's standing rule.
         team[idx] = TeamRoster.Make(spec);
@@ -199,38 +181,94 @@ public partial class TeamSelectScreen : Control
         Refresh();
     }
 
+    // A full-width row button in the lists' own idiom (Add
+    // team / Add rider): same box family as the rows, so its
+    // padding matches theirs.
+    private Button ListButton(string text)
+    {
+        var b = new Button { Text = text, CustomMinimumSize = new Vector2(0, 46) };
+        b.AddThemeFontSizeOverride("font_size", 14);
+        var bd = new Color(0.55f, 0.62f, 0.70f, 0.9f);
+        b.AddThemeStyleboxOverride("normal", FlowUi.Panel(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
+        b.AddThemeStyleboxOverride("hover", FlowUi.Panel(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
+        b.AddThemeStyleboxOverride("pressed", FlowUi.Panel(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
+        b.AddThemeStyleboxOverride("disabled", FlowUi.Panel(new Color(0.06f, 0.07f, 0.09f, 0.9f)));
+        b.AddThemeColorOverride("font_color", FlowUi.Ink);
+        b.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
+        b.AddThemeColorOverride("font_disabled_color", new Color(0.45f, 0.48f, 0.52f));
+        return b;
+    }
+
     private void Refresh()
     {
         if (_teamRows == null) return;
         TeamRoster.EnsureTourney();
         int sel = TeamRoster.TourneyTeam;
 
+        // ---- teams: uniform rows, each with its own '−' ----
         foreach (var ch in _teamRows.GetChildren()) ch.QueueFree();
         for (int t = 0; t < TeamRoster.Tourney.Count; t++)
         {
             int idx = t;
             var team = TeamRoster.Tourney[t];
-            var b = new Button
+            bool selected = t == sel;
+            var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46) };
+            rowPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(
+                selected ? new Color(0.14f, 0.13f, 0.05f, 0.95f) : FlowUi.NavySoft, 0.95f));
+            var host = new Control();
+            rowPanel.AddChild(host);
+            if (!selected)
             {
-                Text = $"TEAM {t + 1} — {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : ""),
-                CustomMinimumSize = new Vector2(0, 46),
-                Alignment = HorizontalAlignment.Left
-            };
-            b.AddThemeFontSizeOverride("font_size", 15);
-            if (t == sel)
-            {
-                b.Disabled = true;
-                b.AddThemeColorOverride("font_disabled_color", FlowUi.Gold);
-                b.AddThemeStyleboxOverride("disabled", FlowUi.Panel(new Color(0.14f, 0.13f, 0.05f, 0.95f)));
+                var cover = new Button();
+                cover.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                // Empty boxes: a Panel stylebox here drew its
+                // border as a stray pill inside the row.
+                var clear = new StyleBoxEmpty();
+                cover.AddThemeStyleboxOverride("normal", clear);
+                cover.AddThemeStyleboxOverride("hover", new StyleBoxFlat
+                {
+                    BgColor = new Color(0.16f, 0.20f, 0.28f, 0.35f),
+                    ContentMarginLeft = 0f, ContentMarginRight = 0f,
+                    ContentMarginTop = 0f, ContentMarginBottom = 0f
+                });
+                cover.AddThemeStyleboxOverride("pressed", clear);
+                cover.AddThemeStyleboxOverride("focus", clear);
+                cover.Pressed += () => { TeamRoster.TourneyTeam = idx; Refresh(); };
+                host.AddChild(cover);
             }
-            else b.Pressed += () => { TeamRoster.TourneyTeam = idx; Refresh(); };
-            _teamRows.AddChild(b);
+            var lbl = FlowUi.MakeLabel(
+                $"TEAM {t + 1} — {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : ""),
+                15, selected ? FlowUi.Gold : FlowUi.Ink);
+            lbl.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            lbl.OffsetLeft = 12f; lbl.OffsetRight = -44f;
+            lbl.VerticalAlignment = VerticalAlignment.Center;
+            lbl.MouseFilter = MouseFilterEnum.Ignore;
+            host.AddChild(lbl);
+            if (t > 0 && TeamRoster.Tourney.Count > 2)
+            {
+                var minus = new Button { Text = "−" };
+                minus.AnchorLeft = 1f; minus.AnchorRight = 1f;
+                minus.AnchorTop = 0.5f; minus.AnchorBottom = 0.5f;
+                minus.OffsetLeft = -36f; minus.OffsetTop = -14f; minus.OffsetRight = -8f; minus.OffsetBottom = 14f;
+                minus.AddThemeFontSizeOverride("font_size", 16);
+                minus.AddThemeStyleboxOverride("normal", FlowUi.Panel(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
+                minus.AddThemeStyleboxOverride("hover", FlowUi.Panel(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
+                minus.AddThemeStyleboxOverride("pressed", FlowUi.Panel(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
+                minus.AddThemeColorOverride("font_color", FlowUi.Ink);
+                minus.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
+                minus.TooltipText = "Remove this team";
+                minus.Pressed += () => RemoveTeam(idx);
+                host.AddChild(minus);
+            }
+            _teamRows.AddChild(rowPanel);
         }
+        var addTeam = ListButton("Add team");
+        addTeam.Disabled = TeamRoster.Tourney.Count >= TeamRoster.MaxTeams;
+        addTeam.Pressed += AddTeam;
+        _teamRows.AddChild(addTeam);
         _teamCount.Text = $"{TeamRoster.Tourney.Count} OF {TeamRoster.MaxTeams} TEAMS — at least two teams always stand";
-        _addTeam.Disabled = TeamRoster.Tourney.Count >= TeamRoster.MaxTeams;
-        _removeTeam.Disabled = sel <= 0 || TeamRoster.Tourney.Count <= 2;
-        _removeTeam.TooltipText = sel <= 0 ? "Your own team always stands" : "Remove the selected team";
 
+        // ---- riders of the open team: dropdown per slot ----
         var open = TeamRoster.Tourney[sel];
         _riderHead.Text = $"Team {sel + 1} riders" + (sel == 0 ? " — your team" : "");
         _riderCount.Text = $"{open.Count} OF {TeamRoster.MaxPerTeam} RIDERS" +
@@ -248,10 +286,18 @@ public partial class TeamSelectScreen : Control
             var top = new HBoxContainer();
             top.AddThemeConstantOverride("separation", 8);
             cv.AddChild(top);
-            var selRow = FlowUi.SelectorRow(out var nameLabel, 16, d => CycleRider(idx, d));
-            nameLabel.Text = member.Spec.Name;
-            selRow.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            top.AddChild(selRow);
+            var dd = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            foreach (var sp in RiderSpecs.All) dd.AddItem(sp.Name);
+            dd.Selected = Array.FindIndex(RiderSpecs.All, s => s.Id == member.Spec.Id);
+            dd.AddThemeFontSizeOverride("font_size", 16);
+            dd.AddThemeColorOverride("font_color", FlowUi.Gold);
+            dd.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
+            dd.AddThemeStyleboxOverride("normal", FlowUi.Panel(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
+            dd.AddThemeStyleboxOverride("hover", FlowUi.Panel(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
+            dd.AddThemeStyleboxOverride("pressed", FlowUi.Panel(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
+            dd.AddThemeStyleboxOverride("focus", FlowUi.Panel(new Color(0, 0, 0, 0)));
+            dd.ItemSelected += (long ix) => SetRider(idx, (int)ix);
+            top.AddChild(dd);
             bool protectedSeat = sel == 0 && idx == 0;
             if (!protectedSeat && open.Count > 1)
             {
@@ -266,6 +312,9 @@ public partial class TeamSelectScreen : Control
             cv.AddChild(meta);
             _riderRows.AddChild(card);
         }
-        _addRider.Disabled = open.Count >= TeamRoster.MaxPerTeam;
+        var addRider = ListButton("Add rider");
+        addRider.Disabled = open.Count >= TeamRoster.MaxPerTeam;
+        addRider.Pressed += AddRider;
+        _riderRows.AddChild(addRider);
     }
 }
