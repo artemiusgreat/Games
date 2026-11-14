@@ -159,6 +159,7 @@ public partial class RiderDuel : Node3D
     private bool PrecisionTest => _test || _weaponsTest || _breakTest || _terrainTest;
     private bool _ffaTest; // --ffa-test: staged three-way AI probe
     private bool _teamTest; // --team-test: staged Story-team probe (allies fight, orders, leader pass, mission end)
+    private bool _bracketTest; // --bracket-test: staged Tournament bracket probe (NOT in AnyHarness — the bracket alignment under test is live-path code)
     private bool _missionTest; // --mission-test: Mission front smoke (world facts, base/vista captures, AI march)
     private bool _longshotTest; // --longshot-test: shell line vs sight line at 600u (parallel-fire proof)
     private bool _rangeTest; // --range-test: per-weapon Range enforcement proofs (laser reach, LRM clamp, shell burnout)
@@ -301,7 +302,7 @@ public partial class RiderDuel : Node3D
     private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
     private Label _feedLabel, _lblWeaponStatus, _lblThr;
-    private int _targetIdx; // the ONE active enemy (owner: Tab switches); 0 = primary foe, 1 = second foe
+    private int _targetIdx; // the ONE active enemy (owner: Tab switches) — an index into OpposingTargets()
     private LeaveOverlay _leaveDialog;
     private TeamOverlay _teamDialog;
     private CanvasLayer _labLoad; // loading cover held over the lab until the warmup settles (owner)
@@ -351,6 +352,7 @@ public partial class RiderDuel : Node3D
             if (arg.StartsWith("--enemy-rider=")) _enemySpec = RiderSpecs.ById(arg.Substring("--enemy-rider=".Length));
             if (arg == "--ffa-test") _ffaTest = true;
             if (arg == "--team-test") { _teamTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
+            if (arg == "--bracket-test") { _bracketTest = true; WorldConfig.Mode = WorldConfig.MapMode.Tournament; }
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--view-shot") _viewShot = true;
             if (arg == "--point-test") _pointTest = true;
@@ -372,6 +374,7 @@ public partial class RiderDuel : Node3D
             if (arg.StartsWith("--team-slot="))
                 TeamRoster.StorySlot = int.Parse(arg.Substring("--team-slot=".Length));
         }
+        if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
         // the roster's currently edited slot — its spec and
         // loadout drive the lab preview now and the leader at
@@ -603,7 +606,7 @@ public partial class RiderDuel : Node3D
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -664,6 +667,7 @@ public partial class RiderDuel : Node3D
         }
         ResetAllies(live: !_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest);
         _missionDone = false;
+        _bracketDecided = false;
         _pendingLeaderPass = false;
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
         _lastDenied = "";
@@ -1065,6 +1069,7 @@ public partial class RiderDuel : Node3D
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
             else if (_teamTest) UpdateTeamTest(dt);
+            else if (_bracketTest) UpdateBracketTest(dt);
             else if (_missionTest && !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRATEST")) && WorldConfig.TerracedCity) UpdateTerraceTest(dt);
             else if (_missionTest) UpdateMissionTest(dt);
             else if (_longshotTest) UpdateLongshotTest(dt);
@@ -1088,6 +1093,7 @@ public partial class RiderDuel : Node3D
                 UpdateEnemyAI(dt);
                 if (_foe != null) UpdateFoeAI(dt);
                 UpdateAlliesAI(dt);
+                UpdateBracketAI(dt);
                 _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {

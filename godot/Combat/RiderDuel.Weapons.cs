@@ -691,6 +691,7 @@ public partial class RiderDuel
         if (w == _player && WorldConfig.IsMission && _allies.Any(a => !a.Dead))
             _pendingLeaderPass = true;
         CheckMissionEnd();
+        CheckBracketEnd();
     }
 
     // Story progression (owner, 2026-11-13; teams stage): the

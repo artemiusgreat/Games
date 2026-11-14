@@ -1263,6 +1263,119 @@ public partial class RiderDuel
         GetTree().Quit(1);
     }
 
+    // ---------- Tournament bracket probe (Stage D3) ----------
+
+    private float _bracketT;
+    private int _bracketPhase;
+    private bool _bracketStaged;
+    private Vector3 _bracketNpcHome;
+    private Ally _bracketNpc;   // Medea, team 3 (index 2)
+    private Ally _bracketFriend; // Demeter, team 1 (index 0)
+
+    private void BracketFail(string why)
+    {
+        GD.PrintErr($"BRACKETTEST FAIL: {why}");
+        GetTree().Quit(1);
+    }
+
+    // The seeded bracket: team 1 = Enyo (driven) + Demeter,
+    // team 2 = Hector (enemy seat) + Prometheus (foe seat),
+    // team 3 = Medea (hostile NPC record).
+    private void SeedBracketTest()
+    {
+        TeamRoster.Tourney.Clear();
+        TeamRoster.Tourney.Add(new List<TeamMember> { TeamRoster.Make(RiderSpecs.Enyo), TeamRoster.Make(RiderSpecs.Demeter) });
+        TeamRoster.Tourney.Add(new List<TeamMember> { TeamRoster.Make(RiderSpecs.Hector), TeamRoster.Make(RiderSpecs.Prometheus) });
+        TeamRoster.Tourney.Add(new List<TeamMember> { TeamRoster.Make(RiderSpecs.Medea) });
+        TeamRoster.TourneyTeam = 0;
+    }
+
+    private void UpdateBracketTest(float dt)
+    {
+        _bracketT += dt;
+        if (_bracketT > 150f) { BracketFail("timeout"); return; }
+        if (!_bracketStaged)
+        {
+            _bracketStaged = true;
+            if (!_bracketActive) { BracketFail("bracket not active"); return; }
+            if (_playerSpec.Id != "enyo" || _enemySpec.Id != "hector")
+            { BracketFail($"seats wrong: player={_playerSpec.Id} enemy={_enemySpec.Id}"); return; }
+            if (_foe == null || _foe.Spec.Id != "prometheus")
+            { BracketFail($"foe seat should host Prometheus, got {_foe?.Spec.Id ?? "none"}"); return; }
+            if (_allies.Count != 2)
+            { BracketFail($"expected 2 NPC records, got {_allies.Count}"); return; }
+            foreach (var a in _allies)
+            {
+                if (a.Spec.Id == "demeter") _bracketFriend = a;
+                if (a.Spec.Id == "medea") _bracketNpc = a;
+            }
+            if (_bracketFriend == null || _bracketFriend.Team != 0)
+            { BracketFail("Demeter should be a team-1 NPC record"); return; }
+            if (_bracketNpc == null || _bracketNpc.Team != 2)
+            { BracketFail("Medea should be a team-3 NPC record"); return; }
+            // Muster check: every bracket rider stands at its
+            // own team's anchor, not on a fixed pad — the foe
+            // seat (Prometheus, team 2) included.
+            if (FlatDist(_foe.Walker.RootPos, TeamAnchor(1)) > 20f)
+            { BracketFail($"foe seat musters off its team anchor: {FlatDist(_foe.Walker.RootPos, TeamAnchor(1)):F1}u"); return; }
+            if (FlatDist(_bracketNpc.Walker.RootPos, TeamAnchor(2)) > 20f)
+            { BracketFail("Medea musters off the team-3 anchor"); return; }
+            if (FlatDist(_bracketFriend.Walker.RootPos, TeamAnchor(0)) > 20f)
+            { BracketFail("Demeter musters off the team-1 anchor"); return; }
+            GD.Print("BRACKETTEST STAGE PASS seats host members; NPC records carry teams; musters are per-team");
+            // Stage the fight: Medea 30u from the driven rider.
+            var s = PadPos(Main.SpawnPads[0]);
+            var mp = s + new Vector3(30f, 0f, 0f);
+            mp.Y = Main.HeightAt(mp.X, mp.Z);
+            _bracketNpc.Walker.Teleport(mp, -Mathf.Pi / 2f);
+            _bracketNpc.Yaw = -Mathf.Pi / 2f;
+            _bracketNpc.PrevRoot = _bracketNpc.Walker.RootPos;
+            _bracketNpcHome = mp;
+            return;
+        }
+        UpdateEnemyAI(dt);
+        if (_foe != null) UpdateFoeAI(dt);
+        UpdateAlliesAI(dt);
+        UpdateBracketAI(dt);
+        _player.SetDrive(_playerYaw, 0f);
+
+        if (_bracketPhase == 0)
+        {
+            // The team filter, checked live: Prometheus's
+            // nearest rider is his own teammate Hector (~12u);
+            // he must never pick him.
+            if (_foeTargetW == _enemy) { BracketFail("foe seat targeted its own teammate"); return; }
+            if (_bracketT > 8f)
+            {
+                float moved = FlatDist(_bracketNpc.Walker.RootPos, _bracketNpcHome);
+                GD.Print($"BRACKETTEST fight: npcMoved={moved:F1} bracketShots={_bracketShots} npcTarget={( _bracketNpc.TargetW == null ? "none" : TeamOf(_bracketNpc.TargetW).ToString())} playerHp={_hpPlayer:F0}");
+                if (_bracketNpc.TargetW == null) { BracketFail("hostile NPC never picked a target"); return; }
+                if (TeamOf(_bracketNpc.TargetW) == 2) { BracketFail("hostile NPC targeted its own team"); return; }
+                if (moved <= 2f && _bracketShots <= 0) { BracketFail("hostile NPC neither moved nor fired"); return; }
+                GD.Print("BRACKETTEST FIGHT PASS hostile NPC engages another team; the foe seat never targets its teammate");
+                _bracketPhase = 1;
+            }
+        }
+        else if (_bracketPhase == 1)
+        {
+            // Last team standing: kill team 2's seats — teams
+            // 1 and 3 remain, so no decision yet. Then kill
+            // Medea: team 1 alone remains and the arena is
+            // announced decided.
+            if (!_enemyDead) ApplyDamage(_enemy, 99999f, DummyHit(_enemy, Roles.Enemy), Roles.Player);
+            if (_foe != null && !_foe.Dead) ApplyDamage(_foe.Walker, 99999f, DummyHit(_foe.Walker, Roles.Foe), Roles.Player);
+            if (_bracketDecided) { BracketFail("arena decided with two teams still standing"); return; }
+            ApplyDamage(_bracketNpc.Walker, 99999f, DummyHit(_bracketNpc.Walker, _bracketNpc.Role), Roles.Player);
+            bool announced = false;
+            foreach (var (text, _) in _feed) if (text.Contains("LAST TEAM STANDING")) announced = true;
+            if (!_bracketDecided || !announced)
+            { BracketFail($"no last-team-standing announcement (decided={_bracketDecided} announced={announced})"); return; }
+            GD.Print("BRACKETTEST END PASS last team standing announced exactly when the second-to-last team fell");
+            GD.Print("BRACKETTEST DONE");
+            GetTree().Quit(0);
+        }
+    }
+
     private void UpdateTeamTest(float dt)
     {
         _teamT += dt;

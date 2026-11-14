@@ -133,4 +133,32 @@ public partial class RiderDuel
             }
         }
     }
+
+    private int _bracketShots;
+
+    // Tournament hostile NPCs (Stage D3c): the seats' own
+    // game with no leader to follow — PickTarget chooses the
+    // nearest rider of another team (a teammate is never
+    // picked), the shared range game closes on it, and the
+    // shared cannon gunnery fires the record's ballistic
+    // weapon, exactly as a seat fights.
+    private void UpdateBracketAI(float dt)
+    {
+        if (WorldConfig.IsMission) return;
+        foreach (var a in _allies)
+        {
+            if (a.Team == 0 || a.Walker == null) continue;
+            if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
+            var (tgt, _, _) = PickTarget(a.Walker, a.TargetW, ref a.ThinkT, dt);
+            a.TargetW = tgt;
+            if (tgt == null) { a.Walker.SetDrive(a.Yaw, 0f); continue; }
+            float pace = PaceFor(a.Spec, a.Walker.RootPos.DistanceTo(tgt.RootPos));
+            UpdateFoeMovement(a.Walker, a.Parts, pace,
+                ref a.Yaw, ref a.OrbitDir, ref a.OrbitTimer, tgt, dt);
+            if (a.Cd <= 0f && a.DefBallistic != null)
+                UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
+                    a.Role, TagOf(tgt), tgt, VelOf(tgt),
+                    () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _bracketShots++; });
+        }
+    }
 }

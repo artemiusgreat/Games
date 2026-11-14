@@ -61,8 +61,28 @@ public partial class RiderDuel
     // an Ally record with its Team set.
     private int _enemyTeam = 1, _foeTeam = 2;
     private bool _bracketActive;
+    private bool _bracketDecided; // last-team-standing announced
     private TeamMember _seatEnemyMember, _foeMember;
     private int _foeMemberTeam = 2;
+
+    // Tournament (Stage D3c): the arena is decided when
+    // exactly one team still fields a living rider —
+    // announced in the feed once; the fight itself plays on
+    // (Esc / R leave or reset it, as always).
+    private void CheckBracketEnd()
+    {
+        if (WorldConfig.IsMission || !_bracketActive || _bracketDecided) return;
+        var living = new System.Collections.Generic.HashSet<int>();
+        if (!_playerDead) living.Add(0);
+        if (!_enemyDead) living.Add(_enemyTeam);
+        if (_foe != null && !_foe.Dead) living.Add(_foeTeam);
+        foreach (var a in _allies) if (!a.Dead) living.Add(a.Team);
+        if (living.Count != 1) return;
+        _bracketDecided = true;
+        int win = 0;
+        foreach (var t in living) win = t;
+        AddFeed(win == 0 ? "YOUR TEAM — LAST TEAM STANDING" : $"TEAM {win + 1} — LAST TEAM STANDING");
+    }
 
     // Which team a walker fights for: the driven rider is
     // team 0 in both modes.
