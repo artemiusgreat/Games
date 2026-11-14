@@ -357,6 +357,34 @@ public partial class RiderDuel : Node3D
             if (arg == "--point-close") _pointClose = true;
             if (arg == "--brake-test") _brakeTest = true;
             if (arg == "--roof-test") _roofTest = true;
+            if (arg.StartsWith("--team-seed="))
+            {
+                // Harness: pre-form a Story team of N riders
+                // (roster order) so the team lab can be captured.
+                int nSeed = int.Parse(arg.Substring("--team-seed=".Length));
+                TeamRoster.Story.Clear();
+                for (int si = 0; si < nSeed && si < RiderSpecs.All.Length; si++)
+                    TeamRoster.Story.Add(TeamRoster.Make(RiderSpecs.All[si]));
+            }
+            if (arg.StartsWith("--team-slot="))
+                TeamRoster.StorySlot = int.Parse(arg.Substring("--team-slot=".Length));
+        }
+        // Story team (owner, teams stage): the player rider is
+        // the roster's currently edited slot — its spec and
+        // loadout drive the lab preview now and the leader at
+        // deploy. A --player-rider harness flag outranks it.
+        if (WorldConfig.IsMission)
+        {
+            TeamRoster.EnsureStory();
+            bool playerArg = false;
+            foreach (var arg in OS.GetCmdlineUserArgs())
+                if (arg.StartsWith("--player-rider=")) playerArg = true;
+            if (!playerArg)
+            {
+                var m0 = TeamRoster.Story[TeamRoster.StorySlot];
+                _playerSpec = m0.Spec;
+                _loadout = m0.Loadout;
+            }
         }
         if (PhotoMode) _photo = true; // the photoreal scene's own declaration
         _hit = new HitModel();

@@ -21,6 +21,17 @@ public partial class RiderLab : Control
     public string EnemySpecId = "hector";
     public Action OnSelectionChanged;
 
+    // Story team mode (owner, teams stage): the lab edits one
+    // team slot at a time. TeamNames are the slots' rider names
+    // in slot order; the callbacks switch/add/remove slots and
+    // the duel recreates the lab against the newly edited slot.
+    public bool TeamMode;
+    public int TeamSlot;
+    public string[] TeamNames = System.Array.Empty<string>();
+    public Action<int> OnTeamSlot;
+    public Action OnTeamAdd;
+    public Action<int> OnTeamRemove;
+
     private Label _hint;
     private Label _tonnage;
     private Button _jetsBtn;
@@ -527,7 +538,8 @@ public partial class RiderLab : Control
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
-        var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}" };
+        var title = new Label { Text = $"RIDER LAB — {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}"
+            + (TeamMode ? $"  ·  TEAM SLOT {TeamSlot + 1} OF {TeamNames.Length}" : "") };
         FlowUi.Heading(title);
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
@@ -544,6 +556,7 @@ public partial class RiderLab : Control
         // One selector only (owner, 2026-10-31): yours. The two
         // opponents are fixed — a Enyo and an Hector field
         // against you (and each other) on every map.
+        if (TeamMode) selBox.AddChild(TeamSlotsRow());
         selBox.AddChild(RiderSelector("RIDER", true));
 
         var mid = new HBoxContainer();
@@ -732,7 +745,11 @@ public partial class RiderLab : Control
             var backBtn = new Button { Text = "BACK" };
             backBtn.Pressed += () =>
             {
-                FlowMain.StartScreen = WorldConfig.IsMission ? "planet" : "tournament";
+                // Back to the previous wizard step (owner, teams
+                // stage): the mission screen in Story; the arena
+                // screen in Tournament (the team selector slots
+                // in as the step before the lab when it lands).
+                FlowMain.StartScreen = WorldConfig.IsMission ? "missions" : "arena";
                 GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
             };
             btnRow.AddChild(backBtn);
@@ -773,6 +790,50 @@ public partial class RiderLab : Control
                 b.AddThemeStyleboxOverride(state, sb);
             }
         }
+    }
+
+    // Team slots row (owner, teams stage): one chip per team
+    // slot in a row; clicking a chip makes the lab show that
+    // rider (its info, weapon slots, tonnage). Slot 0 is the
+    // main player's rider and cannot be removed; slots can be
+    // added up to four. The RIDER selector below then changes
+    // the chassis of the slot being edited.
+    private Control TeamSlotsRow()
+    {
+        var box = new HBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+        var lab = new Label { Text = "TEAM:", VerticalAlignment = VerticalAlignment.Center };
+        lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+        box.AddChild(lab);
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(22, 0) });
+        for (int i = 0; i < TeamNames.Length; i++)
+        {
+            int idx = i;
+            var chip = new Button { Text = $"{i + 1}. {TeamNames[i]}" + (i == 0 ? " (YOU)" : "") };
+            chip.AddThemeFontSizeOverride("font_size", 15);
+            if (i == TeamSlot)
+            {
+                chip.Disabled = true;
+                chip.AddThemeColorOverride("font_disabled_color", new Color(0.98f, 0.80f, 0.35f));
+            }
+            else chip.Pressed += () => OnTeamSlot?.Invoke(idx);
+            box.AddChild(chip);
+            if (i >= 1)
+            {
+                var rm = new Button { Text = "×" };
+                rm.TooltipText = "Remove this rider from the team";
+                rm.Pressed += () => OnTeamRemove?.Invoke(idx);
+                box.AddChild(rm);
+            }
+        }
+        if (TeamNames.Length < 4)
+        {
+            var add = new Button { Text = "ADD RIDER" };
+            add.AddThemeFontSizeOverride("font_size", 15);
+            add.Pressed += () => OnTeamAdd?.Invoke();
+            box.AddChild(add);
+        }
+        return box;
     }
 
     // Slideshow selector (owner): chips don't scale to tens of
