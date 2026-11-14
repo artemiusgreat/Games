@@ -84,6 +84,10 @@ public partial class FlowMain : Node3D
                 WorldConfig.Mode = WorldConfig.MapMode.Tournament;
                 GoArena();
                 break;
+            case "teams":
+                WorldConfig.Mode = WorldConfig.MapMode.Tournament;
+                GoTeams();
+                break;
             case "bar":
             case "missions":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
@@ -226,12 +230,13 @@ public partial class FlowMain : Node3D
         Show(new ArenaScreen { Name = "arena", Flow = this });
     }
 
-    // Wizard step 3 (Tournament): the team selector. Stage D2
-    // builds the screen; until then the wizard goes straight
-    // to the lab, as the flow did before the teams stage.
+    // Wizard step 3 (Tournament): the team selector — teams
+    // on the left, the open team's riders on the right,
+    // Randomize in the control panel. From there, Continue
+    // goes to the lab to prepare the player's own rider.
     public void GoTeams()
     {
-        EnterLab();
+        Show(new TeamSelectScreen { Name = "teams", Flow = this });
     }
 
     // Command Center / Rider Lab: load the duel scene, which opens

@@ -755,7 +755,7 @@ public partial class RiderLab : Control
                 // stage): the mission screen in Story; the arena
                 // screen in Tournament (the team selector slots
                 // in as the step before the lab when it lands).
-                FlowMain.StartScreen = WorldConfig.IsMission ? "missions" : "arena";
+                FlowMain.StartScreen = WorldConfig.IsMission ? "missions" : "teams";
                 GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
             };
             btnRow.AddChild(backBtn);
