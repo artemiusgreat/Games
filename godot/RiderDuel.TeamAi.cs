@@ -98,6 +98,9 @@ public partial class RiderDuel
         foreach (var a in _allies)
         {
             if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
+            // Tournament hostile records run the bracket brain
+            // (Stage D3c), not the leader's orders.
+            if (!WorldConfig.IsMission && a.Team != 0) continue;
             // No living leader to take orders from (the command
             // pass is pending or the team is wiped): hold still.
             if (_playerDead) { a.Walker.SetDrive(a.Yaw, 0f); continue; }

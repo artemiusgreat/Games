@@ -29,7 +29,8 @@ public partial class RiderDuel
         public float Hp;
         public bool Dead;
         public string Role;   // Roles.AllyPrefix + roster slot
-        public int Slot;      // TeamRoster.Story index
+        public int Slot;      // roster index within its team
+        public int Team;      // Story: 0 (the player's team). Tournament: the bracket team index
         public WeaponDef DefBallistic;
         public string BallisticSlot;
         public float Cd;
@@ -49,6 +50,27 @@ public partial class RiderDuel
     private int _leaderSlot = -1; // roster slot the player drives
     private bool _missionDone;    // complete or failed, announced once
     private bool _pendingLeaderPass; // the driven rider died; command passes next frame
+
+    // Tournament bracket state (Stage D3): the two AI seats
+    // carry team indices (the classic arena fields them as
+    // teams 1 and 2 — the free-for-all; in missions both
+    // defenders are team 1, one guard side). When a bracket is
+    // active the seats HOST bracket members: the enemy seat is
+    // team 1's first rider, the foe seat the next opposing
+    // rider in (team, slot) order; every other member becomes
+    // an Ally record with its Team set.
+    private int _enemyTeam = 1, _foeTeam = 2;
+    private bool _bracketActive;
+    private TeamMember _seatEnemyMember, _foeMember;
+    private int _foeMemberTeam = 2;
+
+    // Which team a walker fights for: the driven rider is
+    // team 0 in both modes.
+    private int TeamOf(RiderWalker w) =>
+        w == _player ? 0
+        : w == _enemy ? _enemyTeam
+        : _foe != null && w == _foe.Walker ? _foeTeam
+        : AllyOf(w)?.Team ?? -1;
 
     // The harness modes stage their own calibrated fields; the
     // team exists only in the live game.
@@ -118,12 +140,40 @@ public partial class RiderDuel
         return a != null ? a.Walker : _enemy;
     }
 
+    // One NPC record, fully built: walker, parts registry,
+    // pool, and the lab loadout's ballistic weapon for the
+    // shared AI gunnery — the same rule the foe fights by.
+    private Ally MakeAlly(TeamMember member, string role, int slot, int team,
+        Vector3 pos, float yaw, string nodeName)
+    {
+        var spec = member.Spec;
+        var a = new Ally
+        {
+            Spec = spec,
+            Loadout = member.Loadout,
+            Role = role,
+            Slot = slot,
+            Team = team,
+            Yaw = yaw,
+            SpawnPos = pos,
+            SpawnYaw = yaw
+        };
+        a.Walker = BuildRider(spec, nodeName, pos, yaw);
+        a.Parts = new RiderParts(a.Walker, spec.PartsId);
+        a.Parts.OnBreak = (id, c) => OnPartBroken(a.Parts, id, c);
+        a.Walker.RefreshMaterials();
+        a.Hp = spec.MaxHp;
+        a.PrevRoot = a.Walker.RootPos;
+        string eb = SlotOf(spec, WeaponSlotType.Ballistic);
+        a.BallisticSlot = eb;
+        a.DefBallistic = eb == null ? null : WeaponCatalog.ById(a.Loadout.WeaponIn(eb));
+        return a;
+    }
+
     // Build the NPC teammates from the roster: everyone except
     // the slot the player drives. They muster around the home
     // pad in a loose ring, facing the map centre like the
-    // leader. Their fitted ballistic weapon (the lab loadout's)
-    // is what the shared AI gunnery fires — the same rule the
-    // foe fights by.
+    // leader.
     private void BuildAllies()
     {
         _allies.Clear();
@@ -136,35 +186,59 @@ public partial class RiderDuel
         {
             if (slot == _leaderSlot) continue;
             var member = TeamRoster.Story[slot];
-            var spec = member.Spec;
             float ang = (k + 1) * 2.1f;
             var pos = PadPos(pad) + new Vector3(Mathf.Sin(ang) * 13f, 0f, Mathf.Cos(ang) * 13f);
             pos.Y = Main.HeightAt(pos.X, pos.Z);
-            float yaw = SpawnYaw(pad);
-            var a = new Ally
-            {
-                Spec = spec,
-                Loadout = member.Loadout,
-                Role = RoleForSlot(slot),
-                Slot = slot,
-                Yaw = yaw,
-                SpawnPos = pos,
-                SpawnYaw = yaw
-            };
-            a.Walker = BuildRider(spec, $"Ally{slot}", pos, yaw);
-            a.Parts = new RiderParts(a.Walker, spec.PartsId);
-            a.Parts.OnBreak = (id, c) => OnPartBroken(a.Parts, id, c);
-            a.Walker.RefreshMaterials();
-            a.Hp = spec.MaxHp;
-            a.PrevRoot = a.Walker.RootPos;
-            string eb = SlotOf(spec, WeaponSlotType.Ballistic);
-            a.BallisticSlot = eb;
-            a.DefBallistic = eb == null ? null : WeaponCatalog.ById(a.Loadout.WeaponIn(eb));
+            var a = MakeAlly(member, RoleForSlot(slot), slot, 0, pos, SpawnYaw(pad), $"Ally{slot}");
             _allies.Add(a);
             k++;
-            GD.Print($"TEAM ally built: slot {slot} {spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
+            GD.Print($"TEAM ally built: slot {slot} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
         }
         if (_allies.Count > 0) GD.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
+    }
+
+    // A team's muster point in the arena: its pad for the
+    // first three teams; a fourth team takes the ring point
+    // rotated 60 degrees off pad 0, between pads 0 and 1.
+    private static Vector3 TeamAnchor(int team)
+    {
+        if (team < Main.SpawnPads.Length) return PadPos(Main.SpawnPads[team]);
+        var p = Main.SpawnPads[0];
+        float a = Mathf.DegToRad(60f);
+        var rot = new Vector2(p.X * Mathf.Cos(a) - p.Y * Mathf.Sin(a),
+                              p.X * Mathf.Sin(a) + p.Y * Mathf.Cos(a));
+        return new Vector3(rot.X, Main.HeightAt(rot.X, rot.Y), rot.Y);
+    }
+
+    private static float AnchorYaw(Vector3 anchor) => Mathf.Atan2(anchor.X, anchor.Z);
+
+    // Tournament (Stage D3): every bracket member the two AI
+    // seats do not host becomes an NPC record on its team's
+    // muster ring. Friendly records (team 0) take the leader's
+    // orders; hostile records run the bracket brain (D3c).
+    private void BuildBracketNPCs()
+    {
+        if (!_bracketActive) return;
+        var perTeam = new System.Collections.Generic.Dictionary<int, int>();
+        for (int t = 0; t < TeamRoster.Tourney.Count; t++)
+        {
+            for (int s = 0; s < TeamRoster.Tourney[t].Count; s++)
+            {
+                if (t == 0 && s == 0) continue; // the driven seat
+                var member = TeamRoster.Tourney[t][s];
+                if (member == _seatEnemyMember || member == _foeMember) continue; // seat-hosted
+                int k = perTeam.TryGetValue(t, out var c) ? c : 0;
+                perTeam[t] = k + 1;
+                var anchor = TeamAnchor(t);
+                float ang = k * 2.1f + 0.8f;
+                var pos = anchor + new Vector3(Mathf.Sin(ang) * 12f, 0f, Mathf.Cos(ang) * 12f);
+                pos.Y = Main.HeightAt(pos.X, pos.Z);
+                float yaw = AnchorYaw(anchor);
+                var a = MakeAlly(member, $"{Roles.AllyPrefix}{t * 10 + s}", s, t, pos, yaw, $"Npc{t}_{s}");
+                _allies.Add(a);
+                GD.Print($"BRACKET npc built: team {t + 1} slot {s} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
+            }
+        }
     }
 
     // Take command of a teammate (owner, teams stage step 4):

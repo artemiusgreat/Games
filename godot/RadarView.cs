@@ -30,6 +30,9 @@ public partial class RadarView : Control
     // frame like the enemy references (walkers are rebuilt on
     // lab swaps and leader changes).
     public readonly List<(RiderWalker W, bool Down)> Allies = new();
+    // Tournament bracket (Stage D3): opposing-team NPC riders
+    // beyond the two seats, drawn as ordinary enemy contacts.
+    public readonly List<(RiderWalker W, bool Down)> Foes = new();
 
     // Scope range in world units (owner, 2026-11-11 round 6:
     // 'radar seems broken, dot positions don't change' — at
@@ -141,6 +144,8 @@ public partial class RadarView : Control
         // Enemy contacts, clamped to the rim when out of range.
         DrawContact(Enemy, EnemyDown, c, px, half - 6f);
         DrawContact(Enemy2, Enemy2Down, c, px, half - 6f);
+        foreach (var (fw, fdown) in Foes)
+            DrawContact(fw, fdown, c, px, half - 6f);
         // Friendly contacts in the player's green.
         foreach (var (aw, adown) in Allies)
             DrawContact(aw, adown, c, px, half - 6f, new Color(0.45f, 0.95f, 0.55f, 0.95f));

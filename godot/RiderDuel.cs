@@ -379,6 +379,7 @@ public partial class RiderDuel : Node3D
         if (WorldConfig.IsMission)
         {
             TeamRoster.EnsureStory();
+            _enemyTeam = 1; _foeTeam = 1; // both defenders guard the same side
             bool playerArg = false;
             foreach (var arg in OS.GetCmdlineUserArgs())
                 if (arg.StartsWith("--player-rider=")) playerArg = true;
@@ -388,6 +389,48 @@ public partial class RiderDuel : Node3D
                 _playerSpec = m0.Spec;
                 _loadout = m0.Loadout;
             }
+        }
+        else if (!AnyHarness)
+        {
+            // Tournament (Stage D3): the bracket formed on the
+            // team selector takes the field. The driven rider is
+            // team 1's first slot (bracket index 0); the enemy
+            // seat hosts the opposing team's first rider; the
+            // foe seat hosts the next opposing rider in (team,
+            // slot) order — or is not built at all when the
+            // bracket fields a single opposing rider, so a
+            // formed 1v1 stays a 1v1. Explicit --player-rider /
+            // --enemy-rider arguments outrank the bracket.
+            TeamRoster.EnsureTourney();
+            _bracketActive = true;
+            bool pArg = false, eArg = false;
+            foreach (var arg in OS.GetCmdlineUserArgs())
+            {
+                if (arg.StartsWith("--player-rider=")) pArg = true;
+                if (arg.StartsWith("--enemy-rider=")) eArg = true;
+            }
+            if (!pArg)
+            {
+                var m = TeamRoster.Tourney[0][0];
+                _playerSpec = m.Spec; _loadout = m.Loadout;
+            }
+            if (!eArg)
+            {
+                _seatEnemyMember = TeamRoster.Tourney[1][0];
+                _enemySpec = _seatEnemyMember.Spec; _enemyLoadout = _seatEnemyMember.Loadout;
+            }
+            _enemyTeam = 1;
+            _foeMember = null; _foeMemberTeam = 2;
+            for (int t = 1; t < TeamRoster.Tourney.Count && _foeMember == null; t++)
+            {
+                for (int s = 0; s < TeamRoster.Tourney[t].Count; s++)
+                {
+                    var m = TeamRoster.Tourney[t][s];
+                    if (m == _seatEnemyMember) continue;
+                    _foeMember = m; _foeMemberTeam = t; break;
+                }
+            }
+            _foeTeam = _foeMemberTeam;
         }
         if (PhotoMode) _photo = true; // the photoreal scene's own declaration
         _hit = new HitModel();
@@ -524,8 +567,21 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
-        if ((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest) BuildFoe();
+        if (((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
+            && (!_bracketActive || _foeMember != null)) BuildFoe();
+        if (_bracketActive && _foe != null && _foeMember != null && _foeMemberTeam != 2)
+        {
+            // The foe seat spawns on pad 3 (index 2), but a
+            // bracket member musters with its own team.
+            var anchor = TeamAnchor(_foeMemberTeam);
+            var pos = anchor + new Vector3(Mathf.Sin(-0.8f) * 12f, 0f, Mathf.Cos(-0.8f) * 12f);
+            pos.Y = Main.HeightAt(pos.X, pos.Z);
+            float yaw = AnchorYaw(anchor);
+            _foe.Walker.Teleport(pos, yaw);
+            _foe.Yaw = yaw; _foe.PrevRoot = pos;
+        }
         BuildAllies();
+        BuildBracketNPCs();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
         _prevEnemyRoot = _enemy.RootPos;

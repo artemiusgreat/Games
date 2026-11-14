@@ -829,7 +829,12 @@ public partial class RiderDuel
             _radar.Enemy2 = _foe?.Walker;
             _radar.Enemy2Down = _foe?.Dead ?? true;
             _radar.Allies.Clear();
-            foreach (var a in _allies) _radar.Allies.Add((a.Walker, a.Dead));
+            _radar.Foes.Clear();
+            foreach (var a in _allies)
+            {
+                if (WorldConfig.IsMission || a.Team == 0) _radar.Allies.Add((a.Walker, a.Dead));
+                else _radar.Foes.Add((a.Walker, a.Dead));
+            }
             _radar.QueueRedraw();
         }
         if (_player.IsKnockedDown)

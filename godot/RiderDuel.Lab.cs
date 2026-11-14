@@ -158,8 +158,8 @@ public partial class RiderDuel
 
     private void BuildFoe()
     {
-        var spec = FfaPartner(_enemySpec);
-        _foe = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
+        var spec = _foeMember?.Spec ?? FfaPartner(_enemySpec);
+        _foe = new Foe { Spec = spec, Loadout = _foeMember?.Loadout ?? LoadoutState.DefaultFor(spec) };
         var pad = Main.SpawnPads[2];
         _foe.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
         _foe.Yaw = SpawnYaw(pad);
@@ -176,13 +176,13 @@ public partial class RiderDuel
 
     private void RebuildFoe()
     {
-        var want = FfaPartner(_enemySpec);
+        var want = _foeMember?.Spec ?? FfaPartner(_enemySpec);
         if (_foe != null && _foe.Spec.Id == want.Id) return;
         var pos = _foe?.Walker.RootPos ?? PadPos(Main.SpawnPads[2]);
         float yaw = _foe?.Walker.LegsYaw ?? SpawnYaw(Main.SpawnPads[2]);
         _foe?.Walker.QueueFree();
         var spec = want;
-        _foe = new Foe { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
+        _foe = new Foe { Spec = spec, Loadout = _foeMember?.Loadout ?? LoadoutState.DefaultFor(spec) };
         _foe.Walker = BuildRider(spec, "Enemy2", pos, yaw);
         _foe.Yaw = yaw;
         _foe.Parts = new RiderParts(_foe.Walker, spec.PartsId);
@@ -243,6 +243,14 @@ public partial class RiderDuel
             if (WorldConfig.IsMission && TeamRoster.Story.Count > 0)
             {
                 var m = TeamRoster.Story[TeamRoster.StorySlot];
+                m.Spec = _playerSpec;
+                m.Loadout = _loadout;
+            }
+            else if (_bracketActive && TeamRoster.Tourney.Count > 0)
+            {
+                // Tournament: the lab prepares team 1's first
+                // rider — a chassis change re-points its slot.
+                var m = TeamRoster.Tourney[0][0];
                 m.Spec = _playerSpec;
                 m.Loadout = _loadout;
             }
