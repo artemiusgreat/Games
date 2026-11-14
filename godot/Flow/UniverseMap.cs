@@ -136,7 +136,7 @@ public partial class UniverseMap : Control
         foreach (var (pl, dc) in PlanetLinks)
             DrawLine(NodePos(pl), DecoPos[dc] * Size, laneC, 1f);
         // Planet nodes.
-        var font = FlowUi.HeadFont(false);
+        var font = FlowUi.NavFont;
         for (int i = 0; i < n; i++)
         {
             var p = MissionCatalog.Planets[i];

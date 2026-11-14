@@ -60,7 +60,7 @@ public partial class PlanetScreen : Control
         var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         sv.AddThemeConstantOverride("separation", 7);
         side.AddChild(sv);
-        sv.AddChild(FlowUi.MakeHeading("Planet", 13, FlowUi.Gold, bold: false));
+        sv.AddChild(FlowUi.NavHeading("Planet", 13, FlowUi.Gold));
         sv.AddChild(FlowUi.SelectorRow(out _nameLabel, 16, StepPlanet));
         _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
         sv.AddChild(_subLabel);

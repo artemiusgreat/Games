@@ -88,8 +88,8 @@ public partial class ArenaScreen : Control
         mid.AddChild(side);
 
         // Map section: displays the arena.
-        sv.AddChild(FlowUi.MakeHeading("Map", 13, FlowUi.Gold, bold: false));
-        _nameLabel = FlowUi.MakeHeading("", 16, FlowUi.Gold);
+        sv.AddChild(FlowUi.NavHeading("Map", 13, FlowUi.Gold));
+        _nameLabel = FlowUi.NavHeading("", 16, FlowUi.Gold);
         sv.AddChild(_nameLabel);
         _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
         sv.AddChild(_subLabel);
@@ -109,7 +109,7 @@ public partial class ArenaScreen : Control
         sv.AddChild(descMonitor);
 
         // Arena section: the chooser.
-        sv.AddChild(FlowUi.MakeHeading("Arena", 13, FlowUi.Gold, bold: false));
+        sv.AddChild(FlowUi.NavHeading("Arena", 13, FlowUi.Gold));
         sv.AddChild(FlowUi.SelectorRow(out _arenaName, 15, StepArena));
         var arenaScroll = new ScrollContainer
         {

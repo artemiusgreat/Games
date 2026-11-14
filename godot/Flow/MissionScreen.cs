@@ -71,7 +71,7 @@ public partial class MissionScreen : Control
         var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         sv.AddThemeConstantOverride("separation", 7);
         side.AddChild(sv);
-        sv.AddChild(FlowUi.MakeHeading("Mission", 13, FlowUi.Gold, bold: false));
+        sv.AddChild(FlowUi.NavHeading("Mission", 13, FlowUi.Gold));
         sv.AddChild(FlowUi.SelectorRow(out _selName, 15, StepMission));
         var briefScroll = new ScrollContainer
         {
@@ -182,8 +182,8 @@ public partial class MissionScreen : Control
             var tx = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.Expand, MouseFilter = MouseFilterEnum.Ignore };
             tx.AddThemeConstantOverride("separation", 2);
             h.AddChild(tx);
-            var patron = FlowUi.MakeHeading(mm.Patron, 14,
-                mi == FlowMain.MissionIndex ? FlowUi.Gold : FlowUi.Ink, bold: false);
+            var patron = FlowUi.NavHeading(mm.Patron, 14,
+                mi == FlowMain.MissionIndex ? FlowUi.Gold : FlowUi.Ink);
             patron.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(patron);
             var pitch = FlowUi.MakeLabel($"“{mm.Pitch}”", 12, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);

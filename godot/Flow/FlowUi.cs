@@ -157,6 +157,21 @@ public static class FlowUi
         return l;
     }
 
+    private static FontFile _navFont;
+    // Navigation screens are Open Sans everywhere (owner,
+    // 2026-11-14) — no Cinzel there. Semibold keeps the
+    // headings' weight without the serif.
+    public static FontFile NavFont =>
+        _navFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
+
+    public static Label NavHeading(string text, int size, Color color,
+        HorizontalAlignment align = HorizontalAlignment.Left)
+    {
+        var l = MakeLabel(text, size, color, align);
+        l.AddThemeFontOverride("font", NavFont);
+        return l;
+    }
+
     // The front-end's selector row (the owner's "slider"):
     // ‹ NAME › cycling one entry per press.
     public static HBoxContainer SelectorRow(out Label name, int fontSize, System.Action<int> step)
@@ -167,7 +182,7 @@ public static class FlowUi
         prev.CustomMinimumSize = new Vector2(42f, 0f);
         prev.Pressed += () => step(-1);
         row.AddChild(prev);
-        name = MakeHeading("", fontSize, Gold, HorizontalAlignment.Center);
+        name = NavHeading("", fontSize, Gold, HorizontalAlignment.Center);
         name.SizeFlagsHorizontal = Control.SizeFlags.Expand;
         row.AddChild(name);
         var next = MakeButton("›", 17);

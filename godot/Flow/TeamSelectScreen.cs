@@ -82,13 +82,13 @@ public partial class TeamSelectScreen : Control
 
         if (teams)
         {
-            pv.AddChild(FlowUi.MakeHeading("Teams", 13, FlowUi.Gold, bold: false));
+            pv.AddChild(FlowUi.NavHeading("Teams", 13, FlowUi.Gold));
             _teamCount = FlowUi.MakeLabel("", 12, FlowUi.Dim);
             pv.AddChild(_teamCount);
         }
         else
         {
-            _riderHead = FlowUi.MakeHeading("", 13, FlowUi.Gold, bold: false);
+            _riderHead = FlowUi.NavHeading("", 13, FlowUi.Gold);
             pv.AddChild(_riderHead);
             _riderCount = FlowUi.MakeLabel("", 12, FlowUi.Dim);
             pv.AddChild(_riderCount);
