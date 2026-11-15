@@ -594,7 +594,14 @@ public partial class RiderLab : Control
         sideSb.SetBorderWidthAll(2);
         sideSb.SetCornerRadiusAll(6);
         sidePanel.AddThemeStyleboxOverride("panel", sideSb);
-        mid.AddChild(sidePanel);
+        // Air above and below the sidebar (owner, 2026-11-14):
+        // it no longer runs flush into the subtitle and the
+        // status lines.
+        var sideWrap = new MarginContainer();
+        sideWrap.AddThemeConstantOverride("margin_top", 16);
+        sideWrap.AddThemeConstantOverride("margin_bottom", 16);
+        mid.AddChild(sideWrap);
+        sideWrap.AddChild(sidePanel);
         var catBox = new VBoxContainer();
         catBox.AddThemeConstantOverride("separation", 8);
         sidePanel.AddChild(catBox);
@@ -653,7 +660,7 @@ public partial class RiderLab : Control
             var tileCtl = TileVisual(w, 40, drag);
             tileCtl.SizeFlagsVertical = SizeFlags.ShrinkCenter; // the tile fits INSIDE the row band (owner)
             hb.AddChild(tileCtl);
-            var texts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            var texts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
             texts.AddThemeConstantOverride("separation", 1);
             var nm = new Label { Text = w.Name, MouseFilter = MouseFilterEnum.Ignore };
             nm.AddThemeFontSizeOverride("font_size", 14);
@@ -712,7 +719,7 @@ public partial class RiderLab : Control
             Refresh();
         };
         jhb.AddChild(_jetsTileBtn);
-        var jtexts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        var jtexts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
         jtexts.AddThemeConstantOverride("separation", 1);
         var jnm = new Label { Text = "Thrusters", MouseFilter = MouseFilterEnum.Ignore };
         jnm.AddThemeFontSizeOverride("font_size", 14);
