@@ -1404,42 +1404,77 @@ public partial class RiderDuel
         // Teammates are bodies too (owner, 2026-11-15: the
         // allies were never resolved at all, so a follower
         // walked straight through the leader): they resolve
-        // against every rider on the field, and against the
-        // leader and each other they also keep a gap, so the
-        // formation holds its distance instead of grinding
-        // into contact.
+        // against every rider on the field, under the same
+        // universal separation as every other pairing.
         foreach (var a in _allies)
         {
             if (a.Walker == null) continue;
-            ResolvePair(a.Walker, _player, 3f);
+            ResolvePair(a.Walker, _player);
             ResolvePair(a.Walker, _enemy);
             if (_foe != null) ResolvePair(a.Walker, _foe.Walker);
             foreach (var b in _allies)
-                if (b != a && b.Walker != null) ResolvePair(a.Walker, b.Walker, 3f);
+                if (b != a && b.Walker != null) ResolvePair(a.Walker, b.Walker);
         }
     }
 
-    // rider vs rider: split the overlap (gap = extra
-    // separation kept beyond the two body radii)
-    private static void ResolvePair(RiderWalker wa, RiderWalker wb, float gap = 0f)
+    // rider vs rider: hold the universal separation (the
+    // two body radii + RiderBody.Gap) in every pairing and
+    // every mode (owner, 2026-11-15). The push lands on the
+    // NPC - the player is NEVER displaced by another rider,
+    // which is what let a follower shove him across the
+    // field in Follow mode; two NPCs split the push as
+    // before.
+    private void ResolvePair(RiderWalker wa, RiderWalker wb)
     {
         var a = new Vector2(wa.RootPos.X, wa.RootPos.Z);
         var b = new Vector2(wb.RootPos.X, wb.RootPos.Z);
         var d = b - a;
         float dist = d.Length();
-        float min = wa.CollisionRadius + wb.CollisionRadius + gap;
+        float min = wa.CollisionRadius + wb.CollisionRadius + RiderBody.Gap;
         // Flyover (owner): a jumping rider passes OVER the other -
         // no separation push while either is high above the ground.
-        if (dist < min && wa.JumpHeight < 12f && wb.JumpHeight < 12f)
+        if (dist >= min || wa.JumpHeight >= 12f || wb.JumpHeight >= 12f) return;
+        if (dist < 1e-4f) d = new Vector2(0f, 1f);
+        else d /= dist;
+        float push = min - dist;
+        if (wa == _player) { b += d * push; wb.ApplyRootXZ(b); }
+        else if (wb == _player) { a -= d * push; wa.ApplyRootXZ(a); }
+        else
         {
-            if (dist < 1e-4f) d = new Vector2(0f, 1f);
-            else d /= dist;
-            float push = (min - dist) / 2f;
-            a -= d * push;
-            b += d * push;
+            a -= d * push / 2f;
+            b += d * push / 2f;
             wa.ApplyRootXZ(a);
             wb.ApplyRootXZ(b);
         }
+    }
+
+    // Steering brake (owner, 2026-11-15): true when rider w,
+    // steering along yaw, would close inside the universal
+    // separation of another living rider. NPC point-steering
+    // (formation following, base patrols) checks it before
+    // driving, so riders hold their distance by steering
+    // instead of leaning on the collision pass. Moving AWAY
+    // from a rider never brakes.
+    private bool RiderAhead(RiderWalker w, float yaw)
+    {
+        var step = new Vector2(-Mathf.Sin(yaw), -Mathf.Cos(yaw));
+        var p = new Vector2(w.RootPos.X, w.RootPos.Z);
+        if (RiderBlocks(w, _player, p, step)) return true;
+        if (RiderBlocks(w, _enemy, p, step)) return true;
+        if (_foe != null && RiderBlocks(w, _foe.Walker, p, step)) return true;
+        foreach (var a in _allies) if (RiderBlocks(w, a.Walker, p, step)) return true;
+        return false;
+    }
+
+    private bool RiderBlocks(RiderWalker w, RiderWalker o, Vector2 p, Vector2 step)
+    {
+        if (o == null || o == w || IsDead(o)) return false;
+        var to = new Vector2(o.RootPos.X, o.RootPos.Z) - p;
+        float len = to.Length();
+        float min = w.CollisionRadius + o.CollisionRadius + RiderBody.Gap + 0.5f;
+        if (len >= min) return false;
+        if (len < 1e-4f) return true;
+        return to.Normalized().Dot(step) > 0.3f;
     }
 
     // Any rider whose body is about to reach a standing tree crushes

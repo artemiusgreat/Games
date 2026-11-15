@@ -68,6 +68,20 @@ public static class PartRules
     public const float ArmBreakPoolFraction = 0.20f;
 }
 
+/// <summary>
+/// Rider body separation (world units): every rider keeps
+/// this much clear space beyond the two body radii, in
+/// every mode and every pairing (owner, 2026-11-15 -
+/// followers in Follow mode were shoving the leader). The
+/// collision pass enforces it and NPC steering brakes for
+/// it; the player himself is never displaced by another
+/// rider - the push always lands on the NPC.
+/// </summary>
+public static class RiderBody
+{
+    public const float Gap = 3f;
+}
+
 public static class SlotIds
 {
     public const string ArmL = "arm_L";

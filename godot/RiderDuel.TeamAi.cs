@@ -91,7 +91,22 @@ public partial class RiderDuel
         float dy = RiderWalker.WrapAngle(yawTo - a.Yaw);
         float yaw = a.Yaw + Mathf.Clamp(dy, -0.7f * dt, 0.7f * dt);
         a.Yaw = yaw;
-        w.SetDrive(yaw, PaceFor(a.Spec, dist));
+        float pace = PaceFor(a.Spec, dist);
+        // Hold the universal separation (owner, 2026-11-15):
+        // never steer into another rider's space, the leader's
+        // above all - the formation stop radius alone let a
+        // follower end its approach inside the leader's
+        // separation and grind against the collision pass.
+        // When the way to the station is blocked, sidestep
+        // around the rider at the boundary instead of halting
+        // nose-first: the station may lie straight past him.
+        if (RiderAhead(w, yaw))
+        {
+            if (!RiderAhead(w, yaw + 1.35f)) { yaw += 1.35f; a.Yaw = yaw; }
+            else if (!RiderAhead(w, yaw - 1.35f)) { yaw -= 1.35f; a.Yaw = yaw; }
+            else pace = 0f;
+        }
+        w.SetDrive(yaw, pace);
         TrackTorso(w, a.Parts, yaw, yawTo, dt);
         w.TorsoPitch = 0f;
     }

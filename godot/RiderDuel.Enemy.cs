@@ -73,7 +73,10 @@ public partial class RiderDuel
         float yawTo = RiderWalker.YawOf(to.Normalized());
         float dy = RiderWalker.WrapAngle(yawTo - yaw);
         yaw += Mathf.Clamp(dy, -0.7f * delta, 0.7f * delta);
-        w.SetDrive(yaw, dist > 8f ? pace : 0f);
+        float spd = dist > 8f ? pace : 0f;
+        // Hold the universal separation (owner, 2026-11-15).
+        if (spd > 0f && RiderAhead(w, yaw)) spd = 0f;
+        w.SetDrive(yaw, spd);
         TrackTorso(w, parts, yaw, yawTo, delta);
         w.TorsoPitch = 0f;
     }
