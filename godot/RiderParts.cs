@@ -98,11 +98,15 @@ public sealed class RiderParts
 
         if (riderId == "enyo")
         {
+            // Z thresholds carry a +0.09 frame shift (2026-11-15):
+            // SplitTorso now classifies in the model's own frame;
+            // these regions were measured in the old walker-relative
+            // frame, whose origin sat 0.09 lower in Z for this model.
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
-                ("Pod_L", p => p.X >= 1.7f && p.Y >= 9.9f && p.Z <= -1.1f),
-                ("Pod_R", p => p.X <= -1.7f && p.Y >= 9.9f && p.Z <= -1.1f),
-                ("Head", p => Mathf.Abs(p.X) <= 1.4f && p.Y >= 10.1f && p.Z >= 1.0f),
+                ("Pod_L", p => p.X >= 1.7f && p.Y >= 9.9f && p.Z <= -1.01f),
+                ("Pod_R", p => p.X <= -1.7f && p.Y >= 9.9f && p.Z <= -1.01f),
+                ("Head", p => Mathf.Abs(p.X) <= 1.4f && p.Y >= 10.1f && p.Z >= 1.09f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
             AddPart("pod_L", "LEFT LRM POD", 45f, byName, "TorsoPod_L");
@@ -129,9 +133,15 @@ public sealed class RiderParts
             // measured on the built model (skull: |x| <= 1.04,
             // height 11.47..13.79, front z >= 0.2 in model
             // space; the band also takes the jaw pistons).
+            // Z threshold -0.53 in the model's own frame (the
+            // frame SplitTorso classifies in since 2026-11-15):
+            // the re-posed build is AABB-centred in the build,
+            // which moved the geometry +0.68 in Y against the
+            // frame this band was first measured in, so the
+            // skull band sits 0.68 lower here.
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
-                ("Head", p => Mathf.Abs(p.X) <= 1.15f && p.Y >= 11.4f && p.Z >= 0.15f),
+                ("Head", p => Mathf.Abs(p.X) <= 1.15f && p.Y >= 11.4f && p.Z >= -0.53f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
             AddPart("gun", "WAIST GUN", 65f, byName, "AC20");
@@ -405,7 +415,7 @@ public sealed class RiderParts
 
     // The kit FBXs merge several logical parts into the single Torso mesh.
     // Split it into region meshes (triangle-centroid classification in
-    // walker-model space: feet at y=0, +x = model left, +z = model front).
+    // the model's own frame: feet at y=0, +x = model left, +z = model front).
     // Regions are tested in order; unmatched triangles keep the core piece.
     // New pieces share the original skin/skeleton and sit at the same tree
     // spot, so rendering is unchanged until a piece is detached.
@@ -414,7 +424,18 @@ public sealed class RiderParts
     {
         if (!byName.TryGetValue("Torso", out var orig) || orig.Mesh == null) return;
         var parent = orig.GetParent();
-        var modelXf = _walker.GlobalTransform.AffineInverse() * orig.GlobalTransform;
+        // Classify against the model root, not the walker: both nodes
+        // live in the same subtree, so the walker's placement, scale
+        // and AABB centring cancel exactly. The walker-relative form
+        // drifted whenever parts were rebuilt after the walker had
+        // been placed or teleported, and the carve changed with the
+        // build timing (Hector's head split, 2026-11-15).
+        Node3D modelRoot = null;
+        for (Node n = orig; n != null; n = n.GetParent())
+            if (n.GetParent() == _walker) { modelRoot = n as Node3D; break; }
+        var modelXf = modelRoot != null
+            ? modelRoot.GlobalTransform.AffineInverse() * orig.GlobalTransform
+            : _walker.GlobalTransform.AffineInverse() * orig.GlobalTransform;
         string baseName = orig.Name;
         var pieces = new Dictionary<string, MeshInstance3D>();
         var triCounts = new Dictionary<string, int>();
