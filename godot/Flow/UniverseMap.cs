@@ -154,7 +154,7 @@ public partial class UniverseMap : Control
             DrawCircle(ctr, 12f, body);
             DrawCircle(ctr + new Vector2(-4f, -4f), 5f, new Color(p.PolarColor, 0.5f));
             DrawArc(ctr, 14f, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Steel, sel ? 2.5f : 1.5f, true);
-            DrawString(font, ctr + new Vector2(-80f, 48f), p.Name.ToUpper(),
+            DrawString(font, ctr + new Vector2(-80f, 48f), FlowUi.NameCase(p.Name),
                 HorizontalAlignment.Center, 160f, 16,
                 sel ? FlowUi.Gold : FlowUi.Ink);
         }

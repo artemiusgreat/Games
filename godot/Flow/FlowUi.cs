@@ -172,6 +172,12 @@ public static class FlowUi
         return l;
     }
 
+    // Sentence case for display: spec and planet names are
+    // stored all-caps ('PROMETHEUS'); most screens read
+    // 'Prometheus'. (The lab title is the standing exception.)
+    public static string NameCase(string n) =>
+        string.IsNullOrEmpty(n) ? n : char.ToUpper(n[0]) + n.Substring(1).ToLowerInvariant();
+
     // The front-end's selector row (the owner's "slider"):
     // ‹ NAME › cycling one entry per press.
     public static HBoxContainer SelectorRow(out Label name, int fontSize, System.Action<int> step)

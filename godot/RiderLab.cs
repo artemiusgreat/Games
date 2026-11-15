@@ -885,52 +885,38 @@ public partial class RiderLab : Control
     // Sentence case for display (owner, 2026-11-14): spec
     // names are stored all-caps ('PROMETHEUS'); everywhere
     // except the lab title they read 'Prometheus'.
-    private static string NameCase(string n) =>
-        string.IsNullOrEmpty(n) ? n : char.ToUpper(n[0]) + n.Substring(1).ToLowerInvariant();
+    private static string NameCase(string n) => FlowUi.NameCase(n);
 
-    // The single line between list items (owner, 2026-11-14).
-    private static HSeparator RowSeparator()
+    // Bright frame for the bottom-bar buttons (owner,
+    // 2026-11-14): the theme's translucent faces all but
+    // vanish against the dark scene behind the lab, so Back
+    // and Deploy get a light 2px border - and the selector
+    // panel, which duplicates Deploy's face, inherits it.
+    private static void BrightBorder(Button b)
     {
-        var sep = new HSeparator();
-        sep.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(0.5f, 0.56f, 0.62f, 0.35f), Thickness = 1 });
-        return sep;
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+        {
+            if (b.GetThemeStylebox(state).Duplicate() is StyleBoxFlat sb)
+            {
+                sb.BorderColor = new Color(0.88f, 0.92f, 0.97f, 1f);
+                sb.SetBorderWidthAll(2);
+                b.AddThemeStyleboxOverride(state, sb);
+            }
+        }
     }
 
     // Dev-flag support (--lab-tab=equip): open the sidebar
-    // on the Equipment tab for captures.
+    // on the Equipment page for captures.
     public void OpenOnEquipmentTab() => ShowLabTab(false);
 
-    // Sidebar tabs (owner, 2026-11-14): Weapons / Equipment.
+    // Sidebar pages (owner, 2026-11-14): Weapon / Equipment,
+    // switched by the slider at the sidebar's head.
     private void ShowLabTab(bool weapons)
     {
+        _weaponsPage = weapons;
         if (_pageWeapons != null) _pageWeapons.Visible = weapons;
         if (_pageEquipment != null) _pageEquipment.Visible = !weapons;
-        StyleTabButton(_tabWeapons, weapons, true);
-        StyleTabButton(_tabEquipment, !weapons, false);
-    }
-
-    private static void StyleTabButton(Button b, bool active, bool leftHalf)
-    {
-        if (b == null) return;
-        // Combo-button halves (owner, 2026-11-14): the frame
-        // around the pair carries the border; a half only
-        // differs by its fill (gold-tinted when active, bare
-        // otherwise) and its text colour.
-        b.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.82f, 0.88f, 0.94f));
-        var face = new StyleBoxFlat
-        {
-            BgColor = active ? new Color(0.16f, 0.15f, 0.08f, 0.95f) : new Color(0, 0, 0, 0),
-            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
-        };
-        // Only the outer corners round (owner, 2026-11-14):
-        // the left half keeps its left radius, the right half
-        // its right; the corners at the divider stay square.
-        if (leftHalf) { face.CornerRadiusTopLeft = 5; face.CornerRadiusBottomLeft = 5; }
-        else { face.CornerRadiusTopRight = 5; face.CornerRadiusBottomRight = 5; }
-        b.AddThemeStyleboxOverride("normal", face);
-        b.AddThemeStyleboxOverride("hover", face);
-        b.AddThemeStyleboxOverride("pressed", face);
-        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        if (_tabName != null) _tabName.Text = weapons ? "Weapon" : "Equipment";
     }
 
     // Roomier inner padding for the bottom action chips (owner,
