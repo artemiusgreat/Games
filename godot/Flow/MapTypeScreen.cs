@@ -80,34 +80,13 @@ public partial class MapTypeScreen : Control
             "VIEW MISSIONS", featured: false, icon: CardIcon.Kind.Target,
             go: () => OnMission?.Invoke()));
 
-        // Bottom telemetry row: dashboard readouts, not a bar.
-        var bottom = new HBoxContainer();
-        root.AddChild(bottom);
-        var teleL = FlowUi.MakeLabel(Spread("COMMAND DECK // ORBITAL UPLINK STABLE"), 11, FlowUi.Dim);
-        Shadow(teleL);
-        bottom.AddChild(teleL);
-        var teleR = FlowUi.MakeLabel(Spread("AWAITING ORDERS"), 11, FlowUi.Dim, HorizontalAlignment.Right);
-        Shadow(teleR);
-        teleR.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        bottom.AddChild(teleR);
-
         Layout();
         GetTree().Root.SizeChanged += Layout;
     }
 
-    // The bottom readouts sit over the bright orbital
-    // backdrop: a hard dark shadow keeps them readable
-    // (owner, 2026-11-14).
-    private static void Shadow(Label l)
-    {
-        l.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
-        l.AddThemeConstantOverride("shadow_offset_x", 1);
-        l.AddThemeConstantOverride("shadow_offset_y", 1);
-    }
-
     // Fit the cards to the visible area: their width follows
     // the window (two cards + margins + the gap), their height
-    // what remains under the title and telemetry rows. The ART
+    // what remains under the title row. The ART
     // height is what's left of the card after the fixed
     // interior (card margins 62, separations 70, header 56,
     // rule 2, spacer 4, action bar 50) and the description's
@@ -122,7 +101,7 @@ public partial class MapTypeScreen : Control
         var vp = GetViewportRect().Size;
         if (vp.X < 200f || _cardT == null) return;
         float cardW = Mathf.Clamp((vp.X - 88f - 30f) / 2f, 320f, 600f);
-        float cardH = Mathf.Clamp(vp.Y - 250f, 380f, 620f);
+        float cardH = Mathf.Clamp(vp.Y - 225f, 380f, 620f); // 250 while the bottom telemetry row stood; it was removed at the owner's word (2026-11-15)
         var cs = new Vector2(cardW, cardH);
         _cardT.CustomMinimumSize = cs;
         _cardM.CustomMinimumSize = cs;
