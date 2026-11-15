@@ -124,6 +124,12 @@ public partial class FlowMain : Node3D
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
                 GoStoryTeam();
                 break;
+            case "storyteam2": // harness seed: two riders (active + removable)
+                WorldConfig.Mode = WorldConfig.MapMode.Mission;
+                TeamRoster.EnsureStory();
+                TeamRoster.Story.Add(TeamRoster.Make(RiderSpecs.Hector));
+                GoStoryTeam();
+                break;
             case "bar":
             case "missions":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;

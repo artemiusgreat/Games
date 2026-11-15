@@ -134,6 +134,26 @@ public partial class StoryTeamScreen : Control
         return sb;
     }
 
+    // One shared slider minimum for every rider row (owner,
+    // 2026-11-15): the widest label the selector can show -
+    // the longest rider name with the active suffix - plus
+    // the two 42px arrows and separations. With one minimum
+    // (and the remove slot reserved on rows without a
+    // button), the half-width split lands identical on
+    // every row instead of drifting with the name length.
+    private static float RiderSliderMin()
+    {
+        var probe = FlowUi.NavHeading("", 16, FlowUi.Gold, HorizontalAlignment.Center);
+        var font = probe.GetThemeFont("font");
+        float w = 0f;
+        foreach (var s in RiderSpecs.All)
+        {
+            var t = $"{FlowUi.NameCase(s.Name)} - {s.Tonnage:F0}T - {FlowUi.NameCase(s.ClassLabel)} - Active";
+            w = Mathf.Max(w, font.GetStringSize(t, HorizontalAlignment.Left, -1f, 16).X);
+        }
+        return w + 100f;
+    }
+
     private void Refresh()
     {
         if (_riderRows == null) return;
@@ -142,6 +162,7 @@ public partial class StoryTeamScreen : Control
         _riderCount.Text = $"{team.Count} OF {TeamRoster.MaxPerTeam} RIDERS" +
             " - rider 1 is the active rider, prepared in the lab next";
         foreach (var ch in _riderRows.GetChildren()) ch.QueueFree();
+        float sliderMin = RiderSliderMin();
         for (int r = 0; r < team.Count; r++)
         {
             int idx = r;
@@ -166,13 +187,18 @@ public partial class StoryTeamScreen : Control
                 SetRider(idx, ((cur + step) % n + n) % n);
             });
             slider.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            slider.CustomMinimumSize = new Vector2(sliderMin, 0f);
             rname.Text = $"{FlowUi.NameCase(member.Spec.Name)} - {member.Spec.Tonnage:F0}T - {FlowUi.NameCase(member.Spec.ClassLabel)}"
                 + (activeSeat ? " - Active" : "");
             row.AddChild(slider);
             // Half-width slider (owner, 2026-11-15): an equal
             // expanding spacer takes the row's other half; the
             // remove button keeps the right edge.
-            row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Control
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                CustomMinimumSize = new Vector2(sliderMin, 0f)
+            });
             if (!activeSeat && team.Count > 1)
             {
                 var rm = new Button
@@ -189,6 +215,12 @@ public partial class StoryTeamScreen : Control
                 rm.TooltipText = "Remove this rider";
                 rm.Pressed += () => RemoveRider(idx);
                 row.AddChild(rm);
+            }
+            else
+            {
+                // Reserve the remove button's slot so the
+                // slider split is identical on every row.
+                row.AddChild(new Control { CustomMinimumSize = new Vector2(30, 30) });
             }
             _riderRows.AddChild(card);
         }
