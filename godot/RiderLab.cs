@@ -610,6 +610,13 @@ public partial class RiderLab : Control
         // Equipment, the same control as the planet and
         // rider selectors. Either arrow flips the page.
         var tabSlider = FlowUi.SelectorRow(out _tabName, 14, step => ShowLabTab(!_weaponsPage));
+        FlowUi.Heading(_tabName); // the page name reads in Cinzel (owner, 2026-11-15)
+        // Centred between the arrows (owner's correction,
+        // 2026-11-15): the shared row only claims the middle
+        // space (Expand without Fill), so the label kept its
+        // text width at the slot's left edge.
+        _tabName.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _tabName.HorizontalAlignment = HorizontalAlignment.Center;
         catBox.AddChild(tabSlider);
         // The catalog scrolls (owner): the full list outgrows the
         // screen height once tiles made the rows taller.
