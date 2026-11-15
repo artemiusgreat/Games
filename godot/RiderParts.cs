@@ -133,15 +133,16 @@ public sealed class RiderParts
             // measured on the built model (skull: |x| <= 1.04,
             // height 11.47..13.79, front z >= 0.2 in model
             // space; the band also takes the jaw pistons).
-            // Z threshold -0.53 in the model's own frame (the
-            // frame SplitTorso classifies in since 2026-11-15):
-            // the re-posed build is AABB-centred in the build,
-            // which moved the geometry +0.68 in Y against the
-            // frame this band was first measured in, so the
-            // skull band sits 0.68 lower here.
+            // Head band for the Hector-Front sculpt
+            // (2026-11-15, replaces the segments build): the
+            // model is AABB-centred on its own axis (shift 0),
+            // the skull assembly sits at height >= 11.9 with its
+            // face 2.03 proud of the axis; the band below carves
+            // 16052 of the joined Torso's 23205 tris into the
+            // head (builder-measured on the source fragments).
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
-                ("Head", p => Mathf.Abs(p.X) <= 1.15f && p.Y >= 11.4f && p.Z >= -0.53f),
+                ("Head", p => Mathf.Abs(p.X) <= 1.35f && p.Y >= 11.9f && p.Z >= 0.80f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
             AddPart("gun", "WAIST GUN", 65f, byName, "AC20");
