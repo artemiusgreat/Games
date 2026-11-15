@@ -843,12 +843,14 @@ public partial class RiderLab : Control
             };
             btnRow.AddChild(backBtn);
             PadButton(backBtn);
+            BrightBorder(backBtn);
         }
         btnRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var start = new Button { Text = "Deploy" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
         PadButton(start);
+        BrightBorder(start); // before the selector panel duplicates this face, so it inherits the border
         // The selector is the same control as Deploy (owner,
         // 2026-11-14): its panel duplicates Deploy's own
         // stylebox - same colour, border and transparency by
