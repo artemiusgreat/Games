@@ -333,7 +333,7 @@ public partial class TeamSelectScreen : Control
             });
             slider.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             rname.Text = $"{FlowUi.NameCase(member.Spec.Name)} - {member.Spec.Tonnage:F0}T - {FlowUi.NameCase(member.Spec.ClassLabel)}"
-                + (protectedSeat ? " (Active)" : "");
+                + (protectedSeat ? " - Active" : "");
             row.AddChild(slider);
             // Half-width slider (owner, 2026-11-15): an equal
             // expanding spacer takes the row's other half; the
