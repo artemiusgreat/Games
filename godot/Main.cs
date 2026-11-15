@@ -218,6 +218,16 @@ public partial class Main : Node3D
 		float half = TerrainSize / 2f;
 		float m = Smooth(half - 42f, half - 2f, sq);
 		float mtn = m * (9f + 7f * (Fbm(x / 37f - 9f, z / 37f + 23f, 4) * 0.5f + 0.5f));
+		// Forest arenas read as woodland, not a mountain range
+		// (owner, 2026-11-14: Hyle "looks more like mountains"):
+		// the relief set runs at half strength there, so slopes
+		// stay gentle and the splat's rock gives way to grass.
+		// The mesa dome below is untouched - it is the arena's
+		// landmark. Missions and the other arenas keep theirs.
+		if (!WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.Forest)
+		{
+			hills *= 0.45f; ridge *= 0.35f; mtn *= 0.5f;
+		}
 		float full = hills + ridge + valley + mtn;
 		// Arena modulation: 22% amplitude at the center, full by r=94.
 		// The Mission front keeps full amplitude everywhere.
