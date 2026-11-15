@@ -365,30 +365,30 @@ public partial class CardIcon : Control
         float r = Mathf.Min(Size.X, Size.Y) * 0.46f;
         if (IconKind == Kind.Compass)
         {
-            DrawArc(c, r, 0f, Mathf.Tau, 48, Tint, 2.5f, true);
+            DrawArc(c, r, 0f, Mathf.Tau, 48, Tint, 1.5f, true);
             // Four long points, four short diagonals.
             for (int i = 0; i < 4; i++)
             {
                 float a = i * Mathf.Pi * 0.5f;
                 var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                DrawLine(c - dir * r * 1.02f, c + dir * r * 1.02f, Tint, 2.5f, true);
+                DrawLine(c - dir * r * 1.02f, c + dir * r * 1.02f, Tint, 1.5f, true);
                 float b = a + Mathf.Pi * 0.25f;
                 var d2 = new Vector2(Mathf.Cos(b), Mathf.Sin(b));
-                DrawLine(c, c + d2 * r * 0.55f, Tint, 2f, true);
+                DrawLine(c, c + d2 * r * 0.55f, Tint, 1.25f, true);
             }
-            DrawCircle(c, 3.5f, Tint);
+            DrawCircle(c, 2.5f, Tint);
         }
         else
         {
-            DrawArc(c, r * 0.78f, 0f, Mathf.Tau, 48, Tint, 2.5f, true);
-            DrawArc(c, r * 0.30f, 0f, Mathf.Tau, 32, Tint, 2f, true);
+            DrawArc(c, r * 0.78f, 0f, Mathf.Tau, 48, Tint, 1.5f, true);
+            DrawArc(c, r * 0.30f, 0f, Mathf.Tau, 32, Tint, 1.25f, true);
             for (int i = 0; i < 4; i++)
             {
                 float a = i * Mathf.Pi * 0.5f;
                 var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                DrawLine(c + dir * r * 0.52f, c + dir * r * 1.05f, Tint, 2.5f, true);
+                DrawLine(c + dir * r * 0.52f, c + dir * r * 1.05f, Tint, 1.5f, true);
             }
-            DrawCircle(c, 3f, Tint);
+            DrawCircle(c, 2f, Tint);
         }
     }
 }
