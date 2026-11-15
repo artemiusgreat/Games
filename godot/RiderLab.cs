@@ -35,7 +35,8 @@ public partial class RiderLab : Control
 
     private Label _hint;
     private Label _tonnage;
-    private Button _tabWeapons, _tabEquipment;
+    private Label _tabName;
+    private bool _weaponsPage = true;
     private Control _pageWeapons, _pageEquipment;
     private Button _jetsTileBtn;
     private Label _jetsLine;
@@ -597,29 +598,12 @@ public partial class RiderLab : Control
         var catBox = new VBoxContainer();
         catBox.AddThemeConstantOverride("separation", 8);
         sidePanel.AddChild(catBox);
-        // The tabs are one combo-button (owner, 2026-11-14):
-        // a single framed bar split in two, the active half
-        // filled, one frame around both.
-        var tabFrame = new PanelContainer();
-        var tabSb = new StyleBoxFlat { BgColor = new Color(0.05f, 0.07f, 0.11f, 0.9f), BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f) };
-        tabSb.SetBorderWidthAll(1);
-        tabSb.SetCornerRadiusAll(6);
-        tabFrame.AddThemeStyleboxOverride("panel", tabSb);
-        catBox.AddChild(tabFrame);
-        var tabRow = new HBoxContainer();
-        tabRow.AddThemeConstantOverride("separation", 0);
-        tabFrame.AddChild(tabRow);
-        _tabWeapons = new Button { Text = "Weapon" };
-        _tabWeapons.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _tabWeapons.Pressed += () => ShowLabTab(true);
-        tabRow.AddChild(_tabWeapons);
-        var tabDiv = new VSeparator();
-        tabDiv.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(0.42f, 0.48f, 0.56f, 0.8f), Thickness = 1 });
-        tabRow.AddChild(tabDiv);
-        _tabEquipment = new Button { Text = "Equipment" };
-        _tabEquipment.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _tabEquipment.Pressed += () => ShowLabTab(false);
-        tabRow.AddChild(_tabEquipment);
+        // The page switch is a slider (owner, 2026-11-14):
+        // the front-end's selector row cycling Weapon /
+        // Equipment, the same control as the planet and
+        // rider selectors. Either arrow flips the page.
+        var tabSlider = FlowUi.SelectorRow(out _tabName, 14, step => ShowLabTab(!_weaponsPage));
+        catBox.AddChild(tabSlider);
         // The catalog scrolls (owner): the full list outgrows the
         // screen height once tiles made the rows taller.
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -655,16 +639,12 @@ public partial class RiderLab : Control
             gh.AddThemeFontSizeOverride("font_size", 13);
             gh.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
             rowsBox.AddChild(gh);
-            int rowsInGroup = 0;
             foreach (var w in WeaponCatalog.All)
             {
             if (w.Type != gType || !w.CatalogListed) continue;
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text). Rows
-            // carry no boxes of their own (owner, 2026-11-14): a
-            // single line separates items in the list.
-            if (rowsInGroup > 0) rowsBox.AddChild(RowSeparator());
-            rowsInGroup++;
+            // carry no boxes and no separators (owner, 2026-11-14).
             var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 52) };
             hb.AddThemeConstantOverride("separation", 16); // clear gap between tile and name (owner)
             var drag = new DragTile { WeaponId = w.Id, Lab = this };
