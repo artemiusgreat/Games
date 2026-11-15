@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 // The game's front door (project main scene). A quiet orbital
 // backdrop - star panorama and a slowly turning planet - behind a
@@ -86,6 +87,18 @@ public partial class FlowMain : Node3D
                 break;
             case "teams":
                 WorldConfig.Mode = WorldConfig.MapMode.Tournament;
+                GoTeams();
+                break;
+            case "teams3":
+                // Harness: a 3-team bracket with team 3 open, so
+                // the team rows carry their '-' buttons (owner's
+                // 2026-11-15 screenshot state).
+                WorldConfig.Mode = WorldConfig.MapMode.Tournament;
+                TeamRoster.Tourney.Clear();
+                TeamRoster.Tourney.Add(new List<TeamMember> { TeamRoster.Make(RiderSpecs.Enyo), TeamRoster.Make(RiderSpecs.Hector) });
+                TeamRoster.Tourney.Add(new List<TeamMember> { TeamRoster.Make(RiderSpecs.Demeter) });
+                TeamRoster.Tourney.Add(new List<TeamMember> { TeamRoster.Make(RiderSpecs.Prometheus) });
+                TeamRoster.TourneyTeam = 2;
                 GoTeams();
                 break;
             case "bar":
