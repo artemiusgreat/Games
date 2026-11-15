@@ -116,9 +116,11 @@ public partial class RiderDuel
     // The lab's own view (owner, 2026-11-14: "It is better
     // if Lab screen will have its own view / stand"): the
     // fight world is hidden for the duration of the lab and
-    // the rider presents on a showroom stand - a dark disc
-    // with a brass rim under his feet inside a plain dark
-    // dome - the same on every map, no terrain behind him.
+    // the rider presents on a showroom stand - a square
+    // dark plate with a brass trim under his feet inside a
+    // plain dark dome - the same on every map, no terrain
+    // behind him. (Square, not an oval plate: owner,
+    // 2026-11-15 - the plate's edges read as a horizon.)
     // The rider never moves or turns; Deploy restores the
     // world's visibility and frees the stand. (This
     // supersedes the same-day lab facing turn, which still
@@ -132,21 +134,20 @@ public partial class RiderDuel
         var c = _player.RootPos;
         _labStand = new Node3D { Name = "LabStand" };
         AddChild(_labStand);
-        // The disc and rim are hand-built ArrayMesh cylinders:
-        // a code-created CylinderMesh never drew in this scene
-        // (three probe captures; a BoxMesh in the same slot
-        // drew at once), so the stand builds its own.
         var disc = new MeshInstance3D
         {
-            Mesh = CylinderMeshData(16f, 0.8f),
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.055f, 0.065f), Roughness = 0.9f, Metallic = 0f },
+            Mesh = CylinderMeshData(22.63f, 0.8f, 4, Mathf.Tau / 8f),
+            // Fog-exempt like the dome: the scene's warm fog
+            // washed the dark plate brown in the first square
+            // capture; a studio stand keeps its own colour.
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.055f, 0.065f), Roughness = 0.9f, Metallic = 0f, DisableFog = true },
             Position = new Vector3(c.X, c.Y - 0.38f, c.Z)
         };
         _labStand.AddChild(disc);
         var rim = new MeshInstance3D
         {
-            Mesh = CylinderMeshData(16.5f, 0.22f),
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.42f, 0.33f, 0.16f), Roughness = 0.5f, Metallic = 0.25f },
+            Mesh = CylinderMeshData(23.33f, 0.22f, 4, Mathf.Tau / 8f),
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.42f, 0.33f, 0.16f), Roughness = 0.5f, Metallic = 0.25f, DisableFog = true },
             Position = new Vector3(c.X, c.Y - 0.05f, c.Z)
         };
         _labStand.AddChild(rim);
@@ -177,9 +178,13 @@ public partial class RiderDuel
         }
     }
 
-    // A capped cylinder as an ArrayMesh (top fan, side band,
-    // bottom fan), centred on the origin.
-    private static ArrayMesh CylinderMeshData(float radius, float height, int segments = 48)
+    // A capped prism as an ArrayMesh (top fan, side band,
+    // bottom fan), centred on the origin. segments = 4 with
+    // a 45-degree phase builds the stand's square plate:
+    // a code-created BoxMesh in the same slot rendered a
+    // warm brown the albedo never called for (two captures),
+    // while this hand-built mesh reads true.
+    private static ArrayMesh CylinderMeshData(float radius, float height, int segments = 48, float phase = 0f)
     {
         var verts = new System.Collections.Generic.List<Vector3>();
         var normals = new System.Collections.Generic.List<Vector3>();
@@ -195,7 +200,7 @@ public partial class RiderDuel
         Vector3 Ring(float a, float y) => new Vector3(Mathf.Cos(a) * radius, y, Mathf.Sin(a) * radius);
         for (int i = 0; i < segments; i++)
         {
-            float a0 = Mathf.Tau * i / segments, a1 = Mathf.Tau * (i + 1) / segments;
+            float a0 = phase + Mathf.Tau * i / segments, a1 = phase + Mathf.Tau * (i + 1) / segments;
             var t0 = Ring(a0, hy); var t1 = Ring(a1, hy);
             var b0 = Ring(a0, -hy); var b1 = Ring(a1, -hy);
             Tri(Vector3.Up * hy, t1, t0, Vector3.Up);            // top cap
