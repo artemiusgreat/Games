@@ -601,7 +601,12 @@ void fragment() {
         }
 
         // Backdrop ring by biome: forest keeps its tree ring
-        // (visual only; on the Mission front it rings the rim),
+        // (visual only; on the Mission front it rings the rim).
+        // The arena ring starts past the movement bound (115u)
+        // plus a margin (owner, 2026-11-15): at 98u the inner
+        // ring trees and rocks stood INSIDE the reachable
+        // ground as ghosts - riders walked straight through
+        // them while the planted trees stomp and burn.
         // the desert gets bare rock outcrops; the city gets no
         // ring (owner: no procedural buildings outside the map -
         // every city building is a gameplay building inside it).
@@ -616,7 +621,7 @@ void fragment() {
             {
                 float a2 = rng.RandfRange(0f, Mathf.Tau);
                 float half2 = Main.TerrainSize / 2f;
-                float dist2 = mission ? rng.RandfRange(half2 + 18f, half2 + 95f) : rng.RandfRange(98f, 165f);
+                float dist2 = mission ? rng.RandfRange(half2 + 18f, half2 + 95f) : rng.RandfRange(124f, 175f);
                 var pos2 = new Vector3(Mathf.Cos(a2) * dist2, 0f, Mathf.Sin(a2) * dist2);
                 float cl2 = mission ? half2 - 4f : 84f;
                 pos2.Y = Main.HeightAt(Mathf.Clamp(pos2.X, -cl2, cl2), Mathf.Clamp(pos2.Z, -cl2, cl2)) - 0.5f;
@@ -631,7 +636,7 @@ void fragment() {
         {
             float a = rng.RandfRange(0f, Mathf.Tau);
             float half = Main.TerrainSize / 2f;
-            float dist = mission ? rng.RandfRange(half + 18f, half + 95f) : rng.RandfRange(98f, 165f);
+            float dist = mission ? rng.RandfRange(half + 18f, half + 95f) : rng.RandfRange(124f, 175f);
             var pos = new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist);
             float cl = mission ? half - 4f : 84f;
             pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -cl, cl), Mathf.Clamp(pos.Z, -cl, cl)) - 0.3f;
