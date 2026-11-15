@@ -544,7 +544,10 @@ public partial class RiderDuel : Node3D
         AddChild(_buildCover);
         await BuildFrame();
 
-        BuildTerrain();
+        var terrainMi = BuildTerrainMesh();
+        await BuildFrame(); // staged build: mesh in, skin next
+        SkinTerrain(terrainMi);
+        await BuildFrame(); // staged build: ground done, dressing next
         Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
         Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.BlobDecks.Clear(); Main.Walls.Clear();
         // Round-1 ARENA props at fixed spots around the origin.
@@ -575,6 +578,7 @@ public partial class RiderDuel : Node3D
         }
         if (WorldConfig.IsMission) BuildBases();
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City) ScatterCity();
+        await BuildFrame(); // staged build: built ground in, nature next
         ScatterNature();
         if (_photo)
         {
@@ -604,6 +608,7 @@ public partial class RiderDuel : Node3D
         _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
+        await BuildFrame(); // staged build: player + enemy in, foe next
         if (((!PrecisionTest && !_lrmProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
             && (!_bracketActive || _foeMember != null)) BuildFoe();
         if (_bracketActive && _foe != null && _foeMember != null && _foeMemberTeam != 2)

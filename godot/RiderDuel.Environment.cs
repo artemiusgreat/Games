@@ -122,12 +122,21 @@ public partial class RiderDuel
 
     // ---------- world ----------
 
-    private void BuildTerrain()
+    private MeshInstance3D BuildTerrainMesh()
     {
         // Shared heightfield mesh (vertices on grid nodes = HeightAt).
         var mi = new MeshInstance3D { Mesh = Main.CreateTerrainMesh() };
-        if (_photo) mi.MaterialOverride = PhotoEnv.TerrainMaterial();
         AddChild(mi);
+        return mi;
+    }
+
+    // The photo skin is its own build step (the splat bake is
+    // a 1024x1024 per-pixel pass): _Ready yields a frame
+    // between the mesh and the skin so neither stall swallows
+    // the loading ripple whole (owner, 2026-11-15).
+    private void SkinTerrain(MeshInstance3D mi)
+    {
+        if (_photo) mi.MaterialOverride = PhotoEnv.TerrainMaterial();
     }
 
     // Mission scatter: groves and rock fields cluster around the
