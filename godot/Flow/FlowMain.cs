@@ -20,11 +20,15 @@ public partial class FlowMain : Node3D
 {
     // Flow state is static so it survives the trip to the lab
     // and back (the lab's Back button reloads this scene).
-    public static int PlanetIndex =
+    public static int PlanetIndex = InitPlanet();
+    public static int MissionIndex = InitMission();
+    public static int ArenaIndex = InitArena();
+
+    private static int InitPlanet() =>
         int.TryParse(System.Environment.GetEnvironmentVariable("AOT_PLANET"), out int pl) ? pl : 0; // harness seed only
-    public static int MissionIndex =
+    private static int InitMission() =>
         int.TryParse(System.Environment.GetEnvironmentVariable("AOT_MISSION"), out int mi) ? mi : 0; // harness seed only
-    public static int ArenaIndex = System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
+    private static int InitArena() => System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
     {
         "1" => 1, "2" => 2, _ => 0 // harness seed only; arenas carry their own biomes
     };
@@ -56,6 +60,21 @@ public partial class FlowMain : Node3D
             if (arg.StartsWith("--flowshot=")) _flowshot = arg.Substring("--flowshot=".Length);
             if (arg.StartsWith("--flowfocus=")) _focusTarget = int.Parse(arg.Substring("--flowfocus=".Length));
             if (arg == "--flowtest-nav") _navTest = true;
+        }
+
+        // Front-door boot (owner, 2026-11-15): arriving at
+        // the home screen from a left match (StartScreen
+        // unset, no harness entry) starts the wizard fresh -
+        // the previous run's planet, mission, arena and teams
+        // do not carry over. The lab's Back button names a
+        // StartScreen and keeps its state intact, as before.
+        if (_flowshot == null && StartScreen == null && !_navTest)
+        {
+            PlanetIndex = InitPlanet();
+            MissionIndex = InitMission();
+            ArenaIndex = InitArena();
+            WorldConfig.ResetSelections();
+            TeamRoster.ResetSelections();
         }
 
         BuildBackdrop();

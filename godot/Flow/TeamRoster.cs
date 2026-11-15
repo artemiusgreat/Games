@@ -42,6 +42,15 @@ public static class TeamRoster
     public static readonly List<List<TeamMember>> Tourney = new();
     public static int TourneyTeam; // the selector's open team
 
+    // Front-door reset (owner, 2026-11-15): a new run forms
+    // its teams from the defaults, not from the bracket or
+    // roster the previous run left behind.
+    public static void ResetSelections()
+    {
+        Story.Clear(); StorySlot = 0; EnsureStory();
+        Tourney.Clear(); TourneyTeam = 0; EnsureTourney();
+    }
+
     public static void EnsureTourney()
     {
         if (Tourney.Count == 0)

@@ -104,6 +104,26 @@ public static class WorldConfig
 
     public static bool IsMission => Mode == MapMode.Mission;
 
+    // Front-door reset (owner, 2026-11-15): leaving a match
+    // and starting a new Mission or Tournament must not
+    // inherit the previous run's map - every selection this
+    // class carries returns to its boot default (the harness
+    // environment seeds included). Story progression is NOT
+    // a selection and is untouched.
+    public static void ResetSelections()
+    {
+        Mode = InitMode();
+        Biome = InitBiome();
+        SelectedMission = null;
+        CityKit = InitCityKit();
+        SkyTex = InitSky();
+        SkyStars = InitStars();
+        SnowGround = InitSnow();
+        BackdropPeaks = InitPeaks();
+        TerracedCity = InitTerraces();
+        FlatWorld = InitFlat();
+    }
+
     // Tournament: the 260u arena. Mission: a 1900u front - bases sit
     // ~1075u apart, a ~4.5 minute walk or ~90 seconds at a run for a
     // Heavy rider, so crossing the map is a decision, not a stroll.
