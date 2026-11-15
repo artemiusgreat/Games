@@ -8,6 +8,57 @@ public partial class RiderDuel
 {
     // ---------- test choreography ----------
 
+    // ---------- stand separation test (--stand-test) ----------
+    // The owner's leak (2026-11-15): cycle riders in the open
+    // lab (each cycle re-enters OpenLab), then deploy and
+    // count the stands. Exactly one may exist in the lab and
+    // none may survive into the game world.
+    private bool _standTest;
+    private int _standTestStage;
+    private int _standTestFrames;
+
+    private int StandCount()
+    {
+        int n = 0;
+        foreach (var ch in GetChildren()) if (ch.Name == "LabStand") n++;
+        return n;
+    }
+
+    private void UpdateStandTest()
+    {
+        _standTestFrames++;
+        switch (_standTestStage)
+        {
+            case 0:
+                if (_standTestFrames > 25) { SetRiderSelection("hector", "enyo"); _standTestStage = 1; }
+                break;
+            case 1:
+                if (_standTestFrames > 50) { SetRiderSelection("enyo", "hector"); _standTestStage = 2; }
+                break;
+            case 2:
+                if (_standTestFrames > 75)
+                {
+                    int n = StandCount();
+                    GD.Print($"STANDTEST in-lab stands={n} (expect 1)");
+                    if (n != 1) { GD.PrintErr("STANDTEST FAIL: stands stacked in the lab"); GetTree().Quit(1); return; }
+                    _lab.OnStart?.Invoke();
+                    _standTestStage = 3;
+                }
+                break;
+            case 3:
+                if (_standTestFrames > 100)
+                {
+                    int n = StandCount();
+                    bool worldBack = _enemy != null && _enemy.Visible;
+                    GD.Print($"STANDTEST after-deploy stands={n} (expect 0), enemy visible={worldBack}");
+                    if (n != 0 || !worldBack) { GD.PrintErr("STANDTEST FAIL: stand leaked into the game world"); GetTree().Quit(1); return; }
+                    GD.Print("STANDTEST PASS one stand per lab session, none survives the deploy");
+                    GetTree().Quit(0);
+                }
+                break;
+        }
+    }
+
     private void SetPhase(int p)
     {
         _phase = p;

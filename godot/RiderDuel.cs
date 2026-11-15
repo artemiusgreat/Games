@@ -345,6 +345,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--breakable-test") _breakTest = true;
             if (arg == "--terrain-test") _terrainTest = true;
             if (arg == "--lab-shot") _labShot = true;
+            if (arg == "--stand-test") _standTest = true;
             if (arg == "--lab-tab=equip") _labEquipTab = true;
             if (arg == "--photo") _photo = true;
             if (arg == "--photo-test") { _photo = true; _photoTest = true; }
@@ -989,6 +990,7 @@ public partial class RiderDuel : Node3D
         // can take ~19s (shader compilation), so a wall-clock-only
         // trigger photographed frame 1 - before the recreated
         // lab's first _Process had run its live layout even once.
+        if (_standTest) UpdateStandTest();
         if (_labShot) _labShotFrames++;
         if (_labShot && _lab != null && Time.GetTicksMsec() > 19500 && _labShotFrames > 45 && !_layoutDumped)
         {

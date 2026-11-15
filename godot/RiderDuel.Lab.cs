@@ -132,6 +132,16 @@ public partial class RiderDuel
     private void BuildLabStand()
     {
         if (_player == null) return;
+        // One stand per lab session (owner's report, 2026-11-15:
+        // the stand leaked into the game world): OpenLab runs
+        // again on every rider cycle and team-slot switch while
+        // the lab is open, and each rebuild used to stack a
+        // fresh stand over the last - the deploy then freed
+        // only the newest and restored the older ones' visibility
+        // with the rest of the world, leaving their deck and dome
+        // standing on the map. The stand is already up and the
+        // world already hidden on a re-entry: reuse it.
+        if (_labStand != null) return;
         var c = _player.RootPos;
         _labStand = new Node3D { Name = "LabStand" };
         AddChild(_labStand);
@@ -174,7 +184,7 @@ public partial class RiderDuel
         foreach (var child in GetChildren())
         {
             if (child is Node3D n3 && n3 != _player && n3 != _labStand && n3 != _cam
-                && n3 is not Light3D && n3.Visible)
+                && n3.Name != "LabStand" && n3 is not Light3D && n3.Visible)
             {
                 n3.Visible = false;
                 _labHidden.Add(n3);
@@ -268,7 +278,13 @@ public partial class RiderDuel
     {
         foreach (var n in _labHidden) if (IsInstanceValid(n)) n.Visible = true;
         _labHidden.Clear();
-        if (_labStand != null) { _labStand.QueueFree(); _labStand = null; }
+        // Every stand comes down, not just the tracked one:
+        // the lab's view and the game world stay separated
+        // (owner, 2026-11-15) even if a rebuild ever stacks
+        // a second stand again.
+        foreach (var child in GetChildren())
+            if (child is Node3D sn && sn.Name == "LabStand") sn.QueueFree();
+        _labStand = null;
     }
 
     // ---- rider construction from specs (round 22) ----
