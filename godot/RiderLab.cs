@@ -591,7 +591,7 @@ public partial class RiderLab : Control
             ContentMarginLeft = 10, ContentMarginRight = 10,
             ContentMarginTop = 10, ContentMarginBottom = 10
         };
-        sideSb.SetBorderWidthAll(2);
+        sideSb.SetBorderWidthAll(1); // 1px like Deploy (owner, 2026-11-15: all lab borders thin)
         sideSb.SetCornerRadiusAll(6);
         sidePanel.AddThemeStyleboxOverride("panel", sideSb);
         // Air above and below the sidebar (owner, 2026-11-14):
@@ -610,7 +610,10 @@ public partial class RiderLab : Control
         // Equipment, the same control as the planet and
         // rider selectors. Either arrow flips the page.
         var tabSlider = FlowUi.SelectorRow(out _tabName, 14, step => ShowLabTab(!_weaponsPage));
-        FlowUi.Heading(_tabName); // the page name reads in Cinzel (owner, 2026-11-15)
+        // The page name reads in Open Sans (owner, 2026-11-15:
+        // the same-day Cinzel pass reverted at his word), and
+        // the slider's arrows take the bottom bar's 1px frame.
+        foreach (var ch in tabSlider.GetChildren()) if (ch is Button ab) LabBorder(ab);
         // Centred between the arrows (owner's correction,
         // 2026-11-15): the shared row only claims the middle
         // space (Expand without Fill), so the label kept its
@@ -752,11 +755,11 @@ public partial class RiderLab : Control
             var sb = new StyleBoxFlat
             {
                 BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), // translucent (owner): the rider shows through the slot backdrops
-                BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f),
+                BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f), // Deploy's steel (owner, 2026-11-15)
                 ContentMarginLeft = 12, ContentMarginRight = 12,
                 ContentMarginTop = 10, ContentMarginBottom = 10
             };
-            sb.SetBorderWidthAll(2);
+            sb.SetBorderWidthAll(1); // 1px like Deploy (owner, 2026-11-15)
             sb.SetCornerRadiusAll(6);
             panel.AddThemeStyleboxOverride("panel", sb);
             var vb = new VBoxContainer();
@@ -1106,7 +1109,7 @@ public partial class RiderLab : Control
             ContentMarginLeft = 6, ContentMarginRight = 6,
             ContentMarginTop = 5, ContentMarginBottom = 5
         };
-        sb.SetBorderWidthAll(2);
+        sb.SetBorderWidthAll(1); // 1px like Deploy (owner, 2026-11-15: all lab borders thin)
         sb.SetCornerRadiusAll(4);
         return sb;
     }
@@ -1132,7 +1135,7 @@ public partial class RiderLab : Control
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
-        name.AddThemeFontSizeOverride("font_size", 16);
+        name.AddThemeFontSizeOverride("font_size", 18); // Deploy size (owner, 2026-11-15: the selector read smaller)
         name.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
         int Index()
         {
