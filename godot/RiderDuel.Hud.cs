@@ -457,10 +457,14 @@ public partial class RiderDuel
     // with a team, Esc opens THIS instead of the plain exit
     // confirmation - the player's riders listed with their
     // state; clicking a living teammate takes command of it
-    // (the leader is whoever the player drives), RESUME closes,
-    // EXIT MISSION leaves. Same visual idiom as the exit popup:
+    // (the leader is whoever the player drives), Resume closes,
+    // Leave exits. Same visual idiom as the exit popup:
     // dimmed game, dark panel, corner brackets, Cinzel title.
-    // Runs on ProcessMode.Always behind the pause.
+    // Runs on ProcessMode.Always behind the pause. (Owner,
+    // 2026-11-14: the rows wear the lab weapon rows' dress -
+    // bordered box, framed initials tile, name over a state
+    // line; both buttons sit on the right, Leave first; only
+    // the title is uppercase, everything else sentence case.)
     private sealed partial class TeamOverlay : Control
     {
         public event System.Action<int> LeaderChosen;
@@ -505,7 +509,7 @@ public partial class RiderDuel
             v.AddChild(title);
             var sub = new Label
             {
-                Text = "Select a rider to take command of it, or exit the mission.",
+                Text = "Select a rider to take command of it, or leave the mission.",
                 HorizontalAlignment = HorizontalAlignment.Center
             };
             sub.AddThemeFontSizeOverride("font_size", 13);
@@ -518,17 +522,17 @@ public partial class RiderDuel
 
             v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
             var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 18);
+            row.AddThemeConstantOverride("separation", 10);
             v.AddChild(row);
-            // The owner's button rule: Back on the left,
-            // Continue on the right.
-            var resume = LeaveOverlay.MakeBtn("RESUME", dark: false);
-            resume.Pressed += () => Visible = false;
-            row.AddChild(resume);
+            // Both buttons on the right (owner, 2026-11-14):
+            // Leave first, then Resume.
             row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-            var exit = LeaveOverlay.MakeBtn("EXIT MISSION", dark: true);
+            var exit = LeaveOverlay.MakeBtn("Leave", dark: true);
             exit.Pressed += () => LeaveRequested?.Invoke();
             row.AddChild(exit);
+            var resume = LeaveOverlay.MakeBtn("Resume", dark: false);
+            resume.Pressed += () => Visible = false;
+            row.AddChild(resume);
 
             var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
             frame.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -543,43 +547,88 @@ public partial class RiderDuel
             {
                 int slot = m.Slot;
                 string pct = $"{Mathf.RoundToInt(Mathf.Clamp(m.HpFrac, 0f, 1f) * 100f)}%";
-                var b = new Button
+                // A lab-style row: bordered box, framed
+                // initials tile, name over a state line.
+                var gold = new Color(0.98f, 0.80f, 0.35f);
+                var steel = new Color(0.5f, 0.56f, 0.62f, 0.65f);
+                var ink = new Color(0.92f, 0.94f, 0.96f);
+                var dim = new Color(0.55f, 0.58f, 0.62f);
+                Color border = m.Leader ? gold : steel;
+                Color nameCol = m.Dead ? dim : m.Leader ? gold : ink;
+                string state = m.Dead ? "Destroyed"
+                    : m.Leader ? $"Leader · HP {pct}"
+                    : $"Take command · HP {pct}";
+                var b = new Button { CustomMinimumSize = new Vector2(0, 52) };
+                StyleBoxFlat S(Color bgc, Color bdc)
                 {
-                    CustomMinimumSize = new Vector2(0, 42),
-                    Alignment = HorizontalAlignment.Left
-                };
-                b.AddThemeFontSizeOverride("font_size", 15);
-                StyleBoxFlat S(Color c) => new() { BgColor = c };
-                if (m.Leader)
-                {
-                    b.Text = $"{slot + 1}. {m.Name} - LEADER · HP {pct}";
-                    b.Disabled = true;
-                    b.AddThemeStyleboxOverride("disabled", S(new Color(0.16f, 0.13f, 0.04f, 0.95f)));
-                    b.AddThemeColorOverride("font_disabled_color", new Color(0.98f, 0.80f, 0.35f));
+                    var sb = new StyleBoxFlat { BgColor = bgc, BorderColor = bdc };
+                    sb.SetBorderWidthAll(1);
+                    return sb;
                 }
-                else if (m.Dead)
+                var bg = m.Leader ? new Color(0.16f, 0.13f, 0.04f, 0.95f)
+                    : m.Dead ? new Color(0.05f, 0.05f, 0.06f, 0.9f)
+                    : new Color(0.08f, 0.11f, 0.17f, 0.95f);
+                if (m.Dead || m.Leader)
                 {
-                    b.Text = $"{slot + 1}. {m.Name} - DESTROYED";
                     b.Disabled = true;
-                    b.AddThemeStyleboxOverride("disabled", S(new Color(0.05f, 0.05f, 0.06f, 0.9f)));
-                    b.AddThemeColorOverride("font_disabled_color", new Color(0.55f, 0.5f, 0.48f));
+                    b.AddThemeStyleboxOverride("disabled", S(bg, border));
                 }
                 else
                 {
-                    b.Text = $"{slot + 1}. {m.Name} - TAKE COMMAND · HP {pct}";
-                    b.AddThemeStyleboxOverride("normal", S(new Color(0.08f, 0.11f, 0.17f, 0.95f)));
-                    b.AddThemeStyleboxOverride("hover", S(new Color(0.14f, 0.18f, 0.26f, 0.98f)));
-                    b.AddThemeStyleboxOverride("pressed", S(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
-                    b.AddThemeStyleboxOverride("focus", S(new Color(0.08f, 0.11f, 0.17f, 0.95f)));
-                    b.AddThemeColorOverride("font_color", Colors.White);
-                    b.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.80f, 0.35f));
+                    b.AddThemeStyleboxOverride("normal", S(bg, border));
+                    b.AddThemeStyleboxOverride("hover", S(new Color(0.14f, 0.18f, 0.26f, 0.98f), gold));
+                    b.AddThemeStyleboxOverride("pressed", S(new Color(0.20f, 0.17f, 0.08f, 0.98f), gold));
+                    b.AddThemeStyleboxOverride("focus", S(bg, border));
                     b.Pressed += () => { Visible = false; LeaderChosen?.Invoke(slot); };
                 }
+                var margin = new MarginContainer();
+                margin.SetAnchorsPreset(LayoutPreset.FullRect);
+                margin.AddThemeConstantOverride("margin_left", 10);
+                margin.AddThemeConstantOverride("margin_right", 10);
+                margin.AddThemeConstantOverride("margin_top", 6);
+                margin.AddThemeConstantOverride("margin_bottom", 6);
+                b.AddChild(margin);
+                var h = new HBoxContainer();
+                h.AddThemeConstantOverride("separation", 12);
+                margin.AddChild(h);
+                var tile = new PanelContainer { CustomMinimumSize = new Vector2(40, 40) };
+                var tsb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.13f, 0.19f, 0.98f), BorderColor = border };
+                tsb.SetBorderWidthAll(1);
+                tile.AddThemeStyleboxOverride("panel", tsb);
+                var glyph = new Label
+                {
+                    Text = FlowUi.NameCase(m.Name.Substring(0, 2)),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                glyph.AddThemeFontSizeOverride("font_size", 14);
+                glyph.AddThemeColorOverride("font_color", nameCol);
+                tile.AddChild(glyph);
+                h.AddChild(tile);
+                var texts = new VBoxContainer();
+                texts.AddThemeConstantOverride("separation", 1);
+                texts.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+                h.AddChild(texts);
+                var nameL = new Label { Text = $"{slot + 1}. {FlowUi.NameCase(m.Name)}" };
+                nameL.AddThemeFontSizeOverride("font_size", 15);
+                nameL.AddThemeColorOverride("font_color", nameCol);
+                texts.AddChild(nameL);
+                var stateL = new Label { Text = state };
+                stateL.AddThemeFontSizeOverride("font_size", 12);
+                stateL.AddThemeColorOverride("font_color", m.Leader ? gold : dim);
+                texts.AddChild(stateL);
+                IgnoreMouse(b);
                 _rows.AddChild(b);
             }
-            _root.CustomMinimumSize = new Vector2(520, 196 + members.Count * 50);
+            _root.CustomMinimumSize = new Vector2(520, 210 + members.Count * 60);
             _openedAt = Time.GetTicksMsec();
             Visible = true;
+        }
+
+        private static void IgnoreMouse(Control c)
+        {
+            foreach (var ch in c.GetChildren())
+                if (ch is Control cc) { cc.MouseFilter = MouseFilterEnum.Ignore; IgnoreMouse(cc); }
         }
 
         public override void _Input(InputEvent e)
