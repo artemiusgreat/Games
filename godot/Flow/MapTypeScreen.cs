@@ -5,11 +5,13 @@ using Godot;
 // his word as a command-deck CONTROL PANEL: engraved serif
 // display fonts (Cinzel) for the headings and action bars,
 // a clean sans (Open Sans) for subtitles and body, chamfered
-// "rhombus-cut" panels instead of rounded corners, a thin
-// instrument frame with corner brackets around the screen,
-// and small mono telemetry readouts in the bottom corners.
+// "rhombus-cut" panels instead of rounded corners, and
+// small mono telemetry readouts in the bottom corners.
 // No rewards block, no bottom status bar, no top-right text.
-// The whole card is the button, as before.
+// The whole card is the button, as before. (The screen
+// frame with gold corner brackets and the cards' second
+// focus-outline frame were removed at the owner's word,
+// 2026-11-14: no screen border, one border per card.)
 public partial class MapTypeScreen : Control
 {
     public System.Action OnTournament;
@@ -82,18 +84,25 @@ public partial class MapTypeScreen : Control
         var bottom = new HBoxContainer();
         root.AddChild(bottom);
         var teleL = FlowUi.MakeLabel(Spread("COMMAND DECK // ORBITAL UPLINK STABLE"), 11, FlowUi.Dim);
+        Shadow(teleL);
         bottom.AddChild(teleL);
         var teleR = FlowUi.MakeLabel(Spread("AWAITING ORDERS"), 11, FlowUi.Dim, HorizontalAlignment.Right);
+        Shadow(teleR);
         teleR.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         bottom.AddChild(teleR);
 
-        // The instrument frame over everything (drawn, inert).
-        var frame = new DeckFrame { MouseFilter = MouseFilterEnum.Ignore };
-        frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(frame);
-
         Layout();
         GetTree().Root.SizeChanged += Layout;
+    }
+
+    // The bottom readouts sit over the bright orbital
+    // backdrop: a hard dark shadow keeps them readable
+    // (owner, 2026-11-14).
+    private static void Shadow(Label l)
+    {
+        l.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
+        l.AddThemeConstantOverride("shadow_offset_x", 1);
+        l.AddThemeConstantOverride("shadow_offset_y", 1);
     }
 
     // Fit the cards to the visible area: their width follows
@@ -341,39 +350,6 @@ public partial class CutPanel : Control
         var pts = Points(0f);
         if (fill.A > 0.001f) DrawPolygon(pts, new[] { fill });
         DrawPolyline(Loop(pts), border, BorderWidth, true);
-        if (Focused && OutlineColor.A > 0.001f)
-            DrawPolyline(Loop(Points(-5f)), OutlineColor, 2.5f, true);
-    }
-}
-
-// The screen's instrument frame: a hairline border inset
-// from the window edge with gold corner brackets - the
-// control-panel bezel the cards sit inside.
-public partial class DeckFrame : Control
-{
-    public override void _Draw()
-    {
-        float inset = 14f;
-        var steel = new Color(FlowUi.Steel, 0.35f);
-        var gold = new Color(FlowUi.Gold, 0.85f);
-        var tl = new Vector2(inset, inset);
-        var tr = new Vector2(Size.X - inset, inset);
-        var bl = new Vector2(inset, Size.Y - inset);
-        var br = new Vector2(Size.X - inset, Size.Y - inset);
-        DrawLine(tl, tr, steel, 1.5f, true);
-        DrawLine(bl, br, steel, 1.5f, true);
-        DrawLine(tl, bl, steel, 1.5f, true);
-        DrawLine(tr, br, steel, 1.5f, true);
-        float arm = 30f;
-        // Corner brackets.
-        DrawLine(tl, tl + new Vector2(arm, 0), gold, 3f, true);
-        DrawLine(tl, tl + new Vector2(0, arm), gold, 3f, true);
-        DrawLine(tr, tr + new Vector2(-arm, 0), gold, 3f, true);
-        DrawLine(tr, tr + new Vector2(0, arm), gold, 3f, true);
-        DrawLine(bl, bl + new Vector2(arm, 0), gold, 3f, true);
-        DrawLine(bl, bl + new Vector2(0, -arm), gold, 3f, true);
-        DrawLine(br, br + new Vector2(-arm, 0), gold, 3f, true);
-        DrawLine(br, br + new Vector2(0, -arm), gold, 3f, true);
     }
 }
 
