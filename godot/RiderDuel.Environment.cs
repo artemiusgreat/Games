@@ -1008,9 +1008,6 @@ public partial class RiderDuel
     private void AddBuilding(Vector3 pos, Vector3 size, float baseY = float.NaN)
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
-        // Terrace decks (owner: Harbor levels): buildings can
-        // stand on a platform top instead of the terrain.
-        float groundY = float.IsNaN(baseY) ? Main.HeightAt(pos.X, pos.Z) : baseY;
         // City kits (owner): when the active contract carries a
         // building kit, the placement instances a real building
         // model from the kit, uniformly scaled to the requested
@@ -1043,6 +1040,26 @@ public partial class RiderDuel
                     }
                 }
             }
+        }
+        // Ground line (owner, 2026-11-15: houses floated on
+        // some maps, base hanging off the downhill side): the
+        // base must sit under the LOWEST ground the footprint
+        // covers - sampling only the centre leaves the downhill
+        // corner hovering on any grade. Sample the footprint's
+        // corners and take the minimum; the kit facing can
+        // quarter-turn the model, so sample the bounding
+        // square. Terrace decks pass their flat top as baseY
+        // and skip the sampling entirely.
+        float groundY;
+        if (!float.IsNaN(baseY)) groundY = baseY;
+        else
+        {
+            float h = Mathf.Max(size.X, size.Z) / 2f;
+            groundY = Main.HeightAt(pos.X, pos.Z);
+            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X - h, pos.Z - h));
+            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X - h, pos.Z + h));
+            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X + h, pos.Z - h));
+            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X + h, pos.Z + h));
         }
         // The big footprints (owner, 2026-10-31: larger buildings)
         // sit on slopes - sink the base well into the grade so no
