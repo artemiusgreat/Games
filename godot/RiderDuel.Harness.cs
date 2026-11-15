@@ -260,7 +260,7 @@ public partial class RiderDuel
                     _minRiderSep = Mathf.Min(_minRiderSep, dist);
                     if (_phaseT > 2.2f)
                     {
-                        if (Mathf.Abs(dist - _minRiderSep) < 0.001f && dist <= _player.CollisionRadius + _enemy.CollisionRadius + 0.05f)
+                        if (Mathf.Abs(dist - _minRiderSep) < 0.001f && dist <= _player.CollisionRadius + _enemy.CollisionRadius + RiderBody.Gap + 0.05f)
                             _stallTimer += delta;
                         else _stallTimer = 0f;
                         if (_stallTimer > 0.5f)
@@ -2549,8 +2549,8 @@ public partial class RiderDuel
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
                 {
-                    CraftHit(_enemy, "head", 25f);
-                    CraftHit(_enemy, "head", 25f);
+                    CraftRayHit(_enemy, "head", 25f);
+                    CraftRayHit(_enemy, "head", 25f);
                     if (_partsEnemy.Alive("head")) BFail("hector head alive after 50 damage");
                     if (Mathf.Abs(_hpEnemy - 290f) > 0.01f)
                         BFail($"head->pool rule: hectorHp={_hpEnemy:F1} (want 290 = 340 - 50)");
