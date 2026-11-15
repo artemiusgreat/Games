@@ -62,6 +62,21 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(pad.X + 30f, gy + 60f, pad.Y + 95f);
             _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 240f) + 16f, 240f), Vector3.Up);
         }
+        else if (_camMode == "slopeVista")
+        {
+            // Grazing view across the center relief (dome flank
+            // + ridge line): the owner's streaked-mountains
+            // screenshot staged head-on (--slope-shot).
+            _cam.GlobalPosition = new Vector3(120f, Main.HeightAt(120f, -120f) + 30f, -120f);
+            _cam.LookAt(new Vector3(-40f, Main.HeightAt(-40f, 40f) + 4f, 40f), Vector3.Up);
+        }
+        else if (_camMode == "slopeClose")
+        {
+            // Low on the dome flank, looking up it: planar-UV
+            // stretch and normal streaks show here if anywhere.
+            _cam.GlobalPosition = new Vector3(58f, Main.HeightAt(58f, -14f) + 6f, -14f);
+            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 0f) + 16f, 0f), Vector3.Up);
+        }
         else if (_camMode == "canyonVista")
         {
             // From above the home valley's east side, looking

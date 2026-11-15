@@ -13,6 +13,9 @@ public partial class RiderDuel
     // lab (each cycle re-enters OpenLab), then deploy and
     // count the stands. Exactly one may exist in the lab and
     // none may survive into the game world.
+    private bool _splatDump;
+    private bool _slopeShot; // --slope-shot: staged close views of the center relief
+    private int _slopeShotFrames; // --splat-dump: bake the terrain splat to proof/splat.png and quit
     private bool _standTest;
     private int _standTestStage;
     private int _standTestFrames;
@@ -22,6 +25,26 @@ public partial class RiderDuel
         int n = 0;
         foreach (var ch in GetChildren()) if (ch.Name == "LabStand") n++;
         return n;
+    }
+
+    private void UpdateSplatDump()
+    {
+        var simg = PhotoEnv.SplatImage();
+        simg.SavePng("res://proof/splat.png");
+        GD.Print($"SPLATDUMP saved {simg.GetWidth()}x{simg.GetHeight()}");
+        GetTree().Quit(0);
+    }
+
+    private void UpdateSlopeShot()
+    {
+        _slopeShotFrames++;
+        // Wall time, not a frame count: on the software
+        // rasterizer the first frames cost ~19s each, so a
+        // 40-frame gate outlives any sane timeout.
+        if (_slopeShotFrames < 4 || Time.GetTicksMsec() < 20000) return;
+        _slopeShotFrames = -100000; // fire once
+        QueueCapture("res://proof/slope_vista.png", "slopeVista", "slopeVista", () =>
+            QueueCapture("res://proof/slope_close.png", CamModes.Chase, "slopeClose"));
     }
 
     private void UpdateStandTest()
@@ -3635,7 +3658,20 @@ public partial class RiderDuel
             QueueCapture("res://proof/mission_base.png", "mbase", "missionBase", () =>
             QueueCapture("res://proof/mission_vista.png", "mvista", "missionVista", () =>
             QueueCapture("res://proof/gate_sky.png", "gsky", "gatesky", () =>
-            { _mPhase = 1; _mPhaseT = 0f; })));
+            {
+                // AOT_SLOPE=1: two extra staged portraits of the
+                // center relief (the owner's streaked-mountains
+                // screenshot), then quit - the patrol/aggro
+                // phases below are not part of a portrait run.
+                if (System.Environment.GetEnvironmentVariable("AOT_SLOPE") == "1")
+                {
+                    QueueCapture("res://proof/slope_vista.png", "slopeVista", "slopeVista", () =>
+                    QueueCapture("res://proof/slope_close.png", "slopeClose", "slopeClose", () =>
+                    { GD.Print("SLOPE SHOTS DONE"); GetTree().Quit(0); }));
+                    return;
+                }
+                _mPhase = 1; _mPhaseT = 0f;
+            })));
             _mPhase = 99;
         }
         else if (_mPhase == 1)
