@@ -207,6 +207,19 @@ public partial class TeamSelectScreen : Control
         return row;
     }
 
+    // FlowUi.Panel boxes carry 12px vertical content margins -
+    // a button wearing one has a ~44px minimum height whatever
+    // its rect says, which is how the team rows' '-' spilled
+    // out of its row (owner, 2026-11-15). Boxes for buttons
+    // that must fit inside a row wear near-zero margins.
+    private static StyleBoxFlat RowBtnBox(Color bg)
+    {
+        var sb = FlowUi.Panel(bg);
+        sb.ContentMarginLeft = 2; sb.ContentMarginRight = 2;
+        sb.ContentMarginTop = 2; sb.ContentMarginBottom = 2;
+        return sb;
+    }
+
     private void Refresh()
     {
         if (_teamRows == null) return;
@@ -221,14 +234,28 @@ public partial class TeamSelectScreen : Control
             var team = TeamRoster.Tourney[t];
             bool selected = t == sel;
             var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46) };
-            rowPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(
-                selected ? new Color(0.14f, 0.13f, 0.05f, 0.95f) : FlowUi.NavySoft, 0.95f));
-            var host = new Control();
-            rowPanel.AddChild(host);
-            if (!selected)
+            var rowSb = FlowUi.Panel(
+                selected ? new Color(0.14f, 0.13f, 0.05f, 0.95f) : FlowUi.NavySoft, 0.95f);
+            rowSb.ContentMarginLeft = 6; rowSb.ContentMarginRight = 6;
+            rowSb.ContentMarginTop = 4; rowSb.ContentMarginBottom = 4;
+            rowPanel.AddThemeStyleboxOverride("panel", rowSb);
+            var rowBox = new HBoxContainer();
+            rowBox.AddThemeConstantOverride("separation", 8);
+            rowPanel.AddChild(rowBox);
+            string teamText = $"TEAM {t + 1} - {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : "");
+            if (selected)
             {
-                var cover = new Button();
-                cover.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                var lbl = FlowUi.MakeLabel(teamText, 15, FlowUi.Gold);
+                lbl.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                lbl.VerticalAlignment = VerticalAlignment.Center;
+                lbl.MouseFilter = MouseFilterEnum.Ignore;
+                rowBox.AddChild(lbl);
+            }
+            else
+            {
+                var cover = new Button { Text = teamText, Alignment = HorizontalAlignment.Left };
+                cover.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                cover.AddThemeFontSizeOverride("font_size", 15);
                 // Empty boxes: a Panel stylebox here drew its
                 // border as a stray pill inside the row.
                 var clear = new StyleBoxEmpty();
@@ -241,32 +268,27 @@ public partial class TeamSelectScreen : Control
                 });
                 cover.AddThemeStyleboxOverride("pressed", clear);
                 cover.AddThemeStyleboxOverride("focus", clear);
+                cover.AddThemeColorOverride("font_color", FlowUi.Ink);
+                cover.AddThemeColorOverride("font_hover_color", FlowUi.Ink);
                 cover.Pressed += () => { TeamRoster.TourneyTeam = idx; Refresh(); };
-                host.AddChild(cover);
+                rowBox.AddChild(cover);
             }
-            var lbl = FlowUi.MakeLabel(
-                $"TEAM {t + 1} - {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : ""),
-                15, selected ? FlowUi.Gold : FlowUi.Ink);
-            lbl.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            lbl.OffsetLeft = 12f; lbl.OffsetRight = -44f;
-            lbl.VerticalAlignment = VerticalAlignment.Center;
-            lbl.MouseFilter = MouseFilterEnum.Ignore;
-            host.AddChild(lbl);
             if (t > 0 && TeamRoster.Tourney.Count > 2)
             {
-                var minus = new Button { Text = "−" };
-                minus.AnchorLeft = 1f; minus.AnchorRight = 1f;
-                minus.AnchorTop = 0.5f; minus.AnchorBottom = 0.5f;
-                minus.OffsetLeft = -36f; minus.OffsetTop = -14f; minus.OffsetRight = -8f; minus.OffsetBottom = 14f;
+                var minus = new Button
+                {
+                    Text = "−", CustomMinimumSize = new Vector2(30, 30),
+                    SizeFlagsVertical = SizeFlags.ShrinkCenter
+                };
                 minus.AddThemeFontSizeOverride("font_size", 16);
-                minus.AddThemeStyleboxOverride("normal", FlowUi.Panel(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
-                minus.AddThemeStyleboxOverride("hover", FlowUi.Panel(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
-                minus.AddThemeStyleboxOverride("pressed", FlowUi.Panel(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
+                minus.AddThemeStyleboxOverride("normal", RowBtnBox(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
+                minus.AddThemeStyleboxOverride("hover", RowBtnBox(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
+                minus.AddThemeStyleboxOverride("pressed", RowBtnBox(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
                 minus.AddThemeColorOverride("font_color", FlowUi.Ink);
                 minus.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
                 minus.TooltipText = "Remove this team";
                 minus.Pressed += () => RemoveTeam(idx);
-                host.AddChild(minus);
+                rowBox.AddChild(minus);
             }
             _teamRows.AddChild(rowPanel);
         }
@@ -284,14 +306,18 @@ public partial class TeamSelectScreen : Control
         {
             int idx = r;
             var member = open[r];
+            bool protectedSeat = sel == 0 && idx == 0;
             var card = new PanelContainer();
-            card.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.9f));
-            var cv = new VBoxContainer();
-            cv.AddThemeConstantOverride("separation", 2);
-            card.AddChild(cv);
-            var top = new HBoxContainer();
-            top.AddThemeConstantOverride("separation", 8);
-            cv.AddChild(top);
+            var cardSb = FlowUi.Panel(FlowUi.NavySoft, 0.9f);
+            cardSb.ContentMarginLeft = 10; cardSb.ContentMarginRight = 10;
+            cardSb.ContentMarginTop = 5; cardSb.ContentMarginBottom = 5;
+            card.AddThemeStyleboxOverride("panel", cardSb);
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            card.AddChild(row);
+            // One line per rider (owner, 2026-11-15): name,
+            // tonnage and class all live inside the selector -
+            // '< Enyo - 75T - Heavy >'.
             var slider = FlowUi.SelectorRow(out var rname, 16, step =>
             {
                 int cur = Array.FindIndex(RiderSpecs.All, s => s.Id == member.Spec.Id);
@@ -299,20 +325,26 @@ public partial class TeamSelectScreen : Control
                 SetRider(idx, ((cur + step) % n + n) % n);
             });
             slider.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            rname.Text = FlowUi.NameCase(member.Spec.Name);
-            top.AddChild(slider);
-            bool protectedSeat = sel == 0 && idx == 0;
+            rname.Text = $"{FlowUi.NameCase(member.Spec.Name)} - {member.Spec.Tonnage:F0}T - {FlowUi.NameCase(member.Spec.ClassLabel)}"
+                + (protectedSeat ? " (You)" : "");
+            row.AddChild(slider);
             if (!protectedSeat && open.Count > 1)
             {
-                var rm = FlowUi.MakeButton("−", 15);
+                var rm = new Button
+                {
+                    Text = "−", CustomMinimumSize = new Vector2(30, 30),
+                    SizeFlagsVertical = SizeFlags.ShrinkCenter
+                };
+                rm.AddThemeFontSizeOverride("font_size", 15);
+                rm.AddThemeStyleboxOverride("normal", RowBtnBox(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
+                rm.AddThemeStyleboxOverride("hover", RowBtnBox(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
+                rm.AddThemeStyleboxOverride("pressed", RowBtnBox(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
+                rm.AddThemeColorOverride("font_color", FlowUi.Ink);
+                rm.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
                 rm.TooltipText = "Remove this rider";
                 rm.Pressed += () => RemoveRider(idx);
-                top.AddChild(rm);
+                row.AddChild(rm);
             }
-            var meta = FlowUi.MakeLabel(
-                $"{member.Spec.Tonnage:F0}T · {member.Spec.ClassLabel}" + (protectedSeat ? " · YOU" : ""),
-                12, FlowUi.Dim);
-            cv.AddChild(meta);
             _riderRows.AddChild(card);
         }
         _riderRows.AddChild(AddRow(AddRider,
