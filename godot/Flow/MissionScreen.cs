@@ -54,7 +54,7 @@ public partial class MissionScreen : Control
         var signed = WorldConfig.SelectedMission;
         if (signed != null && signed.Planet == Planet)
         {
-            var toLab = FlowUi.MakeButton("Rider Lab", 14);
+            var toLab = FlowUi.MakeButton("Continue", 14);
             toLab.Pressed += () => Flow.EnterLab();
             menu.AddChild(toLab);
         }

@@ -50,7 +50,7 @@ public partial class TeamSelectScreen : Control
         var rand = FlowUi.MakeButton("Randomize", 14);
         rand.Pressed += RandomizeBracket;
         menu.AddChild(rand);
-        var next = FlowUi.MakeButton("Rider Lab", 14);
+        var next = FlowUi.MakeButton("Continue", 14);
         next.Pressed += () => Flow.EnterLab();
         menu.AddChild(next);
 

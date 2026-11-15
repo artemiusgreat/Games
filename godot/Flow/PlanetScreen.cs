@@ -44,7 +44,7 @@ public partial class PlanetScreen : Control
         // removed at the owner's word - he sees no purpose
         // for it; StoryProgress.Reset stays as data API.
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var next = FlowUi.MakeButton(IsMission ? "To missions" : "To arenas", 14);
+        var next = FlowUi.MakeButton("Continue", 14);
         next.Pressed += () => { if (IsMission) Flow.GoMissions(); else Flow.GoArena(); };
         menu.AddChild(next);
 
