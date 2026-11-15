@@ -31,6 +31,12 @@ public partial class RiderDuel
     // marker went in round 2, 'remove Home base indicator'
     // in round 3 - the projected base labels are gone).
 
+    // Team HP rows inside the health panel (owner, 2026-11-14):
+    // one compact name + bar block per NPC teammate, stacked
+    // under the player's own block in the same idiom.
+    private readonly (Label Lab, ProgressBar Bar, VBoxContainer Box)[] _teamHpRows =
+        new (Label, ProgressBar, VBoxContainer)[3];
+
     private void BuildHud(CanvasLayer layer)
     {
         // ---- Cockpit info blocks in the screen corners (owner:
@@ -128,6 +134,21 @@ public partial class RiderDuel
             cell.AddChild(bar);
             grid.AddChild(cell);
             _partCells[id] = (lab, bar);
+        }
+        // Teammates under the player's own block (owner,
+        // 2026-11-14): name line + pool bar each, filled per
+        // frame in UpdateHud; hidden while the team is solo.
+        for (int i = 0; i < _teamHpRows.Length; i++)
+        {
+            var tbox = new VBoxContainer();
+            tbox.AddThemeConstantOverride("separation", 1);
+            var tlab = MakeLabel(13, new Color(0.85f, 0.95f, 0.85f));
+            tbox.AddChild(tlab);
+            var tbar = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(300, 12));
+            tbox.AddChild(tbar);
+            tbox.Visible = false;
+            leftBox.AddChild(tbox);
+            _teamHpRows[i] = (tlab, tbar, tbox);
         }
 
 
@@ -738,6 +759,23 @@ public partial class RiderDuel
         UpdateTargetFrame();
         _barPlayer.Value = _hpPlayer / _playerSpec.MaxHp;
         _lblPlayerHp.Text = $"{_playerSpec.Name} - {_hpPlayer:F0} HP";
+        // Team HP (owner, 2026-11-14): every NPC teammate of
+        // the player's own team, in the player's own idiom.
+        int ti = 0;
+        foreach (var a in _allies)
+        {
+            if (a.Team != 0 || ti >= _teamHpRows.Length) continue;
+            var (tlab, tbar, tbox) = _teamHpRows[ti++];
+            tbox.Visible = true;
+            tlab.Text = a.Dead ? $"{a.Spec.Name} - DESTROYED" : $"{a.Spec.Name} - {a.Hp:F0} HP";
+            tlab.AddThemeColorOverride("font_color",
+                a.Dead ? CdLabelDead : new Color(0.85f, 0.95f, 0.85f));
+            tbar.Value = a.Spec.MaxHp > 0f ? a.Hp / a.Spec.MaxHp : 0f;
+            var tfill = tbar.GetThemeStylebox("fill") as StyleBoxFlat;
+            if (tfill != null)
+                tfill.BgColor = a.Dead ? CdDead : new Color(0.3f, 0.85f, 0.32f);
+        }
+        for (; ti < _teamHpRows.Length; ti++) _teamHpRows[ti].Box.Visible = false;
         // Group aliveness (owner's lab groups): a group is
         // dead when every mounting part that carries it is lost.
         var grpDead = new bool[_groups.Count];
