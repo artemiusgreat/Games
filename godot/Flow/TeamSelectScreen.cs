@@ -236,7 +236,12 @@ public partial class TeamSelectScreen : Control
             var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 46) };
             var rowSb = FlowUi.Panel(
                 selected ? new Color(0.14f, 0.13f, 0.05f, 0.95f) : FlowUi.NavySoft, 0.95f);
-            rowSb.ContentMarginLeft = 6; rowSb.ContentMarginRight = 6;
+            // Left padding matches the row's effective
+            // vertical padding (owner, 2026-11-15): the
+            // 46px row centres its ~19px line, leaving
+            // ~14px above and below the text, so the text
+            // starts 14px in from the left border too.
+            rowSb.ContentMarginLeft = 14; rowSb.ContentMarginRight = 6;
             rowSb.ContentMarginTop = 4; rowSb.ContentMarginBottom = 4;
             rowPanel.AddThemeStyleboxOverride("panel", rowSb);
             var rowBox = new HBoxContainer();
@@ -309,8 +314,10 @@ public partial class TeamSelectScreen : Control
             bool protectedSeat = sel == 0 && idx == 0;
             var card = new PanelContainer();
             var cardSb = FlowUi.Panel(FlowUi.NavySoft, 0.9f);
+            // Vertical padding matches the horizontal 10
+            // (owner, 2026-11-15).
             cardSb.ContentMarginLeft = 10; cardSb.ContentMarginRight = 10;
-            cardSb.ContentMarginTop = 5; cardSb.ContentMarginBottom = 5;
+            cardSb.ContentMarginTop = 10; cardSb.ContentMarginBottom = 10;
             card.AddThemeStyleboxOverride("panel", cardSb);
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
