@@ -170,7 +170,7 @@ public partial class ArenaScreen : Control
         _arenaName.Text = a.Name;
         var bt = BiomeText(a.Biome);
         _arenaBody.Text =
-            $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: 260u\nFormat: Team battle - teams are formed on the next step\n" +
+            $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: {Units.Km(260f)}\nFormat: Team battle - teams are formed on the next step\n" +
             $"Purse: Last team standing\n\n{bt.Desc}";
         _view.Texture = FlowUi.ArenaTexture(512, (int)a.Biome);
     }

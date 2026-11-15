@@ -144,7 +144,7 @@ public static class ArenaCatalog
         new ArenaDef
         {
             Name = "Hyle", Biome = WorldConfig.BiomeKind.Forest,
-            Sub = "Forest · Tournament arena · 260u",
+            Sub = "Forest · Tournament arena · 0.26 km",
             Desc = "Rolling woodland. Tree crowns stop shells, rocks stop nothing but the eye.\n\n" +
                    "Hyle: a 260-unit basin ringed by high ground, with a flat-topped mesa at its heart. " +
                    "Teams are formed on the next step; the last team standing takes the purse and the ground."
@@ -152,7 +152,7 @@ public static class ArenaCatalog
         new ArenaDef
         {
             Name = "Eremos", Biome = WorldConfig.BiomeKind.Desert,
-            Sub = "Desert · Tournament arena · 260u",
+            Sub = "Desert · Tournament arena · 0.26 km",
             Desc = "Sand and rock under a hard sun. Long sight lines, almost no cover but the mesa and the ruins.\n\n" +
                    "Eremos: a 260-unit desert basin ringed by high ground, with a flat-topped mesa at its heart. " +
                    "Teams are formed on the next step; the last team standing takes the purse and the ground."
@@ -161,7 +161,7 @@ public static class ArenaCatalog
         {
             Name = "Polis", Biome = WorldConfig.BiomeKind.City,
             SkyTex = "res://assets/skies/sky_jungle.jpg",
-            Sub = "City · Tournament arena · 260u",
+            Sub = "City · Tournament arena · 0.26 km",
             Desc = "A dead city of towers and blocks. Streets channel movement, roofs are high ground, every building falls.\n\n" +
                    "Polis: a 260-unit city basin ringed by high ground, with a flat-topped mesa at its heart. " +
                    "Teams are formed on the next step; the last team standing takes the purse and the ground."
