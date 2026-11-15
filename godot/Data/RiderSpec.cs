@@ -99,12 +99,16 @@ public static class RiderSpecs
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
         ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
-        Height = 14f, Radius = 2.2f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 50f / 9f,
-        // Radius 2.2 (was the Atlas build's 2.4): the Tripo
-        // skull's face sits 2.27 from the axis, inside a 2.4
-        // hit cylinder - the head box never protruded past the
-        // capsule, so aimed fire could never attribute the head
-        // part. 2.2 lets the skull face stand proud of it.
+        Height = 14f, Radius = 1.55f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 50f / 9f,
+        // Radius 1.55 (was 2.2 on the stride-posed build, 2.4 on
+        // the Atlas build): the hit cylinder is centred on the
+        // model's AABB centre, and on the re-posed A-pose build
+        // that centre sits forward of the pelvis axis - the
+        // cannon muzzles are the model's front extreme - so the
+        // skull's face is only 1.62 from the root axis. 1.55
+        // lets the skull face stand proud of the capsule, so
+        // aimed fire can attribute the head part (the same
+        // margin the 2.2 value gave the stride build's 2.27).
         // The segmented Tripo build (2026-11-15) rests with its
         // knees forward of the hip-ankle line (builder-measured
         // +0.65), unlike the old Atlas rig's backward-sitting
