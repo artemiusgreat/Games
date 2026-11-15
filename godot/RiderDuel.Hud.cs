@@ -548,7 +548,7 @@ public partial class RiderDuel
             // Both buttons on the right (owner, 2026-11-14):
             // Leave first, then Resume.
             row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-            var exit = LeaveOverlay.MakeBtn("Leave", dark: true);
+            var exit = LeaveOverlay.MakeBtn("Leave", dark: false); // same face as Resume (owner, 2026-11-15)
             exit.Pressed += () => LeaveRequested?.Invoke();
             row.AddChild(exit);
             var resume = LeaveOverlay.MakeBtn("Resume", dark: false);
@@ -630,7 +630,7 @@ public partial class RiderDuel
                 texts.AddThemeConstantOverride("separation", 1);
                 texts.SizeFlagsVertical = SizeFlags.ShrinkCenter;
                 h.AddChild(texts);
-                var nameL = new Label { Text = $"{slot + 1}. {FlowUi.NameCase(m.Name)}" };
+                var nameL = new Label { Text = FlowUi.NameCase(m.Name) }; // no row numbers (owner, 2026-11-15)
                 nameL.AddThemeFontSizeOverride("font_size", 15);
                 nameL.AddThemeColorOverride("font_color", nameCol);
                 texts.AddChild(nameL);
