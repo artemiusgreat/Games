@@ -850,14 +850,14 @@ public partial class RiderLab : Control
             };
             btnRow.AddChild(backBtn);
             PadButton(backBtn);
-            BrightBorder(backBtn);
+            LabBorder(backBtn);
         }
         btnRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var start = new Button { Text = "Deploy" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
         PadButton(start);
-        BrightBorder(start); // before the selector panel duplicates this face, so it inherits the border
+        LabBorder(start); // before the selector panel duplicates this face, so it inherits the border
         // The selector is the same control as Deploy (owner,
         // 2026-11-14): its panel duplicates Deploy's own
         // stylebox - same colour, border and transparency by
@@ -883,19 +883,19 @@ public partial class RiderLab : Control
     // except the lab title they read 'Prometheus'.
     private static string NameCase(string n) => FlowUi.NameCase(n);
 
-    // Bright frame for the bottom-bar buttons (owner,
-    // 2026-11-14): the theme's translucent faces all but
-    // vanish against the dark scene behind the lab, so Back
-    // and Deploy get a light 2px border - and the selector
+    // Frame for the bottom-bar buttons (owner, 2026-11-14;
+    // calibrated 2026-11-15): the first pass - a light 2px
+    // border - read too bright, so Back and Deploy now take
+    // the sidebar's own dim steel at 1px. The selector
     // panel, which duplicates Deploy's face, inherits it.
-    private static void BrightBorder(Button b)
+    private static void LabBorder(Button b)
     {
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
         {
             if (b.GetThemeStylebox(state).Duplicate() is StyleBoxFlat sb)
             {
-                sb.BorderColor = new Color(0.88f, 0.92f, 0.97f, 1f);
-                sb.SetBorderWidthAll(2);
+                sb.BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f);
+                sb.SetBorderWidthAll(1);
                 b.AddThemeStyleboxOverride(state, sb);
             }
         }
