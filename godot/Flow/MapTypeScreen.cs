@@ -182,8 +182,7 @@ public partial class MapTypeScreen : Control
             FillHover = FlowUi.NavySoft,
             FillPressed = new Color(0.23f, 0.19f, 0.08f, 0.98f),
             BorderNormal = featured ? FlowUi.Gold : FlowUi.Steel,
-            BorderHover = FlowUi.Gold,
-            OutlineColor = FlowUi.Gold
+            BorderHover = FlowUi.Gold
         };
         shell.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         card.AddChild(shell);
@@ -307,8 +306,7 @@ public partial class MapTypeScreen : Control
 // A chamfered ("rhombus-cut") panel face: a rectangle with
 // its four corners cut at 45 degrees, drawn as a filled
 // polygon with a stroked frame. State colours are set by the
-// owning button. When focused, a second frame is drawn a few
-// pixels outside the first - the keyboard focus indicator.
+// owning button.
 public partial class CutPanel : Control
 {
     public float Cut = 16f;
@@ -318,7 +316,6 @@ public partial class CutPanel : Control
     public Color FillPressed = new(0, 0, 0, 0);
     public Color BorderNormal = new(1, 1, 1, 0.5f);
     public Color BorderHover = new(1, 1, 1, 0.8f);
-    public Color OutlineColor = new(1, 1, 1, 0);
     public bool Hover, Pressed, Focused;
 
     private Vector2[] Points(float inset)
