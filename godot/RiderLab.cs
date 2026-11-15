@@ -602,7 +602,7 @@ public partial class RiderLab : Control
         // filled, one frame around both.
         var tabFrame = new PanelContainer();
         var tabSb = new StyleBoxFlat { BgColor = new Color(0.05f, 0.07f, 0.11f, 0.9f), BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f) };
-        tabSb.SetBorderWidthAll(2);
+        tabSb.SetBorderWidthAll(1);
         tabSb.SetCornerRadiusAll(6);
         tabFrame.AddThemeStyleboxOverride("panel", tabSb);
         catBox.AddChild(tabFrame);
@@ -614,7 +614,7 @@ public partial class RiderLab : Control
         _tabWeapons.Pressed += () => ShowLabTab(true);
         tabRow.AddChild(_tabWeapons);
         var tabDiv = new VSeparator();
-        tabDiv.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(0.42f, 0.48f, 0.56f, 0.8f), Thickness = 2 });
+        tabDiv.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(0.42f, 0.48f, 0.56f, 0.8f), Thickness = 1 });
         tabRow.AddChild(tabDiv);
         _tabEquipment = new Button { Text = "Equipment" };
         _tabEquipment.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -905,11 +905,11 @@ public partial class RiderLab : Control
     {
         if (_pageWeapons != null) _pageWeapons.Visible = weapons;
         if (_pageEquipment != null) _pageEquipment.Visible = !weapons;
-        StyleTabButton(_tabWeapons, weapons);
-        StyleTabButton(_tabEquipment, !weapons);
+        StyleTabButton(_tabWeapons, weapons, true);
+        StyleTabButton(_tabEquipment, !weapons, false);
     }
 
-    private static void StyleTabButton(Button b, bool active)
+    private static void StyleTabButton(Button b, bool active, bool leftHalf)
     {
         if (b == null) return;
         // Combo-button halves (owner, 2026-11-14): the frame
@@ -922,7 +922,11 @@ public partial class RiderLab : Control
             BgColor = active ? new Color(0.16f, 0.15f, 0.08f, 0.95f) : new Color(0, 0, 0, 0),
             ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
         };
-        face.SetCornerRadiusAll(4);
+        // Only the outer corners round (owner, 2026-11-14):
+        // the left half keeps its left radius, the right half
+        // its right; the corners at the divider stay square.
+        if (leftHalf) { face.CornerRadiusTopLeft = 5; face.CornerRadiusBottomLeft = 5; }
+        else { face.CornerRadiusTopRight = 5; face.CornerRadiusBottomRight = 5; }
         b.AddThemeStyleboxOverride("normal", face);
         b.AddThemeStyleboxOverride("hover", face);
         b.AddThemeStyleboxOverride("pressed", face);
