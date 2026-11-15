@@ -59,7 +59,7 @@ public partial class RiderDuel
         }
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest)
         {
-            // Team orders (owner, teams stage step 5): SHIFT+1..4
+            // Team orders (owner, teams stage step 5): SHIFT+1..5
             // command the NPC teammates. Intercepted before the
             // weapon-group keys below - a shifted number is an
             // order, not a group switch.
@@ -68,10 +68,11 @@ public partial class RiderDuel
             {
                 TeamOrder? ord = ok.Keycode switch
                 {
-                    Key.Key1 => TeamOrder.AttackTarget,
-                    Key.Key2 => TeamOrder.AttackNearby,
-                    Key.Key3 => TeamOrder.ProtectLeader,
-                    Key.Key4 => TeamOrder.Hold,
+                    Key.Key1 => TeamOrder.Follow,
+                    Key.Key2 => TeamOrder.AttackTarget,
+                    Key.Key3 => TeamOrder.AttackNearby,
+                    Key.Key4 => TeamOrder.ProtectLeader,
+                    Key.Key5 => TeamOrder.Hold,
                     _ => null
                 };
                 if (ord.HasValue)

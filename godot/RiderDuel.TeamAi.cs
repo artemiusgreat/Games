@@ -6,23 +6,27 @@ using Godot;
 // framework; the team order only decides WHAT they engage and
 // where they stand when there is nothing to engage:
 //
-//   SHIFT+1 Attack my target   - focus the leader's Tab-selected enemy
-//   SHIFT+2 Attack nearby enemy - each ally picks its own nearest foe
-//   SHIFT+3 Protect my target  - guard the leader: engage what
+//   SHIFT+1 Follow me          - hold formation on the leader;
+//                                engage only what closes within
+//                                260u of the ally itself
+//   SHIFT+2 Attack my target   - focus the leader's Tab-selected enemy
+//   SHIFT+3 Attack nearby enemy - each ally picks its own nearest foe
+//   SHIFT+4 Protect my target  - guard the leader: engage what
 //                                closes on him, otherwise hold
 //                                formation on him
-//   SHIFT+4 Full stop          - freeze: no movement, no fire
+//   SHIFT+5 Full stop          - freeze: no movement, no fire
 //
 // With no enemy in reach, allies fall back to a loose
 // formation behind the leader and march at full chassis speed
 // to keep up on the big map (PaceFor, the defenders' rule).
 // The standing order before any key is pressed is SHIFT+1's
-// (owner's ruling: the default behaviour is Attack my target).
+// (owner's ruling, 2026-11-14 evening - supersedes the same
+// day's Attack-my-target default: the default is Follow me).
 public partial class RiderDuel
 {
-    private enum TeamOrder { AttackTarget, AttackNearby, ProtectLeader, Hold }
+    private enum TeamOrder { Follow, AttackTarget, AttackNearby, ProtectLeader, Hold }
 
-    private TeamOrder _teamOrder = TeamOrder.AttackTarget;
+    private TeamOrder _teamOrder = TeamOrder.Follow;
     private int _allyShots; // harness counter (the team test reads it)
 
     private void SetTeamOrder(TeamOrder o)
@@ -30,6 +34,7 @@ public partial class RiderDuel
         _teamOrder = o;
         AddFeed(o switch
         {
+            TeamOrder.Follow => "ORDER: FOLLOW ME",
             TeamOrder.AttackTarget => "ORDER: ATTACK MY TARGET",
             TeamOrder.AttackNearby => "ORDER: ATTACK NEARBY ENEMY",
             TeamOrder.ProtectLeader => "ORDER: PROTECT MY TARGET",
@@ -111,6 +116,7 @@ public partial class RiderDuel
             }
             RiderWalker tgt = _teamOrder switch
             {
+                TeamOrder.Follow => NearestEnemyWalker(a.Walker.RootPos, 260f),
                 TeamOrder.AttackTarget => ActiveTargetWalker() ?? NearestEnemyWalker(a.Walker.RootPos, 450f),
                 TeamOrder.ProtectLeader => NearestEnemyWalker(_player.RootPos, 170f),
                 _ => NearestEnemyWalker(a.Walker.RootPos, 450f)
