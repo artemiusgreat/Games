@@ -83,6 +83,25 @@ public static class SlotIds
 // building plots on a level plateau. Shared by the heightfield
 // (Main), both ground colorings (Main.TerrainColor, PhotoEnv)
 // and the building placement (RiderDuel ScatterCity).
+/// <summary>
+/// Display scale (owner, 2026-11-14): every label in the
+/// game measures in kilometres and kilometres per hour.
+/// One world unit is 0.001 km (1 m); a speed in units per
+/// second converts at x3.6. The simulation keeps raw
+/// units - only the labels convert, all through here, so
+/// the fiction's scale is this one constant.
+/// </summary>
+public static class Units
+{
+    public const float KmPerUnit = 0.001f;
+    public static float KmVal(float units) => units * KmPerUnit;
+    // "1.5 km", "10 km", "0.35 km": up to two decimals,
+    // trailing zeros trimmed.
+    public static string Km(float units) => $"{KmVal(units):0.##} km";
+    // "130 kmh": whole numbers.
+    public static string Kmh(float unitsPerSec) => $"{unitsPerSec * KmPerUnit * 3600f:0} kmh";
+}
+
 public static class CityGrid
 {
     public const float Pitch = 32f;      // plot pitch; streets run between plots

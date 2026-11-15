@@ -1186,8 +1186,8 @@ public partial class RiderLab : Control
     }
 
     private static string StatsLine(WeaponDef d, bool full) => d.Type == WeaponSlotType.Missile
-        ? $"{d.Weight:F0}t · {d.Damage} dmg ×{d.Rockets} · cd {d.Cooldown:0.00}s{(full ? $" · rng {d.Range:F0}u" : "")}"
-        : $"{d.Weight:F0}t · dmg {d.Damage:F0} · cd {d.Cooldown:0.00}s{(full ? $" · rng {d.Range:F0}u" : "")}";
+        ? $"{d.Weight:F0}t · {d.Damage} dmg ×{d.Rockets} · cd {d.Cooldown:0.00}s{(full ? $" · rng {Units.Km(d.Range)}" : "")}"
+        : $"{d.Weight:F0}t · dmg {d.Damage:F0} · cd {d.Cooldown:0.00}s{(full ? $" · rng {Units.Km(d.Range)}" : "")}";
 
     private static string Metrics(WeaponDef d) => StatsLine(d, full: false);
 
@@ -1327,6 +1327,6 @@ public partial class RiderLab : Control
         _paperdoll?.Layout();
         if (_tonnage != null)
             _tonnage.Text = $"Weapons: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis";
-            _speed.Text = $"Speed: {Spec.MaxSpeed:F1} u/s walk / {Spec.MaxSpeed * 3f:F1} run";
+            _speed.Text = $"Speed: {Units.Kmh(Spec.MaxSpeed)} walk / {Units.Kmh(Spec.MaxSpeed * 3f)} run";
     }
 }

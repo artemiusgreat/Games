@@ -800,12 +800,12 @@ public partial class RiderDuel
         {
             var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, Roles.Player);
             _lblRange.Text = rHit.Hit
-                ? $"TARGET RANGE: {_player.RootPos.DistanceTo(rHit.Point):F1} u"
-                : $"TARGET RANGE: {Aim.FarRange:0}+ u";
+                ? $"TARGET RANGE: {Units.Km(_player.RootPos.DistanceTo(rHit.Point))}"
+                : $"TARGET RANGE: {Units.KmVal(Aim.FarRange):0.##}+ km";
         }
         else
-            _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {tgtRange:F1} u";
-        _lblSpeed.Text = $"SPEED: {_playerVel.Length():F1} u/s" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
+            _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {Units.Km(tgtRange)}";
+        _lblSpeed.Text = $"SPEED: {Units.Kmh(_playerVel.Length())}" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
         bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
         _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
             : !lLeg && !rLeg ? "LEGS: BOTH WRECKED - CRAWL"
