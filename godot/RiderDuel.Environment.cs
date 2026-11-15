@@ -454,7 +454,11 @@ public partial class RiderDuel
         {
             WorldConfig.BiomeKind.Desert => (0.15f, 1.8f),
             WorldConfig.BiomeKind.City => (0.30f, 0.15f),
-            _ => (1f, 1f) // Forest: the standing scatter, untouched
+            // Forest thinned (owner, 2026-11-14: "too dense"):
+            // 33 trees / 25 rocks in a 260u disc put a
+            // shot-blocking crown on every line of fire.
+            WorldConfig.BiomeKind.Forest => (0.61f, 0.64f),
+            _ => (1f, 1f)
         };
         int treeTarget = (int)(33 * treeMul), rockTarget = (int)(25 * rockMul);
         int trees = 0, tries = 0;
