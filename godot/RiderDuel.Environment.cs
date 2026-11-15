@@ -1394,22 +1394,40 @@ public partial class RiderDuel
         ResolveOne(_player);
         ResolveOne(_enemy);
         if (_foe != null) ResolveOne(_foe.Walker);
+        foreach (var a in _allies) if (a.Walker != null) ResolveOne(a.Walker);
         ResolvePair(_player, _enemy);
         if (_foe != null)
         {
             ResolvePair(_player, _foe.Walker);
             ResolvePair(_enemy, _foe.Walker);
         }
+        // Teammates are bodies too (owner, 2026-11-15: the
+        // allies were never resolved at all, so a follower
+        // walked straight through the leader): they resolve
+        // against every rider on the field, and against the
+        // leader and each other they also keep a gap, so the
+        // formation holds its distance instead of grinding
+        // into contact.
+        foreach (var a in _allies)
+        {
+            if (a.Walker == null) continue;
+            ResolvePair(a.Walker, _player, 3f);
+            ResolvePair(a.Walker, _enemy);
+            if (_foe != null) ResolvePair(a.Walker, _foe.Walker);
+            foreach (var b in _allies)
+                if (b != a && b.Walker != null) ResolvePair(a.Walker, b.Walker, 3f);
+        }
     }
 
-    // rider vs rider: split the overlap
-    private static void ResolvePair(RiderWalker wa, RiderWalker wb)
+    // rider vs rider: split the overlap (gap = extra
+    // separation kept beyond the two body radii)
+    private static void ResolvePair(RiderWalker wa, RiderWalker wb, float gap = 0f)
     {
         var a = new Vector2(wa.RootPos.X, wa.RootPos.Z);
         var b = new Vector2(wb.RootPos.X, wb.RootPos.Z);
         var d = b - a;
         float dist = d.Length();
-        float min = wa.CollisionRadius + wb.CollisionRadius;
+        float min = wa.CollisionRadius + wb.CollisionRadius + gap;
         // Flyover (owner): a jumping rider passes OVER the other -
         // no separation push while either is high above the ground.
         if (dist < min && wa.JumpHeight < 12f && wb.JumpHeight < 12f)
