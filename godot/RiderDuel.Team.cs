@@ -81,7 +81,7 @@ public partial class RiderDuel
         _bracketDecided = true;
         int win = 0;
         foreach (var t in living) win = t;
-        AddFeed(win == 0 ? "YOUR TEAM - LAST TEAM STANDING" : $"TEAM {win + 1} - LAST TEAM STANDING");
+        AddFeed(win == 0 ? "ACTIVE - LAST TEAM STANDING" : $"TEAM {win + 1} - LAST TEAM STANDING");
     }
 
     // Which team a walker fights for: the driven rider is

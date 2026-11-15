@@ -247,7 +247,7 @@ public partial class TeamSelectScreen : Control
             var rowBox = new HBoxContainer();
             rowBox.AddThemeConstantOverride("separation", 8);
             rowPanel.AddChild(rowBox);
-            string teamText = $"TEAM {t + 1} - {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · YOUR TEAM" : "");
+            string teamText = $"TEAM {t + 1} - {team.Count} RIDER{(team.Count == 1 ? "" : "S")}" + (t == 0 ? " · ACTIVE" : "");
             if (selected)
             {
                 var lbl = FlowUi.MakeLabel(teamText, 15, FlowUi.Gold);
@@ -303,9 +303,9 @@ public partial class TeamSelectScreen : Control
 
         // ---- riders of the open team: dropdown per slot ----
         var open = TeamRoster.Tourney[sel];
-        _riderHead.Text = $"Team {sel + 1} riders" + (sel == 0 ? " - your team" : "");
+        _riderHead.Text = $"Team {sel + 1} riders" + (sel == 0 ? " - Active" : "");
         _riderCount.Text = $"{open.Count} OF {TeamRoster.MaxPerTeam} RIDERS" +
-            (sel == 0 ? " - rider 1 is yours, prepared in the lab next" : "");
+            (sel == 0 ? " - rider 1 is the active rider, prepared in the lab next" : "");
         foreach (var ch in _riderRows.GetChildren()) ch.QueueFree();
         for (int r = 0; r < open.Count; r++)
         {
@@ -333,8 +333,12 @@ public partial class TeamSelectScreen : Control
             });
             slider.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             rname.Text = $"{FlowUi.NameCase(member.Spec.Name)} - {member.Spec.Tonnage:F0}T - {FlowUi.NameCase(member.Spec.ClassLabel)}"
-                + (protectedSeat ? " (You)" : "");
+                + (protectedSeat ? " (Active)" : "");
             row.AddChild(slider);
+            // Half-width slider (owner, 2026-11-15): an equal
+            // expanding spacer takes the row's other half; the
+            // remove button keeps the right edge.
+            row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
             if (!protectedSeat && open.Count > 1)
             {
                 var rm = new Button
