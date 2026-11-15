@@ -1320,6 +1320,8 @@ public partial class RiderDuel
     private bool _teamStaged;
     private int _teamPhase;
     private Vector3 _teamAllyHome0, _teamAllyHome1, _teamHoldPos;
+    private Vector3 _teamPlayerHome;
+    private float _teamMinSep;
     private int _teamHoldShots, _teamWantSlot;
     private string _teamWantSpec;
 
@@ -1505,23 +1507,31 @@ public partial class RiderDuel
             _teamStaged = true;
             if (_allies.Count != 2) { TeamFail($"expected 2 allies from the seeded roster, got {_allies.Count}"); return; }
             GD.Print($"TEAMTEST staged: leader slot {_leaderSlot} {_playerSpec.Id}, allies {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
-            var eBase = PadPos(Main.SpawnPads[1]);
+            // FORM phase first (owner, 2026-11-15): the
+            // leader stands still at the home pad, both
+            // followers start AHEAD of him - ally 0 dead ahead,
+            // its station dead astern, the hardest case - and
+            // must form up behind him without ever displacing
+            // him or closing inside the universal separation.
             var hBase = PadPos(Main.SpawnPads[0]);
-            var dir = hBase - eBase; dir.Y = 0; dir = dir.Normalized();
-            var pPos = eBase + dir * 150f; pPos.Y = Main.HeightAt(pPos.X, pPos.Z);
-            float face = RiderWalker.YawOf(-dir);
+            var eBase = PadPos(Main.SpawnPads[1]);
+            var dir = eBase - hBase; dir.Y = 0; dir = dir.Normalized();
+            float face = RiderWalker.YawOf(dir);
+            var pPos = hBase; pPos.Y = Main.HeightAt(pPos.X, pPos.Z);
             _player.Teleport(pPos, face);
             _playerYaw = face;
-            foreach (var a in _allies)
-            {
-                var ap = eBase + dir * 138f + new Vector3(-dir.Z, 0, dir.X) * (a.Slot == 1 ? -14f : 14f);
-                ap.Y = Main.HeightAt(ap.X, ap.Z);
-                a.Walker.Teleport(ap, face);
-                a.Yaw = face;
-                a.PrevRoot = a.Walker.RootPos;
-            }
-            _teamAllyHome0 = _allies[0].Walker.RootPos;
-            _teamAllyHome1 = _allies[1].Walker.RootPos;
+            _teamPlayerHome = _player.RootPos;
+            _teamMinSep = 9999f;
+            var rgt = new Vector3(-dir.Z, 0, dir.X);
+            var ap0 = pPos + dir * 30f; ap0.Y = Main.HeightAt(ap0.X, ap0.Z);
+            _allies[0].Walker.Teleport(ap0, face + Mathf.Pi);
+            _allies[0].Yaw = face + Mathf.Pi;
+            _allies[0].PrevRoot = _allies[0].Walker.RootPos;
+            var ap1 = pPos + dir * 36f + rgt * 12f; ap1.Y = Main.HeightAt(ap1.X, ap1.Z);
+            _allies[1].Walker.Teleport(ap1, face + Mathf.Pi);
+            _allies[1].Yaw = face + Mathf.Pi;
+            _allies[1].PrevRoot = _allies[1].Walker.RootPos;
+            _teamPhase = -1;
             return;
         }
         PassCommandIfNeeded();
@@ -1529,6 +1539,46 @@ public partial class RiderDuel
         if (_foe != null) UpdateFoeAI(dt);
         UpdateAlliesAI(dt);
         _player.SetDrive(_playerYaw, 0f);
+
+        if (_teamPhase == -1)
+        {
+            foreach (var a in _allies)
+                _teamMinSep = Mathf.Min(_teamMinSep, FlatDist(a.Walker.RootPos, _player.RootPos));
+            if (_teamT > 24f)
+            {
+                float drift = FlatDist(_player.RootPos, _teamPlayerHome);
+                float need = _player.CollisionRadius + RiderBody.Gap - 0.75f
+                    + Mathf.Min(_allies[0].Walker.CollisionRadius, _allies[1].Walker.CollisionRadius);
+                float d0 = FlatDist(_allies[0].Walker.RootPos, _player.RootPos);
+                float d1 = FlatDist(_allies[1].Walker.RootPos, _player.RootPos);
+                GD.Print($"TEAMTEST form: drift={drift:F2} minSep={_teamMinSep:F2} (need >= {need:F2}) allyDist={d0:F1}/{d1:F1}");
+                if (drift > 0.5f) { TeamFail("a follower displaced the stationary leader"); return; }
+                if (_teamMinSep < need) { TeamFail("a follower closed inside the universal separation"); return; }
+                if (d0 > 30f || d1 > 30f) { TeamFail("followers did not reach the formation"); return; }
+                GD.Print("TEAMTEST FORM PASS followers formed up without touching the leader");
+                // Re-stage the fight (the original staging).
+                var eBase = PadPos(Main.SpawnPads[1]);
+                var hBase = PadPos(Main.SpawnPads[0]);
+                var dir = hBase - eBase; dir.Y = 0; dir = dir.Normalized();
+                var pPos = eBase + dir * 150f; pPos.Y = Main.HeightAt(pPos.X, pPos.Z);
+                float face = RiderWalker.YawOf(-dir);
+                _player.Teleport(pPos, face);
+                _playerYaw = face;
+                foreach (var a in _allies)
+                {
+                    var ap = eBase + dir * 138f + new Vector3(-dir.Z, 0, dir.X) * (a.Slot == 1 ? -14f : 14f);
+                    ap.Y = Main.HeightAt(ap.X, ap.Z);
+                    a.Walker.Teleport(ap, face);
+                    a.Yaw = face;
+                    a.PrevRoot = a.Walker.RootPos;
+                }
+                _teamAllyHome0 = _allies[0].Walker.RootPos;
+                _teamAllyHome1 = _allies[1].Walker.RootPos;
+                _teamPhase = 0;
+                _teamT = 0f;
+            }
+            return;
+        }
 
         if (_teamPhase == 0 && _teamT > 26f)
         {
