@@ -858,22 +858,26 @@ public partial class RiderLab : Control
             PadButton(backBtn);
         }
         btnRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        // The selector wears a semi-transparent background
-        // like Deploy's (owner, 2026-11-14): one panel behind
-        // the arrows and the name, so the group reads as a
-        // single control next to the button.
-        var selPanel = new PanelContainer();
-        var selSb = new StyleBoxFlat { BgColor = new Color(0.07f, 0.09f, 0.13f, 0.85f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.8f), ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 2, ContentMarginBottom = 2 };
-        selSb.SetBorderWidthAll(2);
-        selSb.SetCornerRadiusAll(6);
-        selPanel.AddThemeStyleboxOverride("panel", selSb);
-        selPanel.AddChild(RiderSelector("", true));
-        btnRow.AddChild(selPanel);
         var start = new Button { Text = "Deploy" };
         start.AddThemeFontSizeOverride("font_size", 18);
         start.Pressed += () => OnStart?.Invoke();
-        btnRow.AddChild(start);
         PadButton(start);
+        // The selector is the same control as Deploy (owner,
+        // 2026-11-14): its panel duplicates Deploy's own
+        // stylebox - same colour, border and transparency by
+        // construction - with extra air on the sides, on the
+        // left of the left arrow and the right of the right.
+        var selPanel = new PanelContainer();
+        var selSb = (StyleBox)start.GetThemeStylebox("normal").Duplicate();
+        if (selSb is StyleBoxFlat selFlat)
+        {
+            selFlat.ContentMarginLeft += 8;
+            selFlat.ContentMarginRight += 8;
+        }
+        selPanel.AddThemeStyleboxOverride("panel", selSb);
+        selPanel.AddChild(RiderSelector("", true));
+        btnRow.AddChild(selPanel);
+        btnRow.AddChild(start);
 
         Refresh();
     }
