@@ -119,9 +119,19 @@ public sealed class RiderParts
         }
         else if (riderId == "hector")
         {
+            // Segmented Tripo build (owner, 2026-11-15): the
+            // model arrives as ~150 fragments grouped into the
+            // canonical part meshes below; every other fragment
+            // rides as a Debris_<part>_N mesh of its part, so a
+            // break - and above all the death explosion - throws
+            // the small pieces separately, as the owner asked.
+            // Head = the skull region of the joined Torso mesh,
+            // measured on the built model (skull: |x| <= 1.04,
+            // height 11.47..13.79, front z >= 0.2 in model
+            // space; the band also takes the jaw pistons).
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
-                ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 12.45f),
+                ("Head", p => Mathf.Abs(p.X) <= 1.15f && p.Y >= 11.4f && p.Z >= 0.15f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
             AddPart("gun", "WAIST GUN", 65f, byName, "AC20");
@@ -131,6 +141,7 @@ public sealed class RiderParts
             AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
             AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AttachDebris(byName);
         }
         else if (riderId == "prometheus")
         {
@@ -258,7 +269,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus")
+        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
@@ -301,20 +312,42 @@ public sealed class RiderParts
                 GD.PrintErr($"{_riderId} PARTS: mesh '{name}' not found for part {id}");
                 continue;
             }
-            int bone = DominantBone(mi, out string boneName, out int bindIndex);
-            part.Meshes.Add(new MeshRec
-            {
-                Mi = mi,
-                OrigParent = mi.GetParent(),
-                OrigLocal = mi.Transform,
-                OrigSkin = mi.Skin,
-                OrigSkeleton = mi.Skeleton,
-                Bone = bone,
-                BindIndex = bindIndex,
-                BoneName = boneName
-            });
+            AttachMesh(part, mi);
         }
         _parts[id] = part;
+    }
+
+    private void AttachMesh(Part part, MeshInstance3D mi)
+    {
+        int bone = DominantBone(mi, out string boneName, out int bindIndex);
+        part.Meshes.Add(new MeshRec
+        {
+            Mi = mi,
+            OrigParent = mi.GetParent(),
+            OrigLocal = mi.Transform,
+            OrigSkin = mi.Skin,
+            OrigSkeleton = mi.Skeleton,
+            Bone = bone,
+            BindIndex = bindIndex,
+            BoneName = boneName
+        });
+    }
+
+    // Segmented builds ship their small fragments as separate
+    // meshes named Debris_<partId>_N: sweep them into the named
+    // part so each fragment breaks and flies on its own. (Only
+    // the segmented Hector build uses the convention today.)
+    private void AttachDebris(Dictionary<string, MeshInstance3D> byName)
+    {
+        foreach (var kv in byName)
+        {
+            if (!kv.Key.StartsWith("Debris_")) continue;
+            var rest = kv.Key.Substring("Debris_".Length);
+            int cut = rest.LastIndexOf('_');
+            if (cut <= 0) continue;
+            if (_parts.TryGetValue(rest.Substring(0, cut), out var part))
+                AttachMesh(part, kv.Value);
+        }
     }
 
     // Dominant skin bone of a mesh from its vertex weights (bind index ->
