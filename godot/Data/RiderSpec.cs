@@ -99,8 +99,17 @@ public static class RiderSpecs
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
         ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
-        Height = 14f, Radius = 2.4f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 50f / 9f,
-        FlipKneePole = true,
+        Height = 14f, Radius = 2.2f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 50f / 9f,
+        // Radius 2.2 (was the Atlas build's 2.4): the Tripo
+        // skull's face sits 2.27 from the axis, inside a 2.4
+        // hit cylinder - the head box never protruded past the
+        // capsule, so aimed fire could never attribute the head
+        // part. 2.2 lets the skull face stand proud of it.
+        // The segmented Tripo build (2026-11-15) rests with its
+        // knees forward of the hip-ankle line (builder-measured
+        // +0.65), unlike the old Atlas rig's backward-sitting
+        // knees - no pole mirror.
+        FlipKneePole = false,
         // Firepower DISTRIBUTED across the body (owner, 2026-10-31):
         // heavier riders get MORE hardpoints, not just fatter ones -
         // with everything on one arm, losing the arm disarms the
