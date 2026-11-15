@@ -69,26 +69,13 @@ public partial class RiderDuel
             AnchorProjector = ProjectSlotAnchor,
             CenterProjector = ProjectBodyCenter
         };
-        if (WorldConfig.IsMission)
-        {
-            // Story team lab (owner, teams stage): the lab edits
-            // one roster slot at a time; the slot chips switch,
-            // add (up to 4) and remove slots.
-            TeamRoster.EnsureStory();
-            lab.TeamMode = true;
-            lab.TeamSlot = TeamRoster.StorySlot;
-            lab.TeamNames = new string[TeamRoster.Story.Count];
-            lab.TeamMeta = new string[TeamRoster.Story.Count];
-            for (int i = 0; i < TeamRoster.Story.Count; i++)
-            {
-                var sp = TeamRoster.Story[i].Spec;
-                lab.TeamNames[i] = sp.Name;
-                lab.TeamMeta[i] = $"{sp.Tonnage:F0}t · {char.ToUpper(sp.ClassLabel[0]) + sp.ClassLabel.Substring(1).ToLowerInvariant()}";
-            }
-            lab.OnTeamSlot = i => SetStorySlot(i);
-            lab.OnTeamAdd = () => AddStoryMember();
-            lab.OnTeamRemove = i => RemoveStoryMember(i);
-        }
+        // Story (owner, 2026-11-15): the lab no longer hosts
+        // a team selector - the mission team is formed on the
+        // flow's team screen before the lab, and the lab
+        // prepares rider 1 (the roster's slot 0, pinned by
+        // EnterLab) exactly as the Tournament lab prepares
+        // team 1's first rider.
+        if (WorldConfig.IsMission) TeamRoster.EnsureStory();
         _lab = lab;
         lab.OnStart = () =>
         {
@@ -443,24 +430,11 @@ public partial class RiderDuel
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();
     }
 
-    // ---- Story team slots (owner, teams stage) ----
-    // Switching the edited slot points the lab (and its preview
-    // rider) at that member's spec and loadout. The lab edits
-    // the member's LoadoutState object directly, so nothing is
-    // saved or lost on a switch.
-    private void SetStorySlot(int i)
-    {
-        if (i < 0 || i >= TeamRoster.Story.Count || i == TeamRoster.StorySlot && _lab != null
-            && _playerSpec == TeamRoster.Story[i].Spec) return;
-        TeamRoster.StorySlot = i;
-        var m = TeamRoster.Story[i];
-        _playerSpec = m.Spec;
-        _loadout = m.Loadout;
-        RebuildRider(true);
-        GD.Print($"LAB team slot {i}: {m.Spec.Id}");
-        if (_labOpen) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();
-    }
-
+    // ---- Story roster growth (deploy-test path) ----
+    // The mission team itself is formed on the flow's team
+    // screen (owner, 2026-11-15); this stays as the roster
+    // operation the deploy test drives to prove lab-era
+    // roster changes still take the field at deploy.
     private void AddStoryMember()
     {
         if (TeamRoster.Story.Count >= 4) return;
@@ -470,21 +444,6 @@ public partial class RiderDuel
             if (RiderSpecs.All[i].Id == last.Id) idx = i;
         var spec = RiderSpecs.All[(idx + 1) % RiderSpecs.All.Length];
         TeamRoster.Story.Add(TeamRoster.Make(spec));
-        SetStorySlot(TeamRoster.Story.Count - 1);
-    }
-
-    private void RemoveStoryMember(int i)
-    {
-        if (i <= 0 || i >= TeamRoster.Story.Count) return; // slot 0 (the main player) stays
-        TeamRoster.Story.RemoveAt(i);
-        if (TeamRoster.StorySlot >= TeamRoster.Story.Count)
-            TeamRoster.StorySlot = TeamRoster.Story.Count - 1;
-        // Force the lab onto the (possibly shifted) current slot.
-        var m = TeamRoster.Story[TeamRoster.StorySlot];
-        _playerSpec = m.Spec;
-        _loadout = m.Loadout;
-        RebuildRider(true);
-        if (_labOpen) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();
     }
 
     private static string SlotOf(RiderSpec spec, WeaponSlotType type, int n = 0)

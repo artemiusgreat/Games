@@ -8,7 +8,7 @@ using System.Collections.Generic;
 //
 //   MapType ──Tournament──► Planet ──► Arena ──► Teams ──► lab ──► duel
 //      │
-//      └──────Story──────► Planet ──► Missions (bar) ──► lab ──► duel
+//      └──────Story──────► Planet ──► Missions (bar) ──► Team ──► lab ──► duel
 //
 // The flow only CHOOSES; WorldConfig carries the choice into the
 // duel scene, which builds the right world and opens the RiderLab
@@ -120,6 +120,10 @@ public partial class FlowMain : Node3D
                 TeamRoster.TourneyTeam = 2;
                 GoTeams();
                 break;
+            case "storyteam":
+                WorldConfig.Mode = WorldConfig.MapMode.Mission;
+                GoStoryTeam();
+                break;
             case "bar":
             case "missions":
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
@@ -128,6 +132,7 @@ public partial class FlowMain : Node3D
             default:
                 if (StartScreen == "planet") GoPlanet();
                 else if (StartScreen == "missions") GoMissions();
+                else if (StartScreen == "storyteam") GoStoryTeam();
                 else if (StartScreen == "arena" || StartScreen == "tournament") GoArena();
                 else if (StartScreen == "teams") GoTeams();
                 else GoMapType();
@@ -256,6 +261,15 @@ public partial class FlowMain : Node3D
         Show(new MissionScreen { Name = "missions", Flow = this });
     }
 
+    // Wizard step 3 (Story): the mission team selector -
+    // the team for the signed contract is formed here, not
+    // in the lab (owner, 2026-11-15). Continue goes to the
+    // lab to prepare rider 1, the active rider.
+    public void GoStoryTeam()
+    {
+        Show(new StoryTeamScreen { Name = "storyteam", Flow = this });
+    }
+
     // Wizard step 2 (Tournament): the arena screen.
     public void GoArena()
     {
@@ -282,6 +296,10 @@ public partial class FlowMain : Node3D
         // dead (owner's report).
         if (WorldConfig.IsMission && (fromPlanet || WorldConfig.SelectedMission == null))
             WorldConfig.SelectedMission = MissionCatalog.Planets[PlanetIndex].Missions[MissionIndex];
+        // The lab prepares rider 1, the active rider (owner,
+        // 2026-11-15): the team itself is formed on the team
+        // screen before the lab, so the edited slot is 0.
+        if (WorldConfig.IsMission) { TeamRoster.EnsureStory(); TeamRoster.StorySlot = 0; }
         // The selected map's PREDEFINED biome (owner: the
         // player never picks a map type): the contract's ground
         // on the mission path, the arena's on the tournament

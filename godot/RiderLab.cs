@@ -21,18 +21,6 @@ public partial class RiderLab : Control
     public string EnemySpecId = "hector";
     public Action OnSelectionChanged;
 
-    // Story team mode (owner, teams stage): the lab edits one
-    // team slot at a time. TeamNames/TeamMeta describe the
-    // slots in order; the callbacks switch/add/remove slots and
-    // the duel recreates the lab against the newly edited slot.
-    public bool TeamMode;
-    public int TeamSlot;
-    public string[] TeamNames = System.Array.Empty<string>();
-    public string[] TeamMeta = System.Array.Empty<string>();
-    public Action<int> OnTeamSlot;
-    public Action OnTeamAdd;
-    public Action<int> OnTeamRemove;
-
     private Label _hint;
     private Label _tonnage;
     private Label _tabName;
@@ -544,12 +532,6 @@ public partial class RiderLab : Control
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
-        // The team selector sits at the very top, above
-        // everything else (owner: inside the selector stack it
-        // overlapped the paperdoll's projected anchors and read
-        // as clutter). Its own band, first in the column.
-        if (TeamMode) root.AddChild(TeamSection());
-
         var title = new Label { Text = $"RIDER LAB - {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}" };
         FlowUi.Heading(title);
         title.AddThemeFontSizeOverride("font_size", 26);
@@ -845,10 +827,11 @@ public partial class RiderLab : Control
             backBtn.Pressed += () =>
             {
                 // Back to the previous wizard step (owner, teams
-                // stage): the mission screen in Story; the arena
-                // screen in Tournament (the team selector slots
-                // in as the step before the lab when it lands).
-                FlowMain.StartScreen = WorldConfig.IsMission ? "missions" : "teams";
+                // stage): the mission team selector in Story
+                // (owner, 2026-11-15: the team is formed there,
+                // not in the lab); the team selector in
+                // Tournament.
+                FlowMain.StartScreen = WorldConfig.IsMission ? "storyteam" : "teams";
                 GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
             };
             btnRow.AddChild(backBtn);
@@ -932,168 +915,6 @@ public partial class RiderLab : Control
                 b.AddThemeStyleboxOverride(state, sb);
             }
         }
-    }
-
-    // Team section (owner, teams stage - reworked at his word:
-    // the chip row was not clear). A separate panel holding a
-    // scrollable strip of rider CARDS (like his MechWarrior
-    // Online reference): clicking a card makes the lab display
-    // that rider; the displayed rider's card is gold-framed.
-    // A card-sized '+' card at the end of the strip adds a
-    // rider; every card from the second on carries its own
-    // '−' (slot 0, the main player's rider, cannot be
-    // removed); the team holds at most four. The RIDER
-    // selector below changes the chassis of the displayed
-    // slot.
-    private Control TeamSection()
-    {
-        var panel = new PanelContainer();
-        // On top of the paperdoll's leader lines and anchor
-        // dots (owner, 2026-11-14): the paperdoll draws
-        // unclipped and its lines can cross the band.
-        panel.ZIndex = 1;
-        // Same background and transparency as the lab's
-        // other panels (owner, 2026-11-14): the sidebar's
-        // recipe, alpha included - at 0.96 the band read
-        // darker than everything else.
-        panel.AddThemeStyleboxOverride("panel", LabPanel(new Color(0.045f, 0.065f, 0.105f, 0.85f), new Color(0.42f, 0.48f, 0.56f, 0.8f)));
-        // Inner padding (owner, 2026-11-14): the section's
-        // content sat flush against the panel border.
-        var pad = new MarginContainer();
-        pad.AddThemeConstantOverride("margin_left", 14);
-        pad.AddThemeConstantOverride("margin_right", 14);
-        pad.AddThemeConstantOverride("margin_top", 10);
-        pad.AddThemeConstantOverride("margin_bottom", 12);
-        panel.AddChild(pad);
-        var pv = new VBoxContainer();
-        pv.AddThemeConstantOverride("separation", 6);
-        pad.AddChild(pv);
-        var head = new HBoxContainer();
-        head.AddThemeConstantOverride("separation", 10);
-        pv.AddChild(head);
-        var h = new Label { Text = "Team" };
-        h.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
-        head.AddChild(h);
-        var count = new Label { Text = $"{TeamNames.Length} of 4 riders - click a card to display that rider in the lab" };
-        count.AddThemeColorOverride("font_color", new Color(0.62f, 0.70f, 0.78f));
-        count.AddThemeFontSizeOverride("font_size", 12);
-        count.VerticalAlignment = VerticalAlignment.Center;
-        head.AddChild(count);
-
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 10);
-        pv.AddChild(row);
-        // The strip hugs its cards (no ExpandFill). The width
-        // is set explicitly - a ScrollContainer with Auto
-        // scrolling reports zero minimum width and collapsed
-        // shut in the first capture of this layout, hiding the
-        // cards entirely. It still scrolls when the window is
-        // too narrow for the full team. Add/Remove live IN the
-        // strip (owner, 2026-11-14): a card-sized '+' card adds
-        // a rider, and every card from the second on carries
-        // its own '−' in the corner - the main rider's card
-        // (slot 1) never does.
-        int totalCards = TeamNames.Length + (TeamNames.Length < 4 ? 1 : 0);
-        // The '+' button is half a card wide (owner, 2026-11-14
-        // - width only, its height stays the cards' 82).
-        float cardsW = TeamNames.Length * 176f + (TeamNames.Length < 4 ? 88f : 0f)
-            + Mathf.Max(0, totalCards - 1) * 8f;
-        var scroll = new ScrollContainer
-        {
-            CustomMinimumSize = new Vector2(Mathf.Min(cardsW, 928f), 0f),
-            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto
-        };
-        row.AddChild(scroll);
-        var cards = new HBoxContainer();
-        cards.AddThemeConstantOverride("separation", 8);
-        scroll.AddChild(cards);
-        for (int i = 0; i < TeamNames.Length; i++)
-        {
-            int idx = i;
-            bool active = i == TeamSlot;
-            var card = new PanelContainer { CustomMinimumSize = new Vector2(176f, 82f) };
-            var bg = active ? new Color(0.14f, 0.16f, 0.10f, 0.98f) : new Color(0.07f, 0.09f, 0.13f, 0.95f);
-            var bd = active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.42f, 0.48f, 0.56f, 0.7f);
-            card.AddThemeStyleboxOverride("panel", LabPanel(bg, bd));
-            var host = new Control();
-            card.AddChild(host);
-            if (!active)
-            {
-                var cover = new Button();
-                cover.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-                cover.AddThemeStyleboxOverride("normal", LabPanel(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
-                cover.AddThemeStyleboxOverride("hover", LabPanel(new Color(0.11f, 0.14f, 0.20f, 0.45f), new Color(0, 0, 0, 0)));
-                cover.AddThemeStyleboxOverride("pressed", LabPanel(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
-                cover.AddThemeStyleboxOverride("focus", LabPanel(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0)));
-                cover.Pressed += () => OnTeamSlot?.Invoke(idx);
-                host.AddChild(cover);
-            }
-            var cv = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-            cv.AddThemeConstantOverride("separation", 2);
-            cv.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            // Cards with a '−' keep their text clear of it.
-            cv.OffsetLeft = 10; cv.OffsetTop = 8; cv.OffsetRight = i >= 1 ? -44 : -10; cv.OffsetBottom = -8;
-            host.AddChild(cv);
-            var nm = new Label { Text = $"{i + 1}. {NameCase(TeamNames[i])}", MouseFilter = MouseFilterEnum.Ignore };
-            // Cards with a '−' run the name in a narrower column
-            // (the minus overlaps a long name at 16px - 'PROMETHEUS'
-            // clipped under it in the capture); clip as a backstop
-            // so text can never draw under the button.
-            nm.AddThemeFontSizeOverride("font_size", i >= 1 ? 14 : 16);
-            nm.ClipContents = true;
-            nm.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.95f, 0.97f, 1f));
-            cv.AddChild(nm);
-            var meta = new Label { Text = TeamMeta.Length > i ? TeamMeta[i] : "", MouseFilter = MouseFilterEnum.Ignore };
-            meta.AddThemeFontSizeOverride("font_size", 12);
-            meta.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
-            cv.AddChild(meta);
-            var st = new Label
-            {
-                Text = active ? "In lab" : i == 0 ? "Main rider" : "Team rider",
-                MouseFilter = MouseFilterEnum.Ignore
-            };
-            st.AddThemeFontSizeOverride("font_size", 11);
-            st.AddThemeColorOverride("font_color", active ? new Color(0.98f, 0.80f, 0.35f) : new Color(0.62f, 0.70f, 0.78f));
-            cv.AddChild(st);
-            if (i >= 1)
-            {
-                var minus = new Button { Text = "−" };
-                minus.AnchorLeft = 1f; minus.AnchorRight = 1f;
-                minus.OffsetLeft = -32f; minus.OffsetTop = 6f; minus.OffsetRight = -6f; minus.OffsetBottom = 32f;
-                minus.AddThemeFontSizeOverride("font_size", 16);
-                StyleTeamButton(minus);
-                minus.TooltipText = "Remove this rider from the team";
-                minus.Pressed += () => OnTeamRemove?.Invoke(idx);
-                host.AddChild(minus);
-            }
-            cards.AddChild(card);
-        }
-        if (TeamNames.Length < 4)
-        {
-            var plus = new Button { Text = "+", CustomMinimumSize = new Vector2(88f, 82f) };
-            plus.AddThemeFontSizeOverride("font_size", 36);
-            StyleTeamButton(plus);
-            plus.TooltipText = "Add a rider to the team";
-            plus.Pressed += () => OnTeamAdd?.Invoke();
-            cards.AddChild(plus);
-        }
-        return panel;
-    }
-
-    // Explicit button boxes for the team section: on the dark
-    // panel the lab theme's default button faces all but
-    // vanish (measured in the first capture), so Add/Remove
-    // carry the card idiom's boxes, with a dimmed disabled face.
-    private static void StyleTeamButton(Button b)
-    {
-        var bd = new Color(0.55f, 0.62f, 0.70f, 0.9f);
-        b.AddThemeStyleboxOverride("normal", LabPanel(new Color(0.10f, 0.13f, 0.19f, 0.98f), bd));
-        b.AddThemeStyleboxOverride("hover", LabPanel(new Color(0.16f, 0.20f, 0.28f, 0.98f), new Color(0.98f, 0.80f, 0.35f)));
-        b.AddThemeStyleboxOverride("pressed", LabPanel(new Color(0.20f, 0.17f, 0.08f, 0.98f), bd));
-        b.AddThemeStyleboxOverride("disabled", LabPanel(new Color(0.06f, 0.07f, 0.09f, 0.9f), new Color(0.35f, 0.38f, 0.42f, 0.6f)));
-        b.AddThemeColorOverride("font_disabled_color", new Color(0.45f, 0.48f, 0.52f));
-        b.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.80f, 0.35f));
     }
 
     // A flat bordered stylebox in the lab's idiom (the flow

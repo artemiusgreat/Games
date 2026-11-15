@@ -55,7 +55,7 @@ public partial class MissionScreen : Control
         if (signed != null && signed.Planet == Planet)
         {
             var toLab = FlowUi.MakeButton("Continue", 14);
-            toLab.Pressed += () => Flow.EnterLab();
+            toLab.Pressed += () => Flow.GoStoryTeam();
             menu.AddChild(toLab);
         }
 
@@ -137,7 +137,9 @@ public partial class MissionScreen : Control
     {
         FlowMain.MissionIndex = missionIdx;
         WorldConfig.SelectedMission = Planet.Missions[missionIdx];
-        Flow.EnterLab();
+        // The team for the contract is formed on the next
+        // screen (owner, 2026-11-15); the lab follows it.
+        Flow.GoStoryTeam();
     }
 
     // Harness hook (--flowtest-nav): sign the first available
