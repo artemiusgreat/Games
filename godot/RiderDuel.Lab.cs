@@ -92,6 +92,7 @@ public partial class RiderDuel
         _lab = lab;
         lab.OnStart = () =>
         {
+            ShowWorld(); // the lab stand comes down, the fight world returns
             RebuildAlliesForDeploy(); // the roster may have changed in the lab (owner's report)
             ApplyLoadout();
             lab.QueueFree();
@@ -107,8 +108,117 @@ public partial class RiderDuel
             GD.Print("LAB deploy: duel started with the lab loadout");
         };
         lab.OnSelectionChanged = () => SetRiderSelection(lab.PlayerSpecId, lab.EnemySpecId);
+        BuildLabStand();
         _cross.Visible = false; // no target cursor in the lab view (owner)
         _uiLayer.AddChild(lab);
+    }
+
+    // The lab's own view (owner, 2026-11-14: "It is better
+    // if Lab screen will have its own view / stand"): the
+    // fight world is hidden for the duration of the lab and
+    // the rider presents on a showroom stand - a dark disc
+    // with a brass rim under his feet inside a plain dark
+    // dome - the same on every map, no terrain behind him.
+    // The rider never moves or turns; Deploy restores the
+    // world's visibility and frees the stand. (This
+    // supersedes the same-day lab facing turn, which still
+    // left the arena rim in frame on Hyle.)
+    private Node3D _labStand;
+    private readonly System.Collections.Generic.List<Node3D> _labHidden = new();
+
+    private void BuildLabStand()
+    {
+        if (_player == null) return;
+        var c = _player.RootPos;
+        _labStand = new Node3D { Name = "LabStand" };
+        AddChild(_labStand);
+        // The disc and rim are hand-built ArrayMesh cylinders:
+        // a code-created CylinderMesh never drew in this scene
+        // (three probe captures; a BoxMesh in the same slot
+        // drew at once), so the stand builds its own.
+        var disc = new MeshInstance3D
+        {
+            Mesh = CylinderMeshData(16f, 0.8f),
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.055f, 0.065f), Roughness = 0.9f, Metallic = 0f },
+            Position = new Vector3(c.X, c.Y - 0.38f, c.Z)
+        };
+        _labStand.AddChild(disc);
+        var rim = new MeshInstance3D
+        {
+            Mesh = CylinderMeshData(16.5f, 0.22f),
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.42f, 0.33f, 0.16f), Roughness = 0.5f, Metallic = 0.25f },
+            Position = new Vector3(c.X, c.Y - 0.05f, c.Z)
+        };
+        _labStand.AddChild(rim);
+        var dome = new MeshInstance3D
+        {
+            Mesh = new SphereMesh { Radius = 42f, Height = 84f, RadialSegments = 32, Rings = 16 },
+            MaterialOverride = new StandardMaterial3D
+            {
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                AlbedoColor = new Color(0.045f, 0.055f, 0.075f), DisableFog = true,
+                CullMode = BaseMaterial3D.CullModeEnum.Back
+            },
+            Position = new Vector3(c.X, c.Y + 2f, c.Z),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+        };
+        _labStand.AddChild(dome);
+        // Hide the fight world (terrain, props, other riders,
+        // photo dressing); lights, the camera and the player
+        // stay. The snapshot restores exactly what was hidden.
+        foreach (var child in GetChildren())
+        {
+            if (child is Node3D n3 && n3 != _player && n3 != _labStand && n3 != _cam
+                && n3 is not Light3D && n3.Visible)
+            {
+                n3.Visible = false;
+                _labHidden.Add(n3);
+            }
+        }
+    }
+
+    // A capped cylinder as an ArrayMesh (top fan, side band,
+    // bottom fan), centred on the origin.
+    private static ArrayMesh CylinderMeshData(float radius, float height, int segments = 48)
+    {
+        var verts = new System.Collections.Generic.List<Vector3>();
+        var normals = new System.Collections.Generic.List<Vector3>();
+        var idx = new System.Collections.Generic.List<int>();
+        float hy = height / 2f;
+        void Tri(Vector3 a, Vector3 b, Vector3 cc, Vector3 n)
+        {
+            int s0 = verts.Count;
+            verts.Add(a); verts.Add(b); verts.Add(cc);
+            normals.Add(n); normals.Add(n); normals.Add(n);
+            idx.Add(s0); idx.Add(s0 + 1); idx.Add(s0 + 2);
+        }
+        Vector3 Ring(float a, float y) => new Vector3(Mathf.Cos(a) * radius, y, Mathf.Sin(a) * radius);
+        for (int i = 0; i < segments; i++)
+        {
+            float a0 = Mathf.Tau * i / segments, a1 = Mathf.Tau * (i + 1) / segments;
+            var t0 = Ring(a0, hy); var t1 = Ring(a1, hy);
+            var b0 = Ring(a0, -hy); var b1 = Ring(a1, -hy);
+            Tri(Vector3.Up * hy, t1, t0, Vector3.Up);            // top cap
+            Tri(Vector3.Down * hy, b0, b1, Vector3.Down);        // bottom cap
+            var mid = (t0 + t1) * 0.5f; mid.Y = 0f;
+            var sn = mid.Normalized();
+            Tri(b0, t1, t0, sn); Tri(b0, b1, t1, sn);            // side
+        }
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
+        arrays[(int)Mesh.ArrayType.Normal] = normals.ToArray();
+        arrays[(int)Mesh.ArrayType.Index] = idx.ToArray();
+        var mesh = new ArrayMesh();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+        return mesh;
+    }
+
+    private void ShowWorld()
+    {
+        foreach (var n in _labHidden) if (IsInstanceValid(n)) n.Visible = true;
+        _labHidden.Clear();
+        if (_labStand != null) { _labStand.QueueFree(); _labStand = null; }
     }
 
     // ---- rider construction from specs (round 22) ----
