@@ -89,7 +89,11 @@ uniform vec4 asph_tint : source_color = vec4(1.0);
 // else; it just stops changing its recipe mid-valley.
 uniform vec4 solid_zones[4];
 varying vec3 wpos;
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+varying vec3 wnorm;
+void vertex() {
+    wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+    wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
 void fragment() {
     vec4 sp = texture(splat, wpos.xz / WORLD_SIZE + 0.5);
     float zf = 0.0; vec3 zrgb = vec3(0.0);
@@ -104,24 +108,53 @@ void fragment() {
     sp = vec4(mix(sp.rgb, zrgb, zf), sp.a);
     float tot = max(sp.r + sp.g + sp.b + sp.a, 0.001);
     float wr = sp.r / tot, wg = sp.g / tot, wb = sp.b / tot, wa = sp.a / tot;
+    // Detail fades with distance: past ~150u the fine scale
+    // and the normal relief dissolve into per-pixel dither on
+    // open slopes (owner's streaked-mountains screenshot,
+    // 2026-11-15), so the mix leans on the coarse scale and
+    // the normal depth eases off as the ground recedes.
+    float camd = distance(wpos, CAMERA_POSITION_WORLD);
+    float far_k = smoothstep(150.0, 450.0, camd);
+    float detmix = mix(0.45, 0.85, far_k);
     vec2 uv1 = wpos.xz * 0.055;
     vec2 uv2 = wpos.xz * 0.019 + 0.37;
+    // Rock is TRIPLANAR (owner, 2026-11-15): the scanned rock
+    // set carries strong sedimentary strata, and planar XZ
+    // sampling wrapped those strata around every slope as
+    // contour bands, squashed into vertical streaks on steep
+    // faces. Blending the three world projections by the
+    // surface normal breaks the contour wrap - the strata run
+    // with the projection, not with the hillside.
+    vec3 tw = pow(abs(wnorm), vec3(4.0));
+    tw /= max(tw.x + tw.y + tw.z, 0.001);
+    vec3 rkAlb = vec3(0.0);
+    rkAlb += tw.y * mix(texture(rock_diff, uv1).rgb, texture(rock_diff, uv2).rgb, detmix);
+    rkAlb += tw.x * mix(texture(rock_diff, wpos.zy * 0.055).rgb, texture(rock_diff, wpos.zy * 0.019 + 0.37).rgb, detmix);
+    rkAlb += tw.z * mix(texture(rock_diff, wpos.xy * 0.055).rgb, texture(rock_diff, wpos.xy * 0.019 + 0.37).rgb, detmix);
+    vec3 rkNor = vec3(0.0);
+    rkNor += tw.y * texture(rock_nor, uv1).rgb;
+    rkNor += tw.x * texture(rock_nor, wpos.zy * 0.055).rgb;
+    rkNor += tw.z * texture(rock_nor, wpos.xy * 0.055).rgb;
+    vec3 rkArm = vec3(0.0);
+    rkArm += tw.y * texture(rock_arm, uv1).rgb;
+    rkArm += tw.x * texture(rock_arm, wpos.zy * 0.055).rgb;
+    rkArm += tw.z * texture(rock_arm, wpos.xy * 0.055).rgb;
     vec3 alb = vec3(0.0);
-    alb += wg * grass_tint.rgb * mix(texture(grass_diff, uv1).rgb, texture(grass_diff, uv2).rgb, 0.45);
-    alb += wb * dirt_tint.rgb * mix(texture(dirt_diff, uv1).rgb, texture(dirt_diff, uv2).rgb, 0.45);
-    alb += wr * rock_tint.rgb * mix(texture(rock_diff, uv1).rgb, texture(rock_diff, uv2).rgb, 0.45);
-    alb += wa * asph_tint.rgb * mix(texture(asph_diff, uv1).rgb, texture(asph_diff, uv2).rgb, 0.45);
+    alb += wg * grass_tint.rgb * mix(texture(grass_diff, uv1).rgb, texture(grass_diff, uv2).rgb, detmix);
+    alb += wb * dirt_tint.rgb * mix(texture(dirt_diff, uv1).rgb, texture(dirt_diff, uv2).rgb, detmix);
+    alb += wr * rock_tint.rgb * rkAlb;
+    alb += wa * asph_tint.rgb * mix(texture(asph_diff, uv1).rgb, texture(asph_diff, uv2).rgb, detmix);
     vec3 nrm = vec3(0.5, 0.5, 1.0);
     nrm += wg * (texture(grass_nor, uv1).rgb - vec3(0.5, 0.5, 1.0));
     nrm += wb * (texture(dirt_nor, uv1).rgb - vec3(0.5, 0.5, 1.0));
-    nrm += wr * (texture(rock_nor, uv1).rgb - vec3(0.5, 0.5, 1.0));
+    nrm += wr * (rkNor - vec3(0.5, 0.5, 1.0));
     nrm += wa * (texture(asph_nor, uv1).rgb - vec3(0.5, 0.5, 1.0));
     vec3 arm = vec3(1.0, 0.9, 0.0);
     arm *= wg * texture(grass_arm, uv1).rgb + wb * texture(dirt_arm, uv1).rgb
-         + wr * texture(rock_arm, uv1).rgb + wa * texture(asph_arm, uv1).rgb;
+         + wr * rkArm + wa * texture(asph_arm, uv1).rgb;
     ALBEDO = alb;
     NORMAL_MAP = nrm;
-    NORMAL_MAP_DEPTH = 0.9;
+    NORMAL_MAP_DEPTH = 0.9 * (1.0 - far_k * 0.7);
     ROUGHNESS = clamp(arm.g, 0.05, 1.0);
     AO = arm.r;
 }
