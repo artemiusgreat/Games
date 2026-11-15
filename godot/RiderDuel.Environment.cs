@@ -1438,6 +1438,10 @@ public partial class RiderDuel
     {
         var walkers = new System.Collections.Generic.List<RiderWalker> { _player, _enemy };
         if (_foe != null) walkers.Add(_foe.Walker);
+        // Team riders stomp too (owner's report, 2026-11-14:
+        // trees survived being walked on - the NPC walkers of
+        // story and bracket fights were never in this list).
+        foreach (var a in _allies) walkers.Add(a.Walker);
         foreach (var w in walkers)
         {
             if (IsDead(w)) continue;
@@ -1447,7 +1451,15 @@ public partial class RiderDuel
             {
                 if (d.Kind != "tree" || d.State != 0) continue;
                 var tp = new Vector2(d.Center.X, d.Center.Z);
-                if (wp.DistanceTo(tp) > w.CollisionRadius + d.Radius + 0.9f) continue;
+                // Reach is the CROWN's width, not the trunk's
+                // (owner, 2026-11-14): the visible canopy spans
+                // +-2u, so a rider whose body reaches the crown
+                // has reached the tree - measuring from the
+                // 0.7u trunk let riders brush the leaves and
+                // leave the tree standing.
+                float reach = d.Radius;
+                foreach (var cyl in d.Cyls) reach = Mathf.Max(reach, cyl.R);
+                if (wp.DistanceTo(tp) > w.CollisionRadius + reach + 0.9f) continue;
                 DestroyTree(d, 0.8f);
                 if (w == _player) _shake = Mathf.Max(_shake, 0.18f);
                 GD.Print($"DUEL STOMP {TagOf(w)} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
