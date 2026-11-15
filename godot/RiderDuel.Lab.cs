@@ -116,11 +116,12 @@ public partial class RiderDuel
     // The lab's own view (owner, 2026-11-14: "It is better
     // if Lab screen will have its own view / stand"): the
     // fight world is hidden for the duration of the lab and
-    // the rider presents on a showroom stand - a square
-    // dark plate with a brass trim under his feet inside a
-    // plain dark dome - the same on every map, no terrain
-    // behind him. (Square, not an oval plate: owner,
-    // 2026-11-15 - the plate's edges read as a horizon.)
+    // the rider presents on a showroom stand - a wide
+    // textured steel floor under his feet inside a gradient
+    // dome - the same on every map, no terrain behind him.
+    // (Square, not an oval plate: owner, 2026-11-15; then
+    // stretched past the frame and given a basic texture
+    // and light, so the floor reads as a horizon line.)
     // The rider never moves or turns; Deploy restores the
     // world's visibility and frees the stand. (This
     // supersedes the same-day lab facing turn, which still
@@ -134,30 +135,33 @@ public partial class RiderDuel
         var c = _player.RootPos;
         _labStand = new Node3D { Name = "LabStand" };
         AddChild(_labStand);
+        // The floor: a 160u steel deck, far wider than the
+        // frame, so its far edge is the horizon. A PlaneMesh,
+        // not a hand-built ArrayMesh: in this scene a built
+        // mesh's lit face never lit (three captures, with and
+        // without UVs, either culling), while primitive
+        // meshes take the sun and shadow normally. Fog-exempt
+        // like the dome: the scene's warm fog washed the
+        // first plates brown; a studio stand keeps its own
+        // colour.
         var disc = new MeshInstance3D
         {
-            Mesh = CylinderMeshData(22.63f, 0.8f, 4, Mathf.Tau / 8f),
-            // Fog-exempt like the dome: the scene's warm fog
-            // washed the dark plate brown in the first square
-            // capture; a studio stand keeps its own colour.
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.055f, 0.065f), Roughness = 0.9f, Metallic = 0f, DisableFog = true },
-            Position = new Vector3(c.X, c.Y - 0.38f, c.Z)
+            Mesh = new PlaneMesh { Size = new Vector2(160f, 160f) },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoTexture = PlateTexture(), Roughness = 0.75f, Metallic = 0.15f,
+                DisableFog = true
+            },
+            Position = new Vector3(c.X, c.Y + 0.02f, c.Z)
         };
         _labStand.AddChild(disc);
-        var rim = new MeshInstance3D
-        {
-            Mesh = CylinderMeshData(23.33f, 0.22f, 4, Mathf.Tau / 8f),
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.42f, 0.33f, 0.16f), Roughness = 0.5f, Metallic = 0.25f, DisableFog = true },
-            Position = new Vector3(c.X, c.Y - 0.05f, c.Z)
-        };
-        _labStand.AddChild(rim);
         var dome = new MeshInstance3D
         {
-            Mesh = new SphereMesh { Radius = 42f, Height = 84f, RadialSegments = 32, Rings = 16 },
+            Mesh = new SphereMesh { Radius = 120f, Height = 240f, RadialSegments = 32, Rings = 16 },
             MaterialOverride = new StandardMaterial3D
             {
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                AlbedoColor = new Color(0.045f, 0.055f, 0.075f), DisableFog = true,
+                AlbedoTexture = SkyGradientTexture(), DisableFog = true,
                 CullMode = BaseMaterial3D.CullModeEnum.Back
             },
             Position = new Vector3(c.X, c.Y + 2f, c.Z),
@@ -178,45 +182,86 @@ public partial class RiderDuel
         }
     }
 
-    // A capped prism as an ArrayMesh (top fan, side band,
-    // bottom fan), centred on the origin. segments = 4 with
-    // a 45-degree phase builds the stand's square plate:
-    // a code-created BoxMesh in the same slot rendered a
-    // warm brown the albedo never called for (two captures),
-    // while this hand-built mesh reads true.
-    private static ArrayMesh CylinderMeshData(float radius, float height, int segments = 48, float phase = 0f)
+    private static ImageTexture _standPlateTex;
+    // The deck's texture, drawn in code: one steel panel
+    // (brushed noise, seam border, bevel line, four rivets)
+    // blitted 16x16, so the 160u floor reads as 10u panels.
+    private static ImageTexture PlateTexture()
     {
-        var verts = new System.Collections.Generic.List<Vector3>();
-        var normals = new System.Collections.Generic.List<Vector3>();
-        var idx = new System.Collections.Generic.List<int>();
-        float hy = height / 2f;
-        void Tri(Vector3 a, Vector3 b, Vector3 cc, Vector3 n)
+        if (_standPlateTex != null) return _standPlateTex;
+        const int P = 128, N = 16;
+        var panel = Image.CreateEmpty(P, P, false, Image.Format.Rgb8);
+        var rng = new System.Random(0x57EE1);
+        var baseC = new Color(0.25f, 0.27f, 0.31f);
+        for (int y = 0; y < P; y++)
+        for (int x = 0; x < P; x++)
         {
-            int s0 = verts.Count;
-            verts.Add(a); verts.Add(b); verts.Add(cc);
-            normals.Add(n); normals.Add(n); normals.Add(n);
-            idx.Add(s0); idx.Add(s0 + 1); idx.Add(s0 + 2);
+            float nse = (float)(rng.NextDouble() - 0.5) * 0.05f;
+            float brush = Mathf.Sin(y * 0.9f) * 0.008f;
+            panel.SetPixel(x, y, new Color(baseC.R + nse + brush, baseC.G + nse + brush, baseC.B + nse + brush));
         }
-        Vector3 Ring(float a, float y) => new Vector3(Mathf.Cos(a) * radius, y, Mathf.Sin(a) * radius);
-        for (int i = 0; i < segments; i++)
+        var seam = new Color(0.10f, 0.11f, 0.13f);
+        var bevel = new Color(0.36f, 0.39f, 0.44f);
+        for (int i = 0; i < P; i++)
         {
-            float a0 = phase + Mathf.Tau * i / segments, a1 = phase + Mathf.Tau * (i + 1) / segments;
-            var t0 = Ring(a0, hy); var t1 = Ring(a1, hy);
-            var b0 = Ring(a0, -hy); var b1 = Ring(a1, -hy);
-            Tri(Vector3.Up * hy, t1, t0, Vector3.Up);            // top cap
-            Tri(Vector3.Down * hy, b0, b1, Vector3.Down);        // bottom cap
-            var mid = (t0 + t1) * 0.5f; mid.Y = 0f;
-            var sn = mid.Normalized();
-            Tri(b0, t1, t0, sn); Tri(b0, b1, t1, sn);            // side
+            panel.SetPixel(i, 0, seam); panel.SetPixel(i, 1, seam);
+            panel.SetPixel(i, P - 1, seam); panel.SetPixel(i, P - 2, seam);
+            panel.SetPixel(0, i, seam); panel.SetPixel(1, i, seam);
+            panel.SetPixel(P - 1, i, seam); panel.SetPixel(P - 2, i, seam);
+            panel.SetPixel(i, 3, bevel); panel.SetPixel(i, P - 4, bevel);
+            panel.SetPixel(3, i, bevel); panel.SetPixel(P - 4, i, bevel);
         }
-        var arrays = new Godot.Collections.Array();
-        arrays.Resize((int)Mesh.ArrayType.Max);
-        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-        arrays[(int)Mesh.ArrayType.Normal] = normals.ToArray();
-        arrays[(int)Mesh.ArrayType.Index] = idx.ToArray();
-        var mesh = new ArrayMesh();
-        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-        return mesh;
+        var rivet = new Color(0.42f, 0.46f, 0.52f);
+        foreach (var (rx, ry) in new[] { (9, 9), (P - 10, 9), (9, P - 10), (P - 10, P - 10) })
+            for (int y = -2; y <= 2; y++)
+            for (int x = -2; x <= 2; x++)
+                if (x * x + y * y <= 4) panel.SetPixel(rx + x, ry + y, x * x + y * y >= 3 ? seam : rivet);
+        var img = Image.CreateEmpty(P * N, P * N, false, Image.Format.Rgb8);
+        var full = new Rect2I(0, 0, P, P);
+        for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            img.BlitRect(panel, full, new Vector2I(i * P, j * P));
+        img.GenerateMipmaps();
+        _standPlateTex = ImageTexture.CreateFromImage(img);
+        return _standPlateTex;
+    }
+
+    private static ImageTexture _standSkyTex;
+    // The backdrop's vertical gradient: dark floor haze, a
+    // lighter horizon band, a darkening top. Symmetric
+    // enough that the sphere's V direction cannot flip it
+    // into nonsense.
+    private static ImageTexture SkyGradientTexture()
+    {
+        if (_standSkyTex != null) return _standSkyTex;
+        const int H = 256;
+        var img = Image.CreateEmpty(2, H, false, Image.Format.Rgb8);
+        var stops = new (float At, Color C)[]
+        {
+            (0.00f, new Color(0.030f, 0.038f, 0.052f)),
+            (0.38f, new Color(0.075f, 0.092f, 0.120f)),
+            (0.50f, new Color(0.135f, 0.160f, 0.200f)),
+            (0.62f, new Color(0.075f, 0.092f, 0.120f)),
+            (1.00f, new Color(0.035f, 0.045f, 0.062f))
+        };
+        for (int y = 0; y < H; y++)
+        {
+            float v = (float)y / (H - 1);
+            var col = stops[stops.Length - 1].C;
+            for (int k = 0; k + 1 < stops.Length; k++)
+            {
+                if (v >= stops[k].At && v <= stops[k + 1].At)
+                {
+                    float t = (v - stops[k].At) / (stops[k + 1].At - stops[k].At);
+                    col = stops[k].C.Lerp(stops[k + 1].C, t);
+                    break;
+                }
+            }
+            img.SetPixel(0, y, col);
+            img.SetPixel(1, y, col);
+        }
+        _standSkyTex = ImageTexture.CreateFromImage(img);
+        return _standSkyTex;
     }
 
     private void ShowWorld()
