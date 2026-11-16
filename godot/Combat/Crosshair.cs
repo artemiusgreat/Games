@@ -2,18 +2,19 @@ using Godot;
 
 // Center-screen crosshair for the duel scene (drawn, no textures),
 // with a hitmarker X that the weapon code flashes on a registered hit.
-// Sway (set by the duel when the player's head/sensors are destroyed)
-// offsets the whole reticle from screen center.
+// The reticle never wanders: there is no sway offset (the head-loss
+// "sensor sway" was removed at the owner's word, 2026-11-15).
 public partial class Crosshair : Control
 {
     public float Hitmark;
-    public Vector2 Sway;
     // Screen position of the reticle. Since round 27 (center-
     // crosshair aiming, the owner's pick) the duel sets this to the
-    // viewport center every frame; the field remains so the sway
-    // offset and the unset fallback below keep working.
+    // viewport center every frame.
     // Negative X = unset (fall back to screen center).
     public Vector2 ReticlePos = new Vector2(-999f, -999f);
+    // The centre the reticle was last drawn at (harness audit:
+    // the breakable suite asserts it never leaves screen centre).
+    public Vector2 LastCentre = new Vector2(-999f, -999f);
 
     public override void _Ready()
     {
@@ -32,7 +33,8 @@ public partial class Crosshair : Control
 
     public override void _Draw()
     {
-        var c = (ReticlePos.X > -100f ? ReticlePos : GetViewportRect().Size * 0.5f) + Sway;
+        var c = ReticlePos.X > -100f ? ReticlePos : GetViewportRect().Size * 0.5f;
+        LastCentre = c;
         // Owner's ask: the reticle must be unmissable - longer, thicker
         // arms in bright amber over a dark outline pass, so it reads
         // against sky, terrain and the rider's own hull alike.

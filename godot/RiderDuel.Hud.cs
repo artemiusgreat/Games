@@ -945,7 +945,7 @@ public partial class RiderDuel
         foreach (var g in _podGunsR) podRocketsR += g.Def.Rockets;
         if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L") && (podRocketsR > 0 || !hasPodR)) status.Add($"{podName} DEGRADED - LEFT POD LOST ({podRocketsL} ROCKETS)");
         else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R") && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED - RIGHT POD LOST ({podRocketsR} ROCKETS)");
-        if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED - CROSSHAIR SWAY");
+        if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED");
         _lblWeaponStatus.Text = string.Join("\n", status);
 
         _feedLabel.Text = string.Join("\n",

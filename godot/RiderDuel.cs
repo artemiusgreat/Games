@@ -1197,14 +1197,10 @@ public partial class RiderDuel : Node3D
             foreach (var a in _allies) a.Parts.StepDebris(dt);
         }
         UpdateHud();
-        // Player head destroyed: the reticle wanders (sensor loss).
-        if (!_partsPlayer.Alive("head") && !_playerDead)
-        {
-            _cross.Sway = new Vector2(
-                Mathf.Sin((float)_simT * 1.9f) * 13f,
-                Mathf.Sin((float)_simT * 2.7f + 0.8f) * 9f);
-        }
-        else _cross.Sway = Vector2.Zero;
+        // No crosshair sway: the reticle stays on screen centre
+        // whatever state the rider is in (owner, 2026-11-15 - the
+        // head-destroyed "sensor sway" drew a wandering figure-8
+        // and was removed at his word).
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_labOpen)
             UpdateReticle();
         UpdateCamera(_frozen ? 0f : dt);
