@@ -175,22 +175,6 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AttachDebris(byName);
         }
-        else if (riderId == "apollo")
-        {
-            // Tripo sculpt on its own Mixamo skeleton (owner
-            // upload, 2026-11-16): islands bound rigidly by
-            // surface-area majority; the head (helmet + antennae)
-            // and the left shoulder cap (the missile pod) are
-            // their own joined meshes - no torso carve needed.
-            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Pod_L");
-            AddPart("head", "HEAD", 50f, byName, "Head");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
-            AttachDebris(byName);
-        }
         else if (riderId == "hades" || riderId == "ares")
         {
             // Tripo sculpts on their own Mixamo skeletons (owner
@@ -355,7 +339,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes" || _riderId == "apollo" || _riderId == "hades" || _riderId == "ares" || _riderId == "amadeus")
+        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes" || _riderId == "hades" || _riderId == "ares" || _riderId == "amadeus")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)

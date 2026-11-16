@@ -246,34 +246,8 @@ public static class RiderSpecs
     };
 
 
-    // APOLLO (Tripo sculpt, 70t Heavy): the file's own Mixamo
-    // skeleton again (owner uploads, 2026-11-16), islands bound
-    // rigidly by surface-area majority with the arm corridor test
-    // and the leg-axis guard. The sculpt: a heavy cannon on the
-    // right arm, an energy left arm, the left shoulder cap split
-    // out as the missile pod, antennaed helmet as the head.
-    // Leanest of the four new chassis - the only one of them
-    // rated for thrusters. Knee pole measured +0.25 behind the
-    // hip-ankle line (Enyo's legs sit the same way) - no mirror.
-    // Caps sum to the 70t budget; all three types aboard.
-    public static readonly RiderSpec Apollo = new()
-    {
-        Id = "apollo", Name = "APOLLO", Tonnage = 70f, JumpCapable = true,
-        ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
-        Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
-        FlipKneePole = false,
-        Slots = new[]
-        {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 13f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 15f },
-        }
-    };
-
-
     // HADES (Tripo sculpt, 75t Heavy): its own Mixamo skeleton,
-    // same build recipe as Apollo. The sculpt: a heavy rotary
+    // same generic Tripo recipe. The sculpt: a heavy rotary
     // cannon on the right arm (its muzzle reaches past the fist -
     // the build's held-weapon reach rule binds it to the forearm),
     // a slim energy left arm, the left shoulder block as the
@@ -340,7 +314,7 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes, Apollo, Hades, Ares, Amadeus };
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes, Hades, Ares, Amadeus };
 
     // The free-for-all's third rider is drawn from this
     // priority list: the first entry that is not already the
@@ -426,13 +400,6 @@ public static class RiderSpecs
             ("arm_L", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),    // 20/20t
             ("torso", new[] { "ppc", "ppc", "medium_laser" }),                    // 21/21t
             ("pod_L", new[] { "lrm", "lrm" }),                                   // 20/20t
-        },
-        ["apollo"] = new[]
-        {
-            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun" }),      // 26/26t
-            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),            // 15/16t
-            ("torso", new[] { "large_laser", "large_laser", "medium_laser" }),   // 13/13t
-            ("pod_L", new[] { "lrm", "srm" }),                                   // 14/15t
         },
         ["hermes"] = new[]
         {
