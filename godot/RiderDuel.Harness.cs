@@ -2544,7 +2544,7 @@ public partial class RiderDuel
                 }
                 break;
 
-            case 7: // HEAD (Hector): pool rule + tracking lag; player sway
+            case 7: // HEAD (Hector): pool rule + tracking lag; player reticle stays centred
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
@@ -2555,6 +2555,11 @@ public partial class RiderDuel
                     if (Mathf.Abs(_hpEnemy - 290f) > 0.01f)
                         BFail($"head->pool rule: hectorHp={_hpEnemy:F1} (want 290 = 340 - 50)");
                     GD.Print("BRKTEST HEADPOOL PASS head hits burned head HP and pool (340 -> 290)");
+                    // Proof frame: the wrecked head must stay ON the
+                    // neck, charred and lolled in place (owner,
+                    // 2026-11-15: pieces sank/floated when the wreck
+                    // deformation pivoted on the model origin).
+                    QueueCapture("res://proof/break_hector_head.png", "bhead", "brkHector");
                     // Move the player to the Hector's flank: desired twist ~1 rad.
                     _player.Teleport(new Vector3(20f, Main.HeightAt(20f, 2f), 2f), 0f);
                     BStep(1);
@@ -2594,12 +2599,18 @@ public partial class RiderDuel
                 }
                 else if (_bStep == 3)
                 {
-                    float s = _cross.Sway.Length();
-                    if (s > _bDragMax) _bDragMax = s;
+                    // Owner (2026-11-15): no crosshair sway - with
+                    // the player's head gone the reticle must stay
+                    // exactly on screen centre.
+                    if (_cross.LastCentre.X > -100f)
+                    {
+                        float dev = (_cross.LastCentre - _cross.GetViewportRect().Size * 0.5f).Length();
+                        if (dev > _bDragMax) _bDragMax = dev;
+                    }
                     if (BStepT > 1.2)
                     {
-                        if (_bDragMax < 3f) BFail($"crosshair sway too small: max {_bDragMax:F1}px");
-                        GD.Print($"BRKTEST HEADSWAY PASS player head lost -> crosshair sway max {_bDragMax:F1}px");
+                        if (_bDragMax > 1f) BFail($"reticle wandered {_bDragMax:F1}px with the head gone (owner: no sway)");
+                        GD.Print($"BRKTEST HEADSTILL PASS player head lost -> reticle stays centred (max dev {_bDragMax:F2}px)");
                         ResetDuel();
                         BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
                         SetBPhase(8);
@@ -2755,7 +2766,7 @@ public partial class RiderDuel
     }
 
     private int _mPhase;
-    private float _mPhaseT, _mDistE0, _mDistF0;
+    private float _mPhaseT, _mDistE0, _mDistF0, _mDumpT;
     private Vector3 _mEnemyStart, _mFoeStart;
     private float _mMaxDisp, _mMaxHome, _mMaxHomeF, _mAggroD0;
 
@@ -3732,6 +3743,17 @@ public partial class RiderDuel
             _player.SetDrive(_playerYaw, 0f);
             UpdateEnemyAI(dt);                 // test branches drive the AI themselves (cf. FFA test)
             if (_foe != null) UpdateFoeAI(dt);
+            // Ground-contact audit (owner, 2026-11-15: patrolling
+            // riders' legs "don't touch the ground"): planted feet
+            // must read toe AND heel at ~0; swing feet show their
+            // clearance and the patrol speed for context.
+            _mDumpT += dt;
+            if (_mDumpT > 0.25f)
+            {
+                _mDumpT = 0f;
+                AuditPatrol("ENEMY", _enemy, _partsEnemy);
+                if (_foe != null) AuditPatrol("FOE", _foe.Walker, _foe.Parts);
+            }
             _mMaxDisp = Mathf.Max(_mMaxDisp, _enemy.RootPos.DistanceTo(_mEnemyStart));
             _mMaxHome = Mathf.Max(_mMaxHome, _enemy.RootPos.DistanceTo(PadWorld(1)));
             if (_foe != null) _mMaxHomeF = Mathf.Max(_mMaxHomeF, _foe.Walker.RootPos.DistanceTo(PadWorld(2)));
@@ -3768,6 +3790,27 @@ public partial class RiderDuel
             }
         }
         if (_mPhaseT > 90f && _mPhase != 99) { GD.PrintErr("MISSION FAIL: timeout"); GetTree().Quit(1); }
+    }
+
+    private void AuditPatrol(string tag, RiderWalker w, RiderParts parts)
+    {
+        var joints = w.DebugLegJoints();
+        var fwdW = RiderWalker.HeadingVec(w.LegsYaw);
+        for (int i = 0; i < 2; i++)
+        {
+            string partId = i == 0 ? "leg_L" : "leg_R";
+            string side = i == 0 ? "L" : "R";
+            if (joints[i].Item5)
+            {
+                var pg = parts.FootPitchGaps(partId, joints[i].Item4, fwdW);
+                GD.Print($"PATROL {tag} {side} PLANTED toe={pg.Toe:F3} heel={pg.Heel:F3} soleDiff={w.MaxPlantedDiff():F3} speed={w.Speed:F2}");
+            }
+            else
+            {
+                float gap = parts.FootVisualGap(partId);
+                GD.Print($"PATROL {tag} {side} SWING clearance={gap:F3} stepT={joints[i].Item6:F2} speed={w.Speed:F2}");
+            }
+        }
     }
 
     private void UpdateTerrainTest(float dt)
@@ -4054,6 +4097,22 @@ public partial class RiderDuel
             {
                 float Lat(Vector3 p) => (p - _enemy.RootPos).Dot(right);
                 GD.Print($"GAITDBG t={_gaitT:F2} {legName}: hipLat={Lat(hip):F3} kneeLat={Lat(knee):F3} ankleLat={Lat(ankle):F3} planted={planted} stepT={stepT:F2}");
+            }
+            // Ground-contact audit (owner, 2026-11-15: "legs don't
+            // touch the ground, gap between leg and shadow"): the
+            // walker's sole-point error next to the VISUAL foot
+            // bottom (lowest skinned foot vertex vs the terrain
+            // under it), so a solver error and a bind/geometry
+            // mismatch read as different numbers.
+            GD.Print($"GAITDBG t={_gaitT:F2} CONTACT soleDiffMax={_enemy.MaxPlantedDiff():F3} " +
+                $"footGapL={_partsEnemy.FootVisualGap("leg_L"):F3} footGapR={_partsEnemy.FootVisualGap("leg_R"):F3}");
+            var joints = _enemy.DebugLegJoints();
+            var fwdW = RiderWalker.HeadingVec(_enemy.LegsYaw);
+            for (int i = 0; i < 2; i++)
+            {
+                if (!joints[i].Item5) continue; // planted legs only
+                var pg = _partsEnemy.FootPitchGaps(i == 0 ? "leg_L" : "leg_R", joints[i].Item4, fwdW);
+                GD.Print($"GAITDBG t={_gaitT:F2} PITCH {(i == 0 ? "L" : "R")}: toeGap={pg.Toe:F3} heelGap={pg.Heel:F3}");
             }
         }
         if (_gaitT > 1.9f && _camMode != "enemySide" && _camMode != "enemyFront")
