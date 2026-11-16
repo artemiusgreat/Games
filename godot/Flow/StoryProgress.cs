@@ -11,7 +11,45 @@ using Godot;
 public static class StoryProgress
 {
     private const string SavePath = "user://story_progress.cfg";
+    private const string DonePath = "user://story_completed.cfg";
     private static int[] _counts; // per planet; null = not loaded
+    private static int[] _done;   // per planet: bitmask of completed missions
+
+    private static int[] DoneMasks
+    {
+        get
+        {
+            if (_done != null) return _done;
+            _done = new int[PlanetCount];
+            var f = FileAccess.Open(DonePath, FileAccess.ModeFlags.Read);
+            if (f != null)
+            {
+                var parts = f.GetAsText().Trim().Split(',');
+                f.Close();
+                if (parts.Length == PlanetCount)
+                    for (int p = 0; p < PlanetCount; p++)
+                        int.TryParse(parts[p], out _done[p]);
+            }
+            return _done;
+        }
+    }
+
+    private static void SaveDone()
+    {
+        var f = FileAccess.Open(DonePath, FileAccess.ModeFlags.Write);
+        if (f != null)
+        {
+            f.StoreString(string.Join(",", DoneMasks));
+            f.Close();
+        }
+    }
+
+    // A completed contract is done for good (owner,
+    // 2026-11-16): it stays visible in the offers but can no
+    // longer be signed again.
+    public static bool IsCompleted(int planet, int mission)
+        => planet >= 0 && planet < PlanetCount && mission >= 0 && mission < 31
+           && (DoneMasks[planet] & (1 << mission)) != 0;
 
     private static int PlanetCount => MissionCatalog.Planets.Count;
 
@@ -96,6 +134,11 @@ public static class StoryProgress
     public static void Complete(int planet, int mission)
     {
         if (planet < 0 || planet >= PlanetCount) return;
+        if (mission >= 0 && mission < 31 && !IsCompleted(planet, mission))
+        {
+            DoneMasks[planet] |= 1 << mission;
+            SaveDone();
+        }
         int cap = MissionCatalog.Planets[planet].Missions.Count;
         int want = Mathf.Min(mission + 2, cap);
         if (want > Counts[planet])
@@ -110,6 +153,8 @@ public static class StoryProgress
     {
         for (int p = 0; p < PlanetCount; p++) Counts[p] = 1;
         Save();
+        for (int p = 0; p < PlanetCount; p++) DoneMasks[p] = 0;
+        SaveDone();
         GD.Print("STORY progress reset: every planet back to its first mission");
     }
 }

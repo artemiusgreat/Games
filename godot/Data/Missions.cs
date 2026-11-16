@@ -132,10 +132,11 @@ public static class MissionCatalog
             "the Combine's own lance lands. The port bar tab is on them.",
             "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true, stars: true);
         M(thalassa, "Pharos", "Pharos", -0.30f, -0.34f,
-            "Base Defense", "Meridian Combine", 390000, 4,
-            "Pirates riding out of the storm belt hit Pharos at every low tide. Hold the port until the " +
-            "Combine's own lance lands - three days of raids, paid per day held, and the port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
+            "Convoy Escort", "Meridian Combine", 275000, 3,
+            "The Pharos light is the only thing the fuel barges steer by on the night run, and raiders " +
+            "have started shooting at the lamp house and picking the dark water for stragglers. Walk the " +
+            "causeway with the convoy and keep the light burning until the last barge is in.",
+            "Keeper Ana Serra", "Barges steer by my light, rider. Keep it lit - and keep me alive to tend it.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
         M(thalassa, "Helios", "Helios", 0.42f, 0.22f,
             "Raid", "House Corvane", 520000, 5,
             "The Helios platforms refine for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
@@ -170,10 +171,11 @@ public static class MissionCatalog
             "the Olympus perimeter for one night cycle. Salvage rights on everything you drop are yours.",
             "Dr. Ingrid Halvorsen", "We are scientists, not soldiers. Whatever walks out of that ice, please stop it.", WorldConfig.BiomeKind.Forest);
         M(kryos, "Tartarus", "Tartarus", 0.48f, -0.42f,
-            "Base Assault", "House Asterion", 560000, 5,
-            "A machine nest has taken the Tartarus pass and grows bolder every week. Asterion wants the pass " +
-            "cleared and the nest burned out, whatever it costs in frames. The largest purse on the planet.",
-            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.Forest);
+            "Base Assault", "House Asterion", 540000, 5,
+            "The Tartarus pass is the only road out of the northern ice, and a machine nest has sealed it. " +
+            "Asterion wants it open before the thaw strands three garrisons on the wrong side: go up the " +
+            "mountain, clear the nest out of the narrows, and hold the road until their engineers arrive.",
+            "Colonel Mara Voss", "Three garrisons are counting on that road, rider. Open it, and Asterion remembers its friends.", WorldConfig.BiomeKind.Forest);
         M(kryos, "Arcadia", "Arcadia", 0.02f, -0.55f,
             "Convoy Intercept", "Free Captains' League", 260000, 3,
             "A Combine fuel convoy leaves the Arcadia refinery under light escort. The League wants the fuel, not a " +

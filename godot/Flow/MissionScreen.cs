@@ -135,6 +135,13 @@ public partial class MissionScreen : Control
 
     private void Accept(int missionIdx)
     {
+        // Completed contracts are disabled (owner, 2026-11-16):
+        // they can be viewed but never signed again.
+        if (StoryProgress.IsCompleted(FlowMain.PlanetIndex, missionIdx))
+        {
+            Select(missionIdx);
+            return;
+        }
         FlowMain.MissionIndex = missionIdx;
         WorldConfig.SelectedMission = Planet.Missions[missionIdx];
         // The team for the contract is formed on the next
@@ -147,6 +154,8 @@ public partial class MissionScreen : Control
     public void HarnessAcceptFirst()
     {
         var un = StoryProgress.UnlockedList(FlowMain.PlanetIndex);
+        foreach (int mi in un)
+            if (!StoryProgress.IsCompleted(FlowMain.PlanetIndex, mi)) { Accept(mi); return; }
         if (un.Count > 0) Accept(un[0]);
     }
 
@@ -184,21 +193,23 @@ public partial class MissionScreen : Control
             var tx = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.Expand, MouseFilter = MouseFilterEnum.Ignore };
             tx.AddThemeConstantOverride("separation", 2);
             h.AddChild(tx);
+            bool doneRow = StoryProgress.IsCompleted(FlowMain.PlanetIndex, idx);
             var patron = FlowUi.NavHeading(mm.Patron, 14,
-                mi == FlowMain.MissionIndex ? FlowUi.Gold : FlowUi.Ink);
+                doneRow ? FlowUi.Dim : mi == FlowMain.MissionIndex ? FlowUi.Gold : FlowUi.Ink);
             patron.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(patron);
-            var pitch = FlowUi.MakeLabel($"“{mm.Pitch}”", 12, FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
+            var pitch = FlowUi.MakeLabel($"“{mm.Pitch}”", 12, doneRow ? FlowUi.Dim : FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
             pitch.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(pitch);
             var meta = FlowUi.MakeLabel($"{mm.Name} · {mm.Type} · {mm.Payment:N0} credits · Threat {FlowUi.ThreatPips(mm.Threat)}", 11, FlowUi.Dim);
             meta.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(meta);
             bool isSigned = signed == mm;
-            var b = FlowUi.MakeButton(isSigned ? "Signed" : "Accept", 13);
+            bool isDone = StoryProgress.IsCompleted(FlowMain.PlanetIndex, idx);
+            var b = FlowUi.MakeButton(isDone ? "Completed" : isSigned ? "Signed" : "Accept", 13);
             b.CustomMinimumSize = new Vector2(124f, 0f);
             b.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            b.Disabled = isSigned;
+            b.Disabled = isSigned || isDone;
             b.Pressed += () => Accept(idx);
             h.AddChild(b);
             _offers.AddChild(row);
