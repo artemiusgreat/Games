@@ -245,7 +245,102 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes };
+
+    // APOLLO (Tripo sculpt, 70t Heavy): the file's own Mixamo
+    // skeleton again (owner uploads, 2026-11-16), islands bound
+    // rigidly by surface-area majority with the arm corridor test
+    // and the leg-axis guard. The sculpt: a heavy cannon on the
+    // right arm, an energy left arm, the left shoulder cap split
+    // out as the missile pod, antennaed helmet as the head.
+    // Leanest of the four new chassis - the only one of them
+    // rated for thrusters. Knee pole measured +0.25 behind the
+    // hip-ankle line (Enyo's legs sit the same way) - no mirror.
+    // Caps sum to the 70t budget; all three types aboard.
+    public static readonly RiderSpec Apollo = new()
+    {
+        Id = "apollo", Name = "APOLLO", Tonnage = 70f, JumpCapable = true,
+        ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
+        Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
+            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 13f },
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 15f },
+        }
+    };
+
+
+    // HADES (Tripo sculpt, 75t Heavy): its own Mixamo skeleton,
+    // same build recipe as Apollo. The sculpt: a heavy rotary
+    // cannon on the right arm (its muzzle reaches past the fist -
+    // the build's held-weapon reach rule binds it to the forearm),
+    // a slim energy left arm, the left shoulder block as the
+    // missile pod, a small head between two tall antennae (the
+    // antennae ride the torso). Knee pole measured forward of
+    // the hip-ankle line - no mirror. Caps sum to 75t.
+    public static readonly RiderSpec Hades = new()
+    {
+        Id = "hades", Name = "HADES", Tonnage = 75f, JumpCapable = false,
+        ModelPath = "res://assets/hades.fbx", PartsId = "hades", MaxHp = 265f,
+        Height = 13.5f, Radius = 2.0f, StepTime = 0.52f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.4f, BaseSpeed = 50f / 9f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 12f },
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+        }
+    };
+
+    // ARES (Tripo sculpt, 85t Heavy): its own Mixamo skeleton,
+    // same build recipe. The sculpt: gun clusters under BOTH
+    // forearms, a glass canopy for a head, the left shoulder
+    // block as the missile pod. Knee pole measured forward -
+    // no mirror. Caps sum to 85t; defaults fill every slot.
+    public static readonly RiderSpec Ares = new()
+    {
+        Id = "ares", Name = "ARES", Tonnage = 85f, JumpCapable = false,
+        ModelPath = "res://assets/ares.fbx", PartsId = "ares", MaxHp = 295f,
+        Height = 13.0f, Radius = 2.3f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.2f, BaseSpeed = 50f / 9f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 20f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+        }
+    };
+
+
+    // AMADEUS (Tripo sculpt, 90t Heavy): the file came WITHOUT
+    // a skeleton, so the rig is hand-authored from the sculpt's
+    // measured landmarks (the Medea path) - pelvis at the waist
+    // block, knees bowed 0.28 forward of the hip-ankle line (no
+    // mirror). The sculpt: a boxy assault frame, forearm guns
+    // under both arms, and a sensor box cluster on the RIGHT
+    // shoulder - split out as the missile pod; the cockpit dome
+    // is fused into the torso slab, so the head is carved from
+    // it in RiderParts. Caps sum to 90t.
+    public static readonly RiderSpec Amadeus = new()
+    {
+        Id = "amadeus", Name = "AMADEUS", Tonnage = 90f, JumpCapable = false,
+        ModelPath = "res://assets/amadeus.fbx", PartsId = "amadeus", MaxHp = 310f,
+        Height = 13.5f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
+            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 22f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes, Apollo, Hades, Ares, Amadeus };
 
     // The free-for-all's third rider is drawn from this
     // priority list: the first entry that is not already the
@@ -310,6 +405,34 @@ public static class RiderSpecs
             ("arm_L", new[] { "autocannon", "autocannon" }), // 24/24t
             ("torso", new[] { "ppc", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 19/19t
             ("pod_R", new[] { "lrm", "lrm", "srm" }),                              // 24/24t
+        },
+        ["amadeus"] = new[]
+        {
+            ("arm_L", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),   // 20/22t
+            ("arm_R", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),   // 20/22t
+            ("torso", new[] { "ppc", "ppc", "large_laser", "small_laser" }),     // 24/24t
+            ("pod_R", new[] { "lrm", "lrm" }),                                   // 20/22t
+        },
+        ["hades"] = new[]
+        {
+            ("arm_R", new[] { "ac20", "autocannon" }),                           // 28/28t
+            ("arm_L", new[] { "ppc", "large_laser" }),                           // 14/14t
+            ("torso", new[] { "large_laser", "large_laser", "small_laser", "small_laser" }), // 12/12t
+            ("pod_L", new[] { "lrm", "lrm" }),                                   // 20/21t
+        },
+        ["ares"] = new[]
+        {
+            ("arm_R", new[] { "autocannon", "autocannon" }),                     // 24/24t
+            ("arm_L", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),    // 20/20t
+            ("torso", new[] { "ppc", "ppc", "medium_laser" }),                    // 21/21t
+            ("pod_L", new[] { "lrm", "lrm" }),                                   // 20/20t
+        },
+        ["apollo"] = new[]
+        {
+            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun" }),      // 26/26t
+            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),            // 15/16t
+            ("torso", new[] { "large_laser", "large_laser", "medium_laser" }),   // 13/13t
+            ("pod_L", new[] { "lrm", "srm" }),                                   // 14/15t
         },
         ["hermes"] = new[]
         {

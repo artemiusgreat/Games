@@ -175,6 +175,60 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AttachDebris(byName);
         }
+        else if (riderId == "apollo")
+        {
+            // Tripo sculpt on its own Mixamo skeleton (owner
+            // upload, 2026-11-16): islands bound rigidly by
+            // surface-area majority; the head (helmet + antennae)
+            // and the left shoulder cap (the missile pod) are
+            // their own joined meshes - no torso carve needed.
+            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Pod_L");
+            AddPart("head", "HEAD", 50f, byName, "Head");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AttachDebris(byName);
+        }
+        else if (riderId == "hades" || riderId == "ares")
+        {
+            // Tripo sculpts on their own Mixamo skeletons (owner
+            // uploads, 2026-11-16): the generic island build -
+            // head and left-shoulder pod are their own joined
+            // meshes, no torso carve needed.
+            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Pod_L");
+            AddPart("head", "HEAD", 50f, byName, "Head");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AttachDebris(byName);
+        }
+        else if (riderId == "amadeus")
+        {
+            // Tripo sculpt with a hand-authored rig (owner
+            // upload, 2026-11-16 - the file had no skeleton).
+            // The cockpit dome is fused into the torso slab, so
+            // the head is carved out of the Torso mesh here: the
+            // dome is the top-centre mass (census: |x| <= 1.25,
+            // z >= 12.05 in build space; the shoulder boxes start
+            // at |x| 1.55). The right-shoulder sensor cluster is
+            // the build's own Pod_R mesh.
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                ("Head", p => Mathf.Abs(p.X) <= 1.25f && p.Y >= 12.05f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
+            AddPart("pod_R", "RIGHT SHOULDER", 45f, byName, "Pod_R");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AttachDebris(byName);
+        }
         else if (riderId == "prometheus")
         {
             // Hellbringer kit: the head is the cockpit hood region
@@ -301,7 +355,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes")
+        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes" || _riderId == "apollo" || _riderId == "hades" || _riderId == "ares" || _riderId == "amadeus")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
