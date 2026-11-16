@@ -216,7 +216,36 @@ public static class RiderSpecs
         }
     };
 
-    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus };
+    // HERMES (Orion, 75t Heavy): Tripo sculpt with its own
+    // Mixamo skeleton, adopted 2026-11-16 at the owner's word
+    // ("it should already contain rigs, use them") - the file's
+    // joints are the game's joints, renamed to the game bone
+    // vocabulary; fragments were split into loose islands and
+    // bound rigidly, one bone per island, by surface-area
+    // majority across the joint planes (the Hector shin rule).
+    // The sculpt: autocannon right arm, laser left arm, the
+    // LRM honeycomb on the left shoulder (its own pod part),
+    // recessed cockpit between the shoulders (Radius 2.0 is the
+    // torso's honest half-width; the head sits back, hard to
+    // snipe from the front - sculpt-true). Knee pole measured
+    // +0.58 forward of the hip-ankle line - no mirror. Caps
+    // sum to the 75t budget; all three types aboard.
+    public static readonly RiderSpec Hermes = new()
+    {
+        Id = "hermes", Name = "HERMES", Tonnage = 75f, JumpCapable = false,
+        ModelPath = "res://assets/hermes.fbx", PartsId = "hermes", MaxHp = 260f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 50f / 9f,
+        FlipKneePole = false,
+        Slots = new[]
+        {
+            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
+            new SlotDef { Id = "pod_L", Display = "LRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+        }
+    };
+
+    public static readonly RiderSpec[] All = { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes };
 
     // The free-for-all's third rider is drawn from this
     // priority list: the first entry that is not already the
@@ -281,6 +310,13 @@ public static class RiderSpecs
             ("arm_L", new[] { "autocannon", "autocannon" }), // 24/24t
             ("torso", new[] { "ppc", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 19/19t
             ("pod_R", new[] { "lrm", "lrm", "srm" }),                              // 24/24t
+        },
+        ["hermes"] = new[]
+        {
+            ("arm_R", new[] { "ac20", "machine_gun", "machine_gun" }),             // 20/24t
+            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),              // 15/16t
+            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
+            ("torso", new[] { "large_laser", "large_laser", "medium_laser", "small_laser" }), // 14/14t
         },
     };
 }

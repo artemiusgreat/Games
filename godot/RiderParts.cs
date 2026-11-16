@@ -153,6 +153,28 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AttachDebris(byName);
         }
+        else if (riderId == "hermes")
+        {
+            // Orion sculpt on its own Mixamo skeleton (owner,
+            // 2026-11-16: "it should already contain rigs, use
+            // them"): the file's joints, renamed to the game
+            // bones; fragments split into loose islands and
+            // bound rigidly by surface-area majority, so the
+            // parts are whole islands - the LRM honeycomb is
+            // one joined mesh (LRMPod), the cockpit/antennae
+            // one Head mesh. No torso carve needed: Tripo kept
+            // the head and the rack as their own islands.
+            // (The right forearm's biggest island is also its
+            // elbow piece, so arm_R has no separate Elbow mesh.)
+            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart("pod_L", "LRM RACK", 45f, byName, "LRMPod");
+            AddPart("head", "HEAD", 50f, byName, "Head");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Forearm_R");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AttachDebris(byName);
+        }
         else if (riderId == "prometheus")
         {
             // Hellbringer kit: the head is the cockpit hood region
@@ -279,7 +301,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector")
+        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
