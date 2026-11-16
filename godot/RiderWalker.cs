@@ -79,7 +79,6 @@ public partial class RiderWalker : Node3D
     private readonly Leg _legR = new Leg { Name = "R" };
 
     private int _torsoBone = -1;
-    private int _elbowL = -1, _elbowR = -1;
     private Basis _torsoM0;
     private Vector3 _torsoRestOrigin;
     private Vector3 _torsoFwdBoneLocal = Vector3.Forward;
@@ -320,8 +319,6 @@ public partial class RiderWalker : Node3D
         GD.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
 
         _torsoBone = _skel.FindBone("torso");
-        _elbowL = _skel.FindBone("elbow_L");
-        _elbowR = _skel.FindBone("elbow_R");
         InitLegs(spawnPos);
         if (_legL.Hip < 0 || _legR.Hip < 0) { GD.PrintErr($"{cfg.Label} FAIL: leg bones not found"); return; }
 
@@ -972,32 +969,7 @@ public partial class RiderWalker : Node3D
         SolveLeg(_legL);
         SolveLeg(_legR);
         SolveTorso();
-        RaiseElbow(_elbowL);
-        RaiseElbow(_elbowR);
     }
-
-    // Shooting stance (owner, 2026-11-16): bend both elbows by
-    // Pose.ElbowRaiseRad on top of the rig's rest pose, so the
-    // forearms and their guns point forward instead of hanging.
-    // The bend is a rotation of the elbow bone's evaluated global
-    // basis about the torso's world right axis at the elbow's own
-    // origin - the shoulder chain is untouched, and because the
-    // part hit-boxes live in bone space they follow the arm.
-    private void RaiseElbow(int bone)
-    {
-        if (bone < 0 || _skel == null) return;
-        var pose = _skel.GetBoneGlobalPose(bone);
-        var skelB = _skelGlobal.Basis.Orthonormalized();
-        var bw = skelB * pose.Basis.Orthonormalized();
-        var f = EngineTorsoFacing();
-        f.Y = 0f;
-        if (f.LengthSquared() < 0.01f) return;
-        var right = f.Normalized().Cross(Vector3.Up).Normalized();
-        var raised = new Basis(right, -Pose.ElbowRaiseRad) * bw;
-        _skel.SetBoneGlobalPoseOverride(bone,
-            new Transform3D(skelB.Transposed() * raised, pose.Origin), 1f, true);
-    }
-
     private void SolveTorso()
     {
         if (_torsoBone < 0 || _skel == null) return;

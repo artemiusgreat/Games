@@ -39,19 +39,6 @@ public static class Aim
     public const float FarRange = 1500f;
 }
 
-/// <summary>
-/// Rest-pose adjustments the walker applies to every rider.
-/// ElbowRaiseRad is the elbow bend (radians) added on top of each
-/// rig's authored rest pose, so the forearms - and the guns
-/// mounted on them - point forward in a shooting stance instead
-/// of hanging straight down at the rider's sides (owner,
-/// 2026-11-16: "raise elbows for all riders").
-/// </summary>
-public static class Pose
-{
-    public const float ElbowRaiseRad = 1.15f;
-}
-
 /// <summary>Camera modes (the duel camera's state vocabulary).</summary>
 public static class CamModes
 {
