@@ -79,6 +79,7 @@ public partial class RiderWalker : Node3D
     private readonly Leg _legR = new Leg { Name = "R" };
 
     private int _torsoBone = -1;
+    private int _elbowL = -1, _elbowR = -1;
     private Basis _torsoM0;
     private Vector3 _torsoRestOrigin;
     private Vector3 _torsoFwdBoneLocal = Vector3.Forward;
@@ -143,6 +144,7 @@ public partial class RiderWalker : Node3D
     private int _plantedFrames;
     private float _hipRiseW;
     private float _hipAboveHolderW;
+    private float _strideBudgetW; // max half-stride (world units) the leg geometry can plant without over-extending
 
     public bool StepMidCrossed { get; private set; }
     public string Label => _cfg.Label;
@@ -318,6 +320,8 @@ public partial class RiderWalker : Node3D
         GD.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
 
         _torsoBone = _skel.FindBone("torso");
+        _elbowL = _skel.FindBone("elbow_L");
+        _elbowR = _skel.FindBone("elbow_R");
         InitLegs(spawnPos);
         if (_legL.Hip < 0 || _legR.Hip < 0) { GD.PrintErr($"{cfg.Label} FAIL: leg bones not found"); return; }
 
@@ -391,6 +395,15 @@ public partial class RiderWalker : Node3D
         var hipWL = skelG * _legL.Hrest;
         var hipWR = skelG * _legR.Hrest;
         _hipAboveHolderW = 0.5f * ((hipWL.Y - Position.Y) + (hipWR.Y - Position.Y));
+        // Stride budget: with the hips riding hipRiseW above the soles,
+        // a planted foot can sit at most sqrt(reach^2 - hipRise^2) of
+        // horizontal offset from the hip before the leg is bone-straight
+        // and the IK clamp leaves the sole hovering. Near-straight rigs
+        // (the Enyo-legged riders stand at 99% of reach in the sculpt)
+        // blow this budget at run speed under the pendulum stride -
+        // both feet at the extremes, neither touching (owner report,
+        // 2026-11-16). The 0.97 keeps a whisker of bend in reserve.
+        _strideBudgetW = 0.97f * Mathf.Sqrt(Mathf.Max(reachW * reachW - _hipRiseW * _hipRiseW, 0.42f));
         GD.Print($"{_cfg.Label} reachW={reachW:F3} dStand={dStand:F3} hipRiseW={_hipRiseW:F3} hipAboveHolderW={_hipAboveHolderW:F3}");
     }
 
@@ -588,16 +601,20 @@ public partial class RiderWalker : Node3D
     {
         var vel = HeadingVec(_legsYaw) * _speed;
         // Pendulum stride (owner, 2026-11-16): the plant point
-        // is the home slot of the root predicted 1.5 step-times
-        // ahead, so after the swing's own step-time of root
-        // travel the foot lands half a cycle AHEAD of the body -
-        // the same half-cycle the trigger lets it trail BEHIND
-        // (see GaitStep). The old lead (StepTime + 0.10, plus a
-        // flat vel*0.30) grew with speed while the lift
-        // threshold stayed fixed, so at run speed the legs
-        // reached ~4.7u ahead but lifted only ~2.0u behind
-        // (measured, STRIDEDBG): thrown forward, no pendulum.
-        var predRoot = _rootPos + vel * (1.5f * _cfg.StepTime);
+        // is the home slot of the root predicted ahead so that,
+        // after the swing's own step-time of root travel, the
+        // foot lands the same distance AHEAD of the body that
+        // the trigger lets it trail BEHIND (see GaitStep):
+        // prediction time = StepTime + trail / speed, which is
+        // exactly 1.5 step-times at the uncapped half-stride
+        // trail. The old lead (StepTime + 0.10, plus a flat
+        // vel*0.30) grew with speed while the lift threshold
+        // stayed fixed, so at run speed the legs reached ~4.7u
+        // ahead but lifted only ~2.0u behind (measured,
+        // STRIDEDBG): thrown forward, no pendulum.
+        float trail = Mathf.Min(Mathf.Abs(_speed) * _cfg.StepTime * 0.5f, _strideBudgetW);
+        float predT = _cfg.StepTime + (Mathf.Abs(_speed) > 0.01f ? trail / Mathf.Abs(_speed) : 0f);
+        var predRoot = _rootPos + vel * predT;
         var home = HomeSlot(leg, predRoot);
         leg.StepFrom = leg.SoleTarget;
         leg.StepTo = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
@@ -790,7 +807,7 @@ public partial class RiderWalker : Node3D
             // StepThreshold made the trail speed-independent).
             // The 0.65 floor keeps crawl and turn-in-place steps
             // from shrinking to shuffles.
-            float threshold = settling ? 0.10f : Mathf.Max(0.65f, _speed * _cfg.StepTime * 0.5f);
+            float threshold = settling ? 0.10f : Mathf.Min(Mathf.Max(0.65f, _speed * _cfg.StepTime * 0.5f), Mathf.Max(_strideBudgetW, 0.65f));
             Leg best = null; float bestLag = threshold;
             foreach (var leg in new[] { _legL, _legR })
             {
@@ -955,6 +972,30 @@ public partial class RiderWalker : Node3D
         SolveLeg(_legL);
         SolveLeg(_legR);
         SolveTorso();
+        RaiseElbow(_elbowL);
+        RaiseElbow(_elbowR);
+    }
+
+    // Shooting stance (owner, 2026-11-16): bend both elbows by
+    // Pose.ElbowRaiseRad on top of the rig's rest pose, so the
+    // forearms and their guns point forward instead of hanging.
+    // The bend is a rotation of the elbow bone's evaluated global
+    // basis about the torso's world right axis at the elbow's own
+    // origin - the shoulder chain is untouched, and because the
+    // part hit-boxes live in bone space they follow the arm.
+    private void RaiseElbow(int bone)
+    {
+        if (bone < 0 || _skel == null) return;
+        var pose = _skel.GetBoneGlobalPose(bone);
+        var skelB = _skelGlobal.Basis.Orthonormalized();
+        var bw = skelB * pose.Basis.Orthonormalized();
+        var f = EngineTorsoFacing();
+        f.Y = 0f;
+        if (f.LengthSquared() < 0.01f) return;
+        var right = f.Normalized().Cross(Vector3.Up).Normalized();
+        var raised = new Basis(right, -Pose.ElbowRaiseRad) * bw;
+        _skel.SetBoneGlobalPoseOverride(bone,
+            new Transform3D(skelB.Transposed() * raised, pose.Origin), 1f, true);
     }
 
     private void SolveTorso()

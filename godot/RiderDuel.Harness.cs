@@ -3939,7 +3939,11 @@ public partial class RiderDuel
                     // 4.2 u/s^2 acceleration ramp), not the whole window.
                 _player.SetDrive(0f, _playerSpec.MaxSpeed * RunFactor);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
-                if (_tRunMark < 0f && _tPhaseT > 2.0) { _tRunFrom = _player.RootPos; _tRunMark = (float)_tPhaseT; }
+                // Steady segment starts once the rider is actually at
+                // run speed (spec Accel varies 2.4-4.2 across the roster;
+                // a fixed 2.0s mark measured the acceleration ramp of the
+                // slow-Accel riders and failed them on speed alone).
+                if (_tRunMark < 0f && (_player.Speed >= 0.95f * _playerSpec.MaxSpeed * RunFactor || _tPhaseT > 5.5)) { _tRunFrom = _player.RootPos; _tRunMark = (float)_tPhaseT; }
                 if (_tRunMark >= 0f) // stance audit: how far apart do the feet get at run speed?
                 {
                     var j = _player.DebugLegJoints();
@@ -3949,7 +3953,7 @@ public partial class RiderDuel
                     _tRunMaxSplit = Mathf.Max(_tRunMaxSplit, Mathf.Abs(rel.Dot(fwdR)));
                     _tRunMaxLat = Mathf.Max(_tRunMaxLat, Mathf.Abs(rel.Dot(rgtR)));
                 }
-                if (_tPhaseT > 4.2)
+                if (_tRunMark >= 0f && _tPhaseT - _tRunMark > 2.2)
                 {
                     var d = new Vector2(_player.RootPos.X - _tRunFrom.X, _player.RootPos.Z - _tRunFrom.Z).Length();
                     float avg = d / ((float)_tPhaseT - _tRunMark);
