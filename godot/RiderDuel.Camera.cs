@@ -372,7 +372,11 @@ public partial class RiderDuel
             float blockT = boom;
             foreach (float drop in new[] { 0f, 0.35f * _playerSpec.Height })
             {
-                var hit = _hit.Ray(anchor - Vector3.Up * drop, -aimDir, boom, Roles.Player);
+                // Camera rays ignore ALL riders (owner, 2026-11-15):
+                // the camera tracks only the player's rider, so a
+                // teammate or foe crossing the boom line must not
+                // read as a blocker. Terrain and props still block.
+                var hit = _hit.Ray(anchor - Vector3.Up * drop, -aimDir, boom, Roles.Player, 0f, true);
                 if (hit.Hit && hit.T < blockT) blockT = hit.T;
             }
             if (blockT < boom)
@@ -403,7 +407,7 @@ public partial class RiderDuel
                     foreach (var pp in probes)
                     {
                         var to = pp - cand;
-                        if (_hit.Ray(cand, to, to.Length() - 0.3f, Roles.Player).Hit) { cleared = false; break; }
+                        if (_hit.Ray(cand, to, to.Length() - 0.3f, Roles.Player, 0f, true).Hit) { cleared = false; break; }
                     }
                     if (cleared) target = cand;
                 }
