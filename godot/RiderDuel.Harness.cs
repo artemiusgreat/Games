@@ -2597,6 +2597,12 @@ public partial class RiderDuel
             case 7: // HEAD (Hector): pool rule + tracking lag; player reticle stays centred
                 _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
+                // The angled head ray races a sub-decimetre margin at
+                // the cylinder rim (see CraftRayHit); the margin rides
+                // on the model's AABB-centred placement in
+                // RiderWalker.Init, so a model whose AABB grows (e.g.
+                // a baked pose change) can flip it without any code
+                // change here.
                 if (_bStep == 0)
                 {
                     CraftRayHit(_enemy, "head", 25f);
