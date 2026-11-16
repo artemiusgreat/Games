@@ -60,12 +60,7 @@ public sealed class HitModel
 
     // inflateProps widens PROP cylinders for this cast only (the
     // laser's hit thickness - the beam visual stays hair-thin).
-    // ignoreRiders skips every rider capsule and part box: the
-    // chase camera casts with it, because the camera tracks only
-    // the player's rider (owner, 2026-11-15) - a teammate crossing
-    // behind the player used to read as a blocker and yanked the
-    // camera up/down or collapsed its boom.
-    public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId, float inflateProps = 0f, bool ignoreRiders = false)
+    public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId, float inflateProps = 0f)
     {
         dir = dir.Normalized();
         var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
@@ -83,7 +78,7 @@ public sealed class HitModel
             float t = RayCylinder(from, dir, p.P, p.R + inflateProps, p.BaseY, p.Height, best.T);
             if (t >= 0f) { best.Hit = true; best.T = t; best.Target = Roles.Prop; }
         }
-        if (!ignoreRiders) foreach (var m in Riders)
+        foreach (var m in Riders)
         {
             if (m.Id == ignoreId) continue;
             var root = m.Root();

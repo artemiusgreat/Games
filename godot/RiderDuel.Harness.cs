@@ -1010,6 +1010,33 @@ public partial class RiderDuel
 
     private int _boomCheckStage = -1;
     private float _boomCheckT;
+    private int _boomCheckFails;
+    // The camera contract (owner, 2026-11-15): the chase camera
+    // sits EXACTLY on the boom formula - anchor minus aim dir
+    // times boom, with only the steep-pitch shortening and the
+    // floor clamp applied. Any deviation means something (rider,
+    // building, terrain) moved the camera, which is now banned.
+    private void BoomAssert(string tag, float pitch)
+    {
+        float k = _playerSpec.Height / 13f;
+        var aimDir = AimDirWorld();
+        float upRamp = Mathf.Abs(aimDir.Y) / 0.9757f;
+        var anchor = _player.RootPos + Vector3.Up * (_playerSpec.Height * (1.15f + 0.22f * upRamp));
+        float boom = 26f * k;
+        if (aimDir.Y > 0.05f)
+        {
+            float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + 1.3f);
+            boom = Mathf.Min(boom, Mathf.Max(8f * k, clearance / aimDir.Y));
+        }
+        var expected = anchor - aimDir * boom;
+        float fy = Main.HeightAt(expected.X, expected.Z) + 1.3f;
+        if (expected.Y < fy) expected.Y = fy;
+        float dev = _cam.GlobalPosition.DistanceTo(expected);
+        bool ok = dev < 0.15f;
+        if (!ok) _boomCheckFails++;
+        GD.Print($"BOOMCHECK {tag} pitch={pitch:F2} dev={dev:F3} {(ok ? "PASS" : "FAIL")} camPos={_cam.GlobalPosition} expected={expected}");
+    }
+
     private void UpdateBoomCheck(float dt)
     {
         _aimPoint = TorsoAimPoint();
@@ -1040,6 +1067,7 @@ public partial class RiderDuel
             var head = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
             var feet = _cam.UnprojectPosition(_player.RootPos);
             GD.Print($"BOOMCHECK city pitch={pitch:F2} camPos={_cam.GlobalPosition} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) viewport={vp}");
+            BoomAssert("city", pitch);
             var anch = _player.RootPos + Vector3.Up * (_playerSpec.Height * 1.15f);
             var blk = _hit.Ray(anch, -AimDirWorld(), 26f, Roles.Player);
             GD.Print($"BOOMDBG root={_player.RootPos} anchor={anch} terrainAtCam={Main.HeightAt(_cam.GlobalPosition.X, _cam.GlobalPosition.Z):F1} blockHit={blk.Hit} blockT={blk.T:F1} blockTarget={blk.Target}");
@@ -1051,6 +1079,28 @@ public partial class RiderDuel
         }
         else if (_boomCheckStage == 2)
         {
+            // Mesa staging (owner, 2026-11-15: NOTHING blocks the
+            // camera): rider 40u south of the centre mesa facing
+            // +Z, so the full boom points INTO the mesa flank.
+            // Under the old occlusion rules the terrain ray pulled
+            // the boom in to ~5u; now the camera must sit exactly
+            // on the boom formula (floor clamp included).
+            _boomCheckStage++;
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 40f), 40f), 0f);
+            _player.SetDrive(0f, 0f);
+            _player.TorsoTwist = Mathf.Pi;
+            _player.AimPitchWide = 0f;
+            _player.TorsoPitch = 0f;
+            UpdateCamera(0f);
+            var vp2 = GetViewport().GetVisibleRect().Size;
+            var head2 = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
+            var feet2 = _cam.UnprojectPosition(_player.RootPos);
+            GD.Print($"BOOMCHECK mesa pitch=0.00 camPos={_cam.GlobalPosition} head=({head2.X:F0},{head2.Y:F0}) feet=({feet2.X:F0},{feet2.Y:F0}) viewport={vp2}");
+            BoomAssert("mesa", 0f);
+            QueueCapture("res://proof/boom_mesa.png", "boommesa", CamModes.Chase);
+        }
+        else if (_boomCheckStage == 3)
+        {
             _boomCheckStage++;
             if (_photo)
             {
@@ -1061,9 +1111,9 @@ public partial class RiderDuel
                 _player.TorsoPitch = 0f;
                 UpdateCamera(0f);
                 QueueCapture("res://proof/boom_photo_level.png", "boomphotolevel", CamModes.Chase,
-                    () => { GD.Print("BOOMCHECK DONE"); GetTree().Quit(); });
+                    () => { GD.Print(_boomCheckFails == 0 ? "BOOMCHECK DONE" : $"BOOMCHECK FAIL x{_boomCheckFails}"); GetTree().Quit(); });
             }
-            else { GD.Print("BOOMCHECK DONE"); GetTree().Quit(); }
+            else { GD.Print(_boomCheckFails == 0 ? "BOOMCHECK DONE" : $"BOOMCHECK FAIL x{_boomCheckFails}"); GetTree().Quit(); }
         }
     }
 

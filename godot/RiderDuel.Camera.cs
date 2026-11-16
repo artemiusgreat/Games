@@ -349,78 +349,24 @@ public partial class RiderDuel
                 float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + 1.3f);
                 boom = Mathf.Min(boom, Mathf.Max(8f * k, clearance / aimDir.Y));
             }
-            // Occlusion pull-in: never let an obstacle behind
-            // the rider hide it - backed against a building and
-            // pitching up, the boom left the camera just behind
-            // the roofline, and the rider vanished behind the
-            // facade (owner's repeated report; reproduced by
-            // --boom-check at pitch +0.35, only the pod tops
-            // peeking over the roof). The axis ray alone misses
-            // this: it clears the roof by a hair while the sight-
-            // lines into the rider's mass cross the wall. So the
-            // boom is tested twice - on the axis and 0.35 heights
-            // below it, bracketing the sight-line bundle into the
-            // rider - and pulls in to the nearest blocker. (A
-            // ground-level third ray was tried and dropped: it
-            // false-fired on terrain undulation and collapsed
-            // the boom onto the rider.) The pull-in slides along
-            // the same axis line, so the crosshair's line is
-            // unchanged.
+            // NOTHING blocks the camera (owner, 2026-11-15, two
+            // rulings the same evening): the camera tracks only
+            // the player's rider on a fixed boom. First riders
+            // stopped counting as blockers (a teammate crossing
+            // behind collapsed the boom to first person); then
+            // buildings too - walking the Atlantis pass arch
+            // pulled the boom in the same way. The occlusion
+            // pull-in/lift that used to live here is REMOVED, not
+            // bypassed: no ray moves this camera. What remains is
+            // pure geometry - the steep-pitch shortening above
+            // and the floor clamp below, which only keeps the
+            // camera out of the ground at its own position. A
+            // building or arch on the boom line is simply passed
+            // through; single-sided geometry renders see-through
+            // from inside, so the rider stays in frame.
             var target = anchor - aimDir * boom;
             float floorY = Main.HeightAt(target.X, target.Z) + 1.3f;
             if (target.Y < floorY) target.Y = floorY;
-            float blockT = boom;
-            foreach (float drop in new[] { 0f, 0.35f * _playerSpec.Height })
-            {
-                // Camera rays ignore ALL riders (owner, 2026-11-15):
-                // the camera tracks only the player's rider, so a
-                // teammate or foe crossing the boom line must not
-                // read as a blocker. Terrain and props still block.
-                var hit = _hit.Ray(anchor - Vector3.Up * drop, -aimDir, boom, Roles.Player, 0f, true);
-                if (hit.Hit && hit.T < blockT) blockT = hit.T;
-            }
-            if (blockT < boom)
-            {
-                // Blocked. First try lifting the camera over the
-                // obstacle: the framing survives, the whole rider
-                // stays in view over the roofline, and the
-                // crosshair's line is unaffected - the convergence
-                // cast always starts at the real camera position.
-                // (Pulling straight in was tried first: at the
-                // resulting ~9u boom the rider jammed against the
-                // frame's bottom edge, mostly behind the panel.)
-                bool cleared = false;
-                // Probes: head and chest. The feet are not a
-                // probe - a roofline between the camera and the
-                // rider legitimately hides the legs (the same
-                // compromise as the steep-pitch envelope), while
-                // head + torso in view is the rider being visible.
-                var probes = new[]
-                {
-                    _player.RootPos + Vector3.Up * _playerSpec.Height,
-                    _player.RootPos + Vector3.Up * (_playerSpec.Height * 0.5f)
-                };
-                for (float lift = 2f; lift <= 18f && !cleared; lift += 2f)
-                {
-                    var cand = target + Vector3.Up * lift;
-                    cleared = true;
-                    foreach (var pp in probes)
-                    {
-                        var to = pp - cand;
-                        if (_hit.Ray(cand, to, to.Length() - 0.3f, Roles.Player, 0f, true).Hit) { cleared = false; break; }
-                    }
-                    if (cleared) target = cand;
-                }
-                if (!cleared)
-                {
-                    // No lift clears it (a tall wall at the rider's
-                    // back): pull in along the axis instead.
-                    boom = Mathf.Max(5f, blockT - 0.6f);
-                    target = anchor - aimDir * boom;
-                    float fy2 = Main.HeightAt(target.X, target.Z) + 1.3f;
-                    if (target.Y < fy2) target.Y = fy2;
-                }
-            }
             // No position smoothing (owner, round 29): the
             // camera sits exactly on the boom target every
             // frame. The exponential glide this replaces (rate
