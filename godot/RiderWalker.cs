@@ -53,6 +53,7 @@ public partial class RiderWalker : Node3D
         public Vector3 StepFromLocal, StepToLocal; // swing endpoints in the yaw (facing) frame
         public Basis StepBasisFrom, StepBasisTo;
         public float StepT = -1f;
+        public float StepDur; // this step's swing duration (cfg StepTime, shortened when the stride budget caps the trail)
         public Transform3D SolvedAnklePose;
         public Vector3 SolvedSoleWorld;
         public Vector3 PrevSoleWorld;
@@ -622,8 +623,23 @@ public partial class RiderWalker : Node3D
         // stayed fixed, so at run speed the legs reached ~4.7u
         // ahead but lifted only ~2.0u behind (measured,
         // STRIDEDBG): thrown forward, no pendulum.
-        float trail = Mathf.Min(Mathf.Abs(_speed) * _cfg.StepTime * 0.5f, _strideBudgetW);
-        float predT = _cfg.StepTime + (Mathf.Abs(_speed) > 0.01f ? trail / Mathf.Abs(_speed) : 0f);
+        float demand = Mathf.Abs(_speed) * _cfg.StepTime * 0.5f;
+        float trail = Mathf.Min(demand, _strideBudgetW);
+        // Capped-stride cadence (owner playtest 2026-11-16):
+        // when the budget caps the trail, the stance phase
+        // shortens to 2*trail/speed but the swing still took the
+        // full StepTime, so the support foot over-trailed ~2u
+        // past the pendulum point at run (measured LEANPROBE:
+        // Amadeus -4.68 dynamic vs Enyo -3.04) and the rider
+        // read as leaning forward. The swing now takes the
+        // stance's duration when capped - cadence rises with
+        // speed, like a runner's - restoring the symmetric
+        // pendulum. Uncapped (walk, crawl, turns): StepTime
+        // exactly as before.
+        leg.StepDur = (trail < demand - 0.001f && Mathf.Abs(_speed) > 0.01f)
+            ? Mathf.Min(_cfg.StepTime, 2f * trail / Mathf.Abs(_speed))
+            : _cfg.StepTime;
+        float predT = leg.StepDur + (Mathf.Abs(_speed) > 0.01f ? trail / Mathf.Abs(_speed) : 0f);
         var predRoot = _rootPos + vel * predT;
         var home = HomeSlot(leg, predRoot);
         leg.StepFrom = leg.SoleTarget;
@@ -658,7 +674,7 @@ public partial class RiderWalker : Node3D
     {
         if (leg.StepT < 0f) return;
         float prev = leg.StepT;
-        leg.StepT += h / _cfg.StepTime;
+        leg.StepT += h / (leg.StepDur > 0.01f ? leg.StepDur : _cfg.StepTime);
         float t = Mathf.Clamp(leg.StepT, 0f, 1f);
         float e = t * t * (3f - 2f * t);
         // Swing path: forward and vertical ride the original
