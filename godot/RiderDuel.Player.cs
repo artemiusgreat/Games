@@ -114,16 +114,16 @@ public partial class RiderDuel
         else if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
         {
             // Leave the game (owner): release the mouse, pause
-            // the sim, and ask for confirmation. In a mission
-            // with a team, Esc opens the TEAM screen instead
-            // (teams stage step 4): pick a leader there, or
-            // exit from it.
+            // the sim, and ask for confirmation. In a mission,
+            // Esc opens the TEAM screen instead (teams stage
+            // step 4): pick a leader there, or exit from it.
+            // (Owner, 2026-11-15: ALWAYS in a mission, even with
+            // a single rider on the team - no roster-size gate.)
             Input.MouseMode = Input.MouseModeEnum.Visible;
             bool teamUp = _teamDialog != null && _teamDialog.Visible;
             if (_leaveDialog != null && !_leaveDialog.Visible && !teamUp)
             {
-                if (WorldConfig.IsMission && _teamDialog != null
-                    && (_allies.Count > 0 || TeamRoster.Story.Count > 1))
+                if (WorldConfig.IsMission && _teamDialog != null)
                     _teamDialog.Open(TeamRows());
                 else
                     _leaveDialog.Open();

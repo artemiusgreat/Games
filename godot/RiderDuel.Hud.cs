@@ -474,8 +474,8 @@ public partial class RiderDuel
         }
     }
 
-    // The team screen (owner, teams stage step 4): in a mission
-    // with a team, Esc opens THIS instead of the plain exit
+    // The team screen (owner, teams stage step 4): in a mission,
+    // Esc opens THIS instead of the plain exit
     // confirmation - the player's riders listed with their
     // state; clicking a living teammate takes command of it
     // (the leader is whoever the player drives), Resume closes,
