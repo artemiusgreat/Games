@@ -47,10 +47,9 @@ public sealed class RiderParts
         public int BindIndex;
         public string BoneName;
         public bool Detached;
-        // Saved look for the leg-wreck state (restored on unwreck/reset).
+        // Saved overlay for the wreck state (restored on unwreck/reset;
+        // the wreck transform itself is rebuilt from OrigLocal).
         public Material SavedOverlay;
-        public Vector3 SavedScale;
-        public Vector3 SavedRot;
     }
 
     public sealed class Debris
@@ -799,19 +798,28 @@ public sealed class RiderParts
     // The leg-wreck look: a charred translucent overlay darkens the
     // leg's own texture, and the meshes are crushed slightly (shorter,
     // wider) and tilted - deformation without detachment.
+    // The wreck deformation (a slight crush and tilt under the
+    // char overlay) is applied in each mesh's own space, pivoting
+    // on the mesh's own centre. It used to ride on the instance's
+    // Scale/Rotation, which pivot on the MODEL ORIGIN at ground
+    // level: a wrecked head (centre ~13u up) was scaled ~1u down
+    // into the torso and swung ~1u sideways off the neck - "half
+    // the head gone, the rest floating" (owner, 2026-11-15) - and
+    // wrecked legs sheared away from the pelvis the same way.
     private void WreckPart(Part part)
     {
         part.Destroyed = true;
         part.Wrecked = true;
         float tilt = part.Id == "leg_L" ? 0.085f : -0.085f;
+        var rs = Basis.FromEuler(new Vector3(0.045f, 0f, tilt))
+            .Scaled(new Vector3(1.07f, 0.92f, 1.07f));
         foreach (var rec in part.Meshes)
         {
             rec.SavedOverlay = rec.Mi.MaterialOverlay;
-            rec.SavedScale = rec.Mi.Scale;
-            rec.SavedRot = rec.Mi.Rotation;
+            var pivot = rec.Mi.Mesh.GetAabb().GetCenter();
+            var d = new Transform3D(rs, pivot - rs * pivot);
+            rec.Mi.Transform = rec.OrigLocal * d;
             rec.Mi.MaterialOverlay = WreckOverlay;
-            rec.Mi.Scale = rec.SavedScale * new Vector3(1.07f, 0.92f, 1.07f);
-            rec.Mi.Rotation = rec.SavedRot + new Vector3(0.045f, 0f, tilt);
         }
     }
 
@@ -822,8 +830,7 @@ public sealed class RiderParts
         foreach (var rec in part.Meshes)
         {
             rec.Mi.MaterialOverlay = rec.SavedOverlay;
-            rec.Mi.Scale = rec.SavedScale;
-            rec.Mi.Rotation = rec.SavedRot;
+            rec.Mi.Transform = rec.OrigLocal;
         }
     }
 
@@ -940,6 +947,73 @@ public sealed class RiderParts
                 }
             }
         }
+    }
+
+    // Dev audit (gait-shot): the VISUAL clearance of a leg's foot -
+    // the lowest skinned vertex of the ankle-bound meshes in the
+    // leg part, measured above the terrain under that vertex. The
+    // walker's sole point is derived from the ankle's bind-pose
+    // projection; this measures what is actually rendered, so a
+    // bind/geometry mismatch shows up here even when the sole
+    // solver itself is exact.
+    public float FootVisualGap(string partId)
+    {
+        var part = _parts[partId];
+        string ankle = partId == "leg_L" ? "ankle_L" : "ankle_R";
+        float best = float.MaxValue;
+        foreach (var rec in part.Meshes)
+        {
+            if (rec.Detached || rec.BoneName != ankle || rec.Mi.Mesh == null) continue;
+            var bind = rec.OrigSkin != null && rec.BindIndex >= 0
+                ? rec.OrigSkin.GetBindPose(rec.BindIndex)
+                : _skel.GetBoneGlobalRest(rec.Bone).AffineInverse();
+            var eff = rec.Mi.GlobalTransform * (_skel.GetBoneGlobalPose(rec.Bone) * bind);
+            for (int s = 0; s < rec.Mi.Mesh.GetSurfaceCount(); s++)
+            {
+                var verts = rec.Mi.Mesh.SurfaceGetArrays(s)[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+                foreach (var v in verts)
+                {
+                    var w = eff * v;
+                    float gap = w.Y - Main.HeightAt(w.X, w.Z);
+                    if (gap < best) best = gap;
+                }
+            }
+        }
+        return best;
+    }
+
+    // Dev audit (gait-shot): the same visual clearance split by
+    // foot end - the lowest toe-side vertex (forward of the ankle)
+    // vs the lowest heel-side vertex. A foot can touch at the toe
+    // (gap 0) while standing pitched on its toes with the heel
+    // high; the split reads that pitch as two numbers.
+    public (float Toe, float Heel) FootPitchGaps(string partId, Vector3 ankleW, Vector3 fwdW)
+    {
+        var part = _parts[partId];
+        string ankle = partId == "leg_L" ? "ankle_L" : "ankle_R";
+        float toe = float.MaxValue, heel = float.MaxValue;
+        foreach (var rec in part.Meshes)
+        {
+            if (rec.Detached || rec.BoneName != ankle || rec.Mi.Mesh == null) continue;
+            var bind = rec.OrigSkin != null && rec.BindIndex >= 0
+                ? rec.OrigSkin.GetBindPose(rec.BindIndex)
+                : _skel.GetBoneGlobalRest(rec.Bone).AffineInverse();
+            var eff = rec.Mi.GlobalTransform * (_skel.GetBoneGlobalPose(rec.Bone) * bind);
+            for (int s = 0; s < rec.Mi.Mesh.GetSurfaceCount(); s++)
+            {
+                var verts = rec.Mi.Mesh.SurfaceGetArrays(s)[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+                foreach (var v in verts)
+                {
+                    var w = eff * v;
+                    float fwd = (w - ankleW).Dot(fwdW);
+                    if (Mathf.Abs(fwd) < 0.5f) continue;
+                    float gap = w.Y - Main.HeightAt(w.X, w.Z);
+                    if (fwd > 0f) { if (gap < toe) toe = gap; }
+                    else if (gap < heel) heel = gap;
+                }
+            }
+        }
+        return (toe, heel);
     }
 
     public Debris DebrisOf(string partId)
