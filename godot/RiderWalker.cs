@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 // RiderWalker: reusable procedural gait + two-bone IK for a rigged rider FBX,
 // extracted from the original walker test scene and
@@ -297,21 +298,33 @@ public partial class RiderWalker : Node3D
         _inner = packed.Instantiate<Node3D>();
         AddChild(_inner);
 
+        _skel = FindSkeleton(_inner);
+        var armBones = ArmChainBones(_skel);
         var raw = MeasureWorldAabb(_inner);
         float s = cfg.TargetHeight / raw.Size.Y;
         _scaleF = s;
         Scale = Vector3.One * s;
         var a = MeasureWorldAabb(_inner);
-        var desiredMin = new Vector3(-a.Size.X / 2f, 0f, -a.Size.Z / 2f);
-        _inner.Position += (desiredMin - a.Position) / s;
+        // Depth anchoring uses the CORE aabb (geometry bound outside
+        // the arm chains): the arms are appendages whose rest swing -
+        // e.g. a baked elbow raise - must not drag the body off its
+        // root. Width, height and ground still use the full aabb.
+        var core = MeasureWorldAabb(_inner, armBones);
+        bool haveCore = core.Size.Y > 0f;
+        float corePosZ = haveCore ? core.Position.Z : a.Position.Z;
+        float coreSizeZ = haveCore ? core.Size.Z : a.Size.Z;
+        var shift = new Vector3(
+            -a.Size.X / 2f - a.Position.X,
+            -a.Position.Y,
+            -coreSizeZ / 2f - corePosZ);
+        _inner.Position += shift / s;
         var chk = MeasureWorldAabb(_inner);
-        GD.Print($"{cfg.Label} normalized AABB pos={chk.Position} size={chk.Size} scale={s:F4}");
+        GD.Print($"{cfg.Label} normalized AABB pos={chk.Position} size={chk.Size} coreDepth={coreSizeZ:F3} scale={s:F4}");
 
         // Blender FBX faces +Z after import; rotate so it faces -Z at yaw 0.
         Rotation = new Vector3(0f, Mathf.Pi, 0f);
         Position = spawnPos;
 
-        _skel = FindSkeleton(_inner);
         if (_skel == null) { GD.PrintErr($"{cfg.Label} FAIL: no Skeleton3D"); return; }
         CollectMaterials();
         var names = new string[_skel.GetBoneCount()];
@@ -970,6 +983,7 @@ public partial class RiderWalker : Node3D
         SolveLeg(_legR);
         SolveTorso();
     }
+
     private void SolveTorso()
     {
         if (_torsoBone < 0 || _skel == null) return;
@@ -1219,13 +1233,71 @@ public partial class RiderWalker : Node3D
     {
         var box = new Aabb();
         bool first = true;
-        Collect(node, ref box, ref first);
+        Collect(node, ref box, ref first, null);
         return box;
     }
 
-    private static void Collect(Node node, ref Aabb box, ref bool first)
+    private static Aabb MeasureWorldAabb(Node node, HashSet<string> excludeBones)
     {
-        if (node is MeshInstance3D mi)
+        var box = new Aabb();
+        bool first = true;
+        Collect(node, ref box, ref first, excludeBones);
+        return box;
+    }
+
+    // Bones of both arm chains (clavicle/shoulder/elbow and their
+    // descendants) by name, from the rig contract every rider shares.
+    private static HashSet<string> ArmChainBones(Skeleton3D skel)
+    {
+        var set = new HashSet<string>();
+        if (skel == null) return set;
+        for (int i = 0; i < skel.GetBoneCount(); i++)
+        {
+            int b = i;
+            while (b >= 0)
+            {
+                string n = skel.GetBoneName(b);
+                if (n.StartsWith("clavicle_") || n.StartsWith("shoulder_") || n.StartsWith("elbow_"))
+                { set.Add(skel.GetBoneName(i)); break; }
+                b = skel.GetBoneParent(b);
+            }
+        }
+        return set;
+    }
+
+    // The bind bone carrying most of a mesh's vertex weight (same
+    // tally as RiderParts.DominantBone), or "" when unskinned.
+    private static string DominantBindName(MeshInstance3D mi)
+    {
+        if (mi.Skin == null || mi.Mesh == null) return "";
+        var tally = new Dictionary<int, double>();
+        for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
+        {
+            var arrays = mi.Mesh.SurfaceGetArrays(s);
+            var bones = arrays[(int)Mesh.ArrayType.Bones].AsInt32Array();
+            var weights = arrays[(int)Mesh.ArrayType.Weights].AsFloat32Array();
+            int nv = weights.Length / 4;
+            for (int v = 0; v < nv; v++)
+                for (int k = 0; k < 4; k++)
+                {
+                    float w = weights[v * 4 + k];
+                    if (w > 0.01f)
+                    {
+                        int b = bones[v * 4 + k];
+                        tally[b] = (tally.TryGetValue(b, out var c) ? c : 0) + w;
+                    }
+                }
+        }
+        int best = -1; double bv = 0;
+        foreach (var kv in tally) if (kv.Value > bv) { bv = kv.Value; best = kv.Key; }
+        if (best < 0 || best >= mi.Skin.GetBindCount()) return "";
+        return mi.Skin.GetBindName(best);
+    }
+
+    private static void Collect(Node node, ref Aabb box, ref bool first, HashSet<string> excludeBones)
+    {
+        if (node is MeshInstance3D mi && (excludeBones == null || excludeBones.Count == 0
+            || !excludeBones.Contains(DominantBindName(mi))))
         {
             var local = mi.GetAabb();
             var gt = mi.GlobalTransform;
@@ -1240,6 +1312,6 @@ public partial class RiderWalker : Node3D
                 else box = box.Expand(w);
             }
         }
-        foreach (var child in node.GetChildren()) Collect(child, ref box, ref first);
+        foreach (var child in node.GetChildren()) Collect(child, ref box, ref first, excludeBones);
     }
 }
