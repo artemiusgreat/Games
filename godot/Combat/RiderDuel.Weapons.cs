@@ -449,7 +449,6 @@ public partial class RiderDuel
             SpawnFlash(hit.Point, new Color(1f, 0.62f, 0.25f), 1.7f, 0.3f);
             SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), 3.2f, 14f, 0.5f);
             SpawnBurst(hit.Point, FireParticleMat, 54, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
-            SpawnBurst(hit.Point, SmokeParticleMat, 22, 2.6f, 1.4f, 3f, new Vector3(0f, 1.3f, 0f), 0.55f, 1.5f, 2.6f);
             ExplodeSplash(hit, p);
             if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
             return;
@@ -458,7 +457,6 @@ public partial class RiderDuel
         SpawnSparks(hit.Point, new Color(1f, 0.8f, 0.5f), 10, 5.2f);
         _fxSparkBursts--; // cannon impact sparks are not a laser burst
         SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.13f, 0.6f, 1.1f);
-        SpawnBurst(hit.Point, SmokeParticleMat, 9, 1.6f, 1f, 2.2f, new Vector3(0f, 1.2f, 0f), 0.5f, 1.2f, 2f);
         SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
         if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
         // Cannon shells scorch what they hit.

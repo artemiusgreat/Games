@@ -2029,10 +2029,10 @@ public partial class RiderDuel
                     {
                         GD.Print("ENVTEST COLLAPSE-START PASS building gave way under fire");
                         if (_envFxEvents <= _wEnvFx0) { WFail("building collapsed with NO destruction FX"); return; }
-                        // (the dust rule's proof is the particle count below: fire+smoke+2 dust systems+burn emitter)
+                        // (the dust rule's proof is the particle count below: fire+2 dust systems+burn emitter)
                         if (_fxLights <= 0) { WFail("building collapse lit no impact light"); return; }
                         int bp = _fxParticles - _wEnvParticles0;
-                        if (bp < 6) { WFail($"building collapse spawned only {bp} particle systems (want explosion fire+smoke, 2 dust systems, burning wreck)"); return; }
+                        if (bp < 4) { WFail($"building collapse spawned only {bp} particle systems (want explosion fire, 2 dust systems, burning wreck)"); return; }
                         GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, a dust cloud and {bp} particle systems; original hidden, pieces flying");
                         QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
                         _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;

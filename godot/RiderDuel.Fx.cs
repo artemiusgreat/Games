@@ -110,15 +110,6 @@ public partial class RiderDuel
         AlbedoColor = new Color(0.75f, 0.96f, 1f),
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
     };
-    private static readonly StandardMaterial3D SmokeParticleMat = new StandardMaterial3D
-    {
-        AlbedoColor = new Color(0.52f, 0.52f, 0.55f, 0.42f),
-        AlbedoTexture = PuffTexture(),
-        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
-        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-    };
-
     private GpuParticles3D MakeParticles(Vector3 point, StandardMaterial3D mat, int amount,
         float lifetime, bool oneShot, float velMin, float velMax, Vector3 gravity,
         float meshRadius, float scaleMin, float scaleMax, float spread)
@@ -146,9 +137,9 @@ public partial class RiderDuel
             var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.5f)); sc.AddPoint(new Vector2(0.35f, 0.9f)); sc.AddPoint(new Vector2(1f, 1.12f));
             pm.ScaleCurve = new CurveTexture { Curve = sc };
         }
-        else if (mat == SmokeParticleMat || mat == DustParticleMat)
+        else if (mat == DustParticleMat)
         {
-            float a0 = mat == DustParticleMat ? 0.5f : 0.5f;
+            float a0 = 0.5f;
             pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
                 Offsets = new float[] { 0f, 1f },
                 Colors = new Color[] { new Color(1f, 1f, 1f, a0), new Color(1f, 1f, 1f, 0f) } } };
@@ -191,16 +182,17 @@ public partial class RiderDuel
         _timedFx.Add((p, lifetime + 0.5f, false));
     }
 
-    // A wreck keeps burning: fire licking up + smoke rising for the
-    // given seconds, then the emitters stop and are freed.
+    // A wreck keeps burning: fire licking up for the given
+    // seconds, then the emitter stops and is freed. (Owner,
+    // 2026-11-16: the smoke-puff emitter that rode along here
+    // is REMOVED - the round sprites read as bubbles; fire
+    // only. Smoke bursts are gone game-wide for the same
+    // reason; explosions keep fire, flash, sparks and debris.)
     private void SpawnBurnEmitter(Vector3 point, float seconds)
     {
         var fire = MakeParticles(point, FireParticleMat, 26, 0.9f, false, 2.4f, 4.4f,
             new Vector3(0f, 2.5f, 0f), 0.3f, 0.8f, 1.5f, 35f);
         _timedFx.Add((fire, seconds, true));
-        var smoke = MakeParticles(point + Vector3.Up * 0.8f, SmokeParticleMat, 22, 2.8f, false, 1.1f, 2.1f,
-            new Vector3(0f, 1.4f, 0f), 0.55f, 1.6f, 2.8f, 30f);
-        _timedFx.Add((smoke, seconds, true));
     }
 
     private void StepTimedFx(float dt)
@@ -442,7 +434,6 @@ public partial class RiderDuel
         SpawnFlipbookFireball(center + Vector3.Up * 1.5f, 10f, 1.2f);
         _fxBooms--; // the death bundle is not a rocket hit; keep counters honest
         SpawnBurst(center, FireParticleMat, 70, 1.6f, 5f, 12f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2.1f);
-        SpawnBurst(center, SmokeParticleMat, 40, 3.6f, 1.6f, 3.6f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.4f);
         SpawnBurnEmitter(w.RootPos + Vector3.Up * 1.2f, 8f);
         _exploding = true;
         parts.ExplodeAll();

@@ -1766,7 +1766,6 @@ public partial class RiderDuel
         SpawnBurst(d.Center + Vector3.Up * 1.2f, DustParticleMat, 46, 3.4f, 2.5f, 7f, new Vector3(0f, 0.9f, 0f), 1.1f, 1.6f, 3.2f);
         SpawnBurst(mid, DustParticleMat, 26, 2.6f, 1.5f, 4.5f, new Vector3(0f, 0.6f, 0f), 0.9f, 1.4f, 2.6f);
         SpawnBurst(mid, FireParticleMat, 80, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
-        SpawnBurst(mid, SmokeParticleMat, 36, 3.4f, 1.6f, 3.4f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.8f, 3.2f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.6f, 7f);
         GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");
     }
@@ -1796,7 +1795,6 @@ public partial class RiderDuel
         PlaySfx(_sfxTree, d.Center, 0f);
         SpawnChunks(top, 5, 0.45f, 0.95f, SplinterMat, 2.5f, 5f);
         SpawnBurst(top, FireParticleMat, 48, 1.25f, 4f, 8.5f, new Vector3(0f, -6f, 0f), 0.22f, 0.9f, 1.9f);
-        SpawnBurst(top + Vector3.Up * 0.6f, SmokeParticleMat, 14, 2.8f, 1.2f, 2.6f, new Vector3(0f, 1.5f, 0f), 0.6f, 1.5f, 2.6f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.5f, 5f);
         for (int i = 0; i < 3; i++)
         {
