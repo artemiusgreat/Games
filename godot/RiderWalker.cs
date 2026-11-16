@@ -587,8 +587,18 @@ public partial class RiderWalker : Node3D
     private void BeginStep(Leg leg)
     {
         var vel = HeadingVec(_legsYaw) * _speed;
-        var predRoot = _rootPos + vel * (_cfg.StepTime + 0.10f);
-        var home = HomeSlot(leg, predRoot) + vel * 0.30f;
+        // Pendulum stride (owner, 2026-11-16): the plant point
+        // is the home slot of the root predicted 1.5 step-times
+        // ahead, so after the swing's own step-time of root
+        // travel the foot lands half a cycle AHEAD of the body -
+        // the same half-cycle the trigger lets it trail BEHIND
+        // (see GaitStep). The old lead (StepTime + 0.10, plus a
+        // flat vel*0.30) grew with speed while the lift
+        // threshold stayed fixed, so at run speed the legs
+        // reached ~4.7u ahead but lifted only ~2.0u behind
+        // (measured, STRIDEDBG): thrown forward, no pendulum.
+        var predRoot = _rootPos + vel * (1.5f * _cfg.StepTime);
+        var home = HomeSlot(leg, predRoot);
         leg.StepFrom = leg.SoleTarget;
         leg.StepTo = new Vector3(home.X, GroundHere(home.X, home.Z), home.Z);
         if (FootClamp != null)
@@ -773,12 +783,19 @@ public partial class RiderWalker : Node3D
         if (stepping == null && _fallT < 0f && !_freezeLegs)
         {
             bool settling = Mathf.Abs(_targetSpeed) < 0.01f && Mathf.Abs(_speed) < 0.15f && _yawRate < 0.05f;
-            float threshold = settling ? 0.10f : _cfg.StepThreshold;
+            // Pendulum pair to BeginStep's plant lead: a planted
+            // foot lifts once it trails half a stride cycle
+            // behind its home (lag measured against the CURRENT
+            // root - the old +vel*0.30 reference and the fixed
+            // StepThreshold made the trail speed-independent).
+            // The 0.65 floor keeps crawl and turn-in-place steps
+            // from shrinking to shuffles.
+            float threshold = settling ? 0.10f : Mathf.Max(0.65f, _speed * _cfg.StepTime * 0.5f);
             Leg best = null; float bestLag = threshold;
             foreach (var leg in new[] { _legL, _legR })
             {
                 if (!leg.Planted || !Other(leg).Planted) continue;
-                var home = HomeSlot(leg, _rootPos + vel * 0.30f);
+                var home = HomeSlot(leg, _rootPos);
                 float lag = new Vector2(leg.SoleTarget.X - home.X, leg.SoleTarget.Z - home.Z).Length();
                 if (lag > bestLag) { bestLag = lag; best = leg; }
             }
