@@ -253,10 +253,14 @@ public static class RiderSpecs
     // right arm, an energy left arm, the left shoulder cap split
     // out as the missile pod, antennaed helmet as the head.
     // Leanest of the four new chassis - the only one of them
-    // rated for thrusters. Knees bend FORWARD (owner, 2026-11-17
-    // playtest of the clean-split rebuild): the pole is flipped
-    // even though the rest knees sit behind the hip-ankle line -
-    // this sculpt reads plantigrade, not digitigrade.
+    // rated for thrusters. Knees bend FORWARD (owner, 2026-11-17):
+    // with the pivots measured from the sculpt's own joint rings
+    // the rest knees sit 0.10-0.12 forward of the hip-ankle line -
+    // the legs are almost straight, as authored. (The first
+    // clean-split build placed the knee 0.6 too low and the ankle
+    // 0.45 too low and too far forward; the flipped pole then
+    // tore the legs at joints the bones did not share with the
+    // geometry - the owner's 'feet separated' report.)
     // Caps sum to the 70t budget; all three types aboard.
     public static readonly RiderSpec Apollo = new()
     {
