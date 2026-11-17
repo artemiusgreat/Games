@@ -177,25 +177,29 @@ public sealed class RiderParts
         }
         else if (riderId == "apollo")
         {
-            // Owner's own split (Apollo-Clean.fbx, 2026-11-17):
-            // he grouped the sculpt into named parts himself;
-            // the rig is hand-authored on his joints and every
-            // mesh binds rigidly to its bone. The helmet is fused
-            // into his Torso object, so the head is carved here
-            // (band = the build's head vertex group: |x| <= 1.45,
-            // top of the torso). The Shoulder_Cannon he split
-            // out is the missile pod.
+            // Owner's own split (Apollo-Clean.fbx, 2026-11-17),
+            // used AS IS at his instruction: no object moved,
+            // renamed, joined or regrouped - the build only adds
+            // the armature and a rigid bind per object, so the
+            // meshes carry HIS object names and the parts claim
+            // them by those names. The 216 ungrouped fragments
+            // keep their own objects too; the safety net below
+            // sweeps them into their nearest part at load. The
+            // helmet is fused into his Torso object, so the head
+            // is carved here (band = the build's head vertex
+            // group: |x| <= 1.45, top of the torso). The
+            // Shoulder_Cannon he split out is the missile pod.
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
-            AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Pod_L");
+            AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "Elbow_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "Elbow_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Elbow", "Left_Hand");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Elbow");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
             AttachDebris(byName);
         }
         else if (riderId == "hades" || riderId == "ares")
@@ -363,13 +367,30 @@ public sealed class RiderParts
             foreach (var kv in byName)
             {
                 if (claimed.Contains(kv.Value)) continue;
-                var c = kv.Value.GetAabb().GetCenter();
-                Part best = null; float bd = float.MaxValue;
-                foreach (var part in _parts.Values)
+                // Prefer the part the mesh's own bone belongs to
+                // (a fragment bound to an elbow should fall with
+                // the arm, wherever its centre sits); nearest
+                // centre is the fallback.
+                Part best = null;
+                DominantBone(kv.Value, out string bn, out int _);
+                string want = null;
+                if (bn == "head") want = "head";
+                else if (bn == "torso" || bn == "pelvis") want = "torso";
+                else if (bn != null && (bn.StartsWith("shoulder_") || bn.StartsWith("elbow_")))
+                    want = "arm_" + bn.Substring(bn.Length - 1);
+                else if (bn != null && (bn.StartsWith("hip_") || bn.StartsWith("knee_") || bn.StartsWith("ankle_")))
+                    want = "leg_" + bn.Substring(bn.Length - 1);
+                if (want != null) _parts.TryGetValue(want, out best);
+                if (best == null)
                 {
-                    if (!partCenters.TryGetValue(part.Id, out var pc)) continue;
-                    float d = c.DistanceSquaredTo(pc);
-                    if (d < bd) { bd = d; best = part; }
+                    var c = kv.Value.GetAabb().GetCenter();
+                    float bd = float.MaxValue;
+                    foreach (var part in _parts.Values)
+                    {
+                        if (!partCenters.TryGetValue(part.Id, out var pc)) continue;
+                        float d = c.DistanceSquaredTo(pc);
+                        if (d < bd) { bd = d; best = part; }
+                    }
                 }
                 if (best != null)
                 {
