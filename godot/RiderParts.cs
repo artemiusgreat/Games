@@ -175,6 +175,29 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
             AttachDebris(byName);
         }
+        else if (riderId == "apollo")
+        {
+            // Owner's own split (Apollo-Clean.fbx, 2026-11-17):
+            // he grouped the sculpt into named parts himself;
+            // the rig is hand-authored on his joints and every
+            // mesh binds rigidly to its bone. The helmet is fused
+            // into his Torso object, so the head is carved here
+            // (band = the build's head vertex group: |x| <= 1.45,
+            // top of the torso). The Shoulder_Cannon he split
+            // out is the missile pod.
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Pod_L");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "Elbow_L");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "Elbow_R");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AttachDebris(byName);
+        }
         else if (riderId == "hades" || riderId == "ares")
         {
             // Tripo sculpts on their own Mixamo skeletons (owner
@@ -339,7 +362,7 @@ public sealed class RiderParts
         // (owner report, 2026-11-01: visible through a
         // rider's gun arm). Render those riders' materials double-sided so a
         // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes" || _riderId == "hades" || _riderId == "ares" || _riderId == "amadeus")
+        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes" || _riderId == "hades" || _riderId == "ares" || _riderId == "amadeus" || _riderId == "apollo")
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
