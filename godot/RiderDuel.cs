@@ -1158,6 +1158,7 @@ public partial class RiderDuel : Node3D
             if (_foe != null && _foe.Walker.IsReady) StepWalker(_foe.Walker, delta);
             foreach (var a in _allies) if (a.Walker.IsReady) StepWalker(a.Walker, delta);
             StepSounds();
+            ThrusterSounds();
             UpdateLifts((float)delta);
             ResolveCollisions();
             StompCheck();
