@@ -253,21 +253,23 @@ public static class RiderSpecs
     // right arm, an energy left arm, the left shoulder cap split
     // out as the missile pod, antennaed helmet as the head.
     // Leanest of the four new chassis - the only one of them
-    // rated for thrusters. Knees bend FORWARD (owner, 2026-11-17):
-    // with the pivots measured from the sculpt's own joint rings
-    // the rest knees sit 0.10-0.12 forward of the hip-ankle line -
-    // the legs are almost straight, as authored. (The first
-    // clean-split build placed the knee 0.6 too low and the ankle
-    // 0.45 too low and too far forward; the flipped pole then
-    // tore the legs at joints the bones did not share with the
-    // geometry - the owner's 'feet separated' report.)
+    // rated for thrusters. Knees bend FORWARD (owner, 2026-11-17)
+    // and the flag stays FALSE: the walker takes its pole from
+    // the rest pose, and with the pivots measured from the
+    // sculpt's own joint rings Apollo's rest knees already sit
+    // 0.10-0.12 forward of the hip-ankle line - the legs are
+    // almost straight, as authored. FlipKneePole MIRRORS the
+    // rest pole, so setting it here flipped a forward pole
+    // backward and Apollo walked like a bird (owner's catch,
+    // same day). The flag is only for rigs whose rest knees sit
+    // BACKWARD while the design bends forward (Hector).
     // Caps sum to the 70t budget; all three types aboard.
     public static readonly RiderSpec Apollo = new()
     {
         Id = "apollo", Name = "APOLLO", Tonnage = 70f, JumpCapable = true,
         ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
         Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
-        FlipKneePole = true,
+        FlipKneePole = false,
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
