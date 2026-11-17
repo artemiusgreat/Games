@@ -114,19 +114,31 @@ public partial class RiderDuel
         else if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
         {
             // Leave the game (owner): release the mouse, pause
-            // the sim, and ask for confirmation. In a mission,
-            // Esc opens the TEAM screen instead (teams stage
-            // step 4): pick a leader there, or exit from it.
-            // (Owner, 2026-11-15: ALWAYS in a mission, even with
-            // a single rider on the team - no roster-size gate.)
+            // the sim, and ask for confirmation. Esc is ONLY
+            // the exit path (owner, 2026-11-17: Esc and the
+            // team screen are separated - the team screen is
+            // F1 now, next branch down; it used to open on Esc
+            // in missions).
             Input.MouseMode = Input.MouseModeEnum.Visible;
             bool teamUp = _teamDialog != null && _teamDialog.Visible;
             if (_leaveDialog != null && !_leaveDialog.Visible && !teamUp)
             {
-                if (WorldConfig.IsMission && _teamDialog != null)
-                    _teamDialog.Open(TeamRows());
-                else
-                    _leaveDialog.Open();
+                _leaveDialog.Open();
+                GetTree().Paused = true;
+            }
+        }
+        else if (e is InputEventKey kf && kf.Pressed && !kf.Echo && kf.Keycode == Key.F1)
+        {
+            // Team screen (owner, 2026-11-17): F1 opens it in
+            // a mission - pick a leader there, or exit from
+            // it. Pressing F1 again closes it (the dialog's
+            // own input handler); Esc closes it too.
+            bool leaveUp = _leaveDialog != null && _leaveDialog.Visible;
+            bool teamUp = _teamDialog != null && _teamDialog.Visible;
+            if (!leaveUp && !teamUp && WorldConfig.IsMission && _teamDialog != null)
+            {
+                Input.MouseMode = Input.MouseModeEnum.Visible;
+                _teamDialog.Open(TeamRows());
                 GetTree().Paused = true;
             }
         }

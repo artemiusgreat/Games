@@ -475,7 +475,7 @@ public partial class RiderDuel
     }
 
     // The team screen (owner, teams stage step 4): in a mission,
-    // Esc opens THIS instead of the plain exit
+    // F1 opens THIS (owner, 2026-11-17 - Esc is the exit only)
     // confirmation - the player's riders listed with their
     // state; clicking a living teammate takes command of it
     // (the leader is whoever the player drives), Resume closes,
@@ -655,8 +655,8 @@ public partial class RiderDuel
         public override void _Input(InputEvent e)
         {
             if (!Visible) return;
-            if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening Esc
-            if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
+            if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening key
+            if (e is InputEventKey k && k.Pressed && !k.Echo && (k.Keycode == Key.Escape || k.Keycode == Key.F1))
             {
                 Visible = false;
                 GetViewport().SetInputAsHandled();
