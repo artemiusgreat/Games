@@ -41,6 +41,7 @@ public sealed class RiderSpec
     public float ClassSpeedFactor => Tonnage < 40f ? 1.30f : Tonnage < 60f ? 1.00f : 0.75f;
     public float MaxSpeed => BaseSpeed * ClassSpeedFactor;
     public bool FlipKneePole;   // plantigrade: knees bend forward
+    public bool SagittalKneePole; // legs track in the sagittal plane only: the rest pole's lateral part is dropped, its side kept
 
     public SlotDef Slot(string id)
     {
@@ -269,7 +270,7 @@ public static class RiderSpecs
         Id = "apollo", Name = "APOLLO", Tonnage = 70f, JumpCapable = true,
         ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
         Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
-        FlipKneePole = false,
+        FlipKneePole = false, SagittalKneePole = true,
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },

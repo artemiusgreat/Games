@@ -29,6 +29,7 @@ public partial class RiderWalker : Node3D
         public float Accel;
         public float CollisionRadius;
         public bool FlipKneePole; // plantigrade chassis (Hector): mirror the rest-pose knee pole so the knee bends FORWARD, human-style (owner round 22)
+        public bool SagittalKneePole; // purify the rest pole to the sagittal plane, same side (Apollo: the rest pole's inward lateral part X-ed the legs)
     }
 
     private sealed class Leg
@@ -389,6 +390,27 @@ public partial class RiderWalker : Node3D
                 var sag = up.Cross(lateral).Normalized(); // in the pole's plane, ⊥ leg axis and ⊥ lateral
                 leg.PoleSk = sag * -Mathf.Sign(leg.PoleSk.Dot(sag));
                 GD.Print($"{_cfg.Label} leg {leg.Name}: flipped pole={leg.PoleSk}");
+            }
+        }
+
+        if (_cfg.SagittalKneePole)
+        {
+            // Sagittal-only tracking (owner, Apollo 2026-11-17):
+            // the leg bends purely in the forward/back plane -
+            // the pole becomes the pure sagittal axis on the
+            // SAME side as the rest pole (no mirror), so hip,
+            // knee and ankle share one lateral coordinate and
+            // the legs can never X. Apollo's rest pole carried
+            // an inward lateral part (~22% of its length) that
+            // pulled both knees toward the centreline on every
+            // stride.
+            var lateral = (_legR.Hrest - _legL.Hrest).Normalized();
+            foreach (var leg in new[] { _legL, _legR })
+            {
+                var up = (leg.Hrest - leg.Arest).Normalized();
+                var sag = up.Cross(lateral).Normalized();
+                leg.PoleSk = sag * Mathf.Sign(leg.PoleSk.Dot(sag));
+                GD.Print($"{_cfg.Label} leg {leg.Name}: sagittal pole={leg.PoleSk}");
             }
         }
 

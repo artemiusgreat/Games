@@ -292,7 +292,8 @@ public partial class RiderDuel
             StepLift = spec.StepLift,
             Accel = spec.Accel,
             CollisionRadius = spec.Radius,
-            FlipKneePole = spec.FlipKneePole
+            FlipKneePole = spec.FlipKneePole,
+            SagittalKneePole = spec.SagittalKneePole
         }, pos, yaw);
         return w;
     }
