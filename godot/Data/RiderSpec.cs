@@ -253,15 +253,17 @@ public static class RiderSpecs
     // right arm, an energy left arm, the left shoulder cap split
     // out as the missile pod, antennaed helmet as the head.
     // Leanest of the four new chassis - the only one of them
-    // rated for thrusters. Knee pole measured +0.25 behind the
-    // hip-ankle line (Enyo's legs sit the same way) - no mirror.
+    // rated for thrusters. Knees bend FORWARD (owner, 2026-11-17
+    // playtest of the clean-split rebuild): the pole is flipped
+    // even though the rest knees sit behind the hip-ankle line -
+    // this sculpt reads plantigrade, not digitigrade.
     // Caps sum to the 70t budget; all three types aboard.
     public static readonly RiderSpec Apollo = new()
     {
         Id = "apollo", Name = "APOLLO", Tonnage = 70f, JumpCapable = true,
         ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
         Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
-        FlipKneePole = false,
+        FlipKneePole = true,
         Slots = new[]
         {
             new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
