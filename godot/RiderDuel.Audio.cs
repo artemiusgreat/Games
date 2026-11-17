@@ -102,7 +102,7 @@ public partial class RiderDuel
             {
                 if (!_thrusterPlayers.TryGetValue(w, out var p))
                 {
-                    p = new AudioStreamPlayer3D { Stream = _sfxThruster, MaxDistance = 260f, VolumeDb = -7f };
+                    p = new AudioStreamPlayer3D { Stream = _sfxThruster, MaxDistance = 260f, VolumeDb = -13f };  // owner, 2026-11-17: thrusters sit under the fight, not over it
                     AddChild(p);
                     _thrusterPlayers[w] = p;
                 }

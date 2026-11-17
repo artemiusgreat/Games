@@ -35,12 +35,19 @@ def laser():
     # several times higher. A LOCAL rng keeps the shared sequence
     # untouched, so every other WAV regenerates byte-identical.
     lr = random.Random(777)
-    n = int(0.13 * SR); s = []; lp = 0.0
+    n = int(0.17 * SR); s = []; lp = 0.0; ph = 0.0
     for i in range(n):
         t = i / SR
-        cut = 0.40 + 0.58 * math.sin(math.pi * min(1, t / 0.13)) ** 2
+        arch = math.sin(math.pi * min(1, t / 0.17))
+        cut = 0.40 + 0.58 * arch ** 2
         lp += cut * (lr.uniform(-1, 1) - lp)
-        s.append(lp * 2.4 * math.sin(math.pi * min(1, t / 0.12)))
+        # the whistle (owner, 2026-11-17: more whistling /
+        # whooshing): a tonal glide 3100 -> 1500 Hz with a
+        # breath wobble, riding the same arch envelope as the
+        # noise so the two read as one gesture.
+        f = 3100 - 1600 * (t / 0.17) + 90 * math.sin(2 * math.pi * 26 * t)
+        ph += 2 * math.pi * f / SR
+        s.append(lp * 2.0 * arch + 0.85 * math.sin(ph) * arch ** 1.5)
     return s
 
 def cannon():
@@ -96,15 +103,19 @@ def step(heavy):
     # STOMP (owner, 2026-11-17 - replaces the light step tap):
     # a deep ground thud (46 Hz body with a 30 Hz sub tail) under
     # a short lowpassed crunch of dirt/metal stress. 0.24s.
+    # deeper and MUFFLED (owner, 2026-11-17): body drops to
+    # 36 Hz, sub to 26 Hz, the crunch is lowpassed much harder
+    # (0.07) and quieter, and a 6ms attack ramp removes the
+    # click so the hit reads as weight through earth, not a tap.
     lr = random.Random(4242 if heavy else 4243)
-    n = int(0.24 * SR); s = []; lp = 0.0
+    n = int(0.26 * SR); s = []; lp = 0.0
     for i in range(n):
         t = i / SR
-        f = 46 + 26 * math.exp(-t * 34)
-        e = math.exp(-t * 17)
-        lp += 0.16 * (lr.uniform(-1, 1) - lp)
-        crunch = lp * 2.6 * math.exp(-t * 30)
-        sub = 0.55 * math.sin(2 * math.pi * 30 * t) * math.exp(-t * 9)
+        f = 36 + 20 * math.exp(-t * 34)
+        e = math.exp(-t * 14) * min(1.0, t / 0.006)
+        lp += 0.07 * (lr.uniform(-1, 1) - lp)
+        crunch = lp * 1.7 * math.exp(-t * 30)
+        sub = 0.6 * math.sin(2 * math.pi * 26 * t) * math.exp(-t * 8)
         s.append((math.sin(2 * math.pi * f * t) * (1.0 if heavy else 0.85) + crunch) * e + sub * e)
     return s
 
@@ -117,7 +128,7 @@ def thruster():
     n = int(1.4 * SR); s = []; lp = 0.0; acc = 0.0
     for i in range(n):
         t = i / SR
-        cut = 0.30 + 0.10 * math.sin(2 * math.pi * 2.3 * t) + 0.05 * math.sin(2 * math.pi * 7.7 * t)
+        cut = 0.20 + 0.07 * math.sin(2 * math.pi * 2.3 * t) + 0.03 * math.sin(2 * math.pi * 7.7 * t)  # softer band (owner, 2026-11-17: less noticeable)
         lp += cut * (lr.uniform(-1, 1) - lp)
         acc = acc * 0.97 + lr.uniform(-1, 1) * 0.03 * 6
         s.append(lp * 1.5 + acc * 0.9)
