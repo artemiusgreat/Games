@@ -189,7 +189,7 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
             AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Pod_L");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
             AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "Elbow_L");
@@ -341,6 +341,43 @@ public sealed class RiderParts
             byName.Keys.CopyTo(all, 0);
             AddPart("torso", "TORSO", 0f, byName, all);
         }
+        // Safety net: EVERY mesh must belong to a part. A mesh
+        // no layout claimed never detaches - it stays skinned to
+        // the dead rider's skeleton and floats at the death
+        // position while every real part lies on the ground
+        // (owner report, 2026-11-17). Attach any leftover to the
+        // part whose claimed meshes sit nearest to it.
+        {
+            var claimed = new System.Collections.Generic.HashSet<MeshInstance3D>();
+            var partCenters = new System.Collections.Generic.Dictionary<string, Vector3>();
+            foreach (var part in _parts.Values)
+            {
+                var acc = Vector3.Zero; int n = 0;
+                foreach (var rec in part.Meshes)
+                {
+                    claimed.Add(rec.Mi);
+                    acc += rec.Mi.GetAabb().GetCenter(); n++;
+                }
+                if (n > 0) partCenters[part.Id] = acc / n;
+            }
+            foreach (var kv in byName)
+            {
+                if (claimed.Contains(kv.Value)) continue;
+                var c = kv.Value.GetAabb().GetCenter();
+                Part best = null; float bd = float.MaxValue;
+                foreach (var part in _parts.Values)
+                {
+                    if (!partCenters.TryGetValue(part.Id, out var pc)) continue;
+                    float d = c.DistanceSquaredTo(pc);
+                    if (d < bd) { bd = d; best = part; }
+                }
+                if (best != null)
+                {
+                    GD.PrintErr($"PARTS {_riderId}: mesh '{kv.Key}' claimed by no layout - attached to {best.Id} by the safety net");
+                    AttachMesh(best, kv.Value);
+                }
+            }
+        }
         foreach (var part in _parts.Values)
         {
             string line = $"{_riderId} PART {part.Id} hp={(part.MaxHp > 0 ? part.MaxHp.ToString("F0") : "pool")} meshes=[";
@@ -436,10 +473,21 @@ public sealed class RiderParts
         {
             if (!kv.Key.StartsWith("Debris_")) continue;
             var rest = kv.Key.Substring("Debris_".Length);
-            int cut = rest.LastIndexOf('_');
-            if (cut <= 0) continue;
-            if (_parts.TryGetValue(rest.Substring(0, cut), out var part))
-                AttachMesh(part, kv.Value);
+            // The part id is the longest leading segment chain
+            // that names a real part: Debris_arm_L_37_small must
+            // land on arm_L - stripping only the last segment
+            // parsed it to a non-existent "arm_L_37", the bit
+            // stayed unclaimed, and since an unclaimed mesh never
+            // detaches it hung in the air at the death position
+            // after its rider was destroyed (owner, 2026-11-17).
+            string cand = rest;
+            while (cand.Length > 0 && !_parts.ContainsKey(cand))
+            {
+                int cut = cand.LastIndexOf('_');
+                if (cut <= 0) { cand = ""; break; }
+                cand = cand.Substring(0, cut);
+            }
+            if (cand.Length > 0) AttachMesh(_parts[cand], kv.Value);
         }
     }
 
