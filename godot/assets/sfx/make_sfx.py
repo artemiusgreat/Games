@@ -27,18 +27,20 @@ def brown_noise(n, leak=0.985):
     return out
 
 def laser():
-    # Fast whoosh (owner, 2026-10-31): the rocket's recipe - noise
-    # through a swelling lowpass with an arch envelope - compressed
-    # from 0.6s to 0.16s with a higher, snappier cutoff sweep. A
-    # LOCAL rng keeps the shared sequence untouched, so every other
-    # WAV regenerates byte-identical.
+    # Fast whoosh (owner, 2026-10-31), pitched MUCH higher at his
+    # word (2026-11-17): same noise-through-a-swelling-lowpass
+    # recipe, but the cutoff arch now lives in the bright band
+    # (floor 0.40 instead of 0.05, peak ~0.98) and the whole
+    # gesture is compressed to 0.13s, so the spectral centre sits
+    # several times higher. A LOCAL rng keeps the shared sequence
+    # untouched, so every other WAV regenerates byte-identical.
     lr = random.Random(777)
-    n = int(0.16 * SR); s = []; lp = 0.0
+    n = int(0.13 * SR); s = []; lp = 0.0
     for i in range(n):
         t = i / SR
-        cut = 0.05 + 0.85 * math.sin(math.pi * min(1, t / 0.16)) ** 2
+        cut = 0.40 + 0.58 * math.sin(math.pi * min(1, t / 0.13)) ** 2
         lp += cut * (lr.uniform(-1, 1) - lp)
-        s.append(lp * 2.4 * math.sin(math.pi * min(1, t / 0.15)))
+        s.append(lp * 2.4 * math.sin(math.pi * min(1, t / 0.12)))
     return s
 
 def cannon():
@@ -91,13 +93,39 @@ def explosion():
     return s
 
 def step(heavy):
-    n = int(0.15 * SR); s = []
+    # STOMP (owner, 2026-11-17 - replaces the light step tap):
+    # a deep ground thud (46 Hz body with a 30 Hz sub tail) under
+    # a short lowpassed crunch of dirt/metal stress. 0.24s.
+    lr = random.Random(4242 if heavy else 4243)
+    n = int(0.24 * SR); s = []; lp = 0.0
     for i in range(n):
         t = i / SR
-        f = 58 + 30 * math.exp(-t * 40)
-        e = math.exp(-t * 26)
-        s.append((math.sin(2 * math.pi * f * t) * (1.0 if heavy else 0.8) + rng.uniform(-0.25, 0.25) * math.exp(-t * 60)) * e)
+        f = 46 + 26 * math.exp(-t * 34)
+        e = math.exp(-t * 17)
+        lp += 0.16 * (lr.uniform(-1, 1) - lp)
+        crunch = lp * 2.6 * math.exp(-t * 30)
+        sub = 0.55 * math.sin(2 * math.pi * 30 * t) * math.exp(-t * 9)
+        s.append((math.sin(2 * math.pi * f * t) * (1.0 if heavy else 0.85) + crunch) * e + sub * e)
     return s
+
+def thruster():
+    # Looping jet roar (owner, 2026-11-17): white noise through a
+    # wobbling lowpass over a brown-noise body. 1.4s, made
+    # loop-clean by crossfading the tail into the head; the game
+    # sets the stream's loop mode on load. LOCAL rng.
+    lr = random.Random(909)
+    n = int(1.4 * SR); s = []; lp = 0.0; acc = 0.0
+    for i in range(n):
+        t = i / SR
+        cut = 0.30 + 0.10 * math.sin(2 * math.pi * 2.3 * t) + 0.05 * math.sin(2 * math.pi * 7.7 * t)
+        lp += cut * (lr.uniform(-1, 1) - lp)
+        acc = acc * 0.97 + lr.uniform(-1, 1) * 0.03 * 6
+        s.append(lp * 1.5 + acc * 0.9)
+    fade = int(0.15 * SR)
+    for i in range(fade):
+        w = i / fade
+        s[i] = s[i] * w + s[n - fade + i] * (1 - w)
+    return s[:n - fade]
 
 save('laser.wav', laser())
 save('cannon.wav', cannon())
@@ -107,3 +135,4 @@ save('tree.wav', tree())
 save('explosion.wav', explosion())
 save('step_a.wav', step(True))
 save('step_b.wav', step(False))
+save('thruster.wav', thruster())
