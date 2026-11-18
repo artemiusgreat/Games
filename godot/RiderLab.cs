@@ -432,6 +432,66 @@ public partial class RiderLab : Control
                 // its children) rather than cover each other's
                 // text. Wide windows never trigger this (the
                 // pairs sit farther apart than their widths).
+                // Final pairwise separation (owner, 2026-11-18):
+                // the per-side stacks and the level-pair spread
+                // leave one case open - panels on OPPOSITE sides
+                // at DIFFERENT stack levels whose radial X put
+                // them on a collision course mid-frame (Hector's
+                // chest gun and chest energy panels, anchors a
+                // few cm apart on the model, overlapping as the
+                // rider orbits). A few relaxation passes over
+                // every live pair, pushing along the axis of
+                // least penetration, close that case without
+                // disturbing the stacks when nothing collides.
+                {
+                    var livePanels = new System.Collections.Generic.List<Control>();
+                    foreach (var (pid, p) in placed) livePanels.Add(p);
+                    for (int pass = 0; pass < 8; pass++)
+                    {
+                        bool moved = false;
+                        for (int i = 0; i < livePanels.Count; i++)
+                            for (int j = i + 1; j < livePanels.Count; j++)
+                            {
+                                var a = livePanels[i]; var b = livePanels[j];
+                                float ox = Mathf.Min(a.Position.X + a.Size.X, b.Position.X + b.Size.X)
+                                         - Mathf.Max(a.Position.X, b.Position.X) + 6f;
+                                if (ox <= 0f) continue;
+                                float oy = Mathf.Min(a.Position.Y + a.Size.Y, b.Position.Y + b.Size.Y)
+                                         - Mathf.Max(a.Position.Y, b.Position.Y) + 6f;
+                                if (oy <= 0f) continue;
+                                moved = true;
+                                if (ox < oy)
+                                {
+                                    float push = ox * 0.5f;
+                                    if (a.Position.X + a.Size.X * 0.5f <= b.Position.X + b.Size.X * 0.5f)
+                                    {
+                                        a.Position = new Vector2(Mathf.Max(a.Position.X - push, -60f), a.Position.Y);
+                                        b.Position = new Vector2(Mathf.Min(b.Position.X + push, Size.X - b.Size.X + 60f), b.Position.Y);
+                                    }
+                                    else
+                                    {
+                                        a.Position = new Vector2(Mathf.Min(a.Position.X + push, Size.X - a.Size.X + 60f), a.Position.Y);
+                                        b.Position = new Vector2(Mathf.Max(b.Position.X - push, -60f), b.Position.Y);
+                                    }
+                                }
+                                else
+                                {
+                                    float push = oy * 0.5f;
+                                    if (a.Position.Y + a.Size.Y * 0.5f <= b.Position.Y + b.Size.Y * 0.5f)
+                                    {
+                                        a.Position = new Vector2(a.Position.X, Mathf.Max(a.Position.Y - push, -20f));
+                                        b.Position = new Vector2(b.Position.X, Mathf.Min(b.Position.Y + push, Size.Y - b.Size.Y + 20f));
+                                    }
+                                    else
+                                    {
+                                        a.Position = new Vector2(a.Position.X, Mathf.Min(a.Position.Y + push, Size.Y - a.Size.Y + 20f));
+                                        b.Position = new Vector2(b.Position.X, Mathf.Max(b.Position.Y - push, -20f));
+                                    }
+                                }
+                            }
+                        if (!moved) break;
+                    }
+                }
                 if (groups.TryGetValue(0, out var gL) && groups.TryGetValue(1, out var gR))
                 {
                     int levels = Mathf.Min(gL.Count, gR.Count);
