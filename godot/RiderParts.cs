@@ -150,24 +150,25 @@ public sealed class RiderParts
         }
         else if (riderId == "hermes")
         {
-            // Orion sculpt on its own Mixamo skeleton (owner,
-            // 2026-11-16: "it should already contain rigs, use
-            // them"): the file's joints, renamed to the game
-            // bones; fragments split into loose islands and
-            // bound rigidly by surface-area majority, so the
-            // parts are whole islands - the LRM honeycomb is
-            // one joined mesh (LRMPod), the cockpit/antennae
-            // one Head mesh. No torso carve needed: Tripo kept
-            // the head and the rack as their own islands.
-            // (The right forearm's biggest island is also its
-            // elbow piece, so arm_R has no separate Elbow mesh.)
+            // Owner's own grouping (Hermes-Clean.fbx, 2026-11-18,
+            // replacing the Tripo island build): 12 named part
+            // objects with the fragments parented under them; the
+            // build binds every fragment rigidly to its root
+            // object's bone on the file's own Mixamo skeleton
+            // (renamed to the game bones), so the safety net below
+            // files each unclaimed fragment into the part its bone
+            // belongs to. Head and the LRM rack bind torso like
+            // the rest of the chest, so they are claimed by name:
+            // the rack is the honeycomb cells and housing over
+            // the left shoulder, the head is the cockpit cap and
+            // antennae on top of the torso.
             AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart("pod_L", "LRM RACK", 45f, byName, "LRMPod");
-            AddPart("head", "HEAD", 50f, byName, "Head");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Forearm_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AddPart("pod_L", "LRM RACK", 45f, byName, "tripo_part_7", "tripo_part_23", "tripo_part_24", "tripo_part_25", "tripo_part_26", "tripo_part_27", "tripo_part_28", "tripo_part_29", "tripo_part_30", "tripo_part_31", "tripo_part_32", "tripo_part_33", "tripo_part_34", "tripo_part_35", "tripo_part_36", "tripo_part_37", "tripo_part_40", "tripo_part_90", "tripo_part_103", "tripo_part_122", "tripo_part_126", "tripo_part_135", "tripo_part_143", "tripo_part_178", "tripo_part_179", "tripo_part_180", "tripo_part_181", "tripo_part_182", "tripo_part_183", "tripo_part_184", "tripo_part_185", "tripo_part_186", "tripo_part_187", "tripo_part_188", "tripo_part_189", "tripo_part_190", "tripo_part_191", "tripo_part_192", "tripo_part_193", "tripo_part_194");
+            AddPart("head", "HEAD", 50f, byName, "tripo_part_4", "tripo_part_39", "tripo_part_46", "tripo_part_56", "tripo_part_139", "tripo_part_145", "tripo_part_200");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Cannon");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Cannon");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
             AttachDebris(byName);
         }
         else if (riderId == "apollo")
