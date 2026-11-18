@@ -122,35 +122,30 @@ public sealed class RiderParts
         }
         else if (riderId == "hector")
         {
-            // Segmented Tripo build (owner, 2026-11-15): the
-            // model arrives as ~150 fragments grouped into the
-            // canonical part meshes below; every other fragment
-            // rides as a Debris_<part>_N mesh of its part, so a
-            // break - and above all the death explosion - throws
-            // the small pieces separately, as the owner asked.
-            // Head = the skull region of the joined Torso mesh,
-            // measured on the built model (skull: |x| <= 1.04,
-            // height 11.47..13.79, front z >= 0.2 in model
-            // space; the band also takes the jaw pistons).
-            // Head band for the Hector-Front sculpt
-            // (2026-11-15, replaces the segments build): the
-            // model is AABB-centred on its own axis (shift 0),
-            // the skull assembly sits at height >= 11.9 with its
-            // face 2.03 proud of the axis; the band below carves
-            // 16052 of the joined Torso's 23205 tris into the
-            // head (builder-measured on the source fragments).
+            // Owner's clean split (2026-11-17): his 16 named
+            // objects plus the Tripo fragments, rigged as-is -
+            // nothing moved or regrouped. Head = the skull
+            // band of his Torso object (measured on this file:
+            // |X| <= 0.075, Y >= 0.925, face-front Z >= -0.01,
+            // file units). Gun = tripo_part_33, the chest
+            // cannon island - the identical island the
+            // previous build joined as AC20 (274 tris, same
+            // centre). Pod = the connected armour cluster
+            // over the left shoulder, contact-chained from
+            // tripo_part_53 - the same pieces the previous
+            // build joined as SRM6.
             SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
             {
-                ("Head", p => Mathf.Abs(p.X) <= 1.35f && p.Y >= 11.9f && p.Z >= 0.80f),
+                ("Head", p => Mathf.Abs(p.X) <= 0.075f && p.Y >= 0.925f && p.Z >= -0.01f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
-            AddPart("gun", "WAIST GUN", 65f, byName, "AC20");
-            AddPart("pod_L", "SRM POD", 45f, byName, "SRM6");
+            AddPart("gun", "WAIST GUN", 65f, byName, "tripo_part_33");
+            AddPart("pod_L", "SRM POD", 45f, byName, "tripo_part_53", "tripo_part_84", "tripo_part_90", "tripo_part_96", "tripo_part_99", "tripo_part_100", "tripo_part_117", "tripo_part_170", "tripo_part_171", "tripo_part_212", "tripo_part_240", "tripo_part_252");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Elbow", "Left_Hand", "Left_Cannon");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Elbow", "Right_Hand", "Right_Cannon");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
             AttachDebris(byName);
         }
         else if (riderId == "hermes")
