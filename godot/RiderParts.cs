@@ -272,20 +272,21 @@ public sealed class RiderParts
         }
         else if (riderId == "medea")
         {
-            // Shield mech (original design), cut at build time;
-            // the tower shield rides the left forearm as part of
-            // the arm_L group. Head = the turret cap split.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.6f && p.Y >= 10.3f),
-            });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Waist");
-            AddPart("head", "HEAD", 45f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 85f, byName, "UpperArm_L", "GunArm_L", "Shield_L");
-            AddPart("arm_R", "RIGHT ARM", 85f, byName, "UpperArm_R", "GunArm_R");
-            AddPart("leg_L", "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "Foot_R");
-            AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Pod_L");
+            // Shield mech, owner's clean split (2026-11-18):
+            // his named objects ARE the parts - the turret is
+            // its own object (the head), the left-shoulder
+            // block is the missile pod, the shield and its pin
+            // ride the left arm, the twin-barrel Cannon is the
+            // right arm, and the legs are Enyo's (hub + toes).
+            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart("head", "HEAD", 45f, byName, "Tower");
+            AddPart("arm_L", "LEFT ARM", 85f, byName, "Shield", "Cylinder");
+            AddPart("arm_R", "RIGHT ARM", 85f, byName, "Cannon");
+            AddPart("leg_L", "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "FootHub_L",
+                "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
+            AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "FootHub_R",
+                "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
+            AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Cabin");
         }
         else if (riderId == "demeter")
         {
