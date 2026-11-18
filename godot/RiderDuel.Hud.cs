@@ -262,7 +262,7 @@ public partial class RiderDuel
         // buttons with NO as the safe default.
         _leaveDialog = new LeaveOverlay();
         _leaveDialog.LeaveRequested += OnLeaveConfirmed;
-        _leaveDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; };
+        _leaveDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; RecaptureMouse(); };
         layer.AddChild(_leaveDialog);
 
         // The team screen rides the same pause/unpause contract.
@@ -272,7 +272,7 @@ public partial class RiderDuel
             if (SetLeader(slot)) AddFeed($"LEADER: {_playerSpec.Name}");
         };
         _teamDialog.LeaveRequested += OnLeaveConfirmed;
-        _teamDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; };
+        _teamDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; RecaptureMouse(); };
         layer.AddChild(_teamDialog);
 
         // Death banner.
@@ -662,6 +662,21 @@ public partial class RiderDuel
                 GetViewport().SetInputAsHandled();
             }
         }
+    }
+
+    // The pause dialogs (Esc leave, F1 team) release the
+    // mouse while they are up; when one closes back into a
+    // live duel the capture must return on its own (owner,
+    // 2026-11-18: after picking a leader on the F1 screen
+    // the mouse stayed free until he clicked the game). The
+    // click that closes a dialog lands while the tree is
+    // still paused, so play input's click-to-capture branch
+    // never sees it - the Hidden handlers restore it here.
+    // Leaving the match sets the mode itself afterwards.
+    private void RecaptureMouse()
+    {
+        if (_test || _labOpen || _playerDead) return;
+        Input.MouseMode = Input.MouseModeEnum.Captured;
     }
 
     // Rows for the team screen, in slot order.
