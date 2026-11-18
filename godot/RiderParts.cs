@@ -198,10 +198,45 @@ public sealed class RiderParts
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
             AttachDebris(byName);
         }
-        else if (riderId == "hades" || riderId == "ares")
+        else if (riderId == "ares")
         {
-            // Tripo sculpts on their own Mixamo skeletons (owner
-            // uploads, 2026-11-16): the generic island build -
+            // Owner's own split (Ares.fbx, 2026-11-18), replacing
+            // the Tripo island build: 12 named part objects with
+            // every fragment parented under them; the build binds
+            // each mesh rigidly to its root object's bone on the
+            // file's own Mixamo skeleton, so the safety net files
+            // unclaimed fragments by bone. No arm adjustment: the
+            // sculpt's arms are modelled bent at 90 degrees, guns
+            // forward (owner's rule for replaced models). Two
+            // name claims: his "Torso" object IS the head assembly
+            // (dome, face guard, chin) riding on a small sternum
+            // tab - SplitTorso carves the head off the tab (clean
+            // triangle gap at file z 0.834-0.855; SplitTorso
+            // classifies in the file's own frame, and this file is
+            // 1.0 tall, so the band is 0.845), and the face
+            // plates plus the two back-pylon panels the previous
+            // build counted as head are claimed by name. The pod
+            // is the left shoulder drum group (the previous
+            // build's pod was the left shoulder cap assembly):
+            // the drum and its cradle children bind shoulder_L
+            // but are claimed here by name.
+            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
+            {
+                ("Head", p => p.Y >= 0.845f),
+            });
+            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
+            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Left_Shoulder", "tripo_part_134_001", "tripo_part_135_001", "tripo_part_173_001", "tripo_part_18_001", "tripo_part_184_001", "tripo_part_203", "tripo_part_204", "tripo_part_247", "tripo_part_33_001", "tripo_part_67_001", "tripo_part_76_001", "tripo_part_81_001");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "tripo_part_143", "tripo_part_181", "tripo_part_153", "tripo_part_154", "tripo_part_132", "tripo_part_136");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Cannon");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
+            AttachDebris(byName);
+        }
+        else if (riderId == "hades")
+        {
+            // Tripo sculpt on its own Mixamo skeleton (owner
+            // upload, 2026-11-16): the generic island build -
             // head and left-shoulder pod are their own joined
             // meshes, no torso carve needed.
             AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
