@@ -69,13 +69,17 @@ public partial class RiderDuel
 
     // The ally's station when it is not engaging: a loose
     // echelon behind the leader, spread by team position.
+    // Widened 2026-11-18 (owner): more minimum distance
+    // between all riders of the team under Follow me -
+    // leader to follower ~26-31u, follower to follower
+    // ~34u (was ~17-22u / 22u).
     private Vector3 FormationPoint(Ally a)
     {
         var f = new Vector3(-Mathf.Sin(_playerYaw), 0f, -Mathf.Cos(_playerYaw)); // leader forward
         var r = new Vector3(-f.Z, 0f, f.X);                                       // leader right
         int idx = _allies.IndexOf(a);
-        float side = idx == 0 ? -11f : idx == 1 ? 11f : 0f;
-        float back = idx == 2 ? 22f : 13f;
+        float side = idx == 0 ? -17f : idx == 1 ? 17f : 0f;
+        float back = idx == 2 ? 31f : 20f;
         return _player.RootPos + r * side - f * back;
     }
 
