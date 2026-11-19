@@ -230,10 +230,10 @@ public partial class RiderDuel : Node3D
     private float _combatClock;
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Life)> _puffs = new();
     // Per-weapon hit effects: spark bursts (laser), explosion bundles
-    // (rockets), scorch decals (cannon shells).
+    // (rockets). (Cannon scorch decals removed 2026-11-19, owner: the
+    // dark squares read fake; do not re-add.)
     private readonly System.Collections.Generic.List<(MeshInstance3D Mi, Vector3 Vel, float Life)> _sparks = new();
-    private readonly System.Collections.Generic.List<(MeshInstance3D Mi, float Age)> _scorches = new();
-    private int _fxSparkBursts, _fxBooms, _fxScorches;
+    private int _fxSparkBursts, _fxBooms;
     private readonly RandomNumberGenerator _fxRng = new() { Seed = 4242 };
     private bool _exploding; // true while a death explosion breaks every part at once
     private static readonly BoxMesh SparkMesh = new() { Size = new Vector3(0.11f, 0.11f, 0.11f) };
@@ -861,18 +861,7 @@ public partial class RiderDuel : Node3D
             mi.GlobalPosition += vel * dt;
             _sparks[i] = (mi, vel, life);
         }
-        for (int i = _scorches.Count - 1; i >= 0; i--)
-        {
-            var (mi, age) = _scorches[i];
-            age += dt;
-            if (age > 7f) { mi.QueueFree(); _scorches.RemoveAt(i); continue; }
-            if (age > 5f && mi.MaterialOverride is StandardMaterial3D sm)
-            {
-                var c = sm.AlbedoColor;
-                sm.AlbedoColor = new Color(c.R, c.G, c.B, 0.82f * (7f - age) / 2f);
-            }
-            _scorches[i] = (mi, age);
-        }
+
         for (int i = _fx.Count - 1; i >= 0; i--)
         {
             // Lifetime is in seconds, but an FX node must also survive at

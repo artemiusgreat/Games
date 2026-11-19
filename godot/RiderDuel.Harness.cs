@@ -2108,12 +2108,11 @@ public partial class RiderDuel
                     {
                         if (GodotObject.IsInstanceValid(_wEnvT.Node)) { WFail("destroyed tree node still alive"); return; }
                         GD.Print("ENVTEST TREE PASS destroyed on one hit, smoked out in ~1s, node freed");
-                        GD.Print($"WPNTEST FX sparks={_fxSparkBursts} booms={_fxBooms} scorches={_fxScorches}");
+                        GD.Print($"WPNTEST FX sparks={_fxSparkBursts} booms={_fxBooms}");
                         if (_fxSparkBursts <= 0) WFail("no laser spark bursts spawned");
                         if (_fxBooms <= 0) WFail("no rocket explosions spawned");
-                        if (_fxScorches <= 0) WFail("no cannon scorch marks spawned");
                         if (_fxParticles <= 0) WFail("no particle systems spawned");
-                        GD.Print("WPNTEST FX PASS laser sparks, rocket explosions and cannon scorches all fired");
+                        GD.Print("WPNTEST FX PASS laser sparks and rocket explosions fired");
                         _wEnvStep = 4; _wPhaseT = 0f;
                     }
                 }

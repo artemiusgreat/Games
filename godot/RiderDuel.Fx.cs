@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: particles, lights, flashes, scorch, damage numbers, death feedback.
+// RiderDuel module: particles, lights, flashes, damage numbers, death feedback.
 // Split from the single-file build (round 22 cleanup); the class
 // stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
@@ -339,37 +339,6 @@ public partial class RiderDuel
             var puff = WeaponFx.MakeTrailPuff(point + new Vector3(_fxRng.RandfRange(-0.5f, 0.5f), _fxRng.RandfRange(0f, 0.6f), _fxRng.RandfRange(-0.5f, 0.5f)));
             AddChild(puff);
             _puffs.Add((puff, 0.7f));
-        }
-    }
-
-    // Cannon scorch: a dark burn decal pasted on the struck surface. On
-    // a rider it parents to the walker so it rides the hull; on terrain
-    // or a prop it stays in the world. Fades out over ~7 seconds.
-    private void SpawnScorch(Vector3 point, Vector3 normal, Node3D parent)
-    {
-        _fxScorches++;
-        var mat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.03f, 0.03f, 0.03f, 0.82f),
-            Roughness = 1f,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled
-        };
-        var mi = new MeshInstance3D
-        {
-            Mesh = new PlaneMesh { Size = new Vector2(1.05f, 1.05f) },
-            MaterialOverride = mat
-        };
-        parent.AddChild(mi);
-        mi.GlobalPosition = point + normal * 0.07f;
-        if (normal.LengthSquared() > 0.01f && Mathf.Abs(normal.Dot(Vector3.Up)) < 0.98f)
-            mi.LookAt(point + normal * 2f, Vector3.Up);
-        mi.RotateObjectLocal(Vector3.Forward, _fxRng.RandfRange(0f, Mathf.Tau));
-        _scorches.Add((mi, 0f));
-        if (_scorches.Count > 40)
-        {
-            _scorches[0].Mi.QueueFree();
-            _scorches.RemoveAt(0);
         }
     }
 

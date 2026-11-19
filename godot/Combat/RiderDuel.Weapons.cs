@@ -459,13 +459,6 @@ public partial class RiderDuel
         SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.13f, 0.6f, 1.1f);
         SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
         if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
-        // Cannon shells scorch what they hit.
-        var nrm = p.Vel.LengthSquared() > 0.01f ? -p.Vel.Normalized() : Vector3.Up;
-        if (hit.Target == Roles.Player) SpawnScorch(hit.Point, nrm, _player);
-        else if (hit.Target == Roles.Enemy) SpawnScorch(hit.Point, nrm, _enemy);
-        else if (hit.Target == Roles.Foe && _foe != null) SpawnScorch(hit.Point, nrm, _foe.Walker);
-        else if (AllyByRole(hit.Target) is { } sa) SpawnScorch(hit.Point, nrm, sa.Walker);
-        else if (hit.Hit) SpawnScorch(hit.Point, nrm, this);
         string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
         if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
