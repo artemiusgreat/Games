@@ -537,7 +537,9 @@ void fragment() {
         return ImageTexture.CreateFromImage(img);
     }
 
-    // ---- Backdrop: ground apron + mountain ring + forest edge ----
+    // ---- Backdrop: ground apron + biome rim rings (forest trees,
+    // desert rocks). The procedural peak ring was removed entirely
+    // (owner, 2026-11-19: the cone mountains read fake on every map).
 
     public static void AddBackdrop(Node3D parent)
     {
@@ -560,45 +562,7 @@ void fragment() {
         };
         parent.AddChild(apron);
 
-        // Craggy ring: low-segment cones with the scanned rock set.
-        var rockMat = new StandardMaterial3D
-        {
-            AlbedoTexture = Tex("aerial_rocks_02", "diff"),
-            NormalEnabled = true,
-            NormalTexture = Tex("aerial_rocks_02", "nor_gl"),
-            RoughnessTexture = Tex("aerial_rocks_02", "arm"),
-            RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
-            Uv1Triplanar = true,
-            Uv1Scale = new Vector3(0.03f, 0.03f, 0.03f)
-        };
         var rng = new RandomNumberGenerator { Seed = 90210 };
-        // The City biome gets NO peak ring (owner's report,
-        // 2026-11-14: Polis read as spawning inside a mountain
-        // - the twelve craggy cones ringed the arena while the
-        // biome's own backdrop rule below already gives the
-        // city no ring at all; the cones also contradicted the
-        // map's identity: a dead city, not a crater).
-        bool peaks = WorldConfig.BackdropPeaks && WorldConfig.Biome != WorldConfig.BiomeKind.City;
-        for (int i = 0; i < (peaks ? 12 : 0); i++)
-        {
-            float a = i / 12f * Mathf.Tau + rng.RandfRange(-0.14f, 0.14f);
-            float dist = rng.RandfRange(330f, 520f) * (mission ? bs * 0.55f : 1f);
-            float h = rng.RandfRange(38f, 95f) * (mission ? 2.1f : 1f);
-            float r = h * rng.RandfRange(1.15f, 1.7f);
-            var cone = new MeshInstance3D
-            {
-                Mesh = new CylinderMesh
-                {
-                    TopRadius = r * 0.10f, BottomRadius = r,
-                    Height = h, RadialSegments = 7, Rings = 1
-                },
-                MaterialOverride = rockMat,
-                Position = new Vector3(Mathf.Cos(a) * dist, h / 2f - 6f, Mathf.Sin(a) * dist),
-                Rotation = new Vector3(0f, rng.RandfRange(0f, Mathf.Tau), 0f),
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-            };
-            parent.AddChild(cone);
-        }
 
         // Backdrop ring by biome: forest keeps its tree ring
         // (visual only; on the Mission front it rings the rim).
@@ -612,7 +576,7 @@ void fragment() {
         // every city building is a gameplay building inside it).
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
         {
-            GD.Print("PHOTO backdrop: apron only (city - no ring, no peaks)");
+            GD.Print("PHOTO backdrop: apron only (city - no ring)");
             return;
         }
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
@@ -629,7 +593,7 @@ void fragment() {
                 rock.Position = pos2;
                 parent.AddChild(rock);
             }
-            GD.Print("PHOTO backdrop: apron + peaks + desert rock ring");
+            GD.Print("PHOTO backdrop: apron + desert rock ring");
             return;
         }
         for (int i = 0; i < 44; i++)
@@ -645,7 +609,7 @@ void fragment() {
             holder.Scale = Vector3.One * rng.RandfRange(1.15f, 1.6f);
             parent.AddChild(holder);
         }
-        GD.Print("PHOTO backdrop: apron + 12 peaks + 44 ring trees");
+        GD.Print("PHOTO backdrop: apron + 44 ring trees");
     }
 
     // ---- Renderer / atmosphere tuning for the probe ----

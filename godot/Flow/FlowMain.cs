@@ -326,9 +326,6 @@ public partial class FlowMain : Node3D
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SNOW")))
             WorldConfig.SnowGround = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.SnowGround;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_PEAKS")))
-            WorldConfig.BackdropPeaks = !WorldConfig.IsMission
-                || WorldConfig.SelectedMission.BackdropPeaks;
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRACES")))
             WorldConfig.TerracedCity = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Terraces;

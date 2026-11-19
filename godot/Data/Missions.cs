@@ -50,9 +50,6 @@ public sealed class MissionDef
     // Snow-covered ground (owner): the map's ground matches
     // a snowy painted sky (Gate City under the ice panorama).
     public bool SnowGround;
-    // Procedural backdrop peaks (owner): off where a
-    // painted horizon replaces them (Harbor under its sky).
-    public bool BackdropPeaks = true;
     // Three terrace levels with ramps and lifts, plus an
     // island district on a bridge (owner: Harbor rebuild).
     public bool Terraces;
@@ -66,7 +63,7 @@ public static class MissionCatalog
     private static MissionDef M(PlanetDef p, string name, string site, float sx, float sy,
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
-        bool flat = false, string sky = "", bool snow = false, bool peaks = true, bool terraces = false,
+        bool flat = false, string sky = "", bool snow = false, bool terraces = false,
         bool stars = false)
     {
         var m = new MissionDef
@@ -74,7 +71,7 @@ public static class MissionCatalog
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
-            FlatTerrain = flat, SkyTex = sky, SnowGround = snow, BackdropPeaks = peaks, Terraces = terraces, Planet = p,
+            FlatTerrain = flat, SkyTex = sky, SnowGround = snow, Terraces = terraces, Planet = p,
             ProceduralStars = stars
         };
         p.Missions.Add(m);
@@ -130,7 +127,7 @@ public static class MissionCatalog
             "The Atlantis stacks rise straight out of the storm water - ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, peaks: false, terraces: true, stars: true);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, terraces: true, stars: true);
         M(thalassa, "Pharos", "Pharos", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Pharos light is the only thing the fuel barges steer by on the night run, and raiders " +

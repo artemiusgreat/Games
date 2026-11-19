@@ -65,14 +65,6 @@ public static class WorldConfig
     // copies the contract's flag here; AOT_SNOW=1 forces it.
     public static bool SnowGround = InitSnow();
 
-    // Procedural backdrop peaks (PhotoEnv ring of cones):
-    // a painted horizon replaces them where the contract
-    // says so. AOT_PEAKS=0 forces them off for harnesses.
-    public static bool BackdropPeaks = InitPeaks();
-
-    private static bool InitPeaks() =>
-        System.Environment.GetEnvironmentVariable("AOT_PEAKS") != "0";
-
     // Terraced city (owner: Harbor's three levels): EnterLab
     // copies the contract's flag; AOT_TERRACES=1 forces it.
     public static bool TerracedCity = InitTerraces();
@@ -119,7 +111,6 @@ public static class WorldConfig
         SkyTex = InitSky();
         SkyStars = InitStars();
         SnowGround = InitSnow();
-        BackdropPeaks = InitPeaks();
         TerracedCity = InitTerraces();
         FlatWorld = InitFlat();
     }
