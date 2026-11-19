@@ -237,40 +237,55 @@ public sealed class RiderParts
         }
         else if (riderId == "hades")
         {
-            // Tripo sculpt on its own Mixamo skeleton (owner
-            // upload, 2026-11-16): the generic island build -
-            // head and left-shoulder pod are their own joined
-            // meshes, no torso carve needed.
-            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Pod_L");
-            AddPart("head", "HEAD", 50f, byName, "Head");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            // Owner's own split (Hades.fbx, 2026-11-19), replacing
+            // the Tripo island build: 12 named part groups with
+            // every fragment parented under them; the build binds
+            // each mesh rigidly to its group root's bone (no
+            // skeleton in his file - the rig is authored at his
+            // groups' measured joints). No arm adjustment: his
+            // arm positioning ships as modelled. Two name calls:
+            // the head is the cockpit assembly grouped under
+            // Torso (its own mesh is the fin cap, tripo_part_16
+            // the canopy block, 145/148 the cheek guards, 179
+            // the top cap - isolation-verified), bound to the
+            // head bone; the sculpt has no missile pod, so the
+            // left shoulder's top cap cluster (142 + the small
+            // plates above the pauldron) serves as pod_L - it
+            // binds shoulder_L and rides the arm.
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "tripo_part_111", "tripo_part_114", "tripo_part_115", "tripo_part_116", "tripo_part_117", "tripo_part_118", "tripo_part_119", "tripo_part_120", "tripo_part_121", "tripo_part_122", "tripo_part_123", "tripo_part_124", "tripo_part_127", "tripo_part_128", "tripo_part_13", "tripo_part_131", "tripo_part_132", "tripo_part_133", "tripo_part_134", "tripo_part_135", "tripo_part_138", "tripo_part_143", "tripo_part_147", "tripo_part_159", "tripo_part_160", "tripo_part_161", "tripo_part_167", "tripo_part_169", "tripo_part_171", "tripo_part_172", "tripo_part_173", "tripo_part_174", "tripo_part_180", "tripo_part_181", "tripo_part_182", "tripo_part_183", "tripo_part_185", "tripo_part_186", "tripo_part_189", "tripo_part_190", "tripo_part_2", "tripo_part_206", "tripo_part_208", "tripo_part_209", "tripo_part_210", "tripo_part_211", "tripo_part_215", "tripo_part_216", "tripo_part_217", "tripo_part_218", "tripo_part_219", "tripo_part_22", "tripo_part_220", "tripo_part_221", "tripo_part_223", "tripo_part_224", "tripo_part_225", "tripo_part_226", "tripo_part_227", "tripo_part_228", "tripo_part_229", "tripo_part_230", "tripo_part_231", "tripo_part_232", "tripo_part_236", "tripo_part_239", "tripo_part_240", "tripo_part_241", "tripo_part_242", "tripo_part_243", "tripo_part_244", "tripo_part_245", "tripo_part_246", "tripo_part_247", "tripo_part_248", "tripo_part_249", "tripo_part_250", "tripo_part_251", "tripo_part_252", "tripo_part_253", "tripo_part_254", "tripo_part_255", "tripo_part_35", "tripo_part_39", "tripo_part_40", "tripo_part_45", "tripo_part_49", "tripo_part_50", "tripo_part_51", "tripo_part_55", "tripo_part_57", "tripo_part_62", "tripo_part_63", "tripo_part_64", "tripo_part_65", "tripo_part_67", "tripo_part_68", "tripo_part_74", "tripo_part_75", "tripo_part_77", "tripo_part_80", "tripo_part_9");
+            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "tripo_part_142", "tripo_part_198", "tripo_part_201", "tripo_part_4_001");
+            AddPart("head", "HEAD", 50f, byName, "Torso", "tripo_part_145", "tripo_part_148", "tripo_part_16", "tripo_part_179");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder", "tripo_part_137", "tripo_part_154", "tripo_part_156", "tripo_part_197", "tripo_part_204", "tripo_part_24", "tripo_part_4", "tripo_part_78", "tripo_part_89");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder", "tripo_part_137_001", "tripo_part_142_001", "tripo_part_154_001", "tripo_part_156_001", "tripo_part_197_001", "tripo_part_198_001", "tripo_part_201_001", "tripo_part_204_001", "tripo_part_24_001", "tripo_part_4_002", "tripo_part_4_003", "tripo_part_78_001", "tripo_part_89_001");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin", "tripo_part_101", "tripo_part_102", "tripo_part_104", "tripo_part_106", "tripo_part_109", "tripo_part_110", "tripo_part_136", "tripo_part_141", "tripo_part_144", "tripo_part_153", "tripo_part_158", "tripo_part_163", "tripo_part_165", "tripo_part_168", "tripo_part_188", "tripo_part_193", "tripo_part_194", "tripo_part_1_001", "tripo_part_200", "tripo_part_207", "tripo_part_214", "tripo_part_234", "tripo_part_237", "tripo_part_29", "tripo_part_32", "tripo_part_33", "tripo_part_42", "tripo_part_54", "tripo_part_56", "tripo_part_60", "tripo_part_61", "tripo_part_7", "tripo_part_70", "tripo_part_72", "tripo_part_88", "tripo_part_96");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin", "tripo_part_101_001", "tripo_part_102_001", "tripo_part_104_001", "tripo_part_106_001", "tripo_part_109_001", "tripo_part_110_001", "tripo_part_141_001", "tripo_part_144_001", "tripo_part_153_001", "tripo_part_158_001", "tripo_part_163_001", "tripo_part_165_001", "tripo_part_168_001", "tripo_part_188_001", "tripo_part_193_001", "tripo_part_194_001", "tripo_part_1_002", "tripo_part_200_001", "tripo_part_207_001", "tripo_part_214_001", "tripo_part_234_001", "tripo_part_237_001", "tripo_part_29_001", "tripo_part_32_001", "tripo_part_33_001", "tripo_part_42_001", "tripo_part_54_001", "tripo_part_56_001", "tripo_part_60_001", "tripo_part_61_001", "tripo_part_70_001", "tripo_part_72_001", "tripo_part_7_001", "tripo_part_88_001", "tripo_part_96_001");
             AttachDebris(byName);
         }
         else if (riderId == "amadeus")
         {
-            // Tripo sculpt with a hand-authored rig (owner
-            // upload, 2026-11-16 - the file had no skeleton).
-            // The cockpit dome is fused into the torso slab, so
-            // the head is carved out of the Torso mesh here: the
-            // dome is the top-centre mass (census: |x| <= 1.25,
-            // z >= 12.05 in build space; the shoulder boxes start
-            // at |x| 1.55). The right-shoulder sensor cluster is
-            // the build's own Pod_R mesh.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.25f && p.Y >= 12.05f),
-            });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
-            AddPart("pod_R", "RIGHT SHOULDER", 45f, byName, "Pod_R");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Shoulder_L", "UpperArm_L", "Elbow_L", "Forearm_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Shoulder_R", "UpperArm_R", "Elbow_R", "Forearm_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Thigh_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Thigh_R", "Shin_R", "Foot_R");
+            // Owner's own split (Amadeus.fbx, 2026-11-19),
+            // replacing the Tripo island build: named part
+            // groups, fragments parented under them, no skeleton
+            // in his file - the rig is authored at his groups'
+            // measured joints, binds rigid by group root. No
+            // arm adjustment. His right leg groups carry the
+            // left names with .001 suffixes (Left_Hip.001 etc.)
+            // - they bind and claim as the RIGHT leg. The head
+            // is the centre column cluster grouped under Torso
+            // (tripo_part_10 the helmet + cage column, 11 the
+            // antenna knob, 169/124 the neck pieces -
+            // isolation-verified), bound to the head bone. The
+            // pod is the four-tube launcher box on top of the
+            // RIGHT shoulder tower (tripo_part_88 housing, the
+            // 33-38 tube row, 118/159/202 fittings), a Torso
+            // group cluster bound to the torso bone.
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Torso", "tripo_part_100", "tripo_part_103", "tripo_part_104", "tripo_part_106", "tripo_part_114", "tripo_part_116", "tripo_part_12", "tripo_part_126", "tripo_part_132", "tripo_part_133", "tripo_part_134", "tripo_part_140", "tripo_part_141", "tripo_part_142", "tripo_part_144", "tripo_part_145", "tripo_part_146", "tripo_part_147", "tripo_part_148", "tripo_part_155", "tripo_part_156", "tripo_part_157", "tripo_part_158", "tripo_part_164", "tripo_part_170", "tripo_part_172", "tripo_part_173", "tripo_part_177", "tripo_part_178", "tripo_part_179", "tripo_part_180", "tripo_part_181", "tripo_part_185", "tripo_part_187", "tripo_part_191", "tripo_part_192", "tripo_part_193", "tripo_part_194", "tripo_part_195", "tripo_part_197", "tripo_part_1_001", "tripo_part_2", "tripo_part_204", "tripo_part_205", "tripo_part_213", "tripo_part_216", "tripo_part_217", "tripo_part_218", "tripo_part_219", "tripo_part_220", "tripo_part_221", "tripo_part_226", "tripo_part_227", "tripo_part_229", "tripo_part_23", "tripo_part_237", "tripo_part_242", "tripo_part_255", "tripo_part_27", "tripo_part_29", "tripo_part_3", "tripo_part_31", "tripo_part_32", "tripo_part_4", "tripo_part_43", "tripo_part_44", "tripo_part_45", "tripo_part_47", "tripo_part_66", "tripo_part_71", "tripo_part_87", "tripo_part_9", "tripo_part_91", "tripo_part_92", "tripo_part_93", "tripo_part_99");
+            AddPart("pod_R", "RIGHT SHOULDER", 45f, byName, "tripo_part_118", "tripo_part_159", "tripo_part_202", "tripo_part_33", "tripo_part_34", "tripo_part_35", "tripo_part_36", "tripo_part_37", "tripo_part_38", "tripo_part_88");
+            AddPart("head", "HEAD", 50f, byName, "tripo_part_10", "tripo_part_11", "tripo_part_124", "tripo_part_169");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder", "tripo_part_102_001", "tripo_part_108", "tripo_part_128", "tripo_part_131", "tripo_part_143", "tripo_part_162_001", "tripo_part_163_001", "tripo_part_174_001", "tripo_part_176", "tripo_part_183", "tripo_part_188", "tripo_part_210", "tripo_part_215", "tripo_part_224_001", "tripo_part_22_001", "tripo_part_241_001", "tripo_part_250_001", "tripo_part_253_001", "tripo_part_254_001", "tripo_part_2_003", "tripo_part_2_005", "tripo_part_2_006", "tripo_part_51", "tripo_part_6", "tripo_part_60", "tripo_part_98");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder", "tripo_part_102_002", "tripo_part_108_001", "tripo_part_128_001", "tripo_part_131_001", "tripo_part_143_001", "tripo_part_162_002", "tripo_part_163_002", "tripo_part_174_002", "tripo_part_176_001", "tripo_part_183_001", "tripo_part_188_001", "tripo_part_210_001", "tripo_part_215_001", "tripo_part_224_002", "tripo_part_22_002", "tripo_part_241_002", "tripo_part_250_002", "tripo_part_253_002", "tripo_part_254_002", "tripo_part_2_002", "tripo_part_2_004", "tripo_part_2_007", "tripo_part_51_001", "tripo_part_60_001", "tripo_part_6_001", "tripo_part_98_001");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin", "tripo_part_0_001", "tripo_part_0_004", "tripo_part_113_001", "tripo_part_120_001", "tripo_part_123_001", "tripo_part_130_001", "tripo_part_136_001", "tripo_part_138_001", "tripo_part_14_001", "tripo_part_150_001", "tripo_part_151_001", "tripo_part_153_001", "tripo_part_167_001", "tripo_part_168_001", "tripo_part_17_001", "tripo_part_196_001", "tripo_part_200_001", "tripo_part_201_001", "tripo_part_206_001", "tripo_part_212_001", "tripo_part_228_001", "tripo_part_232_001", "tripo_part_239_001", "tripo_part_249_001", "tripo_part_251_001", "tripo_part_252_001", "tripo_part_26_001", "tripo_part_41_001", "tripo_part_42_001", "tripo_part_48_001", "tripo_part_52_001", "tripo_part_55_001", "tripo_part_56_001", "tripo_part_58_001", "tripo_part_5_004", "tripo_part_61_001", "tripo_part_62_001", "tripo_part_75_001", "tripo_part_76_001", "tripo_part_77_001", "tripo_part_80_001", "tripo_part_83_001", "tripo_part_86_001", "tripo_part_96_001", "tripo_part_97_001");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Left_Foot_001", "Left_Hip_001", "Left_Shin_001", "tripo_part_0_002", "tripo_part_0_003", "tripo_part_113_002", "tripo_part_120_002", "tripo_part_123_002", "tripo_part_130_002", "tripo_part_136_002", "tripo_part_138_002", "tripo_part_14_002", "tripo_part_150_002", "tripo_part_151_002", "tripo_part_153_002", "tripo_part_167_002", "tripo_part_168_002", "tripo_part_17_002", "tripo_part_196_002", "tripo_part_200_002", "tripo_part_201_002", "tripo_part_206_002", "tripo_part_212_002", "tripo_part_228_002", "tripo_part_232_002", "tripo_part_239_002", "tripo_part_249_002", "tripo_part_251_002", "tripo_part_252_002", "tripo_part_26_002", "tripo_part_41_002", "tripo_part_42_002", "tripo_part_48_002", "tripo_part_52_002", "tripo_part_55_002", "tripo_part_56_002", "tripo_part_58_002", "tripo_part_5_001", "tripo_part_61_002", "tripo_part_62_002", "tripo_part_75_002", "tripo_part_76_002", "tripo_part_77_002", "tripo_part_80_002", "tripo_part_83_002", "tripo_part_86_002", "tripo_part_96_002", "tripo_part_97_002");
             AttachDebris(byName);
         }
         else if (riderId == "prometheus")
