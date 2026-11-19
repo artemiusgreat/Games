@@ -127,10 +127,12 @@ public sealed class RiderParts
             // nothing moved or regrouped. Head = the skull
             // band of his Torso object (measured on this file:
             // |X| <= 0.075, Y >= 0.925, face-front Z >= -0.01,
-            // file units). Gun = tripo_part_33, the chest
-            // cannon island - the identical island the
-            // previous build joined as AC20 (274 tris, same
-            // centre). Pod = the connected armour cluster
+            // file units). Gun = his cannon group under
+            // Torso (Left/Right_Cannon.001 housings + the
+            // Cannon barrels), torso-bound per his grouping
+            // (2026-11-18 restructure: Ares legs + pelvis
+            // replaced the native bottom half; the old
+            // tripo_part_33 island name is gone). Pod = the connected armour cluster
             // over the left shoulder, contact-chained from
             // tripo_part_53 - the same pieces the previous
             // build joined as SRM6.
@@ -139,11 +141,11 @@ public sealed class RiderParts
                 ("Head", p => Mathf.Abs(p.X) <= 0.075f && p.Y >= 0.925f && p.Z >= -0.01f),
             });
             AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
-            AddPart("gun", "WAIST GUN", 65f, byName, "tripo_part_33");
+            AddPart("gun", "WAIST GUN", 65f, byName, "Left_Cannon_001", "Left_Cannon", "Right_Cannon_001", "Right_Cannon");
             AddPart("pod_L", "SRM POD", 45f, byName, "tripo_part_53", "tripo_part_84", "tripo_part_90", "tripo_part_96", "tripo_part_99", "tripo_part_100", "tripo_part_117", "tripo_part_170", "tripo_part_171", "tripo_part_212", "tripo_part_240", "tripo_part_252");
             AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Elbow", "Left_Hand", "Left_Cannon");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Elbow", "Right_Hand", "Right_Cannon");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Elbow", "Left_Hand");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Elbow", "Right_Hand");
             AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
             AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
             AttachDebris(byName);
