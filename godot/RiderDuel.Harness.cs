@@ -1795,12 +1795,8 @@ public partial class RiderDuel
                     if (_enemyDmgEvents != 3 || Mathf.Abs(_enemyDmgTotal - 36f) > 0.01f)
                         WFail($"laser events={_enemyDmgEvents} dmg={_enemyDmgTotal:F1} (want 3 / 36)");
                     if (Mathf.Abs(_hpEnemy - 304f) > 0.01f) WFail($"laser hectorHp={_hpEnemy:F1} (want 304)");
-                    // Round 8: the reaction must carry the weapon -
-                    // a laser hit flashes CYAN and lights the impact.
-                    var lfc = _enemy.LastFlashColor;
-                    if (!(lfc.B > lfc.R + 0.2f)) { WFail($"laser hit flashed {lfc} - want cyan"); return; }
                     if (_fxLights <= 0) { WFail("laser hit lit no impact light"); return; }
-                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 hectorHp={_hpEnemy:F0} (hit reaction: cyan flash + impact light)");
+                    GD.Print($"WPNTEST LASER PASS events=3 dmg=36 hectorHp={_hpEnemy:F0} (hit reaction: impact light)");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     _wJoltSeen = 0f;
                     SetWPhase(2);
@@ -1825,10 +1821,8 @@ public partial class RiderDuel
                     if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac hectorHp={_hpEnemy:F1} (want 252 pool under terrain-step routing)");
                     if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f)
                         WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 90 = untouched, shells routed to torso)");
-                    var cfc = _enemy.LastFlashColor;
-                    if (!(cfc.R > cfc.B + 0.3f && cfc.G > cfc.B + 0.2f)) { WFail($"cannon hit flashed {cfc} - want warm white"); return; }
                     if (_wJoltSeen < 0.3f) { WFail($"cannon hits barely rocked the Hector (jolt env peak {_wJoltSeen:F2})"); return; }
-                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 hectorHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: warm flash + jolt {_wJoltSeen:F2})");
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 hectorHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: jolt {_wJoltSeen:F2})");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     SetWPhase(3);
                 }
@@ -1844,9 +1838,7 @@ public partial class RiderDuel
                 if (_wPhaseT > 3.4)
                 {
                     if (_enemyDmgEvents < 5) WFail($"lrm damaging rockets={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1}");
-                    var rfc = _enemy.LastFlashColor;
-                    if (!(rfc.R > 0.9f && rfc.B < 0.3f)) { WFail($"rocket hit flashed {rfc} - want deep orange"); return; }
-                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1} hectorHp={_hpEnemy:F1} (reaction: orange flash)");
+                    GD.Print($"WPNTEST LRM PASS rocketsDamaging={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1} hectorHp={_hpEnemy:F1}");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     WSetup(new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f));
                     _wHpSnapshot = _hpEnemy;

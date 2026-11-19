@@ -359,18 +359,18 @@ public partial class RiderDuel
 
     private void OnDamaged(RiderWalker target, float dmg, Vector3 point, string source, string kind = "")
     {
-        // Round 8: the reaction carries the weapon. Color + jolt per
-        // kind - before this, every hit blinked the same orange and
-        // the body never moved (owner's report).
-        var (flashCol, flashEnergy, jolt) = kind switch
+        // The reaction carries the weapon: jolt per kind. (The hit
+        // flash that used to blink the struck rider is REMOVED -
+        // owner, 2026-11-19: keep only the explosion and the sparks
+        // at the hit point, no blinking or shining of the rider.)
+        float jolt = kind switch
         {
-            "laser" => (new Color(0.55f, 0.95f, 1f), 1.7f, 0.12f),
-            "rocket" => (new Color(1f, 0.5f, 0.15f), 2.8f, 0.85f),
-            "cannon" => (new Color(1f, 0.85f, 0.45f), 2.6f, 1.0f),
-            "mg" => (new Color(1f, 0.75f, 0.3f), 1.3f, 0.3f),
-            _ => (new Color(1f, 0.55f, 0.2f), 2.4f, 0.4f),
+            "laser" => 0.12f,
+            "rocket" => 0.85f,
+            "cannon" => 1.0f,
+            "mg" => 0.3f,
+            _ => 0.4f,
         };
-        target.FlashPulse(flashCol, flashEnergy, point); // local to the hit (round 20)
         if (_simT - _lastHitSfxT > 0.06) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); }
         if (jolt > 0f)
         {

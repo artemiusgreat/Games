@@ -555,7 +555,6 @@ public partial class RiderWalker : Node3D
     public void StepFrame(double delta)
     {
         if (!_ready) return;
-        DecayFlash((float)delta);
         if (Halted) { SolveAll(); return; }
         if (_fallT >= 0f)
         {
@@ -1147,13 +1146,11 @@ public partial class RiderWalker : Node3D
         return m;
     }
 
-    // ---------- weapon feedback (hit flash / death darkening) ----------
+    // ---------- weapon feedback (death darkening) ----------
 
     private readonly System.Collections.Generic.List<(StandardMaterial3D Mat, Color Base, MeshInstance3D Mesh)> _mats = new();
-    private readonly System.Collections.Generic.List<StandardMaterial3D> _flashMats = new();
-    private float _flashT;
 
-    // Materials are duplicated per walker instance at Init so a flash or
+    // Materials are duplicated per walker instance at Init so a
     // darkening on one rider never leaks into the other (the FBX mesh
     // resources themselves are shared).
     private void CollectMaterials() => CollectMats(_inner);
@@ -1177,53 +1174,6 @@ public partial class RiderWalker : Node3D
         foreach (var c in n.GetChildren()) CollectMats(c);
     }
 
-    public Color LastFlashColor { get; private set; } = new Color(1f, 0.55f, 0.2f);
-    public float LastFlashEnergy { get; private set; } = 2.4f;
-    private float _flashEnergy = 2.4f;
-
-    public void FlashPulse() => FlashPulse(new Color(1f, 0.55f, 0.2f), 2.4f);
-
-    // Round 8: the hit flash carries the WEAPON's color and strength -
-    // a laser sting is cyan and brief-feeling, a cannon hit is a warm
-    // white slam, a rocket is deep orange. Before this every hit
-    // blinked the same orange (owner's report).
-    // Round 20 (owner): the flash is LOCAL to the hit - only meshes
-    // whose bind-pose AABB center sits near the impact point glow.
-    // The whole-rider white-out is gone; a leg hit lights the leg, a
-    // shoulder hit lights the arm/pod area.
-    public void FlashPulse(Color col, float energy) => FlashPulse(col, energy, Vector3.Zero, false);
-
-    public void FlashPulse(Color col, float energy, Vector3 worldPoint) => FlashPulse(col, energy, worldPoint, true);
-
-    private void FlashPulse(Color col, float energy, Vector3 worldPoint, bool local)
-    {
-        _flashT = 1f;
-        _flashEnergy = energy;
-        LastFlashColor = col;
-        LastFlashEnergy = energy;
-        foreach (var m in _flashMats) m.EmissionEnergyMultiplier = 0f;
-        _flashMats.Clear();
-        Vector3 lp = local ? _inner.ToLocal(worldPoint) : Vector3.Zero;
-        float best = float.MaxValue;
-        StandardMaterial3D bestMat = null;
-        foreach (var (m, _, mesh) in _mats)
-        {
-            float d = local ? mesh.GetAabb().GetCenter().DistanceTo(lp) : 0f;
-            if (d < best) { best = d; bestMat = m; }
-            if (local && d > 4.6f) continue;
-            m.EmissionEnabled = true;
-            m.Emission = col;
-            m.EmissionEnergyMultiplier = energy;
-            _flashMats.Add(m);
-        }
-        if (_flashMats.Count == 0 && bestMat != null)
-        {
-            bestMat.EmissionEnabled = true;
-            bestMat.Emission = col;
-            bestMat.EmissionEnergyMultiplier = energy;
-            _flashMats.Add(bestMat);
-        }
-    }
 
     // Impact jolt: the body rocks under a hit and eases back over
     // ~0.4s. Pitch/roll are the push direction decomposed against the
@@ -1244,14 +1194,6 @@ public partial class RiderWalker : Node3D
     {
         foreach (var (m, b, _) in _mats)
             m.AlbedoColor = dark ? b * 0.5f : b;
-    }
-
-    private void DecayFlash(float dt)
-    {
-        if (_flashT <= 0f) return;
-        _flashT = Mathf.Max(_flashT - dt / 0.18f, 0f);
-        foreach (var m in _flashMats)
-            m.EmissionEnergyMultiplier = _flashEnergy * _flashT;
     }
 
     // ---------- helpers ----------
