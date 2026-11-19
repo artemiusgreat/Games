@@ -103,7 +103,7 @@ public partial class StoryTeamScreen : Control
 
     // The add control: a compact '+' button, right-aligned
     // below the last row - the team selector's idiom.
-    private Control AddRow(System.Action add, bool disabled, string tip)
+    private Control AddRow(System.Action add, bool disabled)
     {
         var row = new HBoxContainer();
         row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
@@ -117,7 +117,6 @@ public partial class StoryTeamScreen : Control
         b.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
         b.AddThemeColorOverride("font_disabled_color", new Color(0.45f, 0.48f, 0.52f));
         b.Disabled = disabled;
-        b.TooltipText = tip;
         b.Pressed += () => add();
         row.AddChild(b);
         return row;
@@ -212,7 +211,6 @@ public partial class StoryTeamScreen : Control
                 rm.AddThemeStyleboxOverride("pressed", RowBtnBox(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
                 rm.AddThemeColorOverride("font_color", FlowUi.Ink);
                 rm.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
-                rm.TooltipText = "Remove this rider";
                 rm.Pressed += () => RemoveRider(idx);
                 row.AddChild(rm);
             }
@@ -225,6 +223,6 @@ public partial class StoryTeamScreen : Control
             _riderRows.AddChild(card);
         }
         _riderRows.AddChild(AddRow(AddRider,
-            team.Count >= TeamRoster.MaxPerTeam, "Add a rider"));
+            team.Count >= TeamRoster.MaxPerTeam));
     }
 }

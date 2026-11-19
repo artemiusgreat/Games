@@ -186,7 +186,7 @@ public partial class TeamSelectScreen : Control
     // The add control (owner, 2026-11-14): a compact '+'
     // button in the lists' own box family, right-aligned
     // below the last row - never stretched across the list.
-    private Control AddRow(System.Action add, bool disabled, string tip)
+    private Control AddRow(System.Action add, bool disabled)
     {
         var row = new HBoxContainer();
         row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
@@ -201,7 +201,6 @@ public partial class TeamSelectScreen : Control
         b.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
         b.AddThemeColorOverride("font_disabled_color", new Color(0.45f, 0.48f, 0.52f));
         b.Disabled = disabled;
-        b.TooltipText = tip;
         b.Pressed += () => add();
         row.AddChild(b);
         return row;
@@ -311,14 +310,13 @@ public partial class TeamSelectScreen : Control
                 minus.AddThemeStyleboxOverride("pressed", RowBtnBox(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
                 minus.AddThemeColorOverride("font_color", FlowUi.Ink);
                 minus.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
-                minus.TooltipText = "Remove this team";
                 minus.Pressed += () => RemoveTeam(idx);
                 rowBox.AddChild(minus);
             }
             _teamRows.AddChild(rowPanel);
         }
         _teamRows.AddChild(AddRow(AddTeam,
-            TeamRoster.Tourney.Count >= TeamRoster.MaxTeams, "Add a team"));
+            TeamRoster.Tourney.Count >= TeamRoster.MaxTeams));
         _teamCount.Text = $"{TeamRoster.Tourney.Count} OF {TeamRoster.MaxTeams} TEAMS - at least two teams always stand";
 
         // ---- riders of the open team: dropdown per slot ----
@@ -378,7 +376,6 @@ public partial class TeamSelectScreen : Control
                 rm.AddThemeStyleboxOverride("pressed", RowBtnBox(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
                 rm.AddThemeColorOverride("font_color", FlowUi.Ink);
                 rm.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
-                rm.TooltipText = "Remove this rider";
                 rm.Pressed += () => RemoveRider(idx);
                 row.AddChild(rm);
             }
@@ -391,6 +388,6 @@ public partial class TeamSelectScreen : Control
             _riderRows.AddChild(card);
         }
         _riderRows.AddChild(AddRow(AddRider,
-            open.Count >= TeamRoster.MaxPerTeam, "Add a rider"));
+            open.Count >= TeamRoster.MaxPerTeam));
     }
 }
