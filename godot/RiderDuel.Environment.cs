@@ -273,7 +273,7 @@ public partial class RiderDuel
             new StandardMaterial3D { AlbedoColor = new Color(0.09f + tint * 0.04f, 0.34f, 0.11f), Roughness = 0.9f }
         };
         float totalH;
-        if (_photo)
+        if (_photo || WorldConfig.Ascent)
         {
             // Photoreal probe: a scanned tree model replaces the
             // procedural parts; cylinders + registration below are
