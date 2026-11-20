@@ -25,8 +25,42 @@ public static class Ascent
         public Site(float x, float z, float r, int guards) { C = new Vector2(x, z); R = r; Guards = guards; }
     }
 
-    // The road: a gentle S-curve up the valley's long axis.
-    public static float RoadX(float z) => 150f * Mathf.Sin(z * 0.0021f + 0.4f);
+    // The road: a winding S-curve up the valley's long
+    // axis - two sine harmonics, so the run bends for real
+    // instead of reading as a straight canyon with a lean
+    // (owner, 2026-11-20).
+    public static float RoadX(float z)
+        => 150f * Mathf.Sin(z * 0.0021f + 0.4f)
+         + 85f * Mathf.Sin(z * 0.0053f + 1.7f);
+
+    // Deterministic value noise for the mountain detail.
+    private static float Hash2(int ix, int iz)
+    {
+        int h = ix * 374761393 + iz * 668265263;
+        h = (h ^ (h >> 13)) * 1274126177;
+        return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
+    }
+
+    private static float Noise2(float x, float z)
+    {
+        int ix = Mathf.FloorToInt(x), iz = Mathf.FloorToInt(z);
+        float fx = x - ix, fz = z - iz;
+        float sx = fx * fx * (3f - 2f * fx), sz = fz * fz * (3f - 2f * fz);
+        float a = Hash2(ix, iz), b = Hash2(ix + 1, iz);
+        float c = Hash2(ix, iz + 1), d = Hash2(ix + 1, iz + 1);
+        return a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz;
+    }
+
+    private static float Fbm(float x, float z)
+        => Noise2(x, z) * 0.55f
+         + Noise2(x * 2.13f + 7.3f, z * 2.13f + 3.1f) * 0.30f
+         + Noise2(x * 4.31f + 13.7f, z * 4.31f + 9.2f) * 0.15f;
+
+    private static float Noise1(float t) => Noise2(t, 3.77f);
+
+    // Side canyons notched into the walls: (z, side sign).
+    private static readonly (float Z, float Side)[] Gullies =
+        { (120f, -1f), (-60f, 1f), (-560f, -1f) };
 
     // Elevation along the road: smoothstep from the valley
     // mouth (z = +820, h = 0) to the summit (z = -780, h = 168).
@@ -87,7 +121,24 @@ public static class Ascent
         float d = Mathf.Abs(x - RoadX(z));
         // Valley walls: the floor stays open for ~110u either
         // side of the road, then the country rises steeply.
-        h += Mathf.Pow(Smooth(110f, 430f, d), 1.5f) * 150f;
+        // The wall height varies along the run (shoulders in
+        // one stretch, towers in the next) and ridged noise
+        // breaks the silhouette, so the mountains stop
+        // repeating (owner, 2026-11-20).
+        float wallAmp = 150f * (0.72f + 0.55f * Noise1(z * 0.0016f));
+        h += Mathf.Pow(Smooth(110f, 430f, d), 1.5f) * wallAmp;
+        float ridge = 1f - Mathf.Abs(Fbm(x * 0.011f, z * 0.011f) * 2f - 1f);
+        h += ridge * ridge * 52f * Smooth(120f, 260f, d) * (1f - Smooth(700f, 940f, d));
+        h += (Fbm(x * 0.045f, z * 0.045f) - 0.5f) * 14f * Smooth(90f, 220f, d);
+        // Side canyons: gullies notched into the walls.
+        float signedD = x - RoadX(z);
+        foreach (var (gz, side) in Gullies)
+        {
+            if (signedD * side <= 0f) continue;
+            float dz = Mathf.Abs(z - gz);
+            h -= 30f * (1f - Smooth(0f, 70f, dz)) * Smooth(120f, 210f, d)
+                 * (1f - Smooth(430f, 540f, d));
+        }
         // Gentle analytic detail on the slopes only - the road
         // corridor and the sites stay clean.
         h += Mathf.Sin(x * 0.021f + Mathf.Sin(z * 0.017f) * 2f) * Mathf.Cos(z * 0.019f)

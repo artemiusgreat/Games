@@ -18,7 +18,8 @@ public partial class RiderDuel
         {
             new Vector2(30f, 10f), new Vector2(-28f, 24f),
             new Vector2(12f, -34f), new Vector2(-36f, -14f),
-            new Vector2(42f, -28f)
+            new Vector2(42f, -28f), new Vector2(-52f, 42f),
+            new Vector2(56f, 6f)
         };
         for (int s = 0; s < Ascent.Sites.Length; s++)
         {
@@ -47,6 +48,37 @@ public partial class RiderDuel
                                      site.C.Y + Mathf.Sin(a) * (site.R + 14f));
                 AddRock(new Vector3(rp.X, Main.HeightAt(rp.X, rp.Y), rp.Y),
                     new Vector3(4f + r, 3f + r * 0.7f, 4.5f), a, 0.5f);
+            }
+        }
+
+        // ---- Road dressing (owner, 2026-11-20: more objects,
+        // the statics cost almost nothing next to the riders):
+        // a fortified checkpoint mid-valley and boulders
+        // scattered along the run and up the slopes.
+        {
+            float cz = -60f, cx = Ascent.RoadX(cz);
+            AddBuilding(new Vector3(cx + 26f, 0f, cz), new Vector3(6f, 24f, 6f)); // watchtower
+            AddBuilding(new Vector3(cx - 14f, 0f, cz + 13f), new Vector3(11f, 3.5f, 2.5f)); // gate barriers
+            AddBuilding(new Vector3(cx + 14f, 0f, cz - 13f), new Vector3(11f, 3.5f, 2.5f));
+            AddBuilding(new Vector3(cx - 21f, 0f, cz - 9f), new Vector3(4.5f, 2.6f, 4.5f)); // crate stacks
+            AddBuilding(new Vector3(cx + 21f, 0f, cz + 10f), new Vector3(4.5f, 2.6f, 4.5f));
+            var rngR = new System.Random(0x90AD);
+            for (float z = 770f; z > -700f; z -= 118f)
+            {
+                float side = (rngR.NextSingle() < 0.5f) ? -1f : 1f;
+                float rx = Ascent.RoadX(z) + side * (30f + rngR.NextSingle() * 26f);
+                AddRock(new Vector3(rx, Main.HeightAt(rx, z), z),
+                    new Vector3(3f + rngR.NextSingle() * 3f, 2.4f + rngR.NextSingle() * 2f, 3.5f),
+                    rngR.NextSingle() * 6.28f, 0.5f);
+            }
+            for (int i = 0; i < 26; i++)
+            {
+                float z = -720f + rngR.NextSingle() * 1520f;
+                float side = (i % 2 == 0) ? -1f : 1f;
+                float rx = Ascent.RoadX(z) + side * (150f + rngR.NextSingle() * 190f);
+                AddRock(new Vector3(rx, Main.HeightAt(rx, z), z),
+                    new Vector3(5f + rngR.NextSingle() * 6f, 4f + rngR.NextSingle() * 4f, 5.5f),
+                    rngR.NextSingle() * 6.28f, 0.5f);
             }
         }
 
