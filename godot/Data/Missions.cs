@@ -53,6 +53,9 @@ public sealed class MissionDef
     // Three terrace levels with ramps and lifts, plus an
     // island district on a bridge (owner: Harbor rebuild).
     public bool Terraces;
+    // The Ascent campaign map (owner, 2026-11-20): the
+    // valley-to-summit world with village guard groups (Ascent.cs).
+    public bool Ascent;
     public PlanetDef Planet;
 }
 
@@ -64,7 +67,7 @@ public static class MissionCatalog
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
         bool flat = false, string sky = "", bool snow = false, bool terraces = false,
-        bool stars = false)
+        bool stars = false, bool ascent = false)
     {
         var m = new MissionDef
         {
@@ -72,7 +75,7 @@ public static class MissionCatalog
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
             FlatTerrain = flat, SkyTex = sky, SnowGround = snow, Terraces = terraces, Planet = p,
-            ProceduralStars = stars
+            ProceduralStars = stars, Ascent = ascent
         };
         p.Missions.Add(m);
         return m;
@@ -107,6 +110,13 @@ public static class MissionCatalog
             "A Trust survey team went silent on Erebus six days ago. Cross the shelf, find their " +
             "beacon, and bring back the data core - or word of what found them first.",
             "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
+        M(ares, "Anabasis", "Sardis", 0.52f, -0.52f,
+            "Valley Campaign", "House Asterion", 900000, 5,
+            "The Long Valley climbs from the lowland mouth to the citadel of Sardis on the summit - six " +
+            "villages on the way up, each with its own riders, two rivers to cross, and ten defenders " +
+            "waiting on the top plateau. Take the villages one by one, slip past them, or drive straight " +
+            "up the road: the contract pays when the summit falls and your team still stands.",
+            "Colonel Mara Voss", "The whole valley, rider, from the mud to the white towers. Bring me the summit.", WorldConfig.BiomeKind.Desert, ascent: true);
         var thalassa = new PlanetDef
         {
             Name = "Meridian",
