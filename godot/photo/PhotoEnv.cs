@@ -581,19 +581,10 @@ void fragment() {
         }
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
         {
-            for (int i = 0; i < 18; i++)
-            {
-                float a2 = rng.RandfRange(0f, Mathf.Tau);
-                float half2 = Main.TerrainSize / 2f;
-                float dist2 = mission ? rng.RandfRange(half2 + 18f, half2 + 95f) : rng.RandfRange(124f, 175f);
-                var pos2 = new Vector3(Mathf.Cos(a2) * dist2, 0f, Mathf.Sin(a2) * dist2);
-                float cl2 = mission ? half2 - 4f : 84f;
-                pos2.Y = Main.HeightAt(Mathf.Clamp(pos2.X, -cl2, cl2), Mathf.Clamp(pos2.Z, -cl2, cl2)) - 0.5f;
-                var rock = MakeRock(new Vector3(rng.RandfRange(3.5f, 6.5f), rng.RandfRange(2.2f, 4.2f), rng.RandfRange(3.5f, 6.5f)));
-                rock.Position = pos2;
-                parent.AddChild(rock);
-            }
-            GD.Print("PHOTO backdrop: apron + desert rock ring");
+            // The desert rock ring is gone with the rest of
+            // the rocks (owner, 2026-11-20: removed
+            // completely) - the apron stands bare.
+            GD.Print("PHOTO backdrop: apron only (desert - rock ring removed)");
             return;
         }
         for (int i = 0; i < 44; i++)

@@ -377,6 +377,13 @@ public partial class RiderDuel
     // and other riders, may block movement).
     private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
     {
+        // ROCKS REMOVED COMPLETELY (owner, 2026-11-20):
+        // three grounding passes (centre, footprint-min,
+        // measured AABB) and the scattered rocks still
+        // read as floating in his play - he ordered them
+        // out. No visual, no pass-circle, no hit cylinder,
+        // in any mode. Do not re-add without his word.
+        return;
         // Ground on the LOWEST point under the footprint,
         // not the centre (owner, 2026-11-20: rocks floated
         // over hollows - centre-grounding on bumpy ground
