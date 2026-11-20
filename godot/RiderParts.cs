@@ -597,7 +597,18 @@ public sealed class RiderParts
     private Volume MakeVolume(MeshRec rec)
     {
         var aabb = rec.Mi.GetAabb();
-        var inv = _skel.GetBoneGlobalRest(rec.Bone).AffineInverse();
+        // A mesh whose dominant bind names a bone the skeleton
+        // does not carry (Hermes's skin binds do this) resolves
+        // Bone to -1: the volume then comes from the skin's own
+        // bind pose - the same transform the detach path below
+        // uses - instead of querying the skeleton with -1,
+        // which logged an engine error per mesh and left the
+        // volume in identity space.
+        var inv = rec.Bone >= 0
+            ? _skel.GetBoneGlobalRest(rec.Bone).AffineInverse()
+            : rec.BindIndex >= 0 && rec.OrigSkin != null
+                ? rec.OrigSkin.GetBindPose(rec.BindIndex)
+                : Transform3D.Identity;
         Vector3 mn = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
         Vector3 mx = new Vector3(float.MinValue, float.MinValue, float.MinValue);
         for (int i = 0; i < 8; i++)
@@ -939,6 +950,10 @@ public sealed class RiderParts
             if (s > bestSize) { bestSize = s; best = vol; }
         }
         if (best == null) return _walker.RootPos;
+        // Volumes on skeleton-less binds (Bone -1, see
+        // MakeVolume) cannot be posed; their centre is the
+        // walker's root rather than an identity-pose guess.
+        if (best.Bone < 0) return _walker.RootPos;
         return _skel.GlobalTransform * (_skel.GetBoneGlobalPose(best.Bone) * best.CenterB);
     }
 
@@ -949,9 +964,18 @@ public sealed class RiderParts
         if (part.Volumes.Count == 0) return _walker.RootPos;
         var sum = Vector3.Zero;
         var skelG = _skel.GlobalTransform;
+        int n = 0;
         foreach (var vol in part.Volumes)
+        {
+            // Skip skeleton-less binds (Bone -1): posing them
+            // logs an engine error and contributes an
+            // identity-space centre - worse than leaving the
+            // volume out of the mean.
+            if (vol.Bone < 0) continue;
             sum += skelG * (_skel.GetBoneGlobalPose(vol.Bone) * vol.CenterB);
-        return sum / part.Volumes.Count;
+            n++;
+        }
+        return n > 0 ? sum / n : _walker.RootPos;
     }
 
     // ---------- damage / break-off / debris ----------
