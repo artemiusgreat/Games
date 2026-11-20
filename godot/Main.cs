@@ -602,101 +602,48 @@ public partial class Main : Node3D
 		var mesh = new ArrayMesh { ResourceName = "Terrain" };
 		mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
 		EnsureDetailMaps();
-		mesh.SurfaceSetMaterial(0, new StandardMaterial3D
+		var tmat = new StandardMaterial3D
 		{
 			VertexColorUseAsAlbedo = true,
 			Roughness = 0.95f,
-			RoughnessTexture = _detailRough,
-			NormalTexture = _detailNormal,
-			NormalScale = 0.55f,
 			Uv1Triplanar = true,
 			Uv1WorldTriplanar = true,
-			Uv1Scale = new Vector3(0.025f, 0.025f, 0.025f),
-		});
+			Uv1Scale = new Vector3(0.036f, 0.036f, 0.036f),
+		};
+		if (_rockNor != null)
+		{
+			tmat.NormalTexture = _rockNor;
+			tmat.NormalScale = 0.7f;
+		}
+		if (_rockArm != null)
+		{
+			tmat.RoughnessTexture = _rockArm;
+			tmat.RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green;
+			tmat.Roughness = 1.0f;
+		}
+		mesh.SurfaceSetMaterial(0, tmat);
 		return mesh;
 	}
 
-	// Procedural PBR detail for the ground (owner,
-	// 2026-11-20: the mountains read flat - the terrain
-	// material was vertex colours and one scalar roughness,
-	// no maps at all). A tileable value-noise height field,
-	// generated once, gives a world-triplanar normal map
-	// (micro relief that catches raking light) and a
-	// roughness map (patchy matte variation), so the surface
-	// responds to light like a material instead of a tint.
-	// World triplanar keeps the detail continuous across
-	// the Ascent terrain chunks.
-	private static ImageTexture _detailNormal, _detailRough;
-
-	private static float THash(int ix, int iz)
-	{
-		int h = ix * 374761393 + iz * 668265263;
-		h = (h ^ (h >> 13)) * 1274126177;
-		return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
-	}
-
-	private static float TileNoise(float x, float y, int period)
-	{
-		int ix = Mathf.FloorToInt(x), iy = Mathf.FloorToInt(y);
-		float fx = x - ix, fy = y - iy;
-		float sx = fx * fx * (3f - 2f * fx), sy = fy * fy * (3f - 2f * fy);
-		int x0 = ((ix % period) + period) % period, y0 = ((iy % period) + period) % period;
-		int x1 = (x0 + 1) % period, y1 = (y0 + 1) % period;
-		float a = THash(x0, y0), b = THash(x1, y0), c = THash(x0, y1), d = THash(x1, y1);
-		return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-	}
+	// PBR detail for the ground (owner, 2026-11-20): the
+	// first attempt generated a synthetic noise normal +
+	// roughness pair - it read flat, then tiled in a visible
+	// grid, then (domain-warped) showed swirl and diamond-
+	// quilt artifacts of its own; dumped and inspected, the
+	// texture itself was the defect. Replaced with the real
+	// scanned rock set the photo scene already ships
+	// (aerial_rocks_02: normal + ARM), sampled world-
+	// triplanar so the detail is continuous across the
+	// Ascent terrain chunks. Vertex colours stay the albedo;
+	// the maps only carry the light response.
+	private static Texture2D _rockNor, _rockArm;
 
 	private static void EnsureDetailMaps()
 	{
-		if (_detailNormal != null) return;
-		const int N = 256;
-		// Domain-warped FBM (owner, 2026-11-20: the first
-		// pass tiled in a visible grid - plain value noise on
-		// power-of-two periods repeats its lattice). The
-		// sample point is pushed around by a second noise
-		// field and the octaves use prime periods, so no
-		// rhythm survives for the eye to lock onto; the tile
-		// is also larger (~40u), pushing what repetition is
-		// left outside the span of a single view.
-		float WarpX(float u, float v) => TileNoise(u * 3, v * 3, 3) * 0.6f + TileNoise(u * 7 + 13f, v * 7 + 5f, 7) * 0.4f;
-		float WarpY(float u, float v) => TileNoise(u * 3 + 27f, v * 3 + 11f, 3) * 0.6f + TileNoise(u * 7 + 3f, v * 7 + 29f, 7) * 0.4f;
-		(float U, float V) Warped(float u, float v)
-			=> (u + (WarpX(u, v) - 0.5f) * 0.22f, v + (WarpY(u, v) - 0.5f) * 0.22f);
-		var hgt = new float[N * N];
-		var hFine = new float[N * N];
-		for (int y = 0; y < N; y++)
-		for (int x = 0; x < N; x++)
-		{
-			float u = x / (float)N, v = y / (float)N;
-			var (wu, wv) = Warped(u, v);
-			hgt[y * N + x] =
-				TileNoise(wu * 5, wv * 5, 5) * 0.34f +
-				TileNoise(wu * 11, wv * 11, 11) * 0.26f +
-				TileNoise(wu * 23, wv * 23, 23) * 0.20f +
-				TileNoise(wu * 47, wv * 47, 47) * 0.20f;
-			hFine[y * N + x] =
-				TileNoise(wu * 23, wv * 23, 23) * 0.30f +
-				TileNoise(wu * 47, wv * 47, 47) * 0.34f +
-				TileNoise(wu * 89, wv * 89, 89) * 0.36f;
-		}
-		float H(int x, int y) => hFine[(((y % N) + N) % N) * N + (((x % N) + N) % N)];
-		var nData = new byte[N * N * 3];
-		var rData = new byte[N * N * 3];
-		for (int y = 0; y < N; y++)
-		for (int x = 0; x < N; x++)
-		{
-			float dx = (H(x - 1, y) - H(x + 1, y)) * 2.0f;
-			float dy = (H(x, y - 1) - H(x, y + 1)) * 2.0f;
-			var nrm = new Vector3(dx, dy, 1f).Normalized();
-			int k = (y * N + x) * 3;
-			nData[k] = (byte)((nrm.X * 0.5f + 0.5f) * 255f);
-			nData[k + 1] = (byte)((nrm.Y * 0.5f + 0.5f) * 255f);
-			nData[k + 2] = (byte)((nrm.Z * 0.5f + 0.5f) * 255f);
-			float r = 0.76f + 0.24f * hgt[y * N + x];
-			byte rb = (byte)(Mathf.Clamp(r, 0f, 1f) * 255f);
-			rData[k] = rb; rData[k + 1] = rb; rData[k + 2] = rb;
-		}
-		_detailNormal = ImageTexture.CreateFromImage(Image.CreateFromData(N, N, false, Image.Format.Rgb8, nData));
-		_detailRough = ImageTexture.CreateFromImage(Image.CreateFromData(N, N, false, Image.Format.Rgb8, rData));
+		if (_rockNor != null) return;
+		_rockNor = ResourceLoader.Load<Texture2D>(
+			"res://photo/textures/aerial_rocks_02/aerial_rocks_02_nor_gl_2k.jpg");
+		_rockArm = ResourceLoader.Load<Texture2D>(
+			"res://photo/textures/aerial_rocks_02/aerial_rocks_02_arm_2k.jpg");
 	}
 }
