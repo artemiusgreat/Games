@@ -108,7 +108,10 @@ public static class StoryProgress
 
     public static bool IsUnlocked(int planet, int mission)
         => planet >= 0 && planet < PlanetCount
-           && mission >= 0 && mission < Counts[planet];
+           && mission >= 0
+           && (mission < Counts[planet]
+               || (mission < MissionCatalog.Planets[planet].Missions.Count
+                   && MissionCatalog.Planets[planet].Missions[mission].AlwaysAvailable));
 
     // The unlocked mission indices of a planet, in catalog
     // order (the front-end's selectors, offer lists and bar
