@@ -45,6 +45,74 @@ public partial class RadarView : Control
     // just inside the rim instead of clamped on it).
     public float Range = 160f;
 
+    // Heightmap underlay (owner ask, 2026-11-20): a semi-
+    // transparent relief of the current world's heightfield
+    // inside the scope. Generated lazily on first draw from
+    // Main.HeightAt (the world's own grid - mesas, valleys,
+    // river carves and the ascent all included), hillshaded
+    // under a fixed NW light with a hypsometric ramp in the
+    // scope's ink family. Drawn as a triangle fan whose rim
+    // vertices carry world-mapped UVs, so the layer rotates
+    // heading-up exactly like the contacts and is clipped
+    // to the circle by construction.
+    public Texture2D HeightTex;
+
+    private static Vector2 WorldUv(Vector2 w)
+    {
+        float halfW = Main.TerrainSize * 0.5f;
+        return new Vector2((w.X + halfW) / Main.TerrainSize,
+                           (w.Y + halfW) / Main.TerrainSize);
+    }
+
+    // Inverse of ToScope for a scope offset in world units.
+    private Vector2 ScopeToWorld(Vector2 sc)
+    {
+        float yaw = Player.LegsYaw;
+        float cy = Mathf.Cos(yaw), sy = Mathf.Sin(yaw);
+        return new Vector2(sc.X * cy + sc.Y * sy, -sc.X * sy + sc.Y * cy);
+    }
+
+    public static Texture2D BuildHeightTexture()
+    {
+        const int N = 256;
+        float halfW = Main.TerrainSize * 0.5f;
+        var hs = new float[N * N];
+        float lo = float.MaxValue, hi = float.MinValue;
+        for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++)
+            {
+                float wx = -halfW + (i + 0.5f) / N * Main.TerrainSize;
+                float wz = -halfW + (j + 0.5f) / N * Main.TerrainSize;
+                float h = Main.HeightAt(wx, wz);
+                hs[j * N + i] = h;
+                if (h < lo) lo = h;
+                if (h > hi) hi = h;
+            }
+        float span = Mathf.Max(hi - lo, 1f);
+        float cellW = Main.TerrainSize / N;
+        var light = new Vector3(-0.55f, 0.75f, -0.35f).Normalized();
+        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgb8);
+        var deep = new Color(0.05f, 0.10f, 0.13f);
+        var mid = new Color(0.13f, 0.23f, 0.22f);
+        var crest = new Color(0.42f, 0.48f, 0.42f);
+        for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++)
+            {
+                int iL = Mathf.Max(i - 1, 0), iR = Mathf.Min(i + 1, N - 1);
+                int jU = Mathf.Max(j - 1, 0), jD = Mathf.Min(j + 1, N - 1);
+                var n = new Vector3(
+                    (hs[j * N + iL] - hs[j * N + iR]) / (2f * cellW), 1f,
+                    (hs[jU * N + i] - hs[jD * N + i]) / (2f * cellW)).Normalized();
+                float shade = 0.45f + 0.55f * Mathf.Max(0f, n.Dot(light));
+                float t = Mathf.Clamp((hs[j * N + i] - lo) / span, 0f, 1f);
+                var col = t < 0.5f
+                    ? deep.Lerp(mid, t * 2f)
+                    : mid.Lerp(crest, (t - 0.5f) * 2f);
+                img.SetPixel(i, j, col * shade);
+            }
+        return ImageTexture.CreateFromImage(img);
+    }
+
     // World XZ offset -> heading-up screen offset: the
     // player's forward maps to screen-up, their right to
     // screen-right (owner: walking straight at an enemy must
@@ -85,6 +153,31 @@ public partial class RadarView : Control
         var c = Size * 0.5f;
         float half = Mathf.Min(W, H) * 0.5f - 10f; // scope radius in px
         float px = half / Range;                  // pixels per world unit
+
+        // Heightmap underlay: a fan over the scope disc; the
+        // centre vertex maps to the player's position, each
+        // rim vertex to the world point at bearing/Range, so
+        // the relief tracks and rotates with the scope.
+        if (Player != null)
+        {
+            HeightTex ??= BuildHeightTexture();
+            const int SEG = 48;
+            var fanPts = new Vector2[SEG + 2];
+            var fanUvs = new Vector2[SEG + 2];
+            var fanCols = new Color[SEG + 2];
+            var tint = new Color(1f, 1f, 1f, 0.5f);
+            var pw = new Vector2(Player.RootPos.X, Player.RootPos.Z);
+            fanPts[0] = c; fanCols[0] = tint; fanUvs[0] = WorldUv(pw);
+            for (int k = 0; k <= SEG; k++)
+            {
+                float a = (float)k / SEG * Mathf.Tau;
+                var dir = new Vector2(Mathf.Sin(a), -Mathf.Cos(a)); // 0 = ahead (up)
+                fanPts[k + 1] = c + dir * half;
+                fanCols[k + 1] = tint;
+                fanUvs[k + 1] = WorldUv(pw + ScopeToWorld(dir * Range));
+            }
+            DrawPolygon(fanPts, fanCols, fanUvs, HeightTex);
+        }
 
         // Grid clipped to the circle: each line is drawn only
         // across its chord.
