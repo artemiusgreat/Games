@@ -329,6 +329,9 @@ public partial class FlowMain : Node3D
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRACES")))
             WorldConfig.TerracedCity = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Terraces;
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_ASCENT")))
+            WorldConfig.Ascent = WorldConfig.IsMission
+                && WorldConfig.SelectedMission.Ascent;
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SKY")))
             WorldConfig.SkyTex = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTex

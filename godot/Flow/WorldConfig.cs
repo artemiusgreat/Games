@@ -69,6 +69,13 @@ public static class WorldConfig
     // copies the contract's flag; AOT_TERRACES=1 forces it.
     public static bool TerracedCity = InitTerraces();
 
+    // The Ascent campaign map (owner, 2026-11-20): EnterLab
+    // copies the contract's flag; AOT_ASCENT=1 forces it.
+    public static bool Ascent = InitAscent();
+
+    private static bool InitAscent() =>
+        System.Environment.GetEnvironmentVariable("AOT_ASCENT") == "1";
+
     private static bool InitTerraces() =>
         System.Environment.GetEnvironmentVariable("AOT_TERRACES") == "1";
 
@@ -113,6 +120,7 @@ public static class WorldConfig
         SnowGround = InitSnow();
         TerracedCity = InitTerraces();
         FlatWorld = InitFlat();
+        Ascent = InitAscent();
     }
 
     // Tournament: the 260u arena. Mission: a 1900u front - bases sit
@@ -123,7 +131,8 @@ public static class WorldConfig
     public static float WorldBound => IsMission ? 915f : 115f;
     public static float PadFlattenRadius => IsMission ? 60f : 18f;
 
-    public static Vector2[] Pads => IsMission ? MissionPads : TournamentPads;
+    public static Vector2[] Pads => IsMission && Ascent ? global::Ascent.Pads
+        : IsMission ? MissionPads : TournamentPads;
 
     private static readonly Vector2[] TournamentPads =
     {
