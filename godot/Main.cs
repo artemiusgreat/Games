@@ -611,7 +611,7 @@ public partial class Main : Node3D
 			NormalScale = 0.55f,
 			Uv1Triplanar = true,
 			Uv1WorldTriplanar = true,
-			Uv1Scale = new Vector3(0.07f, 0.07f, 0.07f),
+			Uv1Scale = new Vector3(0.025f, 0.025f, 0.025f),
 		});
 		return mesh;
 	}
@@ -650,32 +650,49 @@ public partial class Main : Node3D
 	{
 		if (_detailNormal != null) return;
 		const int N = 256;
+		// Domain-warped FBM (owner, 2026-11-20: the first
+		// pass tiled in a visible grid - plain value noise on
+		// power-of-two periods repeats its lattice). The
+		// sample point is pushed around by a second noise
+		// field and the octaves use prime periods, so no
+		// rhythm survives for the eye to lock onto; the tile
+		// is also larger (~40u), pushing what repetition is
+		// left outside the span of a single view.
+		float WarpX(float u, float v) => TileNoise(u * 3, v * 3, 3) * 0.6f + TileNoise(u * 7 + 13f, v * 7 + 5f, 7) * 0.4f;
+		float WarpY(float u, float v) => TileNoise(u * 3 + 27f, v * 3 + 11f, 3) * 0.6f + TileNoise(u * 7 + 3f, v * 7 + 29f, 7) * 0.4f;
+		(float U, float V) Warped(float u, float v)
+			=> (u + (WarpX(u, v) - 0.5f) * 0.22f, v + (WarpY(u, v) - 0.5f) * 0.22f);
 		var hgt = new float[N * N];
+		var hFine = new float[N * N];
 		for (int y = 0; y < N; y++)
 		for (int x = 0; x < N; x++)
 		{
 			float u = x / (float)N, v = y / (float)N;
+			var (wu, wv) = Warped(u, v);
 			hgt[y * N + x] =
-				TileNoise(u * 4, v * 4, 4) * 0.42f +
-				TileNoise(u * 8, v * 8, 8) * 0.28f +
-				TileNoise(u * 16, v * 16, 16) * 0.18f +
-				TileNoise(u * 32, v * 32, 32) * 0.12f;
+				TileNoise(wu * 5, wv * 5, 5) * 0.34f +
+				TileNoise(wu * 11, wv * 11, 11) * 0.26f +
+				TileNoise(wu * 23, wv * 23, 23) * 0.20f +
+				TileNoise(wu * 47, wv * 47, 47) * 0.20f;
+			hFine[y * N + x] =
+				TileNoise(wu * 23, wv * 23, 23) * 0.30f +
+				TileNoise(wu * 47, wv * 47, 47) * 0.34f +
+				TileNoise(wu * 89, wv * 89, 89) * 0.36f;
 		}
-		float H(int x, int y) => hgt[(((y % N) + N) % N) * N + (((x % N) + N) % N)];
+		float H(int x, int y) => hFine[(((y % N) + N) % N) * N + (((x % N) + N) % N)];
 		var nData = new byte[N * N * 3];
 		var rData = new byte[N * N * 3];
 		for (int y = 0; y < N; y++)
 		for (int x = 0; x < N; x++)
 		{
-			float dx = (H(x - 1, y) - H(x + 1, y)) * 2.2f;
-			float dy = (H(x, y - 1) - H(x, y + 1)) * 2.2f;
+			float dx = (H(x - 1, y) - H(x + 1, y)) * 2.0f;
+			float dy = (H(x, y - 1) - H(x, y + 1)) * 2.0f;
 			var nrm = new Vector3(dx, dy, 1f).Normalized();
 			int k = (y * N + x) * 3;
 			nData[k] = (byte)((nrm.X * 0.5f + 0.5f) * 255f);
 			nData[k + 1] = (byte)((nrm.Y * 0.5f + 0.5f) * 255f);
 			nData[k + 2] = (byte)((nrm.Z * 0.5f + 0.5f) * 255f);
-			float u = x / (float)N, v = y / (float)N;
-			float r = 0.74f + 0.26f * (TileNoise(u * 2, v * 2, 2) * 0.6f + TileNoise(u * 8 + 31f, v * 8 + 7f, 8) * 0.4f);
+			float r = 0.76f + 0.24f * hgt[y * N + x];
 			byte rb = (byte)(Mathf.Clamp(r, 0f, 1f) * 255f);
 			rData[k] = rb; rData[k + 1] = rb; rData[k + 2] = rb;
 		}
