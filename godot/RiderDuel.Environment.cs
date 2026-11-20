@@ -377,7 +377,18 @@ public partial class RiderDuel
     // and other riders, may block movement).
     private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
     {
+        // Ground on the LOWEST point under the footprint,
+        // not the centre (owner, 2026-11-20: rocks floated
+        // over hollows - centre-grounding on bumpy ground
+        // leaves the underside hanging in the air).
         float groundY = Main.HeightAt(pos.X, pos.Z);
+        float fr = Mathf.Max(scl.X, scl.Z) * 0.7f;
+        for (int k = 0; k < 8; k++)
+        {
+            float a = k * Mathf.Pi / 4f;
+            float sy = Main.HeightAt(pos.X + Mathf.Cos(a) * fr, pos.Z + Mathf.Sin(a) * fr);
+            if (sy < groundY) groundY = sy;
+        }
         if (_photo)
         {
             // Photoreal probe: scanned rock at the same spot, scale
