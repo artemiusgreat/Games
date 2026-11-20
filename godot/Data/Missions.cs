@@ -105,11 +105,6 @@ public static class MissionCatalog
             "A supply convoy crawls from Athens to the front at first light. Raiders have hit the last two. " +
             "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
             "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
-        M(ares, "Erebus", "Erebus", 0.28f, 0.40f,
-            "Recon Sweep", "Boreas Research Trust", 180000, 2,
-            "A Trust survey team went silent on Erebus six days ago. Cross the shelf, find their " +
-            "beacon, and bring back the data core - or word of what found them first.",
-            "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         M(ares, "Anabasis", "Sardis", 0.52f, -0.52f,
             "Valley Campaign", "House Asterion", 900000, 5,
             "The Long Valley climbs from the lowland mouth to the citadel of Sardis on the summit - six " +
@@ -117,6 +112,11 @@ public static class MissionCatalog
             "waiting on the top plateau. Take the villages one by one, slip past them, or drive straight " +
             "up the road: the contract pays when the summit falls and your team still stands.",
             "Colonel Mara Voss", "The whole valley, rider, from the mud to the white towers. Bring me the summit.", WorldConfig.BiomeKind.Desert, ascent: true);
+        M(ares, "Erebus", "Erebus", 0.28f, 0.40f,
+            "Recon Sweep", "Boreas Research Trust", 180000, 2,
+            "A Trust survey team went silent on Erebus six days ago. Cross the shelf, find their " +
+            "beacon, and bring back the data core - or word of what found them first.",
+            "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         var thalassa = new PlanetDef
         {
             Name = "Meridian",
