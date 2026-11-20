@@ -522,11 +522,11 @@ public partial class RiderDuel : Node3D
                 FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0011f,
                 FogSunScatter = 0.25f
             };
-        // The Ascent takes the photo environment tune in
-        // the standard scene too (owner, 2026-11-20):
-        // SDFGI bounce, SSAO, volumetric haze, glow and the
-        // deeper contrast look, desert values.
-        if (_photo || WorldConfig.Ascent) PhotoEnv.Tune(duelEnv, sun);
+        // A Photoreal contract takes the photo environment
+        // tune in the standard scene too (owner, 2026-11-20,
+        // consolidated on Babylon): SDFGI bounce, SSAO,
+        // volumetric haze, glow and the deeper contrast look.
+        if (_photo || WorldConfig.Photoreal) PhotoEnv.Tune(duelEnv, sun);
         ApplyMapSky(duelEnv, sun);
         AddChild(new WorldEnvironment { Environment = duelEnv });
 

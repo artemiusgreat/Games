@@ -73,6 +73,14 @@ public static class WorldConfig
     // copies the contract's flag; AOT_ASCENT=1 forces it.
     public static bool Ascent = InitAscent();
 
+    // The photoreal treatment in the standard scene
+    // (owner, 2026-11-20): EnterLab copies the contract's
+    // Photoreal flag here; AOT_PHOTOREAL=1 forces it.
+    public static bool Photoreal = InitPhotoreal();
+
+    private static bool InitPhotoreal() =>
+        System.Environment.GetEnvironmentVariable("AOT_PHOTOREAL") == "1";
+
     private static bool InitAscent() =>
         System.Environment.GetEnvironmentVariable("AOT_ASCENT") == "1";
 
@@ -121,6 +129,7 @@ public static class WorldConfig
         TerracedCity = InitTerraces();
         FlatWorld = InitFlat();
         Ascent = InitAscent();
+        Photoreal = InitPhotoreal();
     }
 
     // Tournament: the 260u arena. Mission: a 1900u front - bases sit

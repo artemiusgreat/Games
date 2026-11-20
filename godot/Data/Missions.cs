@@ -61,6 +61,12 @@ public sealed class MissionDef
     // progression (owner, 2026-11-20: Anabasis, so he can
     // test the new map without playing through to it).
     public bool AlwaysAvailable;
+    // The photoreal treatment (owner, 2026-11-20): the
+    // photo scene's splat terrain, scanned trees and
+    // environment tune applied in the standard scene.
+    // Consolidated on ONE contract - Babylon - so the
+    // improvements are judged in a single place.
+    public bool Photoreal;
     public PlanetDef Planet;
 }
 
@@ -72,7 +78,8 @@ public static class MissionCatalog
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
         bool flat = false, string sky = "", bool snow = false, bool terraces = false,
-        bool stars = false, bool ascent = false, bool alwaysAvailable = false)
+        bool stars = false, bool ascent = false, bool alwaysAvailable = false,
+        bool photoreal = false)
     {
         var m = new MissionDef
         {
@@ -80,7 +87,8 @@ public static class MissionCatalog
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
             FlatTerrain = flat, SkyTex = sky, SnowGround = snow, Terraces = terraces, Planet = p,
-            ProceduralStars = stars, Ascent = ascent, AlwaysAvailable = alwaysAvailable
+            ProceduralStars = stars, Ascent = ascent, AlwaysAvailable = alwaysAvailable,
+            Photoreal = photoreal
         };
         p.Missions.Add(m);
         return m;
@@ -144,7 +152,7 @@ public static class MissionCatalog
             "The Babylon stacks rise straight out of the storm water - ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, terraces: true, stars: true);
+            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, terraces: true, stars: true, photoreal: true);
         M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +
