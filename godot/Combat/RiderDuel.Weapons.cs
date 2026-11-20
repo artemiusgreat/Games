@@ -529,18 +529,7 @@ public partial class RiderDuel
         SpawnFlash(center, new Color(1f, 0.62f, 0.22f), 0.95f, 0.16f);
         SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
         var part = parts.GetPart(partId);
-        if (parts == _partsPlayer) AddFeed($"WARNING: {part.Display} DESTROYED");
-        else if (_foe != null && parts == _foe.Parts) AddFeed($"{_foe.Spec.Name}: {part.Display} DESTROYED");
-        else if (AllyOfParts(parts) is { } ba) AddFeed($"{ba.Spec.Name}: {part.Display} DESTROYED");
-        else AddFeed($"{_enemySpec.Name}: {part.Display} DESTROYED");
         ApplyPartConsequences(parts, partId);
-    }
-
-    private void AddFeed(string text)
-    {
-        _feed.Add((text, 6f));
-        while (_feed.Count > 5) _feed.RemoveAt(0);
-        GD.Print($"BRK FEED {text}");
     }
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
@@ -669,7 +658,6 @@ public partial class RiderDuel
         {
             da.Dead = true;
             GD.Print($"WPN DEATH {da.Role}");
-            AddFeed($"{da.Spec.Name} DESTROYED");
         }
         else { _enemyDead = true; GD.Print("WPN DEATH ENEMY"); }
         OnDeath(w);
@@ -701,16 +689,11 @@ public partial class RiderDuel
         if (defendersDead && TeamAlive)
         {
             _missionDone = true;
-            int before = StoryProgress.UnlockedIn(FlowMain.PlanetIndex);
             StoryProgress.Complete(FlowMain.PlanetIndex, FlowMain.MissionIndex);
-            AddFeed(StoryProgress.UnlockedIn(FlowMain.PlanetIndex) > before
-                ? "MISSION COMPLETE - NEW MISSION AVAILABLE"
-                : "MISSION COMPLETE");
         }
         else if (!TeamAlive)
         {
             _missionDone = true;
-            AddFeed("MISSION FAILED - TEAM DESTROYED");
         }
     }
 

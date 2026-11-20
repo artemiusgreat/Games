@@ -87,9 +87,6 @@ public partial class RiderDuel
         foreach (var a in _allies) if (!a.Dead) living.Add(a.Team);
         if (living.Count != 1) return;
         _bracketDecided = true;
-        int win = 0;
-        foreach (var t in living) win = t;
-        AddFeed(win == 0 ? "ACTIVE - LAST TEAM STANDING" : $"TEAM {win + 1} - LAST TEAM STANDING");
     }
 
     // Which team a walker fights for: the driven rider is
@@ -427,9 +424,7 @@ public partial class RiderDuel
         _pendingLeaderPass = false;
         var next = _allies.Where(a => !a.Dead).OrderBy(a => a.Slot).FirstOrDefault();
         if (next == null) return;
-        string fell = _playerSpec.Name;
-        if (SetLeader(next.Slot))
-            AddFeed($"{fell} DESTROYED - {next.Spec.Name} TAKES COMMAND");
+        SetLeader(next.Slot);
     }
 
     // R reset: teammates restored with everyone else - full

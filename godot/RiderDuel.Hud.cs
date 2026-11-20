@@ -248,13 +248,6 @@ public partial class RiderDuel
         _lblLegs = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
         rightBox.AddChild(_lblLegs);
 
-        // Event feed, top-left: part breaks and other combat events.
-        _feedLabel = MakeLabel(15, new Color(0.98f, 0.88f, 0.62f));
-        _feedLabel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        _feedLabel.OffsetLeft = 18; _feedLabel.OffsetTop = 14;
-        _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
-        layer.AddChild(_feedLabel);
-
         // Leave-game confirmation (owner): Esc opens it, the
         // sim pauses behind it, YES exits the match. Styled
         // after the owner's reference: dark panel, white corner
@@ -269,7 +262,7 @@ public partial class RiderDuel
         _teamDialog = new TeamOverlay();
         _teamDialog.LeaderChosen += slot =>
         {
-            if (SetLeader(slot)) AddFeed($"LEADER: {_playerSpec.Name}");
+            SetLeader(slot);
         };
         _teamDialog.LeaveRequested += OnLeaveConfirmed;
         _teamDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; RecaptureMouse(); };
@@ -963,15 +956,12 @@ public partial class RiderDuel
         if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED");
         _lblWeaponStatus.Text = string.Join("\n", status);
 
-        _feedLabel.Text = string.Join("\n",
-            System.Linq.Enumerable.Select(_feed, e => e.Text));
-
         // Head-loss HUD disturbance: while the flicker timer runs, the
         // whole HUD stutters (seeded, visual only).
         float alpha = 1f;
         if (_hudFlickerT > 0f)
             alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
-        foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _feedLabel, _cross })
+        foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _cross })
         {
             var m = c.Modulate;
             m.A = alpha;
@@ -1014,7 +1004,6 @@ public partial class RiderDuel
             _panelRadar.OffsetRight = -16; _panelRadar.OffsetTop = 14;
             _panelRadar.OffsetLeft = -16 - rs.X; _panelRadar.OffsetBottom = 14 + rs.Y;
         }
-        if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
     }
 
     private void UpdateDroop(float dt)

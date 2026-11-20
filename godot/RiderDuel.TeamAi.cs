@@ -32,14 +32,6 @@ public partial class RiderDuel
     private void SetTeamOrder(TeamOrder o)
     {
         _teamOrder = o;
-        AddFeed(o switch
-        {
-            TeamOrder.Follow => "ORDER: FOLLOW ME",
-            TeamOrder.AttackTarget => "ORDER: ATTACK MY TARGET",
-            TeamOrder.AttackNearby => "ORDER: ATTACK NEARBY ENEMY",
-            TeamOrder.ProtectLeader => "ORDER: PROTECT MY TARGET",
-            _ => "ORDER: FULL STOP"
-        });
         GD.Print($"TEAM order={o}");
     }
 

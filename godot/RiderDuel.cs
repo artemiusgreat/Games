@@ -303,7 +303,7 @@ public partial class RiderDuel : Node3D
     private readonly Control[] _wpnRows = new Control[MaxWeaponRows];
     private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
-    private Label _feedLabel, _lblWeaponStatus, _lblThr;
+    private Label _lblWeaponStatus, _lblThr;
     private int _targetIdx; // the ONE active enemy (owner: Tab switches) - an index into OpposingTargets()
     private LeaveOverlay _leaveDialog;
     private TeamOverlay _teamDialog;
@@ -316,7 +316,6 @@ public partial class RiderDuel : Node3D
     private TargetFrame _targetFrame; // screen-space frame on the active target (owner, 2026-11-11)
     private Label _lblRange, _lblSpeed, _lblLegs;
     private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
-    private readonly System.Collections.Generic.List<(string Text, float Life)> _feed = new();
     private float _shake;
     private float _playerDroopT, _enemyDroopT;
     // breakable consequences, transient timers
@@ -660,7 +659,6 @@ public partial class RiderDuel : Node3D
             Input.MouseMode = Input.MouseModeEnum.Visible;
             SetHudPanelsVisible(false);
             _radar.Visible = false;
-            _feedLabel.Visible = false;
             OpenLab();
         }
 
@@ -720,7 +718,6 @@ public partial class RiderDuel : Node3D
         _pendingLeaderPass = false;
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
         _lastDenied = "";
-        _feed.Clear();
         _cdLaser = _cdAc = _cdLrm = _cdEnemy = 0f;
         _weaponSel = 0;
         foreach (var grp in _groups)
@@ -818,12 +815,6 @@ public partial class RiderDuel : Node3D
         _denyAcT = Mathf.Max(_denyAcT - dt, 0f);
         _denyLrmT = Mathf.Max(_denyLrmT - dt, 0f);
         _hudFlickerT = Mathf.Max(_hudFlickerT - dt, 0f);
-        for (int i = _feed.Count - 1; i >= 0; i--)
-        {
-            float life = _feed[i].Life - dt;
-            if (life <= 0f) _feed.RemoveAt(i);
-            else _feed[i] = (_feed[i].Text, life);
-        }
         ProcessLrmQueue(dt);
         for (int i = _shots.Count - 1; i >= 0; i--)
         {
@@ -907,7 +898,7 @@ public partial class RiderDuel : Node3D
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
-            SetHudPanelsVisible(true); _radar.Visible = true; _feedLabel.Visible = true;
+            SetHudPanelsVisible(true); _radar.Visible = true;
             _pointHector = true;
             GD.Print("POINTTEST selected Hector at start (lab path)");
         }
@@ -916,7 +907,7 @@ public partial class RiderDuel : Node3D
             // Frame the exit popup over the live duel (proof only;
             // the pause itself is the Esc path's business).
             _leaveShotDone = true;
-            SetHudPanelsVisible(true); _radar.Visible = true; _feedLabel.Visible = true;
+            SetHudPanelsVisible(true); _radar.Visible = true;
             _leaveDialog.Open();
         }
         if (_leaveShot && _leaveShotDone && !_leaveShotSaved)
@@ -938,7 +929,7 @@ public partial class RiderDuel : Node3D
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
-            SetHudPanelsVisible(true); _radar.Visible = true; _feedLabel.Visible = true;
+            SetHudPanelsVisible(true); _radar.Visible = true;
             GD.Print("HECTORCAM swapped player to Hector and deployed");
         }
         if (_hectorCam && _hectorCamDone && !_labOpen)

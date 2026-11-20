@@ -90,7 +90,6 @@ public partial class RiderDuel
             if (_labLight != null) _labLight.Visible = false;
             SetHudPanelsVisible(true);
             _radar.Visible = true;
-            _feedLabel.Visible = true;
             Input.MouseMode = Input.MouseModeEnum.Captured;
             GD.Print("LAB deploy: duel started with the lab loadout");
         };

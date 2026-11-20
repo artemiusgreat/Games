@@ -1539,11 +1539,9 @@ public partial class RiderDuel
             if (_foe != null && !_foe.Dead) ApplyDamage(_foe.Walker, 99999f, DummyHit(_foe.Walker, Roles.Foe), Roles.Player);
             if (_bracketDecided) { BracketFail("arena decided with two teams still standing"); return; }
             ApplyDamage(_bracketNpc.Walker, 99999f, DummyHit(_bracketNpc.Walker, _bracketNpc.Role), Roles.Player);
-            bool announced = false;
-            foreach (var (text, _) in _feed) if (text.Contains("LAST TEAM STANDING")) announced = true;
-            if (!_bracketDecided || !announced)
-            { BracketFail($"no last-team-standing announcement (decided={_bracketDecided} announced={announced})"); return; }
-            GD.Print("BRACKETTEST END PASS last team standing announced exactly when the second-to-last team fell");
+            if (!_bracketDecided)
+            { BracketFail($"arena not decided when the second-to-last team fell (decided={_bracketDecided})"); return; }
+            GD.Print("BRACKETTEST END PASS last team standing decided exactly when the second-to-last team fell");
             GD.Print("BRACKETTEST DONE");
             GetTree().Quit(0);
         }
