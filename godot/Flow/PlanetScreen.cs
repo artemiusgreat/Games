@@ -112,7 +112,7 @@ public partial class PlanetScreen : Control
     {
         var p = Planet;
         if (_nameLabel != null) _nameLabel.Text = p.Name;
-        if (_subLabel != null) _subLabel.Text = p.Subtitle;
+        if (_subLabel != null) _subLabel.Text = $"{p.System} · {p.Subtitle}";
         if (_descLabel != null) _descLabel.Text = p.Intel;
         _map?.SetSelected(FlowMain.PlanetIndex);
     }

@@ -6,7 +6,8 @@ using System.Collections.Generic;
 // Pure data - the duel reads WorldConfig.SelectedMission.
 public sealed class PlanetDef
 {
-    public string Name;         // "Chronos"
+    public string System;       // "Union" - the country layer (owner, 2026-11-20 naming convention)
+    public string Name;         // "New York" - a state/province of the system
     public string Subtitle;     // "Desert war world · Lyran Marches"
     public string Intel;        // orbital-screen info column
     public Vector2 MapPos;      // position on the universe map (0..1, y down)
@@ -89,107 +90,110 @@ public static class MissionCatalog
     {
         var ares = new PlanetDef
         {
-            Name = "Chronos",
+            System = "Kingdom",
+            Name = "Queensland",
             MapPos = new Vector2(0.24f, 0.70f),
             Subtitle = "Desert war world · The Brass Marches",
-            Intel = "Chronos changed hands four times in the last decade and the maps never caught up. " +
+            Intel = "Queensland changed hands four times in the last decade and the maps never caught up. " +
                     "House Asterion holds the northern forts; House Corvane raids out of the southern flats. " +
                     "Every garrison on the planet is hiring, and none of them ask questions.",
             BaseColor = new Color(0.36f, 0.16f, 0.08f),
             LandColor = new Color(0.72f, 0.42f, 0.20f),
             PolarColor = new Color(0.85f, 0.66f, 0.42f)
         };
-        M(ares, "Troy", "Troy", -0.38f, 0.30f,
+        M(ares, "Toowoomba", "Darling Downs", -0.38f, 0.30f,
             "Base Assault", "House Asterion", 480000, 4,
-            "Move overland to the Troy depot and destroy the Corvane garrison before their relief column arrives. " +
+            "Move overland to the Toowoomba depot and destroy the Corvane garrison before their relief column arrives. " +
             "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion - the new mission depends on her signature.",
             "Colonel Mara Voss", "Asterion needs that depot rubble by dawn. You look like dawn to me.", WorldConfig.BiomeKind.Desert);
-        M(ares, "Syracuse", "Athens", 0.34f, -0.18f,
+        M(ares, "Rockhampton", "Capricornia", 0.34f, -0.18f,
             "Convoy Escort", "Asterion Logistics", 210000, 2,
-            "A supply convoy crawls from Athens to the front at first light. Raiders have hit the last two. " +
+            "A supply convoy crawls from the Capricornia depot to the front at first light. Raiders have hit the last two. " +
             "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
             "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
-        M(ares, "Anabasis", "Sardis", 0.52f, -0.52f,
+        M(ares, "Brisbane", "Moreton", 0.52f, -0.52f,
             "Valley Campaign", "House Asterion", 900000, 5,
-            "The Long Valley climbs from the lowland mouth to the citadel of Sardis on the summit - six " +
+            "The Long Valley climbs from the lowland mouth to the citadel of Moreton on the summit - six " +
             "villages on the way up, each with its own riders, two rivers to cross, and ten defenders " +
             "waiting on the top plateau. Take the villages one by one, slip past them, or drive straight " +
             "up the road: the contract pays when the summit falls and your team still stands.",
             "Colonel Mara Voss", "The whole valley, rider, from the mud to the white towers. Bring me the summit.", WorldConfig.BiomeKind.Desert, ascent: true, alwaysAvailable: true);
-        M(ares, "Erebus", "Erebus", 0.28f, 0.40f,
+        M(ares, "Cairns", "Far North", 0.28f, 0.40f,
             "Recon Sweep", "Boreas Research Trust", 180000, 2,
-            "A Trust survey team went silent on Erebus six days ago. Cross the shelf, find their " +
+            "A Trust survey team went silent near Cairns six days ago. Cross the shelf, find their " +
             "beacon, and bring back the data core - or word of what found them first.",
             "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         var thalassa = new PlanetDef
         {
-            Name = "Meridian",
+            System = "Union",
+            Name = "New York",
             MapPos = new Vector2(0.68f, 0.52f),
             Subtitle = "Harbor world · Rimward Trade Lane",
-            Intel = "Nine-tenths ocean, and the tenth that matters is harbor steel. Meridian's platforms pump the " +
+            Intel = "Nine-tenths ocean, and the tenth that matters is harbor steel. New York's platforms pump the " +
                     "fuel every House in the sector burns, which makes them worth raiding weekly. The Combine pays " +
                     "well and lies about the weather.",
             BaseColor = new Color(0.05f, 0.20f, 0.30f),
             LandColor = new Color(0.16f, 0.48f, 0.44f),
             PolarColor = new Color(0.75f, 0.88f, 0.90f)
         };
-        // Atlantis leads Meridian's list (owner, 2026-11-13):
+        // Babylon leads New York's list (owner, 2026-11-13):
         // it is the mission under active testing, so it is the
         // planet's first available mission in Story mode.
-        M(thalassa, "Atlantis", "Atlantis", -0.60f, 0.28f,
+        M(thalassa, "Babylon", "Suffolk", -0.60f, 0.28f,
             "Base Defense", "Meridian Combine", 390000, 4,
-            "The Atlantis stacks rise straight out of the storm water - ten thousand windows over the " +
+            "The Babylon stacks rise straight out of the storm water - ten thousand windows over the " +
             "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
             "the Combine's own lance lands. The port bar tab is on them.",
             "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, terraces: true, stars: true);
-        M(thalassa, "Pharos", "Pharos", -0.30f, -0.34f,
+        M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
-            "The Pharos light is the only thing the fuel barges steer by on the night run, and raiders " +
+            "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +
             "have started shooting at the lamp house and picking the dark water for stragglers. Walk the " +
             "causeway with the convoy and keep the light burning until the last barge is in.",
             "Keeper Ana Serra", "Barges steer by my light, rider. Keep it lit - and keep me alive to tend it.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
-        M(thalassa, "Helios", "Helios", 0.42f, 0.22f,
+        M(thalassa, "Albany", "Rensselaer", 0.42f, 0.22f,
             "Raid", "House Corvane", 520000, 5,
-            "The Helios platforms refine for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
+            "The Albany platforms refine for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
             "drop the platform's defense riders, and be gone before the response fleet clears the horizon.",
             "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
-        M(thalassa, "Argos", "Argos", 0.10f, 0.52f,
-            "Duel Challenge", "Argos Yards", 350000, 3,
+        M(thalassa, "Rochester", "Monroe", 0.10f, 0.52f,
+            "Duel Challenge", "Rochester Yards", 350000, 3,
             "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
             "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
             "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
-        M(thalassa, "Elysium", "Elysium", 0.58f, -0.42f,
+        M(thalassa, "Buffalo", "Erie", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
-            "A machine nest has taken Elysium, a walled port town on the trade lane, and grows " +
+            "A machine nest has taken Buffalo, a walled port town on the trade lane, and grows " +
             "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
             "costs in frames. The largest purse on the planet.",
             "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8, sky: "res://assets/skies/sky_ice.jpg", snow: true);
         var kryos = new PlanetDef
         {
-            Name = "Orion",
+            System = "Teutonia",
+            Name = "Bavaria",
             MapPos = new Vector2(0.44f, 0.20f),
             Subtitle = "Mountain ice world · The Far Reaches",
-            Intel = "Orion keeps what it kills: riders frozen mid-stride still stand in the passes from the first " +
+            Intel = "Bavaria keeps what it kills: riders frozen mid-stride still stand in the passes from the first " +
                     "landings. The research stations here pay in hard currency and salvage rights, and the machine " +
                     "remnants in the deep ice are waking up more often than the brochures admit.",
             BaseColor = new Color(0.55f, 0.65f, 0.75f),
             LandColor = new Color(0.82f, 0.88f, 0.94f),
             PolarColor = new Color(0.97f, 0.99f, 1.0f)
         };
-        M(kryos, "Olympus", "Olympus", -0.44f, -0.10f,
+        M(kryos, "Munich", "Upper Bavaria", -0.44f, -0.10f,
             "Base Defense", "Boreas Research Trust", 430000, 4,
             "Something is coming down out of the northern ice in numbers the Trust won't say out loud. Hold " +
-            "the Olympus perimeter for one night cycle. Salvage rights on everything you drop are yours.",
+            "the Munich perimeter for one night cycle. Salvage rights on everything you drop are yours.",
             "Dr. Ingrid Halvorsen", "We are scientists, not soldiers. Whatever walks out of that ice, please stop it.", WorldConfig.BiomeKind.Forest);
-        M(kryos, "Tartarus", "Tartarus", 0.48f, -0.42f,
+        M(kryos, "Nuremberg", "Middle Franconia", 0.48f, -0.42f,
             "Base Assault", "House Asterion", 540000, 5,
-            "The Tartarus pass is the only road out of the northern ice, and a machine nest has sealed it. " +
+            "The Nuremberg pass is the only road out of the northern ice, and a machine nest has sealed it. " +
             "Asterion wants it open before the thaw strands three garrisons on the wrong side: go up the " +
             "mountain, clear the nest out of the narrows, and hold the road until their engineers arrive.",
             "Colonel Mara Voss", "Three garrisons are counting on that road, rider. Open it, and Asterion remembers its friends.", WorldConfig.BiomeKind.Forest);
-        M(kryos, "Arcadia", "Arcadia", 0.02f, -0.55f,
+        M(kryos, "Augsburg", "Swabia", 0.02f, -0.55f,
             "Convoy Intercept", "Free Captains' League", 260000, 3,
-            "A Combine fuel convoy leaves the Arcadia refinery under light escort. The League wants the fuel, not a " +
+            "A Combine fuel convoy leaves the Augsburg refinery under light escort. The League wants the fuel, not a " +
             "war: disable the escorts, take the tankers intact, and nobody's House colors get involved.",
             "Captain Rurik Hale", "Fuel is money that burns, friend. Help me carry some of it away.", WorldConfig.BiomeKind.Forest);
 

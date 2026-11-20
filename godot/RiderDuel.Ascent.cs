@@ -2,7 +2,7 @@ using Godot;
 
 // RiderDuel module: the Ascent campaign world's dressing
 // (owner, 2026-11-20) - the villages, river bridges and the
-// layered summit city for the Anabasis contract. All positions
+// layered summit city for the Brisbane contract (the Ascent map). All positions
 // come from Ascent.cs, the same table the heightfield and the
 // guard spawner read. The higher the site, the taller and more
 // advanced its buildings: mud-flat shanties at the valley
