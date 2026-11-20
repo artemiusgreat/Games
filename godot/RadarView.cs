@@ -161,22 +161,27 @@ public partial class RadarView : Control
         if (Player != null)
         {
             HeightTex ??= BuildHeightTexture();
+            // Per-triangle draws: a single fan polygon with a
+            // centre vertex does NOT triangulate reliably in
+            // Godot (only one wedge of it rendered - the layer
+            // was effectively invisible in play, 2026-11-20).
+            // Triangles always rasterize.
             const int SEG = 48;
-            var fanPts = new Vector2[SEG + 2];
-            var fanUvs = new Vector2[SEG + 2];
-            var fanCols = new Color[SEG + 2];
             var tint = new Color(1f, 1f, 1f, 0.5f);
             var pw = new Vector2(Player.RootPos.X, Player.RootPos.Z);
-            fanPts[0] = c; fanCols[0] = tint; fanUvs[0] = WorldUv(pw);
-            for (int k = 0; k <= SEG; k++)
+            var uvC = WorldUv(pw);
+            for (int k = 0; k < SEG; k++)
             {
-                float a = (float)k / SEG * Mathf.Tau;
-                var dir = new Vector2(Mathf.Sin(a), -Mathf.Cos(a)); // 0 = ahead (up)
-                fanPts[k + 1] = c + dir * half;
-                fanCols[k + 1] = tint;
-                fanUvs[k + 1] = WorldUv(pw + ScopeToWorld(dir * Range));
+                float a0 = (float)k / SEG * Mathf.Tau;
+                float a1 = (float)(k + 1) / SEG * Mathf.Tau;
+                var d0 = new Vector2(Mathf.Sin(a0), -Mathf.Cos(a0)); // 0 = ahead (up)
+                var d1 = new Vector2(Mathf.Sin(a1), -Mathf.Cos(a1));
+                DrawPolygon(
+                    new[] { c, c + d0 * half, c + d1 * half },
+                    new[] { tint, tint, tint },
+                    new[] { uvC, WorldUv(pw + ScopeToWorld(d0 * Range)), WorldUv(pw + ScopeToWorld(d1 * Range)) },
+                    HeightTex);
             }
-            DrawPolygon(fanPts, fanCols, fanUvs, HeightTex);
         }
 
         // Grid clipped to the circle: each line is drawn only
