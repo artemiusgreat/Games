@@ -119,6 +119,11 @@ public static class Ascent
     {
         float h = Profile(z);
         float d = Mathf.Abs(x - RoadX(z));
+        // The south end opens out (owner, 2026-11-20):
+        // mountains belong on the valley's flanks, not
+        // behind the player's spawn - every mountain term
+        // below fades to nothing past the muster field.
+        float openS = 1f - Smooth(780f, 935f, z);
         // Valley walls: the floor stays open for ~110u either
         // side of the road, then the country rises steeply.
         // The wall height varies along the run (shoulders in
@@ -126,10 +131,10 @@ public static class Ascent
         // breaks the silhouette, so the mountains stop
         // repeating (owner, 2026-11-20).
         float wallAmp = 150f * (0.72f + 0.55f * Noise1(z * 0.0016f));
-        h += Mathf.Pow(Smooth(110f, 430f, d), 1.5f) * wallAmp;
+        h += Mathf.Pow(Smooth(110f, 430f, d), 1.5f) * wallAmp * openS;
         float ridge = 1f - Mathf.Abs(Fbm(x * 0.011f, z * 0.011f) * 2f - 1f);
-        h += ridge * ridge * 52f * Smooth(120f, 260f, d) * (1f - Smooth(700f, 940f, d));
-        h += (Fbm(x * 0.045f, z * 0.045f) - 0.5f) * 14f * Smooth(90f, 220f, d);
+        h += ridge * ridge * 52f * Smooth(120f, 260f, d) * (1f - Smooth(700f, 940f, d)) * openS;
+        h += (Fbm(x * 0.045f, z * 0.045f) - 0.5f) * 14f * Smooth(90f, 220f, d) * openS;
         // Side canyons: gullies notched into the walls.
         float signedD = x - RoadX(z);
         foreach (var (gz, side) in Gullies)
@@ -137,15 +142,15 @@ public static class Ascent
             if (signedD * side <= 0f) continue;
             float dz = Mathf.Abs(z - gz);
             h -= 30f * (1f - Smooth(0f, 70f, dz)) * Smooth(120f, 210f, d)
-                 * (1f - Smooth(430f, 540f, d));
+                 * (1f - Smooth(430f, 540f, d)) * openS;
         }
         // Gentle analytic detail on the slopes only - the road
         // corridor and the sites stay clean.
         h += Mathf.Sin(x * 0.021f + Mathf.Sin(z * 0.017f) * 2f) * Mathf.Cos(z * 0.019f)
-            * 6f * Smooth(80f, 260f, d);
+            * 6f * Smooth(80f, 260f, d) * openS;
         // The map rim.
         float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-        h += Smooth(860f, 950f, sq) * 70f;
+        h += Smooth(860f, 950f, sq) * 70f * openS;
         // Rivers: a channel carved across the whole valley,
         // shallower under the bridge span (the deck there is
         // registered by the environment build).
