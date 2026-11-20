@@ -679,7 +679,7 @@ public partial class RiderDuel
         // drives). Deferred to the next frame: Die runs inside
         // damage resolution, and swapping the driven rider
         // re-enters ApplyLoadout.
-        if (w == _player && WorldConfig.IsMission && _allies.Any(a => !a.Dead))
+        if (w == _player && WorldConfig.IsMission && _allies.Any(a => !a.Dead && a.Team == 0))
             _pendingLeaderPass = true;
         CheckMissionEnd();
         CheckBracketEnd();
@@ -693,7 +693,11 @@ public partial class RiderDuel
     private void CheckMissionEnd()
     {
         if (!WorldConfig.IsMission || _missionDone) return;
-        bool defendersDead = _enemyDead && (_foe == null || _foe.Dead);
+        // The Ascent fields its defenders as guard records:
+        // every one of them counts (on other contracts there
+        // are none, and this reduces to the two seats).
+        bool defendersDead = _enemyDead && (_foe == null || _foe.Dead)
+            && !_allies.Any(a => a.Team == 1 && !a.Dead);
         if (defendersDead && TeamAlive)
         {
             _missionDone = true;

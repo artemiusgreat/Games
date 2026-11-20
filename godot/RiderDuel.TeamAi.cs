@@ -121,6 +121,9 @@ public partial class RiderDuel
         foreach (var a in _allies)
         {
             if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
+            // Ascent guards run their own duty brain below,
+            // never the leader's orders.
+            if (a.Guard) continue;
             // Tournament hostile records run the bracket brain
             // (Stage D3c), not the leader's orders.
             if (!WorldConfig.IsMission && a.Team != 0) continue;
@@ -156,6 +159,39 @@ public partial class RiderDuel
                 a.TargetW = null;
                 MoveToward(a, FormationPoint(a), dt);
             }
+        }
+    }
+
+    // Ascent guard duty (owner, 2026-11-20): the defenders'
+    // own rule, per site - patrol the home disc, engage the
+    // nearest team rider inside AggroRange, break off past
+    // LeashRange (GuardGate is the seats' latch). This is what
+    // makes the valley non-linear: a village the player never
+    // approaches never leaves its patrol, and one he slips
+    // past lets him go at the leash line.
+    private void UpdateGuardAI(float dt)
+    {
+        if (!WorldConfig.IsMission) return;
+        foreach (var a in _allies)
+        {
+            if (!a.Guard) continue;
+            if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
+            if (!GuardGate(a.Walker, ref a.Engaged))
+            {
+                a.TargetW = null;
+                PatrolMove(a.Walker, a.Parts, a.GuardHome, ref a.Yaw,
+                    ref a.Patrol, ref a.PatrolT, Mathf.Min(a.Spec.MaxSpeed, EnemyMaxSpeed), dt);
+                continue;
+            }
+            var tgt = NearestTeamWalker(a.Walker.RootPos) ?? _player;
+            a.TargetW = tgt;
+            float pace = PaceFor(a.Spec, a.Walker.RootPos.DistanceTo(tgt.RootPos));
+            UpdateFoeMovement(a.Walker, a.Parts, pace,
+                ref a.Yaw, ref a.OrbitDir, ref a.OrbitTimer, tgt, dt);
+            if (a.Cd <= 0f && a.DefBallistic != null)
+                UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
+                    a.Role, TagOf(tgt), tgt, VelOf(tgt),
+                    () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _allyShots++; });
         }
     }
 

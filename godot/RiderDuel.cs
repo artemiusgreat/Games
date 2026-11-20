@@ -576,7 +576,11 @@ public partial class RiderDuel : Node3D
             AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
             AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
         }
-        if (WorldConfig.IsMission) BuildBases();
+        if (WorldConfig.IsMission)
+        {
+            if (WorldConfig.Ascent) BuildAscentWorld();
+            else BuildBases();
+        }
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City) ScatterCity();
         await BuildFrame(); // staged build: built ground in, nature next
         ScatterNature();
@@ -624,6 +628,7 @@ public partial class RiderDuel : Node3D
         }
         await BuildFrame(); // staged build: seats done, teammates and the HUD next
         BuildAllies();
+        BuildGuards();
         BuildBracketNPCs();
         RefreshHitCaps();
         _prevPlayerRoot = _player.RootPos;
@@ -1132,6 +1137,7 @@ public partial class RiderDuel : Node3D
                 if (_foe != null) UpdateFoeAI(dt);
                 UpdateAlliesAI(dt);
                 UpdateBracketAI(dt);
+                UpdateGuardAI(dt);
                 _aimPoint = TorsoAimPoint();
                 if (Input.MouseMode == Input.MouseModeEnum.Captured && !_playerDead)
                 {

@@ -44,6 +44,14 @@ public partial class RiderDuel
         public float DroopT;
         public Vector3 SpawnPos;
         public float SpawnYaw;
+        // Ascent guard duty (owner, 2026-11-20): a hostile
+        // record (Team 1) that patrols its own site and engages
+        // only inside the guard ranges - not a roster member.
+        public bool Guard;
+        public Vector3 GuardHome;
+        public bool Engaged;
+        public Vector3 Patrol;
+        public float PatrolT;
     }
 
     private readonly List<Ally> _allies = new();
@@ -113,13 +121,13 @@ public partial class RiderDuel
         list.Add(new TargetInfo { Spec = _enemySpec, W = _enemy, Hp = _hpEnemy, Dead = _enemyDead });
         if (_foe != null)
             list.Add(new TargetInfo { Spec = _foe.Spec, W = _foe.Walker, Hp = _foe.Hp, Dead = _foe.Dead });
-        if (!WorldConfig.IsMission)
+        // Hostile NPC records: the tournament bracket's riders,
+        // and in missions the Ascent's guard groups (the only
+        // Team-1 records a mission fields).
+        foreach (var a in _allies)
         {
-            foreach (var a in _allies)
-            {
-                if (a.Team == 0) continue;
-                list.Add(new TargetInfo { Spec = a.Spec, W = a.Walker, Hp = a.Hp, Dead = a.Dead });
-            }
+            if (a.Team == 0) continue;
+            list.Add(new TargetInfo { Spec = a.Spec, W = a.Walker, Hp = a.Hp, Dead = a.Dead });
         }
         return list;
     }
@@ -144,11 +152,11 @@ public partial class RiderDuel
     private IEnumerable<(RiderWalker W, RiderSpec Spec, float Hp, bool Dead, int Slot)> TeamMembers()
     {
         yield return (_player, _playerSpec, _hpPlayer, _playerDead, _leaderSlot);
-        foreach (var a in _allies.OrderBy(a => a.Slot))
+        foreach (var a in _allies.Where(a => a.Team == 0).OrderBy(a => a.Slot))
             yield return (a.Walker, a.Spec, a.Hp, a.Dead, a.Slot);
     }
 
-    private bool TeamAlive => !_playerDead || _allies.Any(a => !a.Dead);
+    private bool TeamAlive => !_playerDead || _allies.Any(a => !a.Dead && a.Team == 0);
 
     // The living team rider nearest a point - the defenders'
     // engagement reference (a solo team resolves to the player,
@@ -228,7 +236,10 @@ public partial class RiderDuel
     // leader.
     private void BuildAllies()
     {
-        _allies.Clear();
+        // Guard records are not roster members: a deploy
+        // rebuild of the player's team keeps them (they were
+        // never the roster's to drop).
+        _allies.RemoveAll(a => !a.Guard);
         if (!WorldConfig.IsMission || AnyHarness) return;
         TeamRoster.EnsureStory();
         _leaderSlot = TeamRoster.StorySlot;
@@ -261,8 +272,9 @@ public partial class RiderDuel
     {
         if (!WorldConfig.IsMission || AnyHarness) return;
         TeamRoster.EnsureStory();
+        var team = _allies.FindAll(a => !a.Guard);
         bool same = _leaderSlot == TeamRoster.StorySlot
-            && _allies.Count == TeamRoster.Story.Count - 1;
+            && team.Count == TeamRoster.Story.Count - 1;
         if (same)
         {
             int ai = 0;
@@ -270,16 +282,49 @@ public partial class RiderDuel
             {
                 if (slot == TeamRoster.StorySlot) continue;
                 var m = TeamRoster.Story[slot];
-                var a = _allies[ai++];
+                var a = team[ai++];
                 if (a.Spec != m.Spec || a.Loadout != m.Loadout) same = false;
             }
         }
         if (same) return;
-        GD.Print($"TEAM deploy rebuild: roster changed in the lab ({_allies.Count} records -> {TeamRoster.Story.Count - 1})");
-        foreach (var a in _allies) a.Walker.QueueFree();
-        _allies.Clear();
+        GD.Print($"TEAM deploy rebuild: roster changed in the lab ({team.Count} records -> {TeamRoster.Story.Count - 1})");
+        foreach (var a in team) a.Walker.QueueFree();
         BuildAllies();
         RefreshHitCaps();
+    }
+
+    // The Ascent's defenders (owner, 2026-11-20): one guard
+    // group per village plus the summit's eight, each an NPC
+    // record on team 1 with its own patrol ground (Ascent.cs).
+    // Specs rotate through the roster deterministically so
+    // every site fields a different mix. The mission is won
+    // only when the seats AND every guard are down
+    // (CheckMissionEnd counts them).
+    private void BuildGuards()
+    {
+        if (!WorldConfig.IsMission || !WorldConfig.Ascent || AnyHarness) return;
+        int n = 0;
+        void Muster(Vector2 centre, int count, int seed)
+        {
+            var home = new Vector3(centre.X, Main.HeightAt(centre.X, centre.Y), centre.Y);
+            for (int k = 0; k < count; k++)
+            {
+                var spec = RiderSpecs.All[(seed + k * 5 + 1) % RiderSpecs.All.Length];
+                float ang = k * 2.4f + seed;
+                var pos = home + new Vector3(Mathf.Sin(ang) * 13f, 0f, Mathf.Cos(ang) * 13f);
+                pos.Y = Main.HeightAt(pos.X, pos.Z);
+                float yaw = Mathf.Atan2(centre.X - pos.X, centre.Y - pos.Z);
+                var a = MakeAlly(TeamRoster.Make(spec), $"{Roles.AllyPrefix}G{n}", 100 + n, 1, pos, yaw, $"Guard{n}");
+                a.Guard = true;
+                a.GuardHome = home;
+                _allies.Add(a);
+                n++;
+            }
+        }
+        for (int s = 0; s < Ascent.Sites.Length; s++)
+            Muster(Ascent.Sites[s].C, Ascent.Sites[s].Guards, s * 3);
+        Muster(Ascent.SummitApron, Ascent.SummitGuards, 40);
+        GD.Print($"ASCENT guards built: {n} defenders across {Ascent.Sites.Length} villages and the summit");
     }
 
     // A team's muster point in the arena: its pad for the
