@@ -558,32 +558,40 @@ public partial class Main : Node3D
 	// heightfield nodes, so the rendered surface and HeightAt agree by
 	// construction. One material, vertex-color albedo, no textures.
 	public static Mesh CreateTerrainMesh()
+		=> CreateTerrainMeshRange(0, TerrainSegs, 0, TerrainSegs);
+
+	// One window of the heightfield as its own mesh (same
+	// grid data, world-space vertices, vertex colours) -
+	// the Ascent world builds the ground in chunks so far
+	// chunks can be unloaded from the renderer (owner,
+	// 2026-11-20: dynamic loading on the big map).
+	public static Mesh CreateTerrainMeshRange(int i0, int i1, int j0, int j1)
 	{
 		int n = GridN;
 		float half = TerrainSize / 2f;
 		float step = (float)TerrainSize / TerrainSegs;
-		var verts = new Vector3[n * n];
-		var normals = new Vector3[n * n];
-		var colors = new Color[n * n];
-		for (int j = 0; j < n; j++)
-		for (int i = 0; i < n; i++)
+		int w = i1 - i0 + 1, dpt = j1 - j0 + 1;
+		var verts = new Vector3[w * dpt];
+		var normals = new Vector3[w * dpt];
+		var colors = new Color[w * dpt];
+		for (int j = j0; j <= j1; j++)
+		for (int i = i0; i <= i1; i++)
 		{
 			float x = -half + i * step, z = -half + j * step;
 			float h = Grid[j * n + i];
-			int k = j * n + i;
+			int k = (j - j0) * w + (i - i0);
 			verts[k] = new Vector3(x, h, z);
-			var nrm = GridNormal(i, j, step);
-			normals[k] = nrm;
-			colors[k] = TerrainColor(x, z, h, nrm);
+			normals[k] = GridNormal(i, j, step);
+			colors[k] = TerrainColor(x, z, h, normals[k]);
 		}
-		var idx = new int[TerrainSegs * TerrainSegs * 6];
+		var idx = new int[(i1 - i0) * (j1 - j0) * 6];
 		int t = 0;
-		for (int j = 0; j < TerrainSegs; j++)
-		for (int i = 0; i < TerrainSegs; i++)
+		for (int j = 0; j < j1 - j0; j++)
+		for (int i = 0; i < i1 - i0; i++)
 		{
-			int a = j * n + i, b = a + 1, c = a + n, d = c + 1;
+			int a = j * w + i, b = a + 1, c = a + w, dd = c + 1;
 			idx[t++] = a; idx[t++] = b; idx[t++] = c;
-			idx[t++] = b; idx[t++] = d; idx[t++] = c;
+			idx[t++] = b; idx[t++] = dd; idx[t++] = c;
 		}
 		var arrays = new Godot.Collections.Array();
 		arrays.Resize((int)Mesh.ArrayType.Max);

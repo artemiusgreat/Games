@@ -124,6 +124,30 @@ public partial class RiderDuel
 
     private MeshInstance3D BuildTerrainMesh()
     {
+        if (WorldConfig.Ascent)
+        {
+            // The Ascent ground is built in 4x4 chunks over
+            // the same grid, so the streaming pass can unload
+            // the far end of the valley (owner, 2026-11-20).
+            MeshInstance3D first = null;
+            int chunk = Main.TerrainSegs / 4;
+            for (int cj = 0; cj < 4; cj++)
+            for (int ci = 0; ci < 4; ci++)
+            {
+                var cmi = new MeshInstance3D
+                {
+                    Mesh = Main.CreateTerrainMeshRange(
+                        ci * chunk, (ci + 1) * chunk, cj * chunk, (cj + 1) * chunk)
+                };
+                AddChild(cmi);
+                _terrainChunks.Add(cmi);
+                float cx = -Main.TerrainSize / 2f + (ci + 0.5f) * (Main.TerrainSize / 4f);
+                float cz = -Main.TerrainSize / 2f + (cj + 0.5f) * (Main.TerrainSize / 4f);
+                _streamed.Add((cmi, new Vector2(cx, cz), 1150f));
+                if (first == null) first = cmi;
+            }
+            return first;
+        }
         // Shared heightfield mesh (vertices on grid nodes = HeightAt).
         var mi = new MeshInstance3D { Mesh = Main.CreateTerrainMesh() };
         AddChild(mi);
@@ -136,7 +160,12 @@ public partial class RiderDuel
     // the loading ripple whole (owner, 2026-11-15).
     private void SkinTerrain(MeshInstance3D mi)
     {
-        if (_photo) mi.MaterialOverride = PhotoEnv.TerrainMaterial();
+        if (_photo)
+        {
+            var mat = PhotoEnv.TerrainMaterial();
+            mi.MaterialOverride = mat;
+            foreach (var c in _terrainChunks) c.MaterialOverride = mat;
+        }
     }
 
     // Mission scatter: groves and rock fields cluster around the

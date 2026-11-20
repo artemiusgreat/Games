@@ -665,6 +665,7 @@ public partial class RiderDuel : Node3D
         }
 
         _lastPlayerPos = _player.RootPos;
+        if (WorldConfig.Ascent) RegisterStreaming();
         InitSfx();
         _built = true;
         _buildCover.QueueFree();
@@ -1130,11 +1131,12 @@ public partial class RiderDuel : Node3D
             else
             {
                 if (_gaitShot) UpdateGaitShot(dt); // dev capture rides the live branch (AI walks the enemy)
+                UpdateStreaming(dt);
                 PassCommandIfNeeded();
                 UpdatePlayerInput(dt);
                 MaintainTorsoWorldYaw();
-                UpdateEnemyAI(dt);
-                if (_foe != null) UpdateFoeAI(dt);
+                if (TickReady(_enemy)) UpdateEnemyAI(TickDt(_enemy, dt));
+                if (_foe != null && TickReady(_foe.Walker)) UpdateFoeAI(TickDt(_foe.Walker, dt));
                 UpdateAlliesAI(dt);
                 UpdateBracketAI(dt);
                 UpdateGuardAI(dt);
@@ -1149,9 +1151,9 @@ public partial class RiderDuel : Node3D
                 }
             }
             StepWalker(_player, delta);
-            StepWalker(_enemy, delta);
-            if (_foe != null && _foe.Walker.IsReady) StepWalker(_foe.Walker, delta);
-            foreach (var a in _allies) if (a.Walker.IsReady) StepWalker(a.Walker, delta);
+            if (TickReady(_enemy)) StepWalker(_enemy, TickDt(_enemy, (float)delta));
+            if (_foe != null && _foe.Walker.IsReady && TickReady(_foe.Walker)) StepWalker(_foe.Walker, TickDt(_foe.Walker, (float)delta));
+            foreach (var a in _allies) if (a.Walker.IsReady && TickReady(a.Walker)) StepWalker(a.Walker, TickDt(a.Walker, (float)delta));
             StepSounds();
             ThrusterSounds();
             UpdateLifts((float)delta);
@@ -1166,20 +1168,24 @@ public partial class RiderDuel : Node3D
             }
             if (dt > 0f)
             {
-                var ev = (_enemy.RootPos - _prevEnemyRoot) / dt;
-                if (ev.Length() > 8f) ev = ev.Normalized() * 8f;
-                _enemyVel = _enemyVel.Lerp(ev, 0.5f);
-                _prevEnemyRoot = _enemy.RootPos;
-                if (_foe != null)
+                if (TickReady(_enemy))
                 {
-                    var fv = (_foe.Walker.RootPos - _foe.PrevRoot) / dt;
+                    var ev = (_enemy.RootPos - _prevEnemyRoot) / TickDt(_enemy, dt);
+                    if (ev.Length() > 8f) ev = ev.Normalized() * 8f;
+                    _enemyVel = _enemyVel.Lerp(ev, 0.5f);
+                    _prevEnemyRoot = _enemy.RootPos;
+                }
+                if (_foe != null && TickReady(_foe.Walker))
+                {
+                    var fv = (_foe.Walker.RootPos - _foe.PrevRoot) / TickDt(_foe.Walker, dt);
                     if (fv.Length() > 8f) fv = fv.Normalized() * 8f;
                     _foe.Vel = _foe.Vel.Lerp(fv, 0.5f);
                     _foe.PrevRoot = _foe.Walker.RootPos;
                 }
                 foreach (var a in _allies)
                 {
-                    var av = (a.Walker.RootPos - a.PrevRoot) / dt;
+                    if (!TickReady(a.Walker)) continue;
+                    var av = (a.Walker.RootPos - a.PrevRoot) / TickDt(a.Walker, dt);
                     if (av.Length() > 8f) av = av.Normalized() * 8f;
                     a.Vel = a.Vel.Lerp(av, 0.5f);
                     a.PrevRoot = a.Walker.RootPos;

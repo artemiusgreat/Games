@@ -118,8 +118,13 @@ public partial class RiderDuel
     private void UpdateAlliesAI(float dt)
     {
         if (_allies.Count == 0) return;
+        float dtFrame = dt;
         foreach (var a in _allies)
         {
+            // Ascent dormancy: a distant rider ticks at 5 Hz
+            // with its accumulated step, or not at all.
+            if (!TickReady(a.Walker)) continue;
+            dt = TickDt(a.Walker, dtFrame);
             if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
             // Ascent guards run their own duty brain below,
             // never the leader's orders.
@@ -172,9 +177,12 @@ public partial class RiderDuel
     private void UpdateGuardAI(float dt)
     {
         if (!WorldConfig.IsMission) return;
+        float dtFrame = dt;
         foreach (var a in _allies)
         {
             if (!a.Guard) continue;
+            if (!TickReady(a.Walker)) continue;
+            dt = TickDt(a.Walker, dtFrame);
             if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
             if (!GuardGate(a.Walker, ref a.Engaged))
             {
