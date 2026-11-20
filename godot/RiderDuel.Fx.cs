@@ -385,7 +385,12 @@ public partial class RiderDuel
         bool onEnemy = target == _enemy;
         SpawnDmgNumber(point, dmg, onEnemy ? new Color(1f, 0.78f, 0.3f) : new Color(1f, 0.38f, 0.3f));
         if (onEnemy && source == Roles.Player) _cross.Hitmark = 1f;
-        if (!onEnemy) _shake = Mathf.Min(_shake + 0.22f, 0.5f);
+        // Camera shake is the PLAYER's hit feedback only
+        // (owner, 2026-11-20: NPCs shooting each other across
+        // the map shook his screen - external fire is not
+        // his feedback). The death-explosion shake below
+        // stays proximity-gated as it was.
+        if (target == _player) _shake = Mathf.Min(_shake + 0.22f, 0.5f);
     }
 
     private void OnDeath(RiderWalker w)
