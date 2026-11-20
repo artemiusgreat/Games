@@ -394,9 +394,11 @@ public partial class RiderDuel
             // Photoreal probe: scanned rock at the same spot, scale
             // and collider; only the visual changes.
             var rock = PhotoEnv.MakeRock(scl);
-            rock.Position = new Vector3(pos.X, groundY - 0.30f * scl.Y, pos.Z);
+            rock.Position = new Vector3(pos.X, groundY, pos.Z);
             rock.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
             AddChild(rock);
+            var wbP = WorldAabb(rock);
+            rock.Position += Vector3.Up * ((groundY - 0.35f * scl.Y) - wbP.Position.Y);
         }
         else
         {
@@ -408,10 +410,18 @@ public partial class RiderDuel
             AlbedoColor = new Color(g, g * (0.99f + tint * 0.03f), g * (1.02f - tint * 0.02f)),
             Roughness = 0.97f
         };
-        mi.Position = new Vector3(pos.X, groundY - 0.30f * scl.Y, pos.Z);
+        mi.Position = new Vector3(pos.X, groundY, pos.Z);
         mi.Scale = scl;
         mi.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
         AddChild(mi);
+        // Sit the rock on its REAL lowest point, tilt
+        // included (owner, 2026-11-20: the min-of-samples
+        // grounding still floated wide rocks - the random
+        // tilt lifts one rim by ~radius x tilt, over a
+        // unit on the big boulders). Measure the placed
+        // world AABB and shift so its bottom is buried.
+        var wb = WorldAabb(mi);
+        mi.Position += Vector3.Up * ((groundY - 0.35f * scl.Y) - wb.Position.Y);
         }
         float r = Mathf.Max(scl.X, scl.Z) * 0.92f;
         _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, Pass = true });
