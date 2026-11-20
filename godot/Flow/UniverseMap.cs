@@ -27,7 +27,7 @@ public partial class UniverseMap : Control
         (0, 2), (1, 0), (1, 2), (3, 4), (4, 5), (6, 7), (2, 6)
     };
     // Planet-index links into the decorative web (planet order:
-    // 0 Queensland, 1 New York, 2 Bavaria): each planet ties to its
+    // 0 Yorkshire, 1 New York, 2 Bavaria): each planet ties to its
     // nearest deco systems so the playable nodes sit inside the
     // chart's web, not on top of it.
     private static readonly (int Planet, int Deco)[] PlanetLinks =

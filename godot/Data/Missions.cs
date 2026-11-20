@@ -91,36 +91,36 @@ public static class MissionCatalog
         var ares = new PlanetDef
         {
             System = "Kingdom",
-            Name = "Queensland",
+            Name = "Yorkshire",
             MapPos = new Vector2(0.24f, 0.70f),
             Subtitle = "Desert war world · The Brass Marches",
-            Intel = "Queensland changed hands four times in the last decade and the maps never caught up. " +
+            Intel = "Yorkshire changed hands four times in the last decade and the maps never caught up. " +
                     "House Asterion holds the northern forts; House Corvane raids out of the southern flats. " +
                     "Every garrison on the planet is hiring, and none of them ask questions.",
             BaseColor = new Color(0.36f, 0.16f, 0.08f),
             LandColor = new Color(0.72f, 0.42f, 0.20f),
             PolarColor = new Color(0.85f, 0.66f, 0.42f)
         };
-        M(ares, "Toowoomba", "Darling Downs", -0.38f, 0.30f,
+        M(ares, "York", "North Yorkshire", -0.38f, 0.30f,
             "Base Assault", "House Asterion", 480000, 4,
-            "Move overland to the Toowoomba depot and destroy the Corvane garrison before their relief column arrives. " +
+            "Move overland to the York depot and destroy the Corvane garrison before their relief column arrives. " +
             "Rally in the depot courtyard. Ensure the safety of Liaison Officer Petra Davion - the new mission depends on her signature.",
             "Colonel Mara Voss", "Asterion needs that depot rubble by dawn. You look like dawn to me.", WorldConfig.BiomeKind.Desert);
-        M(ares, "Rockhampton", "Capricornia", 0.34f, -0.18f,
+        M(ares, "Bath", "Somerset", 0.34f, -0.18f,
             "Convoy Escort", "Asterion Logistics", 210000, 2,
-            "A supply convoy crawls from the Capricornia depot to the front at first light. Raiders have hit the last two. " +
+            "A supply convoy crawls from the Somerset depot to the front at first light. Raiders have hit the last two. " +
             "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
             "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
-        M(ares, "Brisbane", "Moreton", 0.52f, -0.52f,
+        M(ares, "London", "Westminster", 0.52f, -0.52f,
             "Valley Campaign", "House Asterion", 900000, 5,
-            "The Long Valley climbs from the lowland mouth to the citadel of Moreton on the summit - six " +
+            "The Long Valley climbs from the lowland mouth to the citadel of Westminster on the summit - six " +
             "villages on the way up, each with its own riders, two rivers to cross, and ten defenders " +
             "waiting on the top plateau. Take the villages one by one, slip past them, or drive straight " +
             "up the road: the contract pays when the summit falls and your team still stands.",
             "Colonel Mara Voss", "The whole valley, rider, from the mud to the white towers. Bring me the summit.", WorldConfig.BiomeKind.Desert, ascent: true, alwaysAvailable: true);
-        M(ares, "Cairns", "Far North", 0.28f, 0.40f,
+        M(ares, "Oxford", "Oxfordshire", 0.28f, 0.40f,
             "Recon Sweep", "Boreas Research Trust", 180000, 2,
-            "A Trust survey team went silent near Cairns six days ago. Cross the shelf, find their " +
+            "A Trust survey team went silent near Oxford six days ago. Cross the shelf, find their " +
             "beacon, and bring back the data core - or word of what found them first.",
             "Dr. Ingrid Halvorsen", "Six days of silence. The ice keeps secrets; bring me back one of them.", WorldConfig.BiomeKind.Desert);
         var thalassa = new PlanetDef
