@@ -160,7 +160,12 @@ public partial class RiderDuel
     // the loading ripple whole (owner, 2026-11-15).
     private void SkinTerrain(MeshInstance3D mi)
     {
-        if (_photo)
+        // The Ascent gets the photo splat in the standard
+        // scene too (owner, 2026-11-20: Anabasis updated
+        // with the photoreal treatment) - scanned rock/dirt/
+        // grass sets blended by the baked splat, desert
+        // tinted, instead of the flat vertex-colour ground.
+        if (_photo || WorldConfig.Ascent)
         {
             var mat = PhotoEnv.TerrainMaterial();
             mi.MaterialOverride = mat;
@@ -273,6 +278,7 @@ public partial class RiderDuel
             // Photoreal probe: a scanned tree model replaces the
             // procedural parts; cylinders + registration below are
             // unchanged, so the tree collides and burns as before.
+            // The Ascent shares the treatment (owner, 2026-11-20).
             PhotoEnv.AddTreeModel(tree, variety, rng);
             totalH = variety == 1 ? 7.6f : 5.9f;
         }
