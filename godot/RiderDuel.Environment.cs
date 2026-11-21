@@ -227,6 +227,19 @@ public partial class RiderDuel
 
     private void AddTree(Vector3 pos) => AddTreeV(pos, 0, 1f, 0f);
 
+    // Sets a fade-out visibility range on every geometry
+    // instance under a holder (see AddTreeV).
+    private static void ApplyVisibilityRange(Node root, float end, float margin)
+    {
+        if (root is GeometryInstance3D gi)
+        {
+            gi.VisibilityRangeEnd = end;
+            gi.VisibilityRangeEndMargin = margin;
+            gi.VisibilityRangeFadeMode = GeometryInstance3D.VisibilityRangeFadeModeEnum.Self;
+        }
+        foreach (var child in root.GetChildren()) ApplyVisibilityRange(child, end, margin);
+    }
+
     // Tree varieties: 0 classic, 1 pine, 2 broadleaf. Detail pass
     // (owner): a tapered trunk, real branches reaching out of it, and a
     // canopy of separate leaf clusters in varied greens instead of one
@@ -347,6 +360,15 @@ public partial class RiderDuel
         }
         }
         AddChild(tree);
+        // Visibility range (owner, 2026-11-20, optimization
+        // pass): a tree is clutter, not cover - fade it out
+        // well before the horizon instead of drawing its
+        // ~13 mesh nodes to the edge of the world. Covers
+        // the procedural parts and the scanned models alike
+        // (both hang under this holder). Collision and the
+        // stomp/burn registration below are analytic and
+        // unaffected.
+        ApplyVisibilityRange(tree, 1000f, 200f);
         float r = 0.7f * scale;
         // Owner's rule: trees do NOT block movement - a rider that walks
         // into one stomps it flat (see StompCheck). Only buildings (and
