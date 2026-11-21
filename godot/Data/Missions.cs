@@ -120,12 +120,11 @@ public static class MissionCatalog
             "Walk with the trucks, keep the machines off them, and the fort pays a clean bonus per truck that arrives.",
             "Quartermaster Ilya Brandt", "Simple work: walk next to trucks, shoot what I point at. Mostly trucks arrive.", WorldConfig.BiomeKind.Desert);
         M(ares, "London", "Westminster", 0.52f, -0.52f,
-            "Valley Campaign", "House Asterion", 900000, 5,
-            "The Long Valley climbs from the lowland mouth to the citadel of Westminster on the summit - six " +
-            "villages on the way up, each with its own riders, two rivers to cross, and ten defenders " +
-            "waiting on the top plateau. Take the villages one by one, slip past them, or drive straight " +
-            "up the road: the contract pays when the summit falls and your team still stands.",
-            "Colonel Mara Voss", "The whole valley, rider, from the mud to the white towers. Bring me the summit.", WorldConfig.BiomeKind.Desert, ascent: true, alwaysAvailable: true);
+            "Base Assault", "House Asterion", 480000, 5,
+            "A Corvane garrison holds the Westminster depot and the road junction it guards. Cross the " +
+            "flats, destroy the garrison riders, and hold the junction until Asterion's relief column " +
+            "arrives. The depot's fuel pays for the next campaign - Asterion wants it intact.",
+            "Colonel Mara Voss", "Westminster by dawn, rider. The depot stands - the garrison doesn't.", WorldConfig.BiomeKind.Desert);
         M(ares, "Oxford", "Oxfordshire", 0.28f, 0.40f,
             "Recon Sweep", "Boreas Research Trust", 180000, 2,
             "A Trust survey team went silent near Oxford six days ago. Cross the shelf, find their " +
@@ -148,11 +147,13 @@ public static class MissionCatalog
         // it is the mission under active testing, so it is the
         // planet's first available mission in Story mode.
         M(thalassa, "Babylon", "Suffolk", -0.60f, 0.28f,
-            "Base Defense", "Meridian Combine", 390000, 4,
-            "The Babylon stacks rise straight out of the storm water - ten thousand windows over the " +
-            "docks, and pirates riding the storm belt hit them at every low tide. Hold the stacks until " +
-            "the Combine's own lance lands. The port bar tab is on them.",
-            "Portmaster Selene Kallis", "They come with the tide, rider. Be the rock they break on.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, terraces: true, stars: true, photoreal: true);
+            "Valley Campaign", "Meridian Combine", 900000, 4,
+            "The Suffolk valley climbs from the lowland mouth to a fortified camp on the summit " +
+            "plateau - six villages on the way up, each with its own riders, two rivers to cross, " +
+            "and ten defenders waiting on top. Take the villages one by one, slip past them, or " +
+            "drive straight up the road: the contract pays when the summit falls and your team " +
+            "still stands.",
+            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, stars: true, photoreal: true, ascent: true);
         M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +
