@@ -78,6 +78,14 @@ public partial class RiderDuel
                 if (ord.HasValue)
                 {
                     SetTeamOrder(ord.Value);
+                    AddFeed(ord.Value switch
+                    {
+                        TeamOrder.Follow => "ORDER: FOLLOW ME",
+                        TeamOrder.AttackTarget => "ORDER: ATTACK MY TARGET",
+                        TeamOrder.AttackNearby => "ORDER: ATTACK NEARBY ENEMY",
+                        TeamOrder.ProtectLeader => "ORDER: PROTECT MY TARGET",
+                        _ => "ORDER: FULL STOP"
+                    });
                     GetViewport().SetInputAsHandled();
                     return;
                 }

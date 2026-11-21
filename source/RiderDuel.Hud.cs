@@ -65,6 +65,15 @@ public partial class RiderDuel
         _panelHealth = CornerPanel(Control.LayoutPreset.BottomLeft);
         _panelTarget = CornerPanel(Control.LayoutPreset.BottomRight);
 
+        // Team-command feed, top-left: rides under the weapons
+        // block (owner, 2026-11-21 - restored for team orders
+        // only; the 2026-11-20 event feed stays removed).
+        _feedLabel = MakeLabel(15, new Color(0.98f, 0.88f, 0.62f));
+        _feedLabel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        _feedLabel.OffsetLeft = 18; _feedLabel.OffsetTop = 14;
+        _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
+        layer.AddChild(_feedLabel);
+
         // Radar, top-right (owner): a SQUARE semi-transparent
         // panel the same width as the range/speed block below
         // it, with the exit popup's white corner brackets. The
@@ -761,6 +770,17 @@ public partial class RiderDuel
         _targetFrame.QueueRedraw();
     }
 
+    // Team-command feed (owner, 2026-11-21): the only lines it
+    // ever shows are the orders the player gives the team
+    // (SHIFT+1..5, written from the input handler). Combat events,
+    // part breaks and leader changes do NOT write here - that
+    // feed was removed on 2026-11-20 and stays removed.
+    private void AddFeed(string text)
+    {
+        _feed.Add((text, 6f));
+        while (_feed.Count > 5) _feed.RemoveAt(0);
+    }
+
     private void UpdateHud()
     {
         if (_barPlayer == null) return;
@@ -955,13 +975,16 @@ public partial class RiderDuel
         else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R") && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED - RIGHT POD LOST ({podRocketsR} ROCKETS)");
         if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED");
         _lblWeaponStatus.Text = string.Join("\n", status);
+        if (_feedLabel != null)
+            _feedLabel.Text = string.Join("\n",
+                System.Linq.Enumerable.Select(_feed, e => e.Text));
 
         // Head-loss HUD disturbance: while the flicker timer runs, the
         // whole HUD stutters (seeded, visual only).
         float alpha = 1f;
         if (_hudFlickerT > 0f)
             alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
-        foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _cross })
+        foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _feedLabel, _cross })
         {
             var m = c.Modulate;
             m.A = alpha;
@@ -992,6 +1015,7 @@ public partial class RiderDuel
         var ws = _panelWeapons.GetCombinedMinimumSize();
         _panelWeapons.OffsetLeft = 16; _panelWeapons.OffsetTop = 14;
         _panelWeapons.OffsetRight = 16 + w; _panelWeapons.OffsetBottom = 14 + ws.Y;
+        if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
         var hs = _panelHealth.GetCombinedMinimumSize();
         _panelHealth.OffsetLeft = 16; _panelHealth.OffsetBottom = -14;
         _panelHealth.OffsetRight = 16 + w; _panelHealth.OffsetTop = -14 - hs.Y;

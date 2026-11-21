@@ -303,7 +303,8 @@ public partial class RiderDuel : Node3D
     private readonly Control[] _wpnRows = new Control[MaxWeaponRows];
     private Label _lblFoeHp;
     private Label _lblPlayerHp, _lblEnemyHp, _banner, _bannerSub;
-    private Label _lblWeaponStatus, _lblThr;
+    private Label _feedLabel, _lblWeaponStatus, _lblThr;
+    private readonly System.Collections.Generic.List<(string Text, float Life)> _feed = new();
     private int _targetIdx; // the ONE active enemy (owner: Tab switches) - an index into OpposingTargets()
     private LeaveOverlay _leaveDialog;
     private TeamOverlay _teamDialog;
@@ -697,6 +698,8 @@ public partial class RiderDuel : Node3D
 
     private void ResetDuel()
     {
+        _feed.Clear();
+        if (_feedLabel != null) _feedLabel.Visible = false;
         _hpPlayer = _playerSpec.MaxHp;
         _hpEnemy = _enemySpec.MaxHp;
         _playerDead = _enemyDead = false;
@@ -903,6 +906,7 @@ public partial class RiderDuel : Node3D
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
             SetHudPanelsVisible(true); _radar.Visible = true;
+            if (_feedLabel != null) _feedLabel.Visible = true;
             _pointHector = true;
             GD.Print("POINTTEST selected Hector at start (lab path)");
         }
@@ -912,6 +916,7 @@ public partial class RiderDuel : Node3D
             // the pause itself is the Esc path's business).
             _leaveShotDone = true;
             SetHudPanelsVisible(true); _radar.Visible = true;
+            if (_feedLabel != null) _feedLabel.Visible = true;
             _leaveDialog.Open();
         }
         if (_leaveShot && _leaveShotDone && !_leaveShotSaved)
@@ -934,6 +939,7 @@ public partial class RiderDuel : Node3D
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
             SetHudPanelsVisible(true); _radar.Visible = true;
+            if (_feedLabel != null) _feedLabel.Visible = true;
             GD.Print("HECTORCAM swapped player to Hector and deployed");
         }
         if (_hectorCam && _hectorCamDone && !_labOpen)
@@ -1192,6 +1198,12 @@ public partial class RiderDuel : Node3D
             _partsEnemy.StepDebris(dt);
             if (_foe != null) _foe.Parts.StepDebris(dt);
             foreach (var a in _allies) a.Parts.StepDebris(dt);
+        }
+        for (int i = _feed.Count - 1; i >= 0; i--)
+        {
+            float life = _feed[i].Life - dt;
+            if (life <= 0f) _feed.RemoveAt(i);
+            else _feed[i] = (_feed[i].Text, life);
         }
         UpdateHud();
         // No crosshair sway: the reticle stays on screen centre
