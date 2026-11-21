@@ -122,6 +122,11 @@ public sealed class RiderParts
         }
         else if (riderId == "hector")
         {
+            // Merged re-import (owner's part-merged FBX, 2026-11-21): 33 meshes instead of
+            // 208, rig transferred from the previous build by vertex-position match (his
+            // re-export is re-decimated, -3,584 tris, positions within 0.13u in file
+            // units). The two cannons stay whole as the waist gun; the head is still
+            // carved from Torso by SplitTorso below.
             // Owner's clean split (2026-11-17): his 16 named
             // objects plus the Tripo fragments, rigged as-is -
             // nothing moved or regrouped. Head = the skull
@@ -140,18 +145,23 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 0.075f && p.Y >= 0.925f && p.Z >= -0.01f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
-            AddPart("gun", "WAIST GUN", 65f, byName, "Left_Cannon_001", "Left_Cannon", "Right_Cannon_001", "Right_Cannon");
-            AddPart("pod_L", "SRM POD", 45f, byName, "tripo_part_53", "tripo_part_84", "tripo_part_90", "tripo_part_96", "tripo_part_99", "tripo_part_100", "tripo_part_117", "tripo_part_170", "tripo_part_171", "tripo_part_212", "tripo_part_240", "tripo_part_252");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Elbow", "Left_Hand");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Elbow", "Right_Hand");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart("gun", "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
+            AddPart("pod_L", "SRM POD", 45f, byName, "tripo_part_100", "tripo_part_117", "tripo_part_170", "tripo_part_171", "tripo_part_212", "tripo_part_240", "tripo_part_53", "tripo_part_84", "tripo_part_90", "tripo_part_96", "tripo_part_99");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "tripo_part_109", "tripo_part_110", "tripo_part_196", "tripo_part_201", "tripo_part_253", "tripo_part_80");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Shoulder");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin", "tripo_part_178");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin", "tripo_part_176_001");
             AttachDebris(byName);
         }
         else if (riderId == "hermes")
         {
+            // Merged re-import (owner's part-merged FBX, 2026-11-21): 14 meshes instead of
+            // 210, vertex-exact against the previous build. His export was only partly
+            // merged (~115 tripo fragments still separate, some skinned to his own
+            // armature, which was discarded); the transfer folded them into the named
+            // parts by bone and part. Layout claims the merged names.
             // Owner's own grouping (Hermes-Clean.fbx, 2026-11-18,
             // replacing the Tripo island build): 12 named part
             // objects with the fragments parented under them; the
