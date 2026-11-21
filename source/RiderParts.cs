@@ -229,17 +229,21 @@ public sealed class RiderParts
             {
                 ("Head", p => p.Y >= 0.845f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Left_Shoulder", "tripo_part_134_001", "tripo_part_135_001", "tripo_part_173_001", "tripo_part_18_001", "tripo_part_184_001", "tripo_part_203", "tripo_part_204", "tripo_part_247", "tripo_part_33_001", "tripo_part_67_001", "tripo_part_76_001", "tripo_part_81_001");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "tripo_part_143", "tripo_part_181", "tripo_part_153", "tripo_part_154", "tripo_part_132", "tripo_part_136");
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Left_Shoulder");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "tripo_part_132", "tripo_part_136", "tripo_part_143", "tripo_part_153", "tripo_part_154", "tripo_part_181");
             AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Cannon");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "hades")
         {
+            // Merged re-import (owner's part-merged FBX, 2026-11-21): 19 meshes instead of
+            // 215, rig transferred from the previous build by vertex-position match (max
+            // deviation 0.08u). Layout claims the merged names; the left-shoulder pod
+            // cluster stays separate, as before.
             // Owner's own split (Hades.fbx, 2026-11-19), replacing
             // the Tripo island build: 12 named part groups with
             // every fragment parented under them; the build binds
