@@ -1,7 +1,7 @@
 # Godot 4.7.2 (.NET/mono) - notes
 
 - Toolchain: official mono Linux zip from GitHub releases (108MB), unzip, run. No installer, no account.
-- Project scaffolded by hand: project.godot + GodotPoc.csproj (Godot.NET.Sdk/4.7.2, net8.0) + Main.tscn (one Node3D + Main.cs). Everything else built in code at runtime.
+- Project scaffolded by hand: project.godot + Titans.csproj (Godot.NET.Sdk/4.7.2, net8.0) + Main.tscn (one Node3D + Main.cs). Everything else built in code at runtime.
 - Build: `dotnet build` (PATH needs ~/.dotnet10). First build 25s (NuGet restore), incremental 3s.
 - Fix iterations: 2
   1. Compile: `PackedFloat32Array` not found - in the C# bindings `HeightMapShape3D.MapData` is a plain `float[]`. One-line fix.

@@ -10,13 +10,13 @@ config_version=5
 
 [application]
 
-config/name="GodotPoc"
+config/name="Titans"
 run/main_scene="res://Flow/Flow.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [dotnet]
 
-project/assembly_name="GodotPoc"
+project/assembly_name="Titans"
 
 [gui]
 
