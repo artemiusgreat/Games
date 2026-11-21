@@ -126,7 +126,10 @@ public sealed class RiderParts
             // 208, rig transferred from the previous build by vertex-position match (his
             // re-export is re-decimated, -3,584 tris, positions within 0.13u in file
             // units). The two cannons stay whole as the waist gun; the head is still
-            // carved from Torso by SplitTorso below.
+            // carved from Torso by SplitTorso below. (2026-11-21 rebuild: binding and
+            // UVs transferred PER FACE from the previous build - his Hip objects span
+            // the knee, and a per-object bind tore the legs at the knee in play; the
+            // paint is his shipped two-texture camo set, assigned per bone.)
             // Owner's clean split (2026-11-17): his 16 named
             // objects plus the Tripo fragments, rigged as-is -
             // nothing moved or regrouped. Head = the skull
@@ -145,14 +148,14 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 0.075f && p.Y >= 0.925f && p.Z >= -0.01f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart("gun", "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
-            AddPart("pod_L", "SRM POD", 45f, byName, "tripo_part_100", "tripo_part_117", "tripo_part_170", "tripo_part_171", "tripo_part_212", "tripo_part_240", "tripo_part_53", "tripo_part_84", "tripo_part_90", "tripo_part_96", "tripo_part_99");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "tripo_part_109", "tripo_part_110", "tripo_part_196", "tripo_part_201", "tripo_part_253", "tripo_part_80");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Shoulder");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin", "tripo_part_178");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin", "tripo_part_176_001");
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Pelvis__hip_L", "Pelvis__hip_R", "Pelvis__pelvis", "Pelvis__pelvis_x", "Pelvis__torso", "TorsoCore");
+            AddPart("gun", "WAIST GUN", 65f, byName, "Left_Cannon", "Left_Cannon_001", "Right_Cannon", "Right_Cannon_001");
+            AddPart("pod_L", "SRM POD", 45f, byName, "tripo_part_100", "tripo_part_117", "tripo_part_170", "tripo_part_171", "tripo_part_212", "tripo_part_240", "tripo_part_252", "tripo_part_53", "tripo_part_84", "tripo_part_90", "tripo_part_96", "tripo_part_99");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "Torso__head");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Hand", "Left_Shoulder");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Hand", "Right_Shoulder");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__elbow_L", "Left_Hip__hip_L", "Left_Hip__hip_L_x", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__ankle_L", "Left_Shin__hip_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__elbow_R", "Right_Hip__hip_R", "Right_Hip__knee_R", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__ankle_R", "Right_Shin__hip_R");
             AttachDebris(byName);
         }
         else if (riderId == "hermes")
