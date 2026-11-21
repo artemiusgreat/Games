@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bf1syhga0vuhd"
-path="res://.godot/imported/b_7_42894a5bc8224e56daa2bfe29530eef6.jpg-5a2f36379f1b008be5c318fbfa1ae069.ctex"
+path.s3tc="res://.godot/imported/b_7_42894a5bc8224e56daa2bfe29530eef6.jpg-5a2f36379f1b008be5c318fbfa1ae069.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a770084bc58eaf357e57e90dca207b6e"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/citykits/kit8/b_7_42894a5bc8224e56daa2bfe29530eef6.jpg"
-dest_files=["res://.godot/imported/b_7_42894a5bc8224e56daa2bfe29530eef6.jpg-5a2f36379f1b008be5c318fbfa1ae069.ctex"]
+dest_files=["res://.godot/imported/b_7_42894a5bc8224e56daa2bfe29530eef6.jpg-5a2f36379f1b008be5c318fbfa1ae069.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
