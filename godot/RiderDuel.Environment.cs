@@ -81,15 +81,14 @@ public partial class RiderDuel
     private void StepEnvChunks(float dt)
     {
         if (_envChunks.Count == 0 || dt <= 0f) return;
-        // Timed pieces (building debris) dissolve into dust.
+        // Timed pieces (building debris) are freed at end of life.
         for (int i = _envChunks.Count - 1; i >= 0; i--)
         {
             var c = _envChunks[i];
             if (c.Life <= 0f) continue;
             c.Life -= dt;
             if (c.Life > 0f) continue;
-            SpawnBurst(c.Node.GlobalPosition, DustParticleMat, 5, 1.5f, 0.6f, 1.8f, new Vector3(0f, 0.8f, 0f), 0.55f, 0.9f, 1.6f);
-            c.Node.QueueFree();
+            c.Node.QueueFree(); // no dust dissolve (owner, 2026-11-20: no smoke bubbles)
             _envChunks.RemoveAt(i);
         }
         if (_envChunks.Count == 0) return;
@@ -1849,8 +1848,11 @@ public partial class RiderDuel
         if (d.Node is MeshInstance3D fmi)
             facade = fmi.GetSurfaceOverrideMaterial(0) ?? fmi.Mesh?.SurfaceGetMaterial(0);
         SpawnChunks(mid, 14, 0.7f, 2.2f, facade ?? RubbleMat, 4f, 8.5f, life: 3.0f);
-        SpawnBurst(d.Center + Vector3.Up * 1.2f, DustParticleMat, 46, 3.4f, 2.5f, 7f, new Vector3(0f, 0.9f, 0f), 1.1f, 1.6f, 3.2f);
-        SpawnBurst(mid, DustParticleMat, 26, 2.6f, 1.5f, 4.5f, new Vector3(0f, 0.6f, 0f), 0.9f, 1.4f, 2.6f);
+        // NO dust cloud (owner, 2026-11-20, repeating his
+        // 2026-11-16 rule): the round dust sprites read as
+        // smoke bubbles. A collapse is the explosion, the
+        // flashes, the fire burst and the flying pieces -
+        // nothing soft and round.
         SpawnBurst(mid, FireParticleMat, 80, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.6f, 7f);
         GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");

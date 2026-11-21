@@ -56,38 +56,6 @@ public partial class RiderDuel
         return ImageTexture.CreateFromImage(img);
     }
 
-    private static ImageTexture PuffTexture()
-    {
-        const int N = 128;
-        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
-        var rng = new System.Random(777);
-        var blobs = new (float X, float Y, float R)[9];
-        for (int i = 0; i < blobs.Length; i++)
-            blobs[i] = (0.5f + (float)(rng.NextDouble() - 0.5) * 0.20f,
-                        0.5f + (float)(rng.NextDouble() - 0.5) * 0.20f,
-                        0.17f + (float)rng.NextDouble() * 0.12f);
-        for (int y = 0; y < N; y++)
-        for (int x = 0; x < N; x++)
-        {
-            float u = x / (float)(N - 1), v = y / (float)(N - 1);
-            float a = 0f;
-            foreach (var (bx, by, br) in blobs)
-            {
-                float d2 = ((u - bx) * (u - bx) + (v - by) * (v - by)) / (br * br);
-                a += Mathf.Exp(-d2 * 2.2f);
-            }
-            // A radial window guarantees ZERO alpha at the quad's
-            // border - the first version let a blob reach the edge,
-            // and the dust read as crisp white plaques in the proof
-            // frame instead of a soft cloud.
-            float r = new Vector2(u - 0.5f, v - 0.5f).Length() * 2f;
-            float win = Mathf.Clamp((1f - r) / 0.45f, 0f, 1f);
-            a = Mathf.Clamp(a * 0.55f, 0f, 1f) * win * win;
-            img.SetPixel(x, y, new Color(1f, 1f, 1f, a));
-        }
-        return ImageTexture.CreateFromImage(img);
-    }
-
     private static readonly StandardMaterial3D FireParticleMat = new StandardMaterial3D
     {
         AlbedoColor = new Color(1f, 1f, 1f, 0.95f),
@@ -97,14 +65,6 @@ public partial class RiderDuel
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
     };
 
-    private static readonly StandardMaterial3D DustParticleMat = new StandardMaterial3D
-    {
-        AlbedoColor = new Color(0.70f, 0.64f, 0.53f, 0.60f),
-        AlbedoTexture = PuffTexture(),
-        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
-        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-    };
     private static readonly StandardMaterial3D SparkParticleMat = new StandardMaterial3D
     {
         AlbedoColor = new Color(0.75f, 0.96f, 1f),
@@ -135,15 +95,6 @@ public partial class RiderDuel
                 Colors = new Color[] { new Color(1f, 0.80f, 0.35f, 0.95f), new Color(1f, 0.50f, 0.10f, 0.9f),
                                        new Color(0.85f, 0.20f, 0.03f, 0.5f), new Color(0.30f, 0.05f, 0.01f, 0f) } } };
             var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.5f)); sc.AddPoint(new Vector2(0.35f, 0.9f)); sc.AddPoint(new Vector2(1f, 1.12f));
-            pm.ScaleCurve = new CurveTexture { Curve = sc };
-        }
-        else if (mat == DustParticleMat)
-        {
-            float a0 = 0.5f;
-            pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
-                Offsets = new float[] { 0f, 1f },
-                Colors = new Color[] { new Color(1f, 1f, 1f, a0), new Color(1f, 1f, 1f, 0f) } } };
-            var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.7f)); sc.AddPoint(new Vector2(1f, 2.3f));
             pm.ScaleCurve = new CurveTexture { Curve = sc };
         }
         PrimitiveMesh mesh;
@@ -324,8 +275,10 @@ public partial class RiderDuel
         _timedFx.Add((s, seconds + 0.1f, false));
     }
 
-    // Rocket impact bundle: core flash, fireball and smoke - the
-    // mini-explosion the owner asked for.
+    // Rocket impact bundle: fireball, core flash and sparks -
+    // the mini-explosion. NO smoke puffs (owner's standing
+    // rule, repeated 2026-11-20): the puffs read as bubbles;
+    // an explosion is fire, flash and sparks only.
     private void SpawnExplosionFx(Vector3 point)
     {
         _fxBooms++;
@@ -334,12 +287,6 @@ public partial class RiderDuel
         SpawnFlash(point, new Color(1f, 0.9f, 0.65f), 0.5f, 0.12f);
         SpawnSparks(point, new Color(1f, 0.62f, 0.25f), 5, 3.8f);
         _fxSparkBursts--; // explosion sparks are not a laser burst; keep the counters honest
-        for (int i = 0; i < 3; i++)
-        {
-            var puff = WeaponFx.MakeTrailPuff(point + new Vector3(_fxRng.RandfRange(-0.5f, 0.5f), _fxRng.RandfRange(0f, 0.6f), _fxRng.RandfRange(-0.5f, 0.5f)));
-            AddChild(puff);
-            _puffs.Add((puff, 0.7f));
-        }
     }
 
     // A fire attempt on a weapon whose mounting part is destroyed:
