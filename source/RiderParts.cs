@@ -174,17 +174,21 @@ public sealed class RiderParts
             // the rack is the honeycomb cells and housing over
             // the left shoulder, the head is the cockpit cap and
             // antennae on top of the torso.
-            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart("pod_L", "LRM RACK", 45f, byName, "tripo_part_7", "tripo_part_23", "tripo_part_24", "tripo_part_25", "tripo_part_26", "tripo_part_27", "tripo_part_28", "tripo_part_29", "tripo_part_30", "tripo_part_31", "tripo_part_32", "tripo_part_33", "tripo_part_34", "tripo_part_35", "tripo_part_36", "tripo_part_37", "tripo_part_40", "tripo_part_90", "tripo_part_103", "tripo_part_122", "tripo_part_126", "tripo_part_135", "tripo_part_143", "tripo_part_178", "tripo_part_179", "tripo_part_180", "tripo_part_181", "tripo_part_182", "tripo_part_183", "tripo_part_184", "tripo_part_185", "tripo_part_186", "tripo_part_187", "tripo_part_188", "tripo_part_189", "tripo_part_190", "tripo_part_191", "tripo_part_192", "tripo_part_193", "tripo_part_194");
-            AddPart("head", "HEAD", 50f, byName, "tripo_part_4", "tripo_part_39", "tripo_part_46", "tripo_part_56", "tripo_part_139", "tripo_part_145", "tripo_part_200");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Cannon");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Cannon");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart("pod_L", "LRM RACK", 45f, byName, "tripo_part_34");
+            AddPart("head", "HEAD", 50f, byName, "tripo_part_4");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "apollo")
         {
+            // Merged re-import (owner's part-merged FBX, 2026-11-21): 14 meshes instead of
+            // 221, rig transferred from the previous build by vertex-position match (max
+            // deviation 0.32u - his re-export carries +3,294 tris). Layout claims the
+            // merged names; the head is still carved from Torso by SplitTorso below.
             // Owner's own split (Apollo-Clean.fbx, 2026-11-17),
             // used AS IS at his instruction: no object moved,
             // renamed, joined or regrouped - the build only adds
