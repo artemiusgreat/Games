@@ -185,10 +185,13 @@ public sealed class RiderParts
         }
         else if (riderId == "apollo")
         {
-            // Merged re-import (owner's part-merged FBX, 2026-11-21): 14 meshes instead of
-            // 221, rig transferred from the previous build by vertex-position match (max
-            // deviation 0.32u - his re-export carries +3,294 tris). Layout claims the
-            // merged names; the head is still carved from Torso by SplitTorso below.
+            // Merged re-import (owner's part-merged FBX, 2026-11-21): 20 meshes instead of
+            // 221. Binding and UVs transferred PER FACE from the previous build (each of
+            // his faces takes the bone and UVs of the nearest previous-build triangle),
+            // after his export arrived with its UV maps missing (the rider rendered
+            // black) and a shell-level bind left joint-spanning geometry on one bone.
+            // Layout claims the merged names; the head is still carved from Torso by
+            // SplitTorso below.
             // Owner's own split (Apollo-Clean.fbx, 2026-11-17),
             // used AS IS at his instruction: no object moved,
             // renamed, joined or regrouped - the build only adds
@@ -205,13 +208,13 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Pelvis__torso", "TorsoCore");
             AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "Torso_head");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Shoulder");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Elbow__shoulder_L", "Left_Hand", "Left_Shoulder");
             AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__hip_L");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__hip_R");
             AttachDebris(byName);
         }
         else if (riderId == "ares")
