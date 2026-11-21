@@ -3,14 +3,6 @@ _tools/
 .godot/
 bin/
 obj/
-flax/FlaxPoc/Cache/
-flax/FlaxPoc/Binaries/
-unity/UnityPoc/Library/
-unity/UnityPoc/Temp/
-unity/UnityPoc/Obj/
-unity/UnityPoc/Logs/
-unity/UnityPoc/Build/
-unity/UnityPoc/UserSettings/
 
 # .NET / engine build outputs
 [Bb]in/
