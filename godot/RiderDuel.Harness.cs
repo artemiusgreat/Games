@@ -3427,10 +3427,11 @@ public partial class RiderDuel
         else { GD.PrintErr($"RADAR FAIL: {fails} case(s)"); GetTree().Quit(1); }
     }
 
-    // Phase 16 (owner round 7): obstacles must block shots
-    // and the arch must be walkable - columns (movement-only
-    // before), arch pillars, the arch lintel (nothing before),
-    // and the ramp wedge BAND (only the slope plane before).
+    // Phase 16 (owner round 7): obstacles must block shots -
+    // columns (movement-only before) and the ramp wedge BAND
+    // (only the slope plane before). The pass arches joined
+    // this test once; they were removed at the owner's word
+    // (2026-11-20), and their checks went with them.
     private void RunShotBlock()
     {
         int fails = 0;
@@ -3452,27 +3453,7 @@ public partial class RiderDuel
             break;
         }
         if (!colFound) Check("column", false, "no tall column prop found");
-        // 2. Arch lintel: walkable top + band blocks a level
-        // shot + the road under it stays open.
-        var pads = Main.SpawnPads;
-        var amid = (pads[0] + pads[1]) / 2f;
-        var adir = (pads[1] - pads[0]).Normalized();
-        var aperp = new Vector2(-adir.Y, adir.X);
-        float agy = Main.HeightAt(amid.X, amid.Y);
-        float atop = agy + 16f, lintelTop = atop + 3.45f;
-        float gTop = Main.GroundAt(amid.X, amid.Y, lintelTop + 1.5f);
-        Check("lintel-walk", Mathf.Abs(gTop - lintelTop) < 0.35f, $"groundAt={gTop:F2} want {lintelTop:F2}");
-        // Approach along the road (the lintel's long face):
-        // from beside the pass the hillside itself is in the
-        // way - that is terrain doing its job, not a gap.
-        var hl = _hit.Ray(new Vector3(amid.X - adir.X * 8.5f, atop + 1.7f, amid.Y - adir.Y * 8.5f),
-            new Vector3(adir.X, 0f, adir.Y), 30f, Roles.Player);
-        Check("lintel-band", hl.Hit && hl.Target == Roles.Terrain && Mathf.Abs(hl.T - 6.0f) < 1.1f,
-            $"hit={hl.Hit} tgt={hl.Target} t={hl.T:F2} want ~6.0 (surface, not a prop)");
-        var hu = _hit.Ray(new Vector3(amid.X - adir.X * 15f, agy + 7f, amid.Y - adir.Y * 15f),
-            new Vector3(adir.X, 0f, adir.Y), 30f, Roles.Player);
-        Check("arch-clear", !hu.Hit, $"hit={hu.Hit} tgt={hu.Target} t={hu.T:F1} (road under the arch must stay open)");
-        // 3. Ramp wedge band: level shot into the test ramp's
+        // 2. Ramp wedge band: level shot into the test ramp's
         // side at mid-slope, 1.5 under the plane.
         Main.RampRect best = default; float bd = float.MaxValue;
         foreach (var r in Main.Ramps)
@@ -3487,7 +3468,7 @@ public partial class RiderDuel
             new Vector3(-rperp.X, 0f, -rperp.Y), 40f, Roles.Player);
         Check("wedge-band", hwb.Hit && Mathf.Abs(hwb.T - 10f) < 1.3f,
             $"hit={hwb.Hit} tgt={hwb.Target} t={hwb.T:F2} want ~10 (foot match d={bd:F1})");
-        if (fails == 0) { GD.Print("SHOTBLOCK PASS: columns, arch and ramp wedges block shots; the lintel is walkable"); GetTree().Quit(0); }
+        if (fails == 0) { GD.Print("SHOTBLOCK PASS: columns and ramp wedges block shots"); GetTree().Quit(0); }
         else { GD.PrintErr($"SHOTBLOCK FAIL: {fails} case(s)"); GetTree().Quit(1); }
     }
 

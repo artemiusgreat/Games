@@ -239,7 +239,6 @@ public partial class RiderDuel
         TestPlatforms.Clear();
         foreach (var pad in Main.SpawnPads)
             BuildValleyCity(rng, ref placed, pad, pad == Main.SpawnPads[0]);
-        BuildPassArches();
         GD.Print($"TERRACES built: {_lifts.Count} lifts in the 2 enemy valley cities (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
     }
 
@@ -369,64 +368,6 @@ public partial class RiderDuel
             Cx = mid.X, Cz = mid.Y,
             Hx = (alongX ? len / 2f : 5.5f) + 6f, Hz = (alongX ? 5.5f : len / 2f) + 6f, Top = 0f
         });
-    }
-
-    // Rock tunnel arches over the road passes (owner's
-    // model has rock tunnels on the pathways): a stone
-    // portal frame at each pass saddle.
-    private static readonly Color RockCol = new(0.58f, 0.55f, 0.51f);
-    private void BuildPassArches()
-    {
-        var rockMat = new StandardMaterial3D
-        { AlbedoColor = RockCol, AlbedoTexture = StoneTexture(), Roughness = 1f };
-        var pads = Main.SpawnPads;
-        for (int a = 0; a < pads.Length; a++)
-        for (int b = a + 1; b < pads.Length; b++)
-        {
-            var mid = (pads[a] + pads[b]) / 2f;
-            var dir = (pads[b] - pads[a]).Normalized();
-            var perp = new Vector2(-dir.Y, dir.X);
-            float gy = Main.HeightAt(mid.X, mid.Y);
-            float top = gy + 16f;
-            var holder = new Node3D { Position = new Vector3(mid.X, 0f, mid.Y), Rotation = new Vector3(0f, Mathf.Atan2(dir.X, dir.Y), 0f) };
-            foreach (float s in new[] { -10.5f, 10.5f })
-            {
-                var pp = mid + perp * s;
-                float by = Main.HeightAt(pp.X, pp.Y);
-                var pil = new MeshInstance3D
-                {
-                    Mesh = new BoxMesh { Size = new Vector3(3.2f, top - by + 2f, 4.5f) },
-                    MaterialOverride = rockMat,
-                    Position = new Vector3(s, (top + by) / 2f, 0f)
-                };
-                holder.AddChild(pil);
-                _props.Add(new Circle { P = pp, R = 2.6f, RoofTop = top });
-                _hit.Props.Add(new HitModel.PropCyl { P = pp, R = 2.6f, BaseY = by, Height = top - by + 2f });
-            }
-            // The lintel is an obstacle and a floor (owner,
-            // round 7: 'the arc at the enemy base doesn't
-            // have collider - everything meant to be an
-            // obstacle should have collider and preferably
-            // allow to walk on it'): a FLAT ramp rect across
-            // the pass - same 3.5-thick wedge the ramps use -
-            // gives it ground, ceiling, side push-out and
-            // shot planes in one registration. Its top is
-            // the mesh top: (top + 1.7) + 3.5/2 = top + 3.45.
-            Main.Ramps.Add(new Main.RampRect
-            {
-                Cx = mid.X, Cz = mid.Y, DirX = perp.X, DirZ = perp.Y,
-                HalfLen = 12.25f, HalfWid = 2.5f, H0 = top + 3.45f, H1 = top + 3.45f
-            });
-            var lin = new MeshInstance3D
-            {
-                Mesh = new BoxMesh { Size = new Vector3(24.5f, 3.5f, 5f) },
-                MaterialOverride = rockMat,
-                Position = new Vector3(0f, top + 1.7f, 0f)
-            };
-            holder.AddChild(lin);
-            AddChild(holder);
-            GD.Print($"PASS ARCH at ({mid.X:F0},{mid.Y:F0}) saddle h={gy:F1}");
-        }
     }
 
     // Ceiling lights under a deck (owner, 2026-11-11: 'when
