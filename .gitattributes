@@ -1,0 +1,6 @@
+# Normalize EOL for all files that Git considers text files.
+# Godot writes its text files (project.godot, .import, .tscn) with LF
+# endings on every platform; pinning eol=lf stops Windows git
+# (core.autocrlf) from flagging every editor-rewritten file as
+# modified after each pull and run.
+* text=auto eol=lf
