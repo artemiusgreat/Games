@@ -191,17 +191,20 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "Pelvis");
+            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
             AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Shoulder", "Left_Elbow", "Left_Hand");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Shoulder", "Right_Elbow");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Hip", "Left_Shin", "Left_Foot");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Hip", "Right_Shin", "Right_Foot");
+            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "Torso_head");
+            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Shoulder");
+            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
+            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "ares")
         {
+            // Merged re-import (owner's part-merged FBX, 2026-11-21): 18 meshes instead of
+            // 265, vertex-exact against the previous build. Layout claims the merged
+            // names; the head is still carved from Torso by SplitTorso below.
             // Owner's own split (Ares.fbx, 2026-11-18), replacing
             // the Tripo island build: 12 named part objects with
             // every fragment parented under them; the build binds
