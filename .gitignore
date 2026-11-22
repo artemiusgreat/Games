@@ -14,3 +14,7 @@ godot/photo/models_raw/
 
 # Harness capture output (recreated on demand by the test modes)
 source/proof/
+
+# FBX importer texture extracts (regenerated on every import)
+source/assets/*_[0-9]*.png
+source/assets/*_[0-9]*.png.import
