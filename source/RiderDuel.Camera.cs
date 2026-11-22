@@ -13,6 +13,14 @@ public partial class RiderDuel
         _afterCapture = after;
     }
 
+    // Captures write under res://proof/, which is not tracked in git;
+    // create the folder on demand so a fresh clone can capture.
+    private static void EnsureSaveDir(string path)
+    {
+        var dir = ProjectSettings.GlobalizePath(path.GetBaseDir());
+        if (dir.Length > 0) DirAccess.MakeDirRecursiveAbsolute(dir);
+    }
+
     private async void DoCapture()
     {
         _capturing = true;
@@ -22,6 +30,7 @@ public partial class RiderDuel
         UpdateCamera(0f);
         await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         var img = GetViewport().GetTexture().GetImage();
+        EnsureSaveDir(path);
         var err = img.SavePng(path);
         GD.Print($"DUEL captured {path} ({tag}) size={img.GetSize()} err={err}");
         _frozen = false;

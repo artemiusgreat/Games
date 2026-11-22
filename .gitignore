@@ -11,3 +11,6 @@ obj/
 
 # Photoreal probe: raw Poly Haven scans are re-fetched + decimated locally (see godot/photo/*.py)
 godot/photo/models_raw/
+
+# Harness capture output (recreated on demand by the test modes)
+source/proof/

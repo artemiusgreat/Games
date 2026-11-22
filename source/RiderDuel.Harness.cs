@@ -30,6 +30,7 @@ public partial class RiderDuel
     private void UpdateSplatDump()
     {
         var simg = PhotoEnv.SplatImage();
+        EnsureSaveDir("res://proof/splat.png");
         simg.SavePng("res://proof/splat.png");
         GD.Print($"SPLATDUMP saved {simg.GetWidth()}x{simg.GetHeight()}");
         GetTree().Quit(0);
@@ -3087,7 +3088,8 @@ public partial class RiderDuel
             if (start == "18")
             {
                 var simg = PhotoEnv.SplatImage();
-                simg.SavePng("res://proof/splat.png");
+                EnsureSaveDir("res://proof/splat.png");
+        simg.SavePng("res://proof/splat.png");
                 GD.Print($"SPLAT saved {simg.GetWidth()}x{simg.GetHeight()}");
                 GetTree().Quit(0); return;
             }
