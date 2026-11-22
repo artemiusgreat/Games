@@ -237,8 +237,8 @@ public partial class RiderDuel
     private static SpriteFrames FlipbookFrames()
     {
         if (_flipbookFrames != null) return _flipbookFrames;
-        var sheet = GD.Load<Texture2D>("res://assets/textures/explosion_fireball.png");
-        if (sheet == null) { Dbg.Print("FLIPBOOK sheet missing: res://assets/textures/explosion_fireball.png"); return null; }
+        var sheet = GD.Load<Texture2D>("res://assets/fx/explosion_fireball.png");
+        if (sheet == null) { Dbg.Print("FLIPBOOK sheet missing: res://assets/fx/explosion_fireball.png"); return null; }
         var sf = new SpriteFrames();
         sf.AddAnimation("boom");
         sf.SetAnimationSpeed("boom", 64f); // 64 frames = 1.0s at speed 1
