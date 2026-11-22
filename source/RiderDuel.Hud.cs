@@ -363,7 +363,7 @@ public partial class RiderDuel
             // One solid thin frame line (owner, 2026-11-22: the
             // glow pass and the top-edge tick read as a thickened
             // corner - both removed).
-            DrawPolyline(ring, new Color(Accent, 0.9f), 1.25f, true);
+            DrawPolyline(ring, new Color(Accent, 0.5f), 1.0f, true);
         }
     }
 
