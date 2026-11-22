@@ -114,17 +114,23 @@ public partial class RiderDuel
         {
             var h = new HBoxContainer();
             h.AddThemeConstantOverride("separation", 8);
-            h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(20, 20) });
+            h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(20, 20), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
             var l = MakeLabel(15, new Color(0.90f, 0.96f, 1.0f));
             l.Text = t;
             l.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             h.AddChild(l);
             return h;
         }
-        ColorRect PanelDivider(Color accent)
+        Control PanelDivider(Color accent)
         {
-            var d = new ColorRect { Color = new Color(accent, 0.35f), CustomMinimumSize = new Vector2(0, 1) };
-            return d;
+            // Extra air above and below the hairline (owner,
+            // 2026-11-22): the title row and the body should
+            // not crowd the separator.
+            var m = new MarginContainer();
+            m.AddThemeConstantOverride("margin_top", 5);
+            m.AddThemeConstantOverride("margin_bottom", 5);
+            m.AddChild(new ColorRect { Color = new Color(accent, 0.35f), CustomMinimumSize = new Vector2(0, 1) });
+            return m;
         }
 
         // -- Left: own rider integrity + per-part status grid.
@@ -390,11 +396,16 @@ public partial class RiderDuel
                     }
                     break;
                 case 1:
-                    DrawArc(c, 3.5f, -2.4f, -0.7f, 12, col, 1.8f, true);
-                    DrawArc(c, 6.5f, -2.4f, -0.7f, 16, col, 1.8f, true);
-                    DrawArc(c, 9.5f, -2.4f, -0.7f, 20, col, 1.8f, true);
-                    DrawLine(c, c + new Vector2(6.8f, -6.8f), col, 1.8f);
-                    DrawCircle(c, 1.6f, col);
+                    // The fan occupies the top half of the box;
+                    // dropping its centre by 3px centres the
+                    // glyph's mass on the box (owner, 2026-11-22:
+                    // the radar icon read shifted to the top).
+                    var rc = c + new Vector2(0, 3f);
+                    DrawArc(rc, 3.5f, -2.4f, -0.7f, 12, col, 1.8f, true);
+                    DrawArc(rc, 6.5f, -2.4f, -0.7f, 16, col, 1.8f, true);
+                    DrawArc(rc, 9.5f, -2.4f, -0.7f, 20, col, 1.8f, true);
+                    DrawLine(rc, rc + new Vector2(6.8f, -6.8f), col, 1.8f);
+                    DrawCircle(rc, 1.6f, col);
                     break;
                 case 2:
                     Vector2[] sh =
