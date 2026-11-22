@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """Procedural sound effects for the mech duel - synthesized WAVs,
 no external samples. Run: python3 make_sfx.py (writes next to itself).
-22050 Hz mono 16-bit PCM."""
+22050 Hz mono 16-bit PCM.
+
+NOTE (2026-11-22): laser, cannon, rocket and hit are the owner's
+supplied MP3 recordings now (laser.mp3 / ppc.mp3 / cannon.mp3 /
+rocket.mp3 / hit.mp3 in this folder) - the game no longer loads
+this script's laser/cannon/rocket/hit WAVs. This script still
+owns explosion, steps, thruster and tree."""
 import math, random, struct, wave, os
 
 SR = 22050

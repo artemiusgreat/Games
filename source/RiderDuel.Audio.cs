@@ -9,7 +9,7 @@ public partial class RiderDuel
     // ---- sound (round 21, owner): fully procedural WAVs in
     // assets/sfx (make_sfx.py - no external samples), played
     // through a small pool of 3D players so distance attenuates.
-    private AudioStream _sfxLaser, _sfxCannon, _sfxRocket, _sfxHit, _sfxTree, _sfxExplosion, _sfxStepA, _sfxStepB, _sfxThruster;
+    private AudioStream _sfxLaser, _sfxPpc, _sfxCannon, _sfxRocket, _sfxHit, _sfxTree, _sfxExplosion, _sfxStepA, _sfxStepB, _sfxThruster;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();
     private int _sfxNext;
     private double _lastHitSfxT = -1;
@@ -22,10 +22,16 @@ public partial class RiderDuel
 
     private void InitSfx()
     {
-        _sfxLaser = GD.Load<AudioStream>("res://assets/sfx/laser.wav");
-        _sfxCannon = GD.Load<AudioStream>("res://assets/sfx/cannon.wav");
-        _sfxRocket = GD.Load<AudioStream>("res://assets/sfx/rocket.wav");
-        _sfxHit = GD.Load<AudioStream>("res://assets/sfx/hit.wav");
+        // Fire and hit sounds are the owner's supplied recordings
+        // (owner, 2026-11-22): laser, PPC (its own recording - it
+        // no longer shares the laser's), cannon, missile launch,
+        // and the hit, which is his explosion recording - the old
+        // synthetic hit read as a plastic bottle dropping.
+        _sfxLaser = GD.Load<AudioStream>("res://assets/sfx/laser.mp3");
+        _sfxPpc = GD.Load<AudioStream>("res://assets/sfx/ppc.mp3");
+        _sfxCannon = GD.Load<AudioStream>("res://assets/sfx/cannon.mp3");
+        _sfxRocket = GD.Load<AudioStream>("res://assets/sfx/rocket.mp3");
+        _sfxHit = GD.Load<AudioStream>("res://assets/sfx/hit.mp3");
         _sfxTree = GD.Load<AudioStream>("res://assets/sfx/tree.wav");
         _sfxExplosion = GD.Load<AudioStream>("res://assets/sfx/explosion.wav");
         _sfxStepA = GD.Load<AudioStream>("res://assets/sfx/step_a.wav");
@@ -43,7 +49,7 @@ public partial class RiderDuel
             AddChild(p);
             _sfxPool.Add(p);
         }
-        Dbg.Print($"SFX loaded laser={_sfxLaser != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
+        Dbg.Print($"SFX loaded laser={_sfxLaser != null} ppc={_sfxPpc != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
     }
 
     private void PlaySfx(AudioStream stream, Vector3 pos, float volDb = 0f, float pitch = 1f)
