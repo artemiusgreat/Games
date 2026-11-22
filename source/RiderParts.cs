@@ -95,6 +95,15 @@ public sealed class RiderParts
         var byName = new Dictionary<string, MeshInstance3D>();
         CollectMeshes(walker.ModelRoot, byName);
 
+        // Rider paint lives in the textures, never in vertex colours.
+        // An export that carries a stray colour layer (the owner's
+        // 2026-11-21 Hector Torso: near-black values, the only mesh in
+        // the file with a colour slot) turns the importer's
+        // vertex-colour-as-albedo flag into a black part in-game while
+        // Blender shows the texture fine. Neutralise the flag on every
+        // rider material before the torso carve copies materials.
+        StripVertexColorAlbedo(byName);
+
         if (riderId == "enyo")
         {
             // Z thresholds carry a +0.09 frame shift (2026-11-15):
@@ -520,6 +529,31 @@ public sealed class RiderParts
     }
 
     // ---------- registry construction ----------
+
+    // See the call in the constructor: duplicate any rider material
+    // that multiplies its texture by vertex colours, with the flag
+    // off. Materials are shared between meshes, so dedupe by instance.
+    private static void StripVertexColorAlbedo(Dictionary<string, MeshInstance3D> byName)
+    {
+        var done = new Dictionary<Material, Material>();
+        foreach (var mi in byName.Values)
+        {
+            var mesh = mi.Mesh;
+            if (mesh == null) continue;
+            for (int s = 0; s < mesh.GetSurfaceCount(); s++)
+            {
+                var mat = mesh.SurfaceGetMaterial(s);
+                if (mat is not StandardMaterial3D sm || !sm.VertexColorUseAsAlbedo) continue;
+                if (!done.TryGetValue(mat, out var repl))
+                {
+                    repl = (StandardMaterial3D)sm.Duplicate();
+                    ((StandardMaterial3D)repl).VertexColorUseAsAlbedo = false;
+                    done[mat] = repl;
+                }
+                mesh.SurfaceSetMaterial(s, repl);
+            }
+        }
+    }
 
     private static void CollectMeshes(Node n, Dictionary<string, MeshInstance3D> byName)
     {
