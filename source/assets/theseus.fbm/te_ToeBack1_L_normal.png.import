@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dwhhefx02c3lb"
-path.s3tc="res://.godot/imported/te_ToeBack1_L_normal.png-891cea41ca428f9ec0fea4f65e6cadbe.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_ToeBack1_L_normal.png-aa465f49d1434a513f1f39e104012a5f.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_ToeBack1_L_normal.png"
-dest_files=["res://.godot/imported/te_ToeBack1_L_normal.png-891cea41ca428f9ec0fea4f65e6cadbe.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_ToeBack1_L_normal.png"
+dest_files=["res://.godot/imported/te_ToeBack1_L_normal.png-aa465f49d1434a513f1f39e104012a5f.s3tc.ctex"]
 
 [params]
 

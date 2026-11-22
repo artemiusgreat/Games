@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmwfolkt1yog8"
-path="res://.godot/imported/pr_Waist_rough.png-d73db6fd6756f3f7e874e13856c342d2.ctex"
+path="res://.godot/imported/pr_Waist_rough.png-b6edc0ecd758508a1239ba24714ee943.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/pr_Waist_rough.png"
-dest_files=["res://.godot/imported/pr_Waist_rough.png-d73db6fd6756f3f7e874e13856c342d2.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Waist_rough.png"
+dest_files=["res://.godot/imported/pr_Waist_rough.png-b6edc0ecd758508a1239ba24714ee943.ctex"]
 
 [params]
 

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qecjtuidbj3k"
-path.s3tc="res://.godot/imported/de_FootHub_L_normal.png-5b90a6260911949e616c723a38a0b83f.s3tc.ctex"
+path.s3tc="res://.godot/imported/de_FootHub_L_normal.png-4cbc75fb1674200c91cc1ada73682072.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/de_FootHub_L_normal.png"
-dest_files=["res://.godot/imported/de_FootHub_L_normal.png-5b90a6260911949e616c723a38a0b83f.s3tc.ctex"]
+source_file="res://assets/demeter.fbm/de_FootHub_L_normal.png"
+dest_files=["res://.godot/imported/de_FootHub_L_normal.png-4cbc75fb1674200c91cc1ada73682072.s3tc.ctex"]
 
 [params]
 

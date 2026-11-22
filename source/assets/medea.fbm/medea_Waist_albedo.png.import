@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bpc2yt7bb73ee"
-path.s3tc="res://.godot/imported/medea_Waist_albedo.png-ab8d648f5f4590e8a01928e96fa49f39.s3tc.ctex"
+path.s3tc="res://.godot/imported/medea_Waist_albedo.png-ed23ef85ca134ce354cc749be44585e6.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/medea_Waist_albedo.png"
-dest_files=["res://.godot/imported/medea_Waist_albedo.png-ab8d648f5f4590e8a01928e96fa49f39.s3tc.ctex"]
+source_file="res://assets/medea.fbm/medea_Waist_albedo.png"
+dest_files=["res://.godot/imported/medea_Waist_albedo.png-ed23ef85ca134ce354cc749be44585e6.s3tc.ctex"]
 
 [params]
 

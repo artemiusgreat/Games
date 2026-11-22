@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bowwf1ntxx2o0"
-path.s3tc="res://.godot/imported/te_Shin_L_albedo.png-457fed3857cf4e3b22ff49ec9b679ee3.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_Shin_L_albedo.png-7077d29b2f9b986eea09d932fa814266.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_Shin_L_albedo.png"
-dest_files=["res://.godot/imported/te_Shin_L_albedo.png-457fed3857cf4e3b22ff49ec9b679ee3.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_Shin_L_albedo.png"
+dest_files=["res://.godot/imported/te_Shin_L_albedo.png-7077d29b2f9b986eea09d932fa814266.s3tc.ctex"]
 
 [params]
 

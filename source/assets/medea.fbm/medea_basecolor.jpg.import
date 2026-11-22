@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5skaaikfhrso"
-path.s3tc="res://.godot/imported/medea_basecolor.jpg-ff51db9b1da7e90f45f1e40d75d8e07f.s3tc.ctex"
+path.s3tc="res://.godot/imported/medea_basecolor.jpg-a5dd178aae2e1d833bb63a608d78f30a.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/medea_basecolor.jpg"
-dest_files=["res://.godot/imported/medea_basecolor.jpg-ff51db9b1da7e90f45f1e40d75d8e07f.s3tc.ctex"]
+source_file="res://assets/medea.fbm/medea_basecolor.jpg"
+dest_files=["res://.godot/imported/medea_basecolor.jpg-a5dd178aae2e1d833bb63a608d78f30a.s3tc.ctex"]
 
 [params]
 

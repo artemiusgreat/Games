@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://2sx1dba8n3hy"
-path="res://.godot/imported/de_FootHub_L_rough.png-cfd911945dc576725c0048a7529ab023.ctex"
+path="res://.godot/imported/de_FootHub_L_rough.png-1e9975f56952d3a5ef700a69deead785.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/de_FootHub_L_rough.png"
-dest_files=["res://.godot/imported/de_FootHub_L_rough.png-cfd911945dc576725c0048a7529ab023.ctex"]
+source_file="res://assets/demeter.fbm/de_FootHub_L_rough.png"
+dest_files=["res://.godot/imported/de_FootHub_L_rough.png-1e9975f56952d3a5ef700a69deead785.ctex"]
 
 [params]
 

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2adsumtdw2uv"
-path.s3tc="res://.godot/imported/pr_TorsoPin_albedo.png-b69c3a884e3f89b2020c60d66bd2c31a.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_TorsoPin_albedo.png-4c5cb77caac999df1bbc6a9bb19c4441.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_TorsoPin_albedo.png"
-dest_files=["res://.godot/imported/pr_TorsoPin_albedo.png-b69c3a884e3f89b2020c60d66bd2c31a.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_TorsoPin_albedo.png"
+dest_files=["res://.godot/imported/pr_TorsoPin_albedo.png-4c5cb77caac999df1bbc6a9bb19c4441.s3tc.ctex"]
 
 [params]
 

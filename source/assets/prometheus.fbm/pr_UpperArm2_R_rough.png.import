@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfqaukocf75aq"
-path="res://.godot/imported/pr_UpperArm2_R_rough.png-2916ba7e08108fef7ba21afd99bf96c8.ctex"
+path="res://.godot/imported/pr_UpperArm2_R_rough.png-5b89ed58e835f363324ee32e19779ffe.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/pr_UpperArm2_R_rough.png"
-dest_files=["res://.godot/imported/pr_UpperArm2_R_rough.png-2916ba7e08108fef7ba21afd99bf96c8.ctex"]
+source_file="res://assets/prometheus.fbm/pr_UpperArm2_R_rough.png"
+dest_files=["res://.godot/imported/pr_UpperArm2_R_rough.png-5b89ed58e835f363324ee32e19779ffe.ctex"]
 
 [params]
 

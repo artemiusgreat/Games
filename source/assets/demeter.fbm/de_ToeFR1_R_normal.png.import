@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0mahhem7c43y"
-path.s3tc="res://.godot/imported/de_ToeFR1_R_normal.png-2a854b33fe55167a8cc0ff70f638b2f9.s3tc.ctex"
+path.s3tc="res://.godot/imported/de_ToeFR1_R_normal.png-e8cf443fdd00f577accba699c92bdb70.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/de_ToeFR1_R_normal.png"
-dest_files=["res://.godot/imported/de_ToeFR1_R_normal.png-2a854b33fe55167a8cc0ff70f638b2f9.s3tc.ctex"]
+source_file="res://assets/demeter.fbm/de_ToeFR1_R_normal.png"
+dest_files=["res://.godot/imported/de_ToeFR1_R_normal.png-e8cf443fdd00f577accba699c92bdb70.s3tc.ctex"]
 
 [params]
 

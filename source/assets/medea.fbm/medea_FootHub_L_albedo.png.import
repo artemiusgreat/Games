@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://v1nrdd8121gw"
-path.s3tc="res://.godot/imported/medea_FootHub_L_albedo.png-0512023dc480734dcd68069a86a7c161.s3tc.ctex"
+path.s3tc="res://.godot/imported/medea_FootHub_L_albedo.png-5fb979cf3861b9215105ed0c3517f022.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/medea_FootHub_L_albedo.png"
-dest_files=["res://.godot/imported/medea_FootHub_L_albedo.png-0512023dc480734dcd68069a86a7c161.s3tc.ctex"]
+source_file="res://assets/medea.fbm/medea_FootHub_L_albedo.png"
+dest_files=["res://.godot/imported/medea_FootHub_L_albedo.png-5fb979cf3861b9215105ed0c3517f022.s3tc.ctex"]
 
 [params]
 

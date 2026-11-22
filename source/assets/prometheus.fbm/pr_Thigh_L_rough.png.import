@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cn3v083cy7il4"
-path="res://.godot/imported/pr_Thigh_L_rough.png-2e3b01ca567c8cb97b8adb9d14fb5e36.ctex"
+path="res://.godot/imported/pr_Thigh_L_rough.png-2d288cdd00e44ddfd41af86970b034cd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/pr_Thigh_L_rough.png"
-dest_files=["res://.godot/imported/pr_Thigh_L_rough.png-2e3b01ca567c8cb97b8adb9d14fb5e36.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Thigh_L_rough.png"
+dest_files=["res://.godot/imported/pr_Thigh_L_rough.png-2d288cdd00e44ddfd41af86970b034cd.ctex"]
 
 [params]
 

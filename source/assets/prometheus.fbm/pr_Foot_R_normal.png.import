@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dvx0gbbqtppxp"
-path.s3tc="res://.godot/imported/pr_Foot_R_normal.png-242f01d8b0161d704b6fe946894e5ace.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Foot_R_normal.png-d84e823d90f3d1add4322b52e8599844.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Foot_R_normal.png"
-dest_files=["res://.godot/imported/pr_Foot_R_normal.png-242f01d8b0161d704b6fe946894e5ace.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Foot_R_normal.png"
+dest_files=["res://.godot/imported/pr_Foot_R_normal.png-d84e823d90f3d1add4322b52e8599844.s3tc.ctex"]
 
 [params]
 

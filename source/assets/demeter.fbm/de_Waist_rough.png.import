@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dam8ftxi1at2l"
-path="res://.godot/imported/de_Waist_rough.png-1acc5aab9e01802f02656eefd5592e40.ctex"
+path="res://.godot/imported/de_Waist_rough.png-6b3c6d3c09c60007b1952e32251d7715.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/de_Waist_rough.png"
-dest_files=["res://.godot/imported/de_Waist_rough.png-1acc5aab9e01802f02656eefd5592e40.ctex"]
+source_file="res://assets/demeter.fbm/de_Waist_rough.png"
+dest_files=["res://.godot/imported/de_Waist_rough.png-6b3c6d3c09c60007b1952e32251d7715.ctex"]
 
 [params]
 

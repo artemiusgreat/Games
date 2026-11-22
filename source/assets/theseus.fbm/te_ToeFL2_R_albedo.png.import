@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dpjufxfh756bp"
-path.s3tc="res://.godot/imported/te_ToeFL2_R_albedo.png-21beb9e50b3f442384614730477cd08b.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_ToeFL2_R_albedo.png-ce80ec74132465ddd6781001bb7f7ef6.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_ToeFL2_R_albedo.png"
-dest_files=["res://.godot/imported/te_ToeFL2_R_albedo.png-21beb9e50b3f442384614730477cd08b.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_ToeFL2_R_albedo.png"
+dest_files=["res://.godot/imported/te_ToeFL2_R_albedo.png-ce80ec74132465ddd6781001bb7f7ef6.s3tc.ctex"]
 
 [params]
 

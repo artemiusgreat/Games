@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cv3hatuw6gn6n"
-path.s3tc="res://.godot/imported/pr_WeaponERPPC_R_normal.png-7d43de6f3f83db6bc6f50b29f3eb2bff.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_WeaponERPPC_R_normal.png-a76e410af7d804413485e61c249b49be.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_WeaponERPPC_R_normal.png"
-dest_files=["res://.godot/imported/pr_WeaponERPPC_R_normal.png-7d43de6f3f83db6bc6f50b29f3eb2bff.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_WeaponERPPC_R_normal.png"
+dest_files=["res://.godot/imported/pr_WeaponERPPC_R_normal.png-a76e410af7d804413485e61c249b49be.s3tc.ctex"]
 
 [params]
 

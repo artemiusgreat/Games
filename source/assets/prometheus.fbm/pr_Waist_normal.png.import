@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfd8u3ml363tf"
-path.s3tc="res://.godot/imported/pr_Waist_normal.png-70a0312a6cc212cbff1f88e2db8a33fe.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Waist_normal.png-9bcafb0fce97719af7e8312a4d67108e.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Waist_normal.png"
-dest_files=["res://.godot/imported/pr_Waist_normal.png-70a0312a6cc212cbff1f88e2db8a33fe.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Waist_normal.png"
+dest_files=["res://.godot/imported/pr_Waist_normal.png-9bcafb0fce97719af7e8312a4d67108e.s3tc.ctex"]
 
 [params]
 

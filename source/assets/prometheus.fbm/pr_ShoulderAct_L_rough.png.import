@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://knjd4mqnsd6n"
-path="res://.godot/imported/pr_ShoulderAct_L_rough.png-7e8956cb0962b9fe024823eadd539db0.ctex"
+path="res://.godot/imported/pr_ShoulderAct_L_rough.png-fadfe13c13901fc0e74de7723ab51d20.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/pr_ShoulderAct_L_rough.png"
-dest_files=["res://.godot/imported/pr_ShoulderAct_L_rough.png-7e8956cb0962b9fe024823eadd539db0.ctex"]
+source_file="res://assets/prometheus.fbm/pr_ShoulderAct_L_rough.png"
+dest_files=["res://.godot/imported/pr_ShoulderAct_L_rough.png-fadfe13c13901fc0e74de7723ab51d20.ctex"]
 
 [params]
 

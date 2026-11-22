@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ci1m2wcnrgt21"
-path.s3tc="res://.godot/imported/de_Waist_normal.png-a962b3dcc1faa209a6b5a143b20ac2d9.s3tc.ctex"
+path.s3tc="res://.godot/imported/de_Waist_normal.png-35c557d9adf6160bbea14bbbb248616d.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/de_Waist_normal.png"
-dest_files=["res://.godot/imported/de_Waist_normal.png-a962b3dcc1faa209a6b5a143b20ac2d9.s3tc.ctex"]
+source_file="res://assets/demeter.fbm/de_Waist_normal.png"
+dest_files=["res://.godot/imported/de_Waist_normal.png-35c557d9adf6160bbea14bbbb248616d.s3tc.ctex"]
 
 [params]
 

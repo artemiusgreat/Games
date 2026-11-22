@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ch4x5ftu7cbt2"
-path="res://.godot/imported/te_Elbow_R_rough.png-e9e73d17d974e8f08bac8733941f1d9f.ctex"
+path="res://.godot/imported/te_Elbow_R_rough.png-d4c6d3895c9c7170d78a80d6070097b5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/te_Elbow_R_rough.png"
-dest_files=["res://.godot/imported/te_Elbow_R_rough.png-e9e73d17d974e8f08bac8733941f1d9f.ctex"]
+source_file="res://assets/theseus.fbm/te_Elbow_R_rough.png"
+dest_files=["res://.godot/imported/te_Elbow_R_rough.png-d4c6d3895c9c7170d78a80d6070097b5.ctex"]
 
 [params]
 

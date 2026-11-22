@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://s71nyw48a0dp"
-path="res://.godot/imported/pr_HandGun_R_rough.png-f272a7e0672e378a517dddc7e4be9e78.ctex"
+path="res://.godot/imported/pr_HandGun_R_rough.png-30da9e17adc9123a99f4b28cabb23c7a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/pr_HandGun_R_rough.png"
-dest_files=["res://.godot/imported/pr_HandGun_R_rough.png-f272a7e0672e378a517dddc7e4be9e78.ctex"]
+source_file="res://assets/prometheus.fbm/pr_HandGun_R_rough.png"
+dest_files=["res://.godot/imported/pr_HandGun_R_rough.png-30da9e17adc9123a99f4b28cabb23c7a.ctex"]
 
 [params]
 

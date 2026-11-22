@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dnom6tx7kr8tl"
-path.s3tc="res://.godot/imported/pr_Knee_R_albedo.png-8fe88913f18f4d5968ae96437a746cee.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Knee_R_albedo.png-83745c0ee5a7f0080022b9aaeb74776b.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Knee_R_albedo.png"
-dest_files=["res://.godot/imported/pr_Knee_R_albedo.png-8fe88913f18f4d5968ae96437a746cee.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Knee_R_albedo.png"
+dest_files=["res://.godot/imported/pr_Knee_R_albedo.png-83745c0ee5a7f0080022b9aaeb74776b.s3tc.ctex"]
 
 [params]
 

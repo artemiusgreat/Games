@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://hmqwow3l1cwm"
-path.s3tc="res://.godot/imported/pr_HandGun_R_albedo.png-787446c053225111c4ffb6bebdefd8e1.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_HandGun_R_albedo.png-d8433215e711d3e721fbec323b6ee309.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_HandGun_R_albedo.png"
-dest_files=["res://.godot/imported/pr_HandGun_R_albedo.png-787446c053225111c4ffb6bebdefd8e1.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_HandGun_R_albedo.png"
+dest_files=["res://.godot/imported/pr_HandGun_R_albedo.png-d8433215e711d3e721fbec323b6ee309.s3tc.ctex"]
 
 [params]
 

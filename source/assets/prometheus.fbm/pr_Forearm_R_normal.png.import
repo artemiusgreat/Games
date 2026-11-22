@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://baj7a37b7351k"
-path.s3tc="res://.godot/imported/pr_Forearm_R_normal.png-f18bea2beb98e88f3fd7816a65070d98.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Forearm_R_normal.png-6d4c6e4d36120ffd43aa75dcc5a5f14c.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Forearm_R_normal.png"
-dest_files=["res://.godot/imported/pr_Forearm_R_normal.png-f18bea2beb98e88f3fd7816a65070d98.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Forearm_R_normal.png"
+dest_files=["res://.godot/imported/pr_Forearm_R_normal.png-6d4c6e4d36120ffd43aa75dcc5a5f14c.s3tc.ctex"]
 
 [params]
 

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2sqgro1h7gbg"
-path.s3tc="res://.godot/imported/pr_ShoulderAct_L_albedo.png-86eb9c9834361ff5d66625e68d904025.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_ShoulderAct_L_albedo.png-12f4fe5b2e66b3c389e7207665dbdee6.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_ShoulderAct_L_albedo.png"
-dest_files=["res://.godot/imported/pr_ShoulderAct_L_albedo.png-86eb9c9834361ff5d66625e68d904025.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_ShoulderAct_L_albedo.png"
+dest_files=["res://.godot/imported/pr_ShoulderAct_L_albedo.png-12f4fe5b2e66b3c389e7207665dbdee6.s3tc.ctex"]
 
 [params]
 

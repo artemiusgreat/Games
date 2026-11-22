@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dvh6v2rtt6h61"
-path.s3tc="res://.godot/imported/pr_Elbow_R_albedo.png-02543f54d9edd900db78769c5fc8e08a.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Elbow_R_albedo.png-ef27a92b4a34671b4d3cb82c11eaa298.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Elbow_R_albedo.png"
-dest_files=["res://.godot/imported/pr_Elbow_R_albedo.png-02543f54d9edd900db78769c5fc8e08a.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Elbow_R_albedo.png"
+dest_files=["res://.godot/imported/pr_Elbow_R_albedo.png-ef27a92b4a34671b4d3cb82c11eaa298.s3tc.ctex"]
 
 [params]
 

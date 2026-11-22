@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b3nnxfrerouv2"
-path.s3tc="res://.godot/imported/te_Elbow_R_normal.png-2a621a5c1e5298b6435d007baa0fc982.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_Elbow_R_normal.png-c537a559a9e445df21ce344b1c2921bd.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_Elbow_R_normal.png"
-dest_files=["res://.godot/imported/te_Elbow_R_normal.png-2a621a5c1e5298b6435d007baa0fc982.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_Elbow_R_normal.png"
+dest_files=["res://.godot/imported/te_Elbow_R_normal.png-c537a559a9e445df21ce344b1c2921bd.s3tc.ctex"]
 
 [params]
 

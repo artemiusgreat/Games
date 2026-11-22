@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://0k78748rqicp"
-path.s3tc="res://.godot/imported/pr_ShoulderAct_L_normal.png-4b97eef895e49c5133c34c0f7b8f1a3c.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_ShoulderAct_L_normal.png-6963242ac9ed7ef6a20c5c07a33bc9c0.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_ShoulderAct_L_normal.png"
-dest_files=["res://.godot/imported/pr_ShoulderAct_L_normal.png-4b97eef895e49c5133c34c0f7b8f1a3c.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_ShoulderAct_L_normal.png"
+dest_files=["res://.godot/imported/pr_ShoulderAct_L_normal.png-6963242ac9ed7ef6a20c5c07a33bc9c0.s3tc.ctex"]
 
 [params]
 

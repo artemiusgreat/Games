@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cihlo20qs41a0"
-path.s3tc="res://.godot/imported/te_GunArm_R_normal.png-c14c77c78049409e464e8f8551b643b4.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_GunArm_R_normal.png-88d6cd0ca5f3148fc46dc5c508463f31.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_GunArm_R_normal.png"
-dest_files=["res://.godot/imported/te_GunArm_R_normal.png-c14c77c78049409e464e8f8551b643b4.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_GunArm_R_normal.png"
+dest_files=["res://.godot/imported/te_GunArm_R_normal.png-88d6cd0ca5f3148fc46dc5c508463f31.s3tc.ctex"]
 
 [params]
 

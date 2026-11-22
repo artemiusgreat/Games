@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmnip0ruy0n4x"
-path.s3tc="res://.godot/imported/pr_Foot_R_albedo.png-a5e9ace9123db13e96565e8857931394.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Foot_R_albedo.png-2bdccc3ffe59f271640e61f70f69fa55.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Foot_R_albedo.png"
-dest_files=["res://.godot/imported/pr_Foot_R_albedo.png-a5e9ace9123db13e96565e8857931394.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Foot_R_albedo.png"
+dest_files=["res://.godot/imported/pr_Foot_R_albedo.png-2bdccc3ffe59f271640e61f70f69fa55.s3tc.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfgob4m67i4k4"
-path="res://.godot/imported/de_Shin_R_rough.png-f8ee78e36bc274679f65559afe0e56a6.ctex"
+path="res://.godot/imported/de_Shin_R_rough.png-48e1cefa425157bb1ee33fdce1d62212.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/de_Shin_R_rough.png"
-dest_files=["res://.godot/imported/de_Shin_R_rough.png-f8ee78e36bc274679f65559afe0e56a6.ctex"]
+source_file="res://assets/demeter.fbm/de_Shin_R_rough.png"
+dest_files=["res://.godot/imported/de_Shin_R_rough.png-48e1cefa425157bb1ee33fdce1d62212.ctex"]
 
 [params]
 

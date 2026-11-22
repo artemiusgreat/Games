@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://blmajtb40ue2b"
-path="res://.godot/imported/de_ToeFL1_R_rough.png-01783d01e677e904fabd6b54ecc1dc1b.ctex"
+path="res://.godot/imported/de_ToeFL1_R_rough.png-bd0fc66e0625b7cb9e295d72fc8535c9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/de_ToeFL1_R_rough.png"
-dest_files=["res://.godot/imported/de_ToeFL1_R_rough.png-01783d01e677e904fabd6b54ecc1dc1b.ctex"]
+source_file="res://assets/demeter.fbm/de_ToeFL1_R_rough.png"
+dest_files=["res://.godot/imported/de_ToeFL1_R_rough.png-bd0fc66e0625b7cb9e295d72fc8535c9.ctex"]
 
 [params]
 

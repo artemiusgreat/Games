@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dpenjv585s25j"
-path.s3tc="res://.godot/imported/pr_Thigh_L_albedo.png-88789b33e70fc3cffccd855e3c25d652.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Thigh_L_albedo.png-6649d75b996476a137ae8c5afb71de5e.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Thigh_L_albedo.png"
-dest_files=["res://.godot/imported/pr_Thigh_L_albedo.png-88789b33e70fc3cffccd855e3c25d652.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Thigh_L_albedo.png"
+dest_files=["res://.godot/imported/pr_Thigh_L_albedo.png-6649d75b996476a137ae8c5afb71de5e.s3tc.ctex"]
 
 [params]
 

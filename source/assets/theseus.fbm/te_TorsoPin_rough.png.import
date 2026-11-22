@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cnq1begiadq2j"
-path="res://.godot/imported/te_TorsoPin_rough.png-a3c7ccf987c8a2dbf7c9daee25b62496.ctex"
+path="res://.godot/imported/te_TorsoPin_rough.png-016929dd5b98dac3a61c5383341816a7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/te_TorsoPin_rough.png"
-dest_files=["res://.godot/imported/te_TorsoPin_rough.png-a3c7ccf987c8a2dbf7c9daee25b62496.ctex"]
+source_file="res://assets/theseus.fbm/te_TorsoPin_rough.png"
+dest_files=["res://.godot/imported/te_TorsoPin_rough.png-016929dd5b98dac3a61c5383341816a7.ctex"]
 
 [params]
 

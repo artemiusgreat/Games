@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dreof6umnlj3u"
-path.s3tc="res://.godot/imported/te_ShoulderPad_L_normal.png-0f9df335349f953a24cea83fe08fe30b.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_ShoulderPad_L_normal.png-40be781467d7fbd93e06237abfad6b25.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_ShoulderPad_L_normal.png"
-dest_files=["res://.godot/imported/te_ShoulderPad_L_normal.png-0f9df335349f953a24cea83fe08fe30b.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_ShoulderPad_L_normal.png"
+dest_files=["res://.godot/imported/te_ShoulderPad_L_normal.png-40be781467d7fbd93e06237abfad6b25.s3tc.ctex"]
 
 [params]
 

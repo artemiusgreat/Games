@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dbkym2ijf7g5w"
-path="res://.godot/imported/pr_Knee_R_rough.png-7bf028912d6d12693f90028da66aa673.ctex"
+path="res://.godot/imported/pr_Knee_R_rough.png-ad81d66f5d720de432e2302cc31220cb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/pr_Knee_R_rough.png"
-dest_files=["res://.godot/imported/pr_Knee_R_rough.png-7bf028912d6d12693f90028da66aa673.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Knee_R_rough.png"
+dest_files=["res://.godot/imported/pr_Knee_R_rough.png-ad81d66f5d720de432e2302cc31220cb.ctex"]
 
 [params]
 

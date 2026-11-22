@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ci4wd8me6pii3"
-path.s3tc="res://.godot/imported/pr_Knee_L_normal.png-30ed7ed600e872678c701ecbed1a5e29.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Knee_L_normal.png-c3a0df5d6760518ba668093db74052df.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Knee_L_normal.png"
-dest_files=["res://.godot/imported/pr_Knee_L_normal.png-30ed7ed600e872678c701ecbed1a5e29.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Knee_L_normal.png"
+dest_files=["res://.godot/imported/pr_Knee_L_normal.png-c3a0df5d6760518ba668093db74052df.s3tc.ctex"]
 
 [params]
 

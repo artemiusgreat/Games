@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bt27dculad7nk"
-path="res://.godot/imported/te_ToeBack2_L_rough.png-0f35c8853f4d1abf60db35e8f73cfd1e.ctex"
+path="res://.godot/imported/te_ToeBack2_L_rough.png-5748bc9f3fdac24eb0195e61a3c8396a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/te_ToeBack2_L_rough.png"
-dest_files=["res://.godot/imported/te_ToeBack2_L_rough.png-0f35c8853f4d1abf60db35e8f73cfd1e.ctex"]
+source_file="res://assets/theseus.fbm/te_ToeBack2_L_rough.png"
+dest_files=["res://.godot/imported/te_ToeBack2_L_rough.png-5748bc9f3fdac24eb0195e61a3c8396a.ctex"]
 
 [params]
 

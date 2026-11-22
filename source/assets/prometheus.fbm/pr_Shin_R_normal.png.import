@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b8fuahimdtmmo"
-path.s3tc="res://.godot/imported/pr_Shin_R_normal.png-7479a8ebc0f2ffd26f677c3863f4b31c.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Shin_R_normal.png-c5649c542499bb42f8dce6f37ea9e883.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Shin_R_normal.png"
-dest_files=["res://.godot/imported/pr_Shin_R_normal.png-7479a8ebc0f2ffd26f677c3863f4b31c.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Shin_R_normal.png"
+dest_files=["res://.godot/imported/pr_Shin_R_normal.png-c5649c542499bb42f8dce6f37ea9e883.s3tc.ctex"]
 
 [params]
 

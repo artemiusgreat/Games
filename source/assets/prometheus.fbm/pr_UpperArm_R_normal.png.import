@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cphuvf6rdqrdv"
-path.s3tc="res://.godot/imported/pr_UpperArm_R_normal.png-e4f2fb92603fb7b0ba1725a2c6bb7f22.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_UpperArm_R_normal.png-6070a9c54172894f14c1c0b1dbf81a22.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_UpperArm_R_normal.png"
-dest_files=["res://.godot/imported/pr_UpperArm_R_normal.png-e4f2fb92603fb7b0ba1725a2c6bb7f22.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_UpperArm_R_normal.png"
+dest_files=["res://.godot/imported/pr_UpperArm_R_normal.png-6070a9c54172894f14c1c0b1dbf81a22.s3tc.ctex"]
 
 [params]
 

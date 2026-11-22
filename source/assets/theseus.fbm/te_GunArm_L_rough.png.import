@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cc2eg26uiqlxy"
-path="res://.godot/imported/te_GunArm_L_rough.png-0885d38cc4532cb7d29df815fca3cc04.ctex"
+path="res://.godot/imported/te_GunArm_L_rough.png-f70ec9800c0ffc700d854b19d1a5887e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/te_GunArm_L_rough.png"
-dest_files=["res://.godot/imported/te_GunArm_L_rough.png-0885d38cc4532cb7d29df815fca3cc04.ctex"]
+source_file="res://assets/theseus.fbm/te_GunArm_L_rough.png"
+dest_files=["res://.godot/imported/te_GunArm_L_rough.png-f70ec9800c0ffc700d854b19d1a5887e.ctex"]
 
 [params]
 

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bf6mj6wnewwhr"
-path.s3tc="res://.godot/imported/pr_Thigh_R_normal.png-6e0fc6125df11e42b5118cf1b8b857a5.s3tc.ctex"
+path.s3tc="res://.godot/imported/pr_Thigh_R_normal.png-69ebaf5d88c07851aea216b60d8b9259.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/pr_Thigh_R_normal.png"
-dest_files=["res://.godot/imported/pr_Thigh_R_normal.png-6e0fc6125df11e42b5118cf1b8b857a5.s3tc.ctex"]
+source_file="res://assets/prometheus.fbm/pr_Thigh_R_normal.png"
+dest_files=["res://.godot/imported/pr_Thigh_R_normal.png-69ebaf5d88c07851aea216b60d8b9259.s3tc.ctex"]
 
 [params]
 

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b4inb2vhcgpel"
-path.s3tc="res://.godot/imported/te_TorsoPin_normal.png-1cf4ca94ee8c7dc9b91336a4d6ed77ae.s3tc.ctex"
+path.s3tc="res://.godot/imported/te_TorsoPin_normal.png-baf259c64f271762b3a9fe9097f4900d.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/textures/te_TorsoPin_normal.png"
-dest_files=["res://.godot/imported/te_TorsoPin_normal.png-1cf4ca94ee8c7dc9b91336a4d6ed77ae.s3tc.ctex"]
+source_file="res://assets/theseus.fbm/te_TorsoPin_normal.png"
+dest_files=["res://.godot/imported/te_TorsoPin_normal.png-baf259c64f271762b3a9fe9097f4900d.s3tc.ctex"]
 
 [params]
 
