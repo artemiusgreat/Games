@@ -44,26 +44,23 @@ public partial class RiderDuel
         // integrity bottom-left, target/systems bottom-right,
         // radar top-right. Each block is its own panel, fitted to
         // its content every frame (FitCornerPanels).
-        PanelContainer CornerPanel(Control.LayoutPreset preset)
+        PanelContainer CornerPanel(Control.LayoutPreset preset, Color accent)
         {
-            var p = new PanelContainer();
+            var p = new ChromePanel { Accent = accent };
             p.SetAnchorsPreset(preset);
             var sb = new StyleBoxFlat
             {
-                BgColor = new Color(0.055f, 0.075f, 0.105f, 0.58f),
-                BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.55f),
+                BgColor = new Color(0, 0, 0, 0),
                 ContentMarginLeft = 16, ContentMarginRight = 16,
-                ContentMarginTop = 10, ContentMarginBottom = 10,
+                ContentMarginTop = 12, ContentMarginBottom = 12,
             };
-            sb.SetBorderWidthAll(2);
-            sb.SetCornerRadiusAll(8);
             p.AddThemeStyleboxOverride("panel", sb);
             layer.AddChild(p);
             return p;
         }
-        _panelWeapons = CornerPanel(Control.LayoutPreset.TopLeft);
-        _panelHealth = CornerPanel(Control.LayoutPreset.BottomLeft);
-        _panelTarget = CornerPanel(Control.LayoutPreset.BottomRight);
+        _panelWeapons = CornerPanel(Control.LayoutPreset.TopLeft, HudCyan);
+        _panelHealth = CornerPanel(Control.LayoutPreset.BottomLeft, HudCyan);
+        _panelTarget = CornerPanel(Control.LayoutPreset.BottomRight, HudRed);
 
         // Team-command feed, top-left: rides under the weapons
         // block (owner, 2026-11-21 - restored for team orders
@@ -78,19 +75,20 @@ public partial class RiderDuel
         // panel the same width as the range/speed block below
         // it, with the exit popup's white corner brackets. The
         // scope stays circular and north-up inside it.
-        _panelRadar = new PanelContainer();
+        _panelRadar = new ChromePanel { Accent = HudCyan };
         _panelRadar.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         var rsb = new StyleBoxFlat
         {
-            BgColor = new Color(0.055f, 0.075f, 0.105f, 0.58f),
-            BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.55f),
+            BgColor = new Color(0, 0, 0, 0),
             ContentMarginLeft = 16, ContentMarginRight = 16,
-            ContentMarginTop = 16, ContentMarginBottom = 16,
+            ContentMarginTop = 12, ContentMarginBottom = 12,
         };
-        rsb.SetBorderWidthAll(2);
-        rsb.SetCornerRadiusAll(0); // sharp square (owner: no round border on the radar)
         _panelRadar.AddThemeStyleboxOverride("panel", rsb);
         layer.AddChild(_panelRadar);
+        var radarBox = new VBoxContainer();
+        radarBox.AddThemeConstantOverride("separation", 8);
+        _panelRadar.AddChild(radarBox);
+        radarBox.AddChild(PanelHeader("RADAR", 1, HudCyan));
         _radar = new RadarView
         {
             Player = _player,
@@ -99,7 +97,7 @@ public partial class RiderDuel
             Range = WorldConfig.IsMission ? 600f : 160f
         };
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
-        _panelRadar.AddChild(_radar);
+        radarBox.AddChild(_radar);
         // No outer corner-bracket frame around the radar
         // (owner, 2026-11-11 round 4: 'remove one external
         // border around radar') - the panel's own border is
@@ -109,17 +107,32 @@ public partial class RiderDuel
         layer.AddChild(_targetFrame);
 
 
-        Label Title(string t)
+        // Panel header in the owner's example style: a line-icon
+        // badge, the panel name in pale caps, and a hairline in
+        // the panel's accent under it.
+        HBoxContainer PanelHeader(string t, int icon, Color accent)
         {
-            var l = MakeLabel(12, new Color(0.62f, 0.7f, 0.78f));
+            var h = new HBoxContainer();
+            h.AddThemeConstantOverride("separation", 8);
+            h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(20, 20) });
+            var l = MakeLabel(15, new Color(0.90f, 0.96f, 1.0f));
             l.Text = t;
-            return l;
+            l.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            h.AddChild(l);
+            return h;
+        }
+        ColorRect PanelDivider(Color accent)
+        {
+            var d = new ColorRect { Color = new Color(accent, 0.35f), CustomMinimumSize = new Vector2(0, 1) };
+            return d;
         }
 
         // -- Left: own rider integrity + per-part status grid.
         var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) }; // the shared dashboard width (owner: all panels match the target block)
         leftBox.AddThemeConstantOverride("separation", 4);
         _panelHealth.AddChild(leftBox);
+        leftBox.AddChild(PanelHeader("STATUS", 2, HudCyan));
+        leftBox.AddChild(PanelDivider(HudCyan));
         _lblPlayerHp = MakeLabel(16, new Color(0.85f, 0.95f, 0.85f));
         leftBox.AddChild(_lblPlayerHp);
         _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(300, 20));
@@ -167,7 +180,8 @@ public partial class RiderDuel
         var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
         midBox.AddThemeConstantOverride("separation", 4);
         _panelWeapons.AddChild(midBox);
-        midBox.AddChild(Title("WEAPONS"));
+        midBox.AddChild(PanelHeader("WEAPONS", 0, HudCyan));
+        midBox.AddChild(PanelDivider(HudCyan));
         (Label, ProgressBar, TriMark) CdRow(string name)
         {
             var row = new HBoxContainer();
@@ -239,6 +253,8 @@ public partial class RiderDuel
         var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
         rightBox.AddThemeConstantOverride("separation", 4);
         _panelTarget.AddChild(rightBox);
+        rightBox.AddChild(PanelHeader("TARGET", 3, HudRed));
+        rightBox.AddChild(PanelDivider(HudRed));
         _lblEnemyHp = MakeLabel(16, new Color(0.98f, 0.85f, 0.8f));
         rightBox.AddChild(_lblEnemyHp);
         _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
@@ -293,6 +309,11 @@ public partial class RiderDuel
         layer.AddChild(_bannerSub);
     }
 
+    // HUD accent colours for the panel chrome (owner's example,
+    // 2026-11-22): cyan for own-side panels, red for the target.
+    private static readonly Color HudCyan = new(0.30f, 0.80f, 0.95f);
+    private static readonly Color HudRed = new(1.0f, 0.35f, 0.22f);
+
     // The active-weapon marker: a triangle drawn centered in
     // its own rect (which is the cooldown bar's exact box), so
     // its center is the bar's center by construction.
@@ -310,6 +331,92 @@ public partial class RiderDuel
                 new Vector2(c.X + 4f, c.Y + 5f),
                 new Vector2(c.X - 5f, c.Y)
             }, new Color(1f, 0.95f, 0.6f));
+        }
+    }
+
+    // HUD panel chrome in the owner's example style (2026-11-22):
+    // deep-navy glass, clipped top-left and bottom-right corners,
+    // and a glowing accent frame (cyan; red for the target panel).
+    // The panel's own stylebox is transparent - this _Draw paints
+    // the whole frame under the content.
+    private sealed partial class ChromePanel : PanelContainer
+    {
+        public Color Accent = new(0.30f, 0.80f, 0.95f);
+
+        public override void _Notification(int what)
+        {
+            if (what == NotificationResized) QueueRedraw();
+        }
+
+        public override void _Draw()
+        {
+            float cut = 16f;
+            var r = new Rect2(Vector2.Zero, Size);
+            Vector2[] pts =
+            {
+                new(cut, 0), new(r.Size.X, 0), new(r.Size.X, r.Size.Y - cut),
+                new(r.Size.X - cut, r.Size.Y), new(0, r.Size.Y), new(0, cut),
+            };
+            DrawColoredPolygon(pts, new Color(0.010f, 0.028f, 0.058f, 0.84f));
+            var ring = new Vector2[pts.Length + 1];
+            pts.CopyTo(ring, 0); ring[pts.Length] = pts[0];
+            DrawPolyline(ring, new Color(Accent, 0.16f), 5f, true);
+            DrawPolyline(ring, new Color(Accent, 0.85f), 2f, true);
+            // Accent tick along the top edge, off the clipped corner.
+            DrawLine(new Vector2(cut + 6, 1), new Vector2(cut + 44, 1), Accent, 3f);
+        }
+    }
+
+    // Small line icons for the panel headers, drawn to match the
+    // example: 0 weapons (list), 1 radar (arcs + sweep), 2 status
+    // (shield), 3 target (reticle).
+    private sealed partial class IconMark : Control
+    {
+        public int Kind;
+        public Color Accent = new(0.30f, 0.80f, 0.95f);
+
+        public override void _Draw()
+        {
+            var c = Size / 2f;
+            var col = Accent;
+            switch (Kind)
+            {
+                case 0:
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float y = c.Y - 6 + i * 6;
+                        DrawCircle(new Vector2(c.X - 7, y), 1.6f, col);
+                        DrawLine(new Vector2(c.X - 3, y), new Vector2(c.X + 8, y), col, 2f);
+                    }
+                    break;
+                case 1:
+                    DrawArc(c, 3.5f, -2.4f, -0.7f, 12, col, 1.8f, true);
+                    DrawArc(c, 6.5f, -2.4f, -0.7f, 16, col, 1.8f, true);
+                    DrawArc(c, 9.5f, -2.4f, -0.7f, 20, col, 1.8f, true);
+                    DrawLine(c, c + new Vector2(6.8f, -6.8f), col, 1.8f);
+                    DrawCircle(c, 1.6f, col);
+                    break;
+                case 2:
+                    Vector2[] sh =
+                    {
+                        new(c.X, c.Y - 8), new(c.X + 7, c.Y - 5), new(c.X + 7, c.Y + 1),
+                        new(c.X, c.Y + 9), new(c.X - 7, c.Y + 1), new(c.X - 7, c.Y - 5),
+                    };
+                    var ring = new Vector2[sh.Length + 1];
+                    sh.CopyTo(ring, 0); ring[sh.Length] = sh[0];
+                    DrawPolyline(ring, col, 1.8f, true);
+                    DrawLine(c + new Vector2(-3.5f, 0), c + new Vector2(-1, 3), col, 2f);
+                    DrawLine(c + new Vector2(-1, 3), c + new Vector2(4, -3.5f), col, 2f);
+                    break;
+                default:
+                    DrawArc(c, 6.5f, 0, Mathf.Tau, 24, col, 1.8f, true);
+                    DrawCircle(c, 1.8f, col);
+                    DrawLine(c + new Vector2(-9.5f, 0), c + new Vector2(-4.5f, 0), col, 1.8f);
+                    DrawLine(c + new Vector2(4.5f, 0), c + new Vector2(9.5f, 0), col, 1.8f);
+                    DrawLine(c + new Vector2(0, -9.5f), c + new Vector2(0, -4.5f), col, 1.8f);
+                    DrawLine(c + new Vector2(0, 4.5f), c + new Vector2(0, 9.5f), col, 1.8f);
+                    break;
+            }
         }
     }
 

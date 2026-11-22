@@ -791,10 +791,14 @@ public partial class RiderDuel : Node3D
             ShowPercentage = false,
             CustomMinimumSize = minSize
         };
-        var bg = new StyleBoxFlat { BgColor = new Color(0.05f, 0.05f, 0.07f, 0.8f) };
-        bg.SetCornerRadiusAll(3);
+        // Pill bars in the owner's example style (2026-11-22):
+        // full-height rounding on a dark glass track.
+        int pill = Mathf.Max(2, Mathf.CeilToInt(minSize.Y / 2f));
+        var bg = new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.08f, 0.9f), BorderColor = new Color(0.4f, 0.6f, 0.7f, 0.35f) };
+        bg.SetBorderWidthAll(1);
+        bg.SetCornerRadiusAll(pill);
         var fg = new StyleBoxFlat { BgColor = fill };
-        fg.SetCornerRadiusAll(3);
+        fg.SetCornerRadiusAll(pill);
         bar.AddThemeStyleboxOverride("background", bg);
         bar.AddThemeStyleboxOverride("fill", fg);
         return bar;
