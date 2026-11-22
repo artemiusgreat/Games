@@ -360,10 +360,10 @@ public partial class RiderDuel
             DrawColoredPolygon(pts, new Color(0.010f, 0.028f, 0.058f, 0.84f));
             var ring = new Vector2[pts.Length + 1];
             pts.CopyTo(ring, 0); ring[pts.Length] = pts[0];
-            DrawPolyline(ring, new Color(Accent, 0.16f), 5f, true);
-            DrawPolyline(ring, new Color(Accent, 0.85f), 2f, true);
-            // Accent tick along the top edge, off the clipped corner.
-            DrawLine(new Vector2(cut + 6, 1), new Vector2(cut + 44, 1), Accent, 3f);
+            // One solid thin frame line (owner, 2026-11-22: the
+            // glow pass and the top-edge tick read as a thickened
+            // corner - both removed).
+            DrawPolyline(ring, new Color(Accent, 0.9f), 1.25f, true);
         }
     }
 
