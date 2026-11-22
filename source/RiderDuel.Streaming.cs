@@ -91,9 +91,22 @@ public partial class RiderDuel
         _streamAcc += dt;
         if (_streamAcc < 0.25f) return;
         _streamAcc = 0f;
+        // Destroyed props stay gone (owner, 2026-11-22): this pass
+        // used to re-show a collapsed building within a quarter
+        // second - StartCollapse hides the node and removes its
+        // colliders for good, but the distance rule blindly turned
+        // the mesh back on, leaving a standing ghost that riders
+        // and shots passed through. A smoking-out tree (State 3)
+        // is NOT in this set: its node must stay visible while it
+        // shrinks, so only the finished states are pinned hidden.
+        HashSet<Node3D> gone = null;
+        foreach (var d in _destructibles)
+            if (d.State == 4 || (d.Kind == "building" && d.State >= 2))
+                (gone ??= new HashSet<Node3D>()).Add(d.Node);
         foreach (var (node, centre, range) in _streamed)
         {
             if (!GodotObject.IsInstanceValid(node)) continue;
+            if (gone != null && gone.Contains(node)) { node.Visible = false; continue; }
             node.Visible = pp.DistanceTo(centre) <= range;
         }
     }
