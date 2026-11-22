@@ -115,8 +115,57 @@ public static class Ascent
 
     // The unflattened ground: profile + valley walls + rim +
     // river carves.
+    // Hills terrain (owner's Maps-Hills OBJ, 2026-11-22):
+    // a 512x512 float grid baked from the OBJ's top surface
+    // (its solid base and side walls excluded), stretched
+    // over the whole 1900u world with the relief tripled -
+    // the OBJ spans 200u with 52u of relief natively, the
+    // grid carries ~156u over 1900u. RawBase samples it in
+    // place of the analytic valley when WorldConfig.Hills
+    // is on; the site flattening in Height and the river
+    // carves apply unchanged, so the villages, the road
+    // dressing and the bridges sit on the new ground.
+    private static float[] _hills;
+    private static bool _hillsTried;
+
+    private static float HillsSample(float x, float z)
+    {
+        if (!_hillsTried)
+        {
+            _hillsTried = true;
+            using var f = FileAccess.Open("res://assets/hills/hills_height.bin", FileAccess.ModeFlags.Read);
+            if (f != null)
+            {
+                var bytes = f.GetBuffer(512 * 512 * 4);
+                if (bytes.Length == 512 * 512 * 4)
+                {
+                    _hills = new float[512 * 512];
+                    System.Buffer.BlockCopy(bytes, 0, _hills, 0, bytes.Length);
+                }
+            }
+        }
+        if (_hills == null) return 0f;
+        float fx = Mathf.Clamp((x + 950f) / 1900f * 512f - 0.5f, 0f, 510.999f);
+        float fz = Mathf.Clamp((z + 950f) / 1900f * 512f - 0.5f, 0f, 510.999f);
+        int ix = (int)fx, iz = (int)fz;
+        float tx = fx - ix, tz = fz - iz;
+        float top = _hills[iz * 512 + ix] * (1f - tx) + _hills[iz * 512 + ix + 1] * tx;
+        float bot = _hills[(iz + 1) * 512 + ix] * (1f - tx) + _hills[(iz + 1) * 512 + ix + 1] * tx;
+        return top * (1f - tz) + bot * tz;
+    }
+
     private static float RawBase(float x, float z)
     {
+        if (WorldConfig.Hills)
+        {
+            float hh = HillsSample(x, z);
+            foreach (float rz in Rivers)
+            {
+                float bridgeMask = 1f - Smooth(20f, 36f, Mathf.Abs(x - RoadX(rz)));
+                hh -= 8f * (1f - Smooth(0f, 30f, Mathf.Abs(z - rz))) * (1f - 0.65f * bridgeMask);
+            }
+            return hh;
+        }
         float h = Profile(z);
         float d = Mathf.Abs(x - RoadX(z));
         // The south end opens out (owner, 2026-11-20):

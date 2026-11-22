@@ -73,6 +73,12 @@ public static class WorldConfig
     // copies the contract's flag; AOT_ASCENT=1 forces it.
     public static bool Ascent = InitAscent();
 
+    // Hills terrain (owner's Maps-Hills OBJ, 2026-11-22): the
+    // Ascent heightfield's base is sampled from a grid baked
+    // out of the OBJ instead of the analytic valley.
+    // AOT_HILLS=1 forces it.
+    public static bool Hills = InitHills();
+
     // The photoreal treatment in the standard scene
     // (owner, 2026-11-20): EnterLab copies the contract's
     // Photoreal flag here; AOT_PHOTOREAL=1 forces it.
@@ -83,6 +89,9 @@ public static class WorldConfig
 
     private static bool InitAscent() =>
         System.Environment.GetEnvironmentVariable("AOT_ASCENT") == "1";
+
+    private static bool InitHills() =>
+        System.Environment.GetEnvironmentVariable("AOT_HILLS") == "1";
 
     private static bool InitTerraces() =>
         System.Environment.GetEnvironmentVariable("AOT_TERRACES") == "1";
@@ -129,6 +138,7 @@ public static class WorldConfig
         TerracedCity = InitTerraces();
         FlatWorld = InitFlat();
         Ascent = InitAscent();
+        Hills = InitHills();
         Photoreal = InitPhotoreal();
     }
 
