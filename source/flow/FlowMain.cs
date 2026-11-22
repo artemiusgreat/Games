@@ -335,6 +335,9 @@ public partial class FlowMain : Node3D
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_PHOTOREAL")))
             WorldConfig.Photoreal = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Photoreal;
+        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_HILLS")))
+            WorldConfig.Hills = WorldConfig.IsMission
+                && WorldConfig.SelectedMission.Hills;
         if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SKY")))
             WorldConfig.SkyTex = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTex

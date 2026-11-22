@@ -67,6 +67,11 @@ public sealed class MissionDef
     // Consolidated on ONE contract - Babylon - so the
     // improvements are judged in a single place.
     public bool Photoreal;
+    // Hills terrain (owner, 2026-11-22): the map's heightfield
+    // comes from the grid baked out of his Maps-Hills OBJ
+    // (assets/hills/) instead of the analytic valley - the
+    // winter dressing (snow, galaxy sky) is unchanged.
+    public bool Hills;
     public PlanetDef Planet;
 }
 
@@ -79,7 +84,7 @@ public static class MissionCatalog
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
         bool flat = false, string sky = "", bool snow = false, bool terraces = false,
         bool stars = false, bool ascent = false, bool alwaysAvailable = false,
-        bool photoreal = false)
+        bool photoreal = false, bool hills = false)
     {
         var m = new MissionDef
         {
@@ -88,7 +93,7 @@ public static class MissionCatalog
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
             FlatTerrain = flat, SkyTex = sky, SnowGround = snow, Terraces = terraces, Planet = p,
             ProceduralStars = stars, Ascent = ascent, AlwaysAvailable = alwaysAvailable,
-            Photoreal = photoreal
+            Photoreal = photoreal, Hills = hills
         };
         p.Missions.Add(m);
         return m;
@@ -153,7 +158,7 @@ public static class MissionCatalog
             "and ten defenders waiting on top. Take the villages one by one, slip past them, or " +
             "drive straight up the road: the contract pays when the summit falls and your team " +
             "still stands.",
-            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, stars: true, photoreal: true, ascent: true);
+            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, stars: true, photoreal: true, ascent: true, hills: true);
         M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +
