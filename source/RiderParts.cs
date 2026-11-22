@@ -762,6 +762,7 @@ public sealed class RiderParts
             }
 
             // Emit one surface per (region) that has triangles.
+            var emitted = new Dictionary<int, (Godot.Collections.Array Arr, int[] Idx)>();
             for (int r = 0; r <= regions.Length; r++)
             {
                 var remap = new Dictionary<int, int>();
@@ -787,11 +788,25 @@ public sealed class RiderParts
                 var mi = Piece(suffix);
                 var am = (ArrayMesh)mi.Mesh;
                 var outArrays = SliceSurface(arrays, srcVerts, newIdx, verts.Length);
+                emitted[r] = (outArrays, newIdx.ToArray());
                 int si = am.GetSurfaceCount();
                 am.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, outArrays);
                 var mat = orig.Mesh.SurfaceGetMaterial(s);
                 if (mat != null) am.SurfaceSetMaterial(si, mat);
                 triCounts[suffix] += newIdx.Count / 3;
+            }
+
+            // Socket plugs (owner, 2026-11-22): a carved pod leaves
+            // an open wound in the core - the shell is hollow and
+            // single-sided, so once the pod breaks off the player
+            // sees straight through the rider. Cap the wound on the
+            // CORE piece with a dark plate (see AddSocketPlug).
+            for (int r = 0; r < regions.Length; r++)
+            {
+                if (!regions[r].Suffix.StartsWith("Pod")) continue;
+                if (!emitted.TryGetValue(r, out var podE)) continue;
+                if (!emitted.TryGetValue(regions.Length, out var coreE)) continue;
+                AddSocketPlug((ArrayMesh)Piece("Core").Mesh, coreE.Arr, coreE.Idx, podE.Arr, podE.Idx);
             }
         }
 
@@ -806,6 +821,144 @@ public sealed class RiderParts
         byName.Remove(baseName);
         parent.RemoveChild(orig);
         orig.Free();
+    }
+
+    private static StandardMaterial3D _socketMat;
+
+    // Cap the wound a carved pod leaves in the core piece. The cut
+    // classifies triangles by centroid, so the core's boundary and
+    // the chunk's boundary are two different polylines a triangle
+    // apart, sharing almost no vertices - the plate therefore fans
+    // over the UNION of both rims (only the verts near the chunk;
+    // the sculpt's older openings elsewhere on the torso are far
+    // away and excluded by the radius test). Each fan vert keeps
+    // its own slice's bone data. The plate is an extra surface of
+    // the core mesh: hidden inside the pod while it is attached,
+    // it stays with the torso when the pod tears away and reads
+    // as the empty socket (owner, 2026-11-22).
+    private void AddSocketPlug(ArrayMesh coreMesh, Godot.Collections.Array coreArr, int[] coreIdx, Godot.Collections.Array podArr, int[] podIdx)
+    {
+        var pv = podArr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        if (pv.Length == 0) { Dbg.Print($"{_riderId} SOCKET skip: empty pod slice"); return; }
+        var podC = Vector3.Zero;
+        foreach (var p in pv) podC += p;
+        podC /= pv.Length;
+        float podR = 0f;
+        foreach (var p in pv) podR = Mathf.Max(podR, (p - podC).Length());
+
+        var rim = new List<(Vector3 Pos, Godot.Collections.Array Arr, int Src, int VertCount)>();
+        void Collect(Godot.Collections.Array arr, int[] idx)
+        {
+            var vs = arr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+            var use = new Dictionary<(int, int), int>();
+            for (int t = 0; t + 2 < idx.Length; t += 3)
+                for (int k = 0; k < 3; k++)
+                {
+                    int a = idx[t + k], b = idx[t + (k + 1) % 3];
+                    var e = a < b ? (a, b) : (b, a);
+                    use[e] = use.TryGetValue(e, out int cnt) ? cnt + 1 : 1;
+                }
+            var seen = new HashSet<int>();
+            foreach (var kv in use)
+            {
+                if (kv.Value != 1) continue;
+                foreach (int vi in new[] { kv.Key.Item1, kv.Key.Item2 })
+                    if (seen.Add(vi) && (vs[vi] - podC).Length() <= podR + 0.35f)
+                        rim.Add((vs[vi], arr, vi, vs.Length));
+            }
+        }
+        Collect(coreArr, coreIdx);
+        Collect(podArr, podIdx);
+        if (rim.Count < 3) { Dbg.Print($"{_riderId} SOCKET skip: rim {rim.Count} verts"); return; }
+
+        // The two rims pass through nearly the same points; drop
+        // near-duplicates or the fan fills with sliver triangles.
+        var dedup = new List<(Vector3 Pos, Godot.Collections.Array Arr, int Src, int VertCount)>();
+        foreach (var r in rim)
+        {
+            bool dup = false;
+            foreach (var q in dedup) if (q.Pos.DistanceSquaredTo(r.Pos) < 0.0004f) { dup = true; break; }
+            if (!dup) dedup.Add(r);
+        }
+        rim = dedup;
+        if (rim.Count < 3) { Dbg.Print($"{_riderId} SOCKET skip: rim {rim.Count} after dedupe"); return; }
+
+        var cen = Vector3.Zero;
+        foreach (var r in rim) cen += r.Pos;
+        cen /= rim.Count;
+        var axis = podC - cen;
+        if (axis.Length() < 1e-5f) { Dbg.Print($"{_riderId} SOCKET skip: degenerate axis"); return; }
+        axis = axis.Normalized();
+        var u = (Mathf.Abs(axis.Y) < 0.9f ? Vector3.Up : Vector3.Right).Cross(axis).Normalized();
+        var w = axis.Cross(u);
+        rim.Sort((a, b) =>
+        {
+            var pa = a.Pos - cen; var pb = b.Pos - cen;
+            return Mathf.Atan2(pa.Dot(w), pa.Dot(u)).CompareTo(Mathf.Atan2(pb.Dot(w), pb.Dot(u)));
+        });
+
+        int n = rim.Count;
+        var verts = new Vector3[n + 1];
+        for (int i = 0; i < n; i++) verts[i] = rim[i].Pos;
+        verts[n] = cen;
+        // Normal from the fan's total area vector (robust when
+        // individual fan triangles are slivers); zero-area
+        // triangles are dropped from the index list.
+        var area = Vector3.Zero;
+        for (int i = 0; i < n; i++)
+            area += (verts[i] - cen).Cross(verts[(i + 1) % n] - cen);
+        if (area.Length() < 1e-8f) { Dbg.Print($"{_riderId} SOCKET skip: degenerate fan"); return; }
+        var nrm = area.Normalized();
+        bool flip = nrm.Dot(axis) < 0f;
+        if (flip) nrm = -nrm;
+        var idxL = new List<int>();
+        for (int i = 0; i < n; i++)
+        {
+            int j = (i + 1) % n;
+            var cr = (verts[i] - cen).Cross(verts[j] - cen);
+            if (cr.Length() < 1e-9f) continue;
+            idxL.Add(n);
+            if (flip) { idxL.Add(j); idxL.Add(i); } else { idxL.Add(i); idxL.Add(j); }
+        }
+        if (idxL.Count < 3) { Dbg.Print($"{_riderId} SOCKET skip: all fan tris degenerate"); return; }
+        var idx = idxL.ToArray();
+        var nrms = new Vector3[n + 1];
+        for (int i = 0; i <= n; i++) nrms[i] = nrm;
+
+        var arr = new Godot.Collections.Array();
+        arr.Resize((int)Mesh.ArrayType.Max);
+        arr[(int)Mesh.ArrayType.Vertex] = verts;
+        arr[(int)Mesh.ArrayType.Normal] = nrms;
+        arr[(int)Mesh.ArrayType.Index] = idx;
+        // Skin each fan vert with its own source vert's bone chunk;
+        // the centroid takes the first rim vert's.
+        foreach (int slot in new[] { (int)Mesh.ArrayType.Bones, (int)Mesh.ArrayType.Weights })
+        {
+            var o = new float[(n + 1) * 8];
+            bool any = false;
+            for (int i = 0; i <= n; i++)
+            {
+                var src = i < n ? rim[i] : rim[0];
+                var sv = src.Arr[slot];
+                if (sv.VariantType != Variant.Type.PackedFloat32Array) continue;
+                var sf = sv.AsFloat32Array();
+                int per = sf.Length / src.VertCount;
+                if (per <= 0 || per > 8) continue;
+                for (int k = 0; k < per; k++) o[i * 8 + k] = sf[src.Src * per + k];
+                any = true;
+            }
+            if (any) arr[slot] = o;
+        }
+        _socketMat ??= new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.05f, 0.05f, 0.06f),
+            Roughness = 0.92f,
+            Metallic = 0.25f
+        };
+        int si = coreMesh.GetSurfaceCount();
+        coreMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
+        coreMesh.SurfaceSetMaterial(si, _socketMat);
+        Dbg.Print($"{_riderId} SOCKET plug verts={n}");
     }
 
     // Copy every attribute slot of a surface, keeping only srcVerts
