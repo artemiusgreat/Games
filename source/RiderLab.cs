@@ -892,7 +892,7 @@ public partial class RiderLab : Control
                 // not in the lab); the team selector in
                 // Tournament.
                 FlowMain.StartScreen = WorldConfig.IsMission ? "storyteam" : "teams";
-                GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
+                GetTree().ChangeSceneToFile("res://flow/Flow.tscn");
             };
             btnRow.AddChild(backBtn);
             PadButton(backBtn);

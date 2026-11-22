@@ -720,7 +720,7 @@ public partial class RiderDuel
         if (FlowMain.FromFlow)
         {
             FlowMain.StartScreen = null; // back to the front door
-            GetTree().ChangeSceneToFile("res://Flow/Flow.tscn");
+            GetTree().ChangeSceneToFile("res://flow/Flow.tscn");
         }
         else GetTree().Quit();
     }
