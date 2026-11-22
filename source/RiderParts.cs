@@ -491,12 +491,12 @@ public sealed class RiderParts
                 line += $"{rec.Mi.Name}:{rec.BoneName} ";
                 part.Volumes.Add(MakeVolume(rec));
             }
-            GD.Print(line + "]");
+            Dbg.Print(line + "]");
         }
         string centers = $"{_riderId} PARTCENTERS root={_walker.RootPos}";
         foreach (var part in _parts.Values)
             centers += $" {part.Id}={PartCenterWorld(part.Id)}";
-        GD.Print(centers);
+        Dbg.Print(centers);
 
         // The fused-miniature builds (ajax + the batch-2 riders) are cut
         // from one shell, so their parts have open seams; with
@@ -801,7 +801,7 @@ public sealed class RiderParts
             parent.AddChild(kv.Value);
             parent.MoveChild(kv.Value, insertAt++);
             byName[kv.Value.Name] = kv.Value;
-            GD.Print($"{_riderId} SPLIT {kv.Value.Name} tris={triCounts[kv.Key]}");
+            Dbg.Print($"{_riderId} SPLIT {kv.Value.Name} tris={triCounts[kv.Key]}");
         }
         byName.Remove(baseName);
         parent.RemoveChild(orig);
@@ -1050,7 +1050,7 @@ public sealed class RiderParts
         var part = _parts[partId];
         if (part.Destroyed || part.MaxHp <= 0f) return false;
         part.Hp = Mathf.Max(part.Hp - dmg, 0f);
-        GD.Print($"BRK DMG {_riderId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
+        Dbg.Print($"BRK DMG {_riderId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
         if (partId == "leg_L" || partId == "leg_R" || partId == "head")
@@ -1062,12 +1062,12 @@ public sealed class RiderParts
             // through from behind. A wrecked head stays attached,
             // charred and lolling, like the legs.
             WreckPart(part);
-            GD.Print($"BRK WRECK {_riderId} part={partId} '{part.Display}' (stays attached, rider limps)");
+            Dbg.Print($"BRK WRECK {_riderId} part={partId} '{part.Display}' (stays attached, rider limps)");
         }
         else
         {
             BreakPart(part, center);
-            GD.Print($"BRK BREAK {_riderId} part={partId} '{part.Display}' at {center}");
+            Dbg.Print($"BRK BREAK {_riderId} part={partId} '{part.Display}' at {center}");
         }
         OnBreak?.Invoke(partId, center);
         return true;
@@ -1228,7 +1228,7 @@ public sealed class RiderParts
                     d.Settled = true;
                     d.Vel = Vector3.Zero;
                     d.AngSpeed = 0f;
-                    GD.Print($"BRK DEBRIS {_riderId} {d.Part.Id} settled pos={d.Node.GlobalPosition} minY={d.RestMinY:F3} groundAtCenter={d.RestGroundY:F3}");
+                    Dbg.Print($"BRK DEBRIS {_riderId} {d.Part.Id} settled pos={d.Node.GlobalPosition} minY={d.RestMinY:F3} groundAtCenter={d.RestGroundY:F3}");
                 }
             }
         }

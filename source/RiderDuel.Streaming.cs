@@ -54,7 +54,7 @@ public partial class RiderDuel
             _streamed.Add((n3, centre, 750f + 0.75f * halfDiag));
             statics++;
         }
-        GD.Print($"STREAMING ascent: {_streamed.Count} streamed nodes " +
+        Dbg.Print($"STREAMING ascent: {_streamed.Count} streamed nodes " +
                  $"({_terrainChunks.Count} terrain chunks, {statics} statics), " +
                  $"dormancy {DormantRange}u full / {FreezeRange}u freeze");
     }

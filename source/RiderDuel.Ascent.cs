@@ -173,7 +173,7 @@ public partial class RiderDuel
             var fp = sc + new Vector2(side, -28f);
             AddBuilding(new Vector3(fp.X, 0f, fp.Y), new Vector3(12f, 24f, 12f), h0 + 30f);
         }
-        GD.Print($"ASCENT world built: {Ascent.Sites.Length} villages, {Ascent.Rivers.Length} bridged rivers, summit city at h={h0:F0}");
+        Dbg.Print($"ASCENT world built: {Ascent.Sites.Length} villages, {Ascent.Rivers.Length} bridged rivers, summit city at h={h0:F0}");
     }
 
     // One stacked platform: the walkable RoofRect registration,

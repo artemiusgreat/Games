@@ -342,7 +342,7 @@ void fragment() {
         m.SetShaderParameter("asph_diff", Tex("aerial_asphalt_01", "diff"));
         m.SetShaderParameter("asph_nor", Tex("aerial_asphalt_01", "nor_gl"));
         m.SetShaderParameter("asph_arm", Tex("aerial_asphalt_01", "arm"));
-        GD.Print("PHOTO terrain material ready (splat 1024, 4 scanned sets)");
+        Dbg.Print("PHOTO terrain material ready (splat 1024, 4 scanned sets)");
         return m;
     }
 
@@ -498,7 +498,7 @@ void fragment() {
                 Multimesh = hmm,
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             });
-            GD.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed - owner)");
+            Dbg.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed - owner)");
         }
     }
 
@@ -576,7 +576,7 @@ void fragment() {
         // every city building is a gameplay building inside it).
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
         {
-            GD.Print("PHOTO backdrop: apron only (city - no ring)");
+            Dbg.Print("PHOTO backdrop: apron only (city - no ring)");
             return;
         }
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
@@ -584,7 +584,7 @@ void fragment() {
             // The desert rock ring is gone with the rest of
             // the rocks (owner, 2026-11-20: removed
             // completely) - the apron stands bare.
-            GD.Print("PHOTO backdrop: apron only (desert - rock ring removed)");
+            Dbg.Print("PHOTO backdrop: apron only (desert - rock ring removed)");
             return;
         }
         for (int i = 0; i < 44; i++)
@@ -600,7 +600,7 @@ void fragment() {
             holder.Scale = Vector3.One * rng.RandfRange(1.15f, 1.6f);
             parent.AddChild(holder);
         }
-        GD.Print("PHOTO backdrop: apron + 44 ring trees");
+        Dbg.Print("PHOTO backdrop: apron + 44 ring trees");
     }
 
     // ---- Renderer / atmosphere tuning for the probe ----
@@ -650,6 +650,6 @@ void fragment() {
         sun.LightEnergy = sunE;
         sun.ShadowOpacity = 0.55f; // real shade depth (owner round 6: rider's shadow was too bright)
         sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? 900f : 520f;
-        GD.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
+        Dbg.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }
 }

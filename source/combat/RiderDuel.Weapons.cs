@@ -113,7 +113,7 @@ public partial class RiderDuel
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
                 _laserRescues++;
-                GD.Print("WPN LASER fallback-rescue (camera verdict disagreed with the harness aim point)");
+                Dbg.Print("WPN LASER fallback-rescue (camera verdict disagreed with the harness aim point)");
                 // Harness shots aim by explicit point from cameras
                 // that may still be settling between phases - when
                 // the camera's verdict disagrees with the point the
@@ -156,13 +156,13 @@ public partial class RiderDuel
             SpawnSparks(hit.Point, new Color(0.65f, 0.95f, 1f), 16, 6.0f); // electric breaker spray
             SpawnImpactLight(hit.Point, new Color(0.55f, 0.9f, 1f), 2.4f, 10f, 0.3f);
             SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
-            GD.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
+            Dbg.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == Roles.Enemy) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
             else if (hit.Target == Roles.Foe && _foe != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
             else if (AllyByRole(hit.Target) is { } la) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(la.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
             else if (hit.Target == Roles.Prop) foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
         }
-        else GD.Print("WPN LASER hit=none");
+        else Dbg.Print("WPN LASER hit=none");
     }
 
     // Player projectiles converge at most this far (round 7). Aiming
@@ -218,7 +218,7 @@ public partial class RiderDuel
             shell.Life = def.Range / spd; // burns out at the weapon's range (owner)
             PlaySfx(_sfxCannon, muzzle, def.SfxPitch, def.SfxRate);
             SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
-            GD.Print($"WPN AC fired {def.Id} dir={dir}");
+            Dbg.Print($"WPN AC fired {def.Id} dir={dir}");
         }
     }
 
@@ -282,7 +282,7 @@ public partial class RiderDuel
         for (int i = 0; i < ordered.Count; i++)
             _lrmQueue.Add((i * 0.07f, ordered[i].Left, aimPoint, ordered[i].Def));
         PlaySfx(_sfxRocket, PodMuzzle(podL), -1f);
-        GD.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
+        Dbg.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
     }
 
     private Vector3 PodMuzzle(bool left)
@@ -441,7 +441,7 @@ public partial class RiderDuel
 
     private void OnProjectileHit(HitModel.Result hit, Projectile p)
     {
-        GD.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} part={hit.Part} t={hit.T:F1} point={hit.Point}");
+        Dbg.Print($"WPN PROJ owner={p.OwnerId} hit={hit.Target} zone={hit.Zone} part={hit.Part} t={hit.T:F1} point={hit.Point}");
         if (_lrmProbe) _lrmImpacts.Add((hit.Target, hit.Point));
         if (p.SplashRadius > 0f)
         {
@@ -510,7 +510,7 @@ public partial class RiderDuel
             else _hpEnemy = Mathf.Max(_hpEnemy - poolDmg, 0f);
         }
         float hp = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : isAlly ? ally.Hp : _hpEnemy;
-        GD.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe ? Roles.Foe : isAlly ? ally.Role : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
+        Dbg.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe ? Roles.Foe : isAlly ? ally.Role : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple
@@ -592,7 +592,7 @@ public partial class RiderDuel
         if (!anyAlive)
         {
             grp.DenyT = 0.5f;
-            GD.Print($"WPN DENIED group {grp.Num} (mounting parts destroyed)");
+            Dbg.Print($"WPN DENIED group {grp.Num} (mounting parts destroyed)");
             return;
         }
         if (firedGuns.Count == 0) return; // alive but all cooling
@@ -632,13 +632,13 @@ public partial class RiderDuel
         {
             w.SpeedFactor = 0.25f;
             w.LimpRoll = 0f;
-            GD.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} both legs wrecked -> CRAWL (speedFactor 0.25)");
+            Dbg.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} both legs wrecked -> CRAWL (speedFactor 0.25)");
         }
         else if (lDead || rDead)
         {
             w.SpeedFactor = 0.55f;
             w.LimpRoll = lDead ? 0.10f : -0.10f;
-            GD.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} leg wrecked -> LIMP (speedFactor 0.55)");
+            Dbg.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} leg wrecked -> LIMP (speedFactor 0.55)");
         }
         else
         {
@@ -652,14 +652,14 @@ public partial class RiderDuel
         PlaySfx(_sfxExplosion, w.RootPos + Vector3.Up * 4f, 3f, 0.8f);
         w.Halted = true;
         w.SetDrive(w.LegsYaw, 0f);
-        if (w == _player) { _playerDead = true; GD.Print("WPN DEATH PLAYER"); }
-        else if (_foe != null && w == _foe.Walker) { _foe.Dead = true; GD.Print("WPN DEATH FOE"); }
+        if (w == _player) { _playerDead = true; Dbg.Print("WPN DEATH PLAYER"); }
+        else if (_foe != null && w == _foe.Walker) { _foe.Dead = true; Dbg.Print("WPN DEATH FOE"); }
         else if (AllyOf(w) is { } da)
         {
             da.Dead = true;
-            GD.Print($"WPN DEATH {da.Role}");
+            Dbg.Print($"WPN DEATH {da.Role}");
         }
-        else { _enemyDead = true; GD.Print("WPN DEATH ENEMY"); }
+        else { _enemyDead = true; Dbg.Print("WPN DEATH ENEMY"); }
         OnDeath(w);
         // The driven rider is down but the team fights on:
         // command passes to a living teammate (owner, teams

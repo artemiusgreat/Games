@@ -47,7 +47,7 @@ public static class CityKits
             list.Add(new Entry { Scene = scene, Box = box });
         }
         _kits[kit] = list;
-        GD.Print($"CITYKIT {kit}: {list.Count} buildings loaded");
+        Dbg.Print($"CITYKIT {kit}: {list.Count} buildings loaded");
         return list;
     }
 

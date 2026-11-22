@@ -585,7 +585,7 @@ public partial class RiderDuel
             AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
             rocks++;
         }
-        GD.Print($"DUEL scatter trees+={trees} rocks={rocks} propsNow={_props.Count}");
+        Dbg.Print($"DUEL scatter trees+={trees} rocks={rocks} propsNow={_props.Count}");
     }
 
     private static int _facadeSeq;
@@ -844,7 +844,7 @@ public partial class RiderDuel
             AddBuilding(new Vector3(pad.X + m.X, 0f, pad.Y + m.Y),
                 WorldConfig.CityKit >= 0 ? new Vector3(5f, 27f, 5f) : new Vector3(3f, 27f, 3f));
         }
-        GD.Print("MISSION bases built at the three plateaus");
+        Dbg.Print("MISSION bases built at the three plateaus");
     }
 
     // ---- Building detail (owner: buildings read as primitives;
@@ -1483,7 +1483,7 @@ public partial class RiderDuel
                 got++; placed++;
             }
         }
-        GD.Print($"CITY scatter: {placed} buildings placed (world totals: kit {_kitBuilt}, procedural {_procBuilt})");
+        Dbg.Print($"CITY scatter: {placed} buildings placed (world totals: kit {_kitBuilt}, procedural {_procBuilt})");
     }
 
     // ---------- collisions ----------
@@ -1626,7 +1626,7 @@ public partial class RiderDuel
                 if (wp.DistanceTo(tp) > w.CollisionRadius + reach + 0.9f) continue;
                 DestroyTree(d, 0.8f);
                 if (w == _player) _shake = Mathf.Max(_shake, 0.18f);
-                GD.Print($"DUEL STOMP {TagOf(w)} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
+                Dbg.Print($"DUEL STOMP {TagOf(w)} crushed the tree at ({d.Center.X:F0},{d.Center.Z:F0})");
             }
         }
     }
@@ -1804,7 +1804,7 @@ public partial class RiderDuel
         if (d == null) return;
         if (d.Kind == "tree") { DestroyTree(d, 1.0f); return; }
         d.Hp -= dmg;
-        GD.Print($"ENVDMG building at ({d.Center.X:F0},{d.Center.Z:F0}) hp={d.Hp:F0}");
+        Dbg.Print($"ENVDMG building at ({d.Center.X:F0},{d.Center.Z:F0}) hp={d.Hp:F0}");
         if (d.Hp <= 0f) StartCollapse(d);
     }
 
@@ -1855,7 +1855,7 @@ public partial class RiderDuel
         // nothing soft and round.
         SpawnBurst(mid, FireParticleMat, 80, 1.5f, 5f, 11f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2f);
         SpawnBurnEmitter(d.Center + Vector3.Up * 0.6f, 7f);
-        GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");
+        Dbg.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");
     }
 
     // Owner's current rule: a tree is destroyed by ANY interaction -
@@ -1890,7 +1890,7 @@ public partial class RiderDuel
             AddChild(puff);
             _puffs.Add((puff, 0.8f));
         }
-        GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) DESTROYED");
+        Dbg.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) DESTROYED");
     }
 
     private void UpdateDestructibles(float dt)
@@ -1923,7 +1923,7 @@ public partial class RiderDuel
                     d.State = 4;
                     RemovePropColliders(d);
                     d.Node.QueueFree();
-                    GD.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) GONE");
+                    Dbg.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) GONE");
                 }
             }
             else if (d.State == 2) // building gone: pieces + dust animate (round 21)
@@ -1935,7 +1935,7 @@ public partial class RiderDuel
                 if (d.Timer <= 0f)
                 {
                     d.State = 4;
-                    GD.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) CLEARED (pieces turned to dust)");
+                    Dbg.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) CLEARED (pieces turned to dust)");
                 }
             }
         }
@@ -1991,8 +1991,8 @@ public partial class RiderDuel
         // applies to terrain and buildings normally.
         env.FogSkyAffect = 0f;
         env.VolumetricFogAlbedo = new Color(0.10f, 0.14f, 0.24f);
-        GD.Print($"SKY map panorama applied: {path}");
-        if (starsOn) GD.Print("SKY star layer: procedural stars over the photo (hybrid)");
+        Dbg.Print($"SKY map panorama applied: {path}");
+        if (starsOn) Dbg.Print("SKY star layer: procedural stars over the photo (hybrid)");
     }
 
 }

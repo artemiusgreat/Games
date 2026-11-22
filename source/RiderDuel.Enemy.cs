@@ -324,6 +324,6 @@ public partial class RiderDuel
         PlaySfx(_sfxCannon, muzzle, 0f, 0.78f);
         SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.5f, 0.08f);
         onFired?.Invoke();
-        GD.Print($"WPN FOEFIRE {tag} dist={dist:F1} tof={tof:F2} targetVel={targetVel.Length():F1}");
+        Dbg.Print($"WPN FOEFIRE {tag} dist={dist:F1} tof={tof:F2} targetVel={targetVel.Length():F1}");
     }
 }

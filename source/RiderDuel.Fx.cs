@@ -238,7 +238,7 @@ public partial class RiderDuel
     {
         if (_flipbookFrames != null) return _flipbookFrames;
         var sheet = GD.Load<Texture2D>("res://assets/textures/explosion_fireball.png");
-        if (sheet == null) { GD.Print("FLIPBOOK sheet missing: res://assets/textures/explosion_fireball.png"); return null; }
+        if (sheet == null) { Dbg.Print("FLIPBOOK sheet missing: res://assets/textures/explosion_fireball.png"); return null; }
         var sf = new SpriteFrames();
         sf.AddAnimation("boom");
         sf.SetAnimationSpeed("boom", 64f); // 64 frames = 1.0s at speed 1
@@ -294,7 +294,7 @@ public partial class RiderDuel
     private void DenyWeapon(string weapon)
     {
         _lastDenied = weapon;
-        GD.Print($"WPN DENIED {weapon} (mounting part destroyed)");
+        Dbg.Print($"WPN DENIED {weapon} (mounting part destroyed)");
         if (weapon == "laser") _denyLaserT = 0.5f;
         else if (weapon == "ac") _denyAcT = 0.5f;
         else if (weapon == "lrm") _denyLrmT = 0.5f;
@@ -361,7 +361,7 @@ public partial class RiderDuel
         _exploding = false;
         float distToPlayer = w.RootPos.DistanceTo(_player.RootPos);
         if (w == _player || distToPlayer < 45f) _shake = 1.0f;
-        GD.Print($"DEATHBLOW {TagOf(w)} exploded into debris");
+        Dbg.Print($"DEATHBLOW {TagOf(w)} exploded into debris");
         w.SetDarkened(true);
         // No centre banner for a destruction (owner: the
         // "NAME DESTROYED / press R to reset" text overlapped

@@ -321,7 +321,7 @@ public partial class RiderWalker : Node3D
             -coreSizeZ / 2f - corePosZ);
         _inner.Position += shift / s;
         var chk = MeasureWorldAabb(_inner);
-        GD.Print($"{cfg.Label} normalized AABB pos={chk.Position} size={chk.Size} coreDepth={coreSizeZ:F3} scale={s:F4}");
+        Dbg.Print($"{cfg.Label} normalized AABB pos={chk.Position} size={chk.Size} coreDepth={coreSizeZ:F3} scale={s:F4}");
 
         // Blender FBX faces +Z after import; rotate so it faces -Z at yaw 0.
         Rotation = new Vector3(0f, Mathf.Pi, 0f);
@@ -331,7 +331,7 @@ public partial class RiderWalker : Node3D
         CollectMaterials();
         var names = new string[_skel.GetBoneCount()];
         for (int i = 0; i < names.Length; i++) names[i] = _skel.GetBoneName(i);
-        GD.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
+        Dbg.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
 
         _torsoBone = _skel.FindBone("torso");
         InitLegs(spawnPos);
@@ -344,7 +344,7 @@ public partial class RiderWalker : Node3D
         _holderXf = GlobalTransform;
         _skelGlobal = _holderXf * _chain;
         _ready = true;
-        GD.Print($"{cfg.Label} walker ready at {spawnPos} yaw={legsYaw:F2}");
+        Dbg.Print($"{cfg.Label} walker ready at {spawnPos} yaw={legsYaw:F2}");
     }
 
     private void InitLegs(Vector3 spawnPos)
@@ -389,7 +389,7 @@ public partial class RiderWalker : Node3D
                 var up = (leg.Hrest - leg.Arest).Normalized();
                 var sag = up.Cross(lateral).Normalized(); // in the pole's plane, ⊥ leg axis and ⊥ lateral
                 leg.PoleSk = sag * -Mathf.Sign(leg.PoleSk.Dot(sag));
-                GD.Print($"{_cfg.Label} leg {leg.Name}: flipped pole={leg.PoleSk}");
+                Dbg.Print($"{_cfg.Label} leg {leg.Name}: flipped pole={leg.PoleSk}");
             }
         }
 
@@ -410,7 +410,7 @@ public partial class RiderWalker : Node3D
                 var up = (leg.Hrest - leg.Arest).Normalized();
                 var sag = up.Cross(lateral).Normalized();
                 leg.PoleSk = sag * Mathf.Sign(leg.PoleSk.Dot(sag));
-                GD.Print($"{_cfg.Label} leg {leg.Name}: sagittal pole={leg.PoleSk}");
+                Dbg.Print($"{_cfg.Label} leg {leg.Name}: sagittal pole={leg.PoleSk}");
             }
         }
 
@@ -437,7 +437,7 @@ public partial class RiderWalker : Node3D
         // both feet at the extremes, neither touching (owner report,
         // 2026-11-16). The 0.97 keeps a whisker of bend in reserve.
         _strideBudgetW = 0.97f * Mathf.Sqrt(Mathf.Max(reachW * reachW - _hipRiseW * _hipRiseW, 0.42f));
-        GD.Print($"{_cfg.Label} reachW={reachW:F3} dStand={dStand:F3} hipRiseW={_hipRiseW:F3} hipAboveHolderW={_hipAboveHolderW:F3}");
+        Dbg.Print($"{_cfg.Label} reachW={reachW:F3} dStand={dStand:F3} hipRiseW={_hipRiseW:F3} hipAboveHolderW={_hipAboveHolderW:F3}");
     }
 
     private void SetupLeg(Leg leg, string hipName, string kneeName, string ankleName,
@@ -475,7 +475,7 @@ public partial class RiderWalker : Node3D
         leg.PlantBasisW = FootBasisAt(leg.SoleTarget, 0f);
         leg.CurBasisW = leg.PlantBasisW;
         leg.SolvedSoleWorld = leg.SoleTarget;
-        GD.Print($"{_cfg.Label} leg {leg.Name}: L1={leg.L1:F2} L2={leg.L2:F2} pole={leg.PoleSk} homeLocal={leg.HomeLocal} plant={leg.SoleTarget}");
+        Dbg.Print($"{_cfg.Label} leg {leg.Name}: L1={leg.L1:F2} L2={leg.L2:F2} pole={leg.PoleSk} homeLocal={leg.HomeLocal} plant={leg.SoleTarget}");
     }
 
     // Debug: world positions of a leg's joints (gait audits).

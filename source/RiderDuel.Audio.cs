@@ -43,7 +43,7 @@ public partial class RiderDuel
             AddChild(p);
             _sfxPool.Add(p);
         }
-        GD.Print($"SFX loaded laser={_sfxLaser != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
+        Dbg.Print($"SFX loaded laser={_sfxLaser != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
     }
 
     private void PlaySfx(AudioStream stream, Vector3 pos, float volDb = 0f, float pitch = 1f)

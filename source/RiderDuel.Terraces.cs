@@ -239,7 +239,7 @@ public partial class RiderDuel
         TestPlatforms.Clear();
         foreach (var pad in Main.SpawnPads)
             BuildValleyCity(rng, ref placed, pad, pad == Main.SpawnPads[0]);
-        GD.Print($"TERRACES built: {_lifts.Count} lifts in the 2 enemy valley cities (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
+        Dbg.Print($"TERRACES built: {_lifts.Count} lifts in the 2 enemy valley cities (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
     }
 
     private void BuildValleyCity(System.Random rng, ref int placed, Vector2 ctr, bool home)
@@ -320,7 +320,7 @@ public partial class RiderDuel
             if (!home) PlaceCityBlock(rng, c, ref placed, l);
         }
         if (!home) BuildLandmark(L(80f, -144f), TerraceL3, 26f, 46f, 200f, true);
-        GD.Print($"VALLEY CITY at ({ctr.X:F0},{ctr.Y:F0}) home={home}");
+        Dbg.Print($"VALLEY CITY at ({ctr.X:F0},{ctr.Y:F0}) home={home}");
     }
 
     // A flat same-level span between two platform edges:
@@ -790,7 +790,7 @@ public partial class RiderDuel
             TestRampRect = rect; TestRampRun = run;
             HasTestRamp = true;
         }
-        GD.Print($"TERRACE RAMP {lo:F0}->{hi:F0} at ({edgeMid.X:F0},{edgeMid.Y:F0})");
+        Dbg.Print($"TERRACE RAMP {lo:F0}->{hi:F0} at ({edgeMid.X:F0},{edgeMid.Y:F0})");
     }
 
     private void BuildLift(Vector2 edgeMid, Vector2 dirOut, float lo, float hi)
@@ -832,7 +832,7 @@ public partial class RiderDuel
         });
         if (!HasTestLift)
         { TestLiftPad = pc; TestLiftLo = lo; TestLiftHi = hi; HasTestLift = true; }
-        GD.Print($"TERRACE LIFT {lo:F0}->{hi:F0} pad at ({pc.X:F0},{pc.Y:F0})");
+        Dbg.Print($"TERRACE LIFT {lo:F0}->{hi:F0} pad at ({pc.X:F0},{pc.Y:F0})");
     }
 
     // Per-frame lift shuttles: a rider standing on a pad rides

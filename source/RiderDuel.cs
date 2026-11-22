@@ -389,6 +389,13 @@ public partial class RiderDuel : Node3D
             if (arg.StartsWith("--team-slot="))
                 TeamRoster.StorySlot = int.Parse(arg.Substring("--team-slot=".Length));
         }
+        // Diagnostics gate (owner, 2026-11-22): gameplay Dbg
+        // lines print only in a test/shot mode or with
+        // AOT_VERBOSE set - normal play stays quiet.
+        Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest
+            || _labShot || _photo || _photoTest || _ffaTest || _teamTest || _bracketTest
+            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest
+            || OS.HasEnvironment("AOT_VERBOSE");
         if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
         // the roster's currently edited slot - its spec and

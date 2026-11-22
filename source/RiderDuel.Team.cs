@@ -252,9 +252,9 @@ public partial class RiderDuel
             var a = MakeAlly(member, RoleForSlot(slot), slot, 0, pos, SpawnYaw(pad), $"Ally{slot}");
             _allies.Add(a);
             k++;
-            GD.Print($"TEAM ally built: slot {slot} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
+            Dbg.Print($"TEAM ally built: slot {slot} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
         }
-        if (_allies.Count > 0) GD.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
+        if (_allies.Count > 0) Dbg.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
     }
 
     // The lab edits the roster AFTER _Ready built the team -
@@ -284,7 +284,7 @@ public partial class RiderDuel
             }
         }
         if (same) return;
-        GD.Print($"TEAM deploy rebuild: roster changed in the lab ({team.Count} records -> {TeamRoster.Story.Count - 1})");
+        Dbg.Print($"TEAM deploy rebuild: roster changed in the lab ({team.Count} records -> {TeamRoster.Story.Count - 1})");
         foreach (var a in team) a.Walker.QueueFree();
         BuildAllies();
         RefreshHitCaps();
@@ -321,7 +321,7 @@ public partial class RiderDuel
         for (int s = 0; s < Ascent.Sites.Length; s++)
             Muster(Ascent.Sites[s].C, Ascent.Sites[s].Guards, s * 3);
         Muster(Ascent.SummitApron, Ascent.SummitGuards, 40);
-        GD.Print($"ASCENT guards built: {n} defenders across {Ascent.Sites.Length} villages and the summit");
+        Dbg.Print($"ASCENT guards built: {n} defenders across {Ascent.Sites.Length} villages and the summit");
     }
 
     // A team's muster point in the arena: its pad for the
@@ -363,7 +363,7 @@ public partial class RiderDuel
                 float yaw = AnchorYaw(anchor);
                 var a = MakeAlly(member, $"{Roles.AllyPrefix}{t * 10 + s}", s, t, pos, yaw, $"Npc{t}_{s}");
                 _allies.Add(a);
-                GD.Print($"BRACKET npc built: team {t + 1} slot {s} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
+                Dbg.Print($"BRACKET npc built: team {t + 1} slot {s} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
             }
         }
     }
@@ -411,7 +411,7 @@ public partial class RiderDuel
         _weaponSel = 0;
         RefreshHitCaps();
         ApplyLoadout();
-        GD.Print($"TEAM leader now slot {slot} ({_playerSpec.Id})");
+        Dbg.Print($"TEAM leader now slot {slot} ({_playerSpec.Id})");
         return true;
     }
 
