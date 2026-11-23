@@ -387,6 +387,16 @@ public partial class RiderDuel
             proj.GuideActive = true;
             proj.GuideOrigin = solveFrom;
             proj.GuideStart = muzzle;
+            // Converge AT the reticle, not out of the tubes
+            // (owner, 2026-11-23): the blend used to finish in
+            // 0.55 s, so the salvo merged into a single file
+            // almost at the muzzle and flew most of the way as
+            // one dotted line. The blend now runs over 80% of
+            // the flight - the rockets ride their own offset
+            // paths and curve together only near the target,
+            // still passing exactly through the aim point
+            // (the blend completes before arrival).
+            proj.GuideDur = Mathf.Max(0.55f, tof * 0.8f);
             proj.GuideVel0 = vel;
             proj.GuideTime = 0f;
         }
