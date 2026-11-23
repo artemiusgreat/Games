@@ -1092,6 +1092,20 @@ public partial class RiderDuel
         float alpha = 1f;
         if (_hudFlickerT > 0f)
             alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
+        // Sniper scope overlay (owner, 2026-11-23): shown
+        // while the sniper view is on, replacing the plain
+        // crosshair. Toggled here, not in the camera step -
+        // the camera's ease block is delta-gated and harness
+        // cameras call it with delta 0, which left the scope
+        // stuck hidden in captures.
+        if (_scope != null)
+        {
+            bool show = _sniper && !_labOpen;
+            _scope.Visible = show;
+            if (show) _cross.Visible = false;
+            else if (!_labOpen && _camMode == CamModes.Chase) _cross.Visible = true;
+        }
+
         foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _feedLabel, _cross })
         {
             var m = c.Modulate;

@@ -168,6 +168,7 @@ public partial class RiderDuel : Node3D
     private int _foeShots;
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
     private bool _ppcProbe; // --ppc-probe: PPC damage at a staged 910u lane (owner report 2026-11-23)
+    private bool _debrisProbe; // --debris-probe: break a Hector on a steep slope, walk him off, dump the debris rest state
     private bool _viewShot; // --view-shot: hilltop view-pitch proof frames
     private bool _pointTest; // --point-test: can the reticle be put ON a hilltop foe, per range?
     private bool _pointHectorFirst; // --point-hector: select Hector at start (the lab path)
@@ -293,6 +294,7 @@ public partial class RiderDuel : Node3D
     private bool _tParked;
 
     private Crosshair _cross;
+    private SniperScope _scope;
     private ProgressBar _barPlayer, _barEnemy, _barFoe, _cdBarThr;
     // The weapons panel lists EVERY fitted weapon (owner,
     // MW4-style): a row per weapon instance, pooled here.
@@ -371,6 +373,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--deploy-test") { _deployTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--lrm-probe") _lrmProbe = true;
             if (arg == "--ppc-probe") { _ppcProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
+            if (arg == "--debris-probe") { _debrisProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--view-shot") _viewShot = true;
             if (arg == "--point-test") _pointTest = true;
             if (arg == "--point-hector") _pointHectorFirst = true;
@@ -396,7 +399,7 @@ public partial class RiderDuel : Node3D
         // AOT_VERBOSE set - normal play stays quiet.
         Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest
             || _labShot || _photo || _photoTest || _ffaTest || _teamTest || _bracketTest
-            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe
+            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe
             || OS.HasEnvironment("AOT_VERBOSE");
         if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
@@ -626,7 +629,7 @@ public partial class RiderDuel : Node3D
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         await BuildFrame(); // staged build: player + enemy in, foe next
-        if (((!PrecisionTest && !_lrmProbe && !_ppcProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
+        if (((!PrecisionTest && !_lrmProbe && !_ppcProbe && !_debrisProbe && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
             && (!_bracketActive || _foeMember != null)) BuildFoe();
         if (_bracketActive && _foe != null && _foeMember != null && _foeMemberTeam != 2)
         {
@@ -662,9 +665,21 @@ public partial class RiderDuel : Node3D
         _cross = new Crosshair();
         layer.AddChild(_cross);
         _cross.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _scope = new SniperScope { Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore };
+        layer.AddChild(_scope);
+        // SetAnchorsAndOffsetsPreset, NOT SetAnchorsPreset:
+        // the anchors-only preset preserves the current rect,
+        // and a control born at zero size stays zero size
+        // forever (measured offsets (0,0,-1280,-1024) after
+        // the call) - the scope drew nothing through three
+        // captures while the crosshair, which draws from the
+        // viewport rect rather than its own Size, hid the
+        // same trap on the line above (2026-11-23).
+        _scope.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        if (System.Environment.GetEnvironmentVariable("AOT_SNIPER") == "1") _sniper = true; // harness: scope captures
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_ppcProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_ppcProbe && !_debrisProbe && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -1125,6 +1140,7 @@ public partial class RiderDuel : Node3D
             else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_ppcProbe) UpdatePpcProbe(dt);
+            else if (_debrisProbe) UpdateDebrisProbe(dt);
             else if (_ffaTest) UpdateFfaTest(dt);
             else if (_teamTest) UpdateTeamTest(dt);
             else if (_bracketTest) UpdateBracketTest(dt);
