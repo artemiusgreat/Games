@@ -796,32 +796,55 @@ public partial class RiderDuel
     // orders, views. Static content, built once; F1 or Esc
     // closes it, Resume does the same with the mouse. Same
     // visual idiom as the team screen.
+    // The controls screen (owner, 2026-11-23): F1 opens it in
+    // any match mode. Same idiom as the exit/team popups -
+    // dimmed game, dark panel, white corner brackets, Cinzel
+    // title - with the bindings grouped in sections
+    // (Movement / Fire / Commands / System), each row a
+    // bulleted list entry: label left-aligned, key after it.
+    // The list scrolls; the panel is sized to the viewport
+    // on every open.
     private sealed partial class ControlsOverlay : Control
     {
         private ulong _openedAt;
+        private Control _root;
 
-        private static readonly (string Key, string What)[] Rows =
+        private static readonly (string Title, (string What, string Key)[] Items)[] Sections =
         {
-            ("W", "Throttle forward"),
-            ("S", "Throttle back"),
-            ("A / D", "Turn the legs left / right"),
-            ("Mouse", "Aim the torso (full 360°)"),
-            ("Left mouse button", "Fire the selected weapon group"),
-            ("1 – 6", "Select weapon group"),
-            ("Mouse wheel", "Cycle weapon group"),
-            ("Shift + W", "Run (3× walk speed)"),
-            ("Space (hold)", "Thrusters — fly while held, when fitted"),
-            ("Tab", "Cycle target"),
-            ("Shift + 1", "Team order: follow me"),
-            ("Shift + 2", "Team order: attack my target"),
-            ("Shift + 3", "Team order: attack nearby enemy"),
-            ("Shift + 4", "Team order: protect my target"),
-            ("Shift + 5", "Team order: full stop"),
-            ("T", "Sniper view"),
-            ("F1", "This controls screen"),
-            ("F2", "Team screen"),
-            ("R", "Reset the match (arena)"),
-            ("Esc", "Leave the match"),
+            ("Movement", new (string, string)[]
+            {
+                ("Move forward", "W"),
+                ("Move backward", "S"),
+                ("Turn left", "A"),
+                ("Turn right", "D"),
+                ("Torso", "MOUSE"),
+                ("Run", "CAPSLOCK"),
+                ("Thrusters", "SPACE"),
+            }),
+            ("Fire", new (string, string)[]
+            {
+                ("Fire", "LMB"),
+                ("Weapon group", "1 - 6 or MOUSE WHEEL"),
+                ("Next enemy", "TAB"),
+                ("Closest enemy", "SHIFT + TAB"),
+                ("Next companion", "CTRL + TAB"),
+                ("Sniper view", "T"),
+            }),
+            ("Commands", new (string, string)[]
+            {
+                ("Follow me", "SHIFT + 1"),
+                ("Attack my target", "SHIFT + 2"),
+                ("Attack closest enemy", "SHIFT + 3"),
+                ("Stop", "SHIFT + 4"),
+                ("Protect my companion", "SHIFT + 5"),
+            }),
+            ("System", new (string, string)[]
+            {
+                ("Leave", "ESC"),
+                ("Reset", "R"),
+                ("Controls", "F1"),
+                ("Team", "F2"),
+            }),
         };
 
         public ControlsOverlay()
@@ -839,19 +862,19 @@ public partial class RiderDuel
             center.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(center);
 
-            var root = new Control { CustomMinimumSize = new Vector2(560, 640) };
-            center.AddChild(root);
+            _root = new Control { CustomMinimumSize = new Vector2(600, 700) };
+            center.AddChild(_root);
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
             panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f) });
-            root.AddChild(panel);
+            _root.AddChild(panel);
 
             var v = new VBoxContainer();
             v.SetAnchorsPreset(LayoutPreset.FullRect);
-            v.OffsetLeft = 30; v.OffsetTop = 26; v.OffsetRight = -30; v.OffsetBottom = -24;
+            v.OffsetLeft = 30; v.OffsetTop = 26; v.OffsetRight = -30; v.OffsetBottom = -30;
             v.AddThemeConstantOverride("separation", 7);
-            root.AddChild(v);
+            _root.AddChild(v);
 
             var title = new Label { Text = "CONTROLS", HorizontalAlignment = HorizontalAlignment.Center };
             title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
@@ -861,25 +884,50 @@ public partial class RiderDuel
 
             var gold = new Color(0.98f, 0.80f, 0.35f);
             var ink = new Color(0.92f, 0.94f, 0.96f);
-            foreach (var (key, what) in Rows)
+
+            var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
+            scroll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            v.AddChild(scroll);
+            var list = new VBoxContainer();
+            list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            list.AddThemeConstantOverride("separation", 5);
+            scroll.AddChild(list);
+
+            bool firstSection = true;
+            foreach (var (secTitle, items) in Sections)
             {
-                // Owner (2026-11-23): label first, key second -
-                // the label right-aligned so the descriptions
-                // form a clean column ending at the keys.
-                var h = new HBoxContainer();
-                h.AddThemeConstantOverride("separation", 16);
-                var w = new Label { Text = what, HorizontalAlignment = HorizontalAlignment.Right };
-                w.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-                w.AddThemeFontSizeOverride("font_size", 14);
-                w.AddThemeColorOverride("font_color", ink);
-                h.AddChild(w);
-                var k = new Label { Text = key, CustomMinimumSize = new Vector2(170, 0) };
-                k.AddThemeFontSizeOverride("font_size", 14);
-                k.AddThemeColorOverride("font_color", gold);
-                h.AddChild(k);
-                v.AddChild(h);
+                if (!firstSection)
+                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 9) });
+                firstSection = false;
+                var head = new Label { Text = secTitle };
+                head.AddThemeFontSizeOverride("font_size", 13);
+                head.AddThemeColorOverride("font_color", gold);
+                list.AddChild(head);
+                foreach (var (what, key) in items)
+                {
+                    var h = new HBoxContainer();
+                    h.AddThemeConstantOverride("separation", 10);
+                    var bullet = new Label { Text = "\u2022", CustomMinimumSize = new Vector2(12, 0) };
+                    bullet.AddThemeFontSizeOverride("font_size", 14);
+                    bullet.AddThemeColorOverride("font_color", gold);
+                    h.AddChild(bullet);
+                    var w = new Label { Text = what, HorizontalAlignment = HorizontalAlignment.Left };
+                    w.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                    w.AddThemeFontSizeOverride("font_size", 14);
+                    w.AddThemeColorOverride("font_color", ink);
+                    h.AddChild(w);
+                    var k = new Label { Text = key, CustomMinimumSize = new Vector2(205, 0) };
+                    k.AddThemeFontSizeOverride("font_size", 14);
+                    k.AddThemeColorOverride("font_color", gold);
+                    h.AddChild(k);
+                    list.AddChild(h);
+                }
             }
 
+            // Extra air above the button and the deeper bottom
+            // inset (owner): Resume gets room at the bottom.
+            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
             var resume = new Button { Text = "Resume", CustomMinimumSize = new Vector2(120, 36) };
             resume.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
             var sb = new StyleBoxFlat { BgColor = new Color(0.08f, 0.11f, 0.17f, 0.95f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.65f) };
@@ -891,11 +939,25 @@ public partial class RiderDuel
             resume.AddThemeColorOverride("font_color", ink);
             resume.Pressed += () => Visible = false;
             v.AddChild(resume);
+
+            // The white corner brackets, same as the exit and
+            // team popups (owner).
+            var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
+            frame.SetAnchorsPreset(LayoutPreset.FullRect);
+            frame.OffsetLeft = -7; frame.OffsetTop = -7; frame.OffsetRight = 7; frame.OffsetBottom = 7;
+            _root.AddChild(frame);
         }
 
         public void Open()
         {
             _openedAt = Time.GetTicksMsec();
+            // Fit the panel to the screen (owner): capped at
+            // the design size, never closer than 32px to the
+            // edges; the list scrolls when the cap bites.
+            var vs = GetViewportRect().Size;
+            _root.CustomMinimumSize = new Vector2(
+                Mathf.Min(600f, vs.X - 32f),
+                Mathf.Min(760f, vs.Y - 48f));
             Visible = true;
         }
 
