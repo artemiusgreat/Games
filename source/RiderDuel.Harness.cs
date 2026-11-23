@@ -632,6 +632,12 @@ public partial class RiderDuel
         if (_lrmCase < 0)
         {
             _lrmCase = 0;
+            // AOT_HECTOR=1: run the same cases with a Hector
+            // player - its pod_L is folded into the shoulder
+            // mesh (no volumes of its own), the case that
+            // salvoed into its own feet (owner, 2026-11-23).
+            if (!string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_HECTOR")))
+            { SetRiderSelection("hector", "enyo"); ApplyLoadout(); }
             LrmStage(0);
             return;
         }
@@ -642,6 +648,7 @@ public partial class RiderDuel
             _lrmImpactBase = _lrmImpacts.Count; // return-fire impacts don't count
             _lrmAim = EnemyAim();
             _cdLrm = 0f;
+            GD.Print($"LRMPROBE muzzleL={PodMuzzle(true)} muzzleR={PodMuzzle(false)} root={_player.RootPos}");
             FireLrmSalvo(_lrmAim);
             return;
         }
@@ -690,6 +697,70 @@ public partial class RiderDuel
         _hpPlayer = 100000f; // the target shoots back (shared combat step) - keep the shooter whole
         _partsPlayer.RestoreAll(); // and the pods intact, so every case fires a full salvo
         GD.Print($"LRMPROBE stage case={c} player={pp} enemy={ep}");
+    }
+
+
+    // ---------- PPC long-lane probe ----------
+    // Owner report (2026-11-23): a target read 0.91 km on the
+    // panel and the PPC did no damage. Stage the exact geometry
+    // in the mission world: the enemy 910u out on a lane the
+    // game's own cast (at the PPC's 1000 reach) confirms rests
+    // on the enemy, then fire the energy rack and read the HP
+    // delta. PASS = the PPC damages her at that distance.
+    private int _ppcPhase;
+    private double _ppcT;
+    private int _ppcTry;
+    private float _ppcHp0;
+    private float _ppcCastT;
+
+    private void UpdatePpcProbe(float dt)
+    {
+        _ppcT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_ppcPhase == 0 && _ppcT > 1.2f)
+        {
+            _camMode = CamModes.Chase;
+            // Stage a rider whose rack HAS a PPC (the mission
+            // default player's longest energy reach is the Large
+            // Laser's 750 - staging his lane proved nothing).
+            SetRiderSelection("hector", "enyo"); ApplyLoadout();
+            float rackMax = 0f; foreach (var g in _gunsEnergy) rackMax = Mathf.Max(rackMax, g.Def.Range);
+            GD.Print($"PPCCPROBE rack: energyMax={rackMax:F0} (PPC fitted: {rackMax >= 1000f})");
+            if (rackMax < 1000f) { GD.PrintErr("PPCCPROBE FAIL: staged rack has no PPC"); GetTree().Quit(1); return; }
+            var home = PadWorld(0); home.Y = Main.HeightAt(home.X, home.Z);
+            _player.Teleport(home, 0f);
+            _hpPlayer = 100000f; _hpEnemy = 100000f;
+            _ppcPhase = 1; _ppcT = 0f; _ppcTry = 0;
+        }
+        else if (_ppcPhase == 1)
+        {
+            float ang = _ppcTry * Mathf.DegToRad(12f);
+            var dirE = new Vector3(0f, 0f, -1f).Rotated(Vector3.Up, ang);
+            var spot = _player.RootPos + dirE * 910f;
+            spot.Y = Main.HeightAt(spot.X, spot.Z);
+            _enemy.Teleport(spot, RiderWalker.YawOf(-dirE));
+            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
+            var cast = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 1000f, Roles.Player);
+            if (!cast.Hit || cast.Target != Roles.Enemy)
+            {
+                if (++_ppcTry > 24) { GD.PrintErr("PPCCPROBE FAIL: no clear 910u lane found for staging"); GetTree().Quit(1); }
+                _ppcT = 0f;
+                return;
+            }
+            _ppcCastT = cast.T;
+            _ppcHp0 = _hpEnemy;
+            FireLaser(TorsoAimPoint());
+            GD.Print($"PPCCPROBE fired: laneTry={_ppcTry} castT={cast.T:F1} playerToEnemy={_player.RootPos.DistanceTo(_enemy.RootPos):F1} enemyHp={_ppcHp0:F0}");
+            _ppcPhase = 2; _ppcT = 0f;
+        }
+        else if (_ppcPhase == 2 && _ppcT > 0.6f)
+        {
+            if (_hpEnemy < _ppcHp0 - 0.01f)
+                GD.Print($"PPCCPROBE PASS: PPC damaged the enemy at castT={_ppcCastT:F1} (hp {_ppcHp0:F0} -> {_hpEnemy:F0})");
+            else
+                GD.PrintErr($"PPCCPROBE FAIL: no damage at castT={_ppcCastT:F1} (hp {_ppcHp0:F0} -> {_hpEnemy:F0})");
+            GetTree().Quit(_hpEnemy < _ppcHp0 - 0.01f ? 0 : 1);
+        }
     }
 
     // ---------- free-for-all probe ----------
