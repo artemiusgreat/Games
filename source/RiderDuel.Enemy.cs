@@ -56,22 +56,31 @@ public partial class RiderDuel
     // at point blank (owner, 2026-11-22). Re-pick any other
     // fitted cannon on a living part; only a rider with no live
     // cannon mount at all is truly disarmed.
-    private bool EnsureBallistic(Ally a)
+    private bool PickBallistic(RiderSpec spec, LoadoutState load, RiderParts parts, out string slot, out WeaponDef def)
     {
-        if (a.DefBallistic != null && a.Parts != null && a.Parts.Alive(a.BallisticSlot))
-            return true;
+        slot = null; def = null;
         for (int n = 0; ; n++)
         {
-            string s = SlotOf(a.Spec, WeaponSlotType.Ballistic, n);
+            string s = SlotOf(spec, WeaponSlotType.Ballistic, n);
             if (s == null) break;
-            string wid = a.Loadout.WeaponIn(s);
-            if (wid == null) continue;
-            if (a.Parts == null || !a.Parts.Alive(s)) continue;
-            a.BallisticSlot = s;
-            a.DefBallistic = WeaponCatalog.ById(wid);
-            if (a.DefBallistic != null) return true;
+            var id = load.WeaponIn(s);
+            var w = id == null ? null : WeaponCatalog.ById(id);
+            if (w != null && parts.Alive(s)) { slot = s; def = w; return true; }
         }
+        return false;
+    }
+
+    private bool EnsureBallistic(Ally a)
+    {
+        if (PickBallistic(a.Spec, a.Loadout, a.Parts, out var s, out var w)) { a.BallisticSlot = s; a.DefBallistic = w; return true; }
         a.DefBallistic = null;
+        return false;
+    }
+
+    private bool EnsureBallistic(Foe f)
+    {
+        if (PickBallistic(f.Spec, f.Loadout, f.Parts, out var s, out var w)) { f.BallisticSlot = s; f.DefBallistic = w; return true; }
+        f.DefBallistic = null;
         return false;
     }
 
