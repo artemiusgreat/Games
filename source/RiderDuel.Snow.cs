@@ -208,22 +208,53 @@ public partial class RiderDuel
         const int S = 96;
         var img = Image.CreateEmpty(S, S, false, Image.Format.Rgba8);
         var segs = new System.Collections.Generic.List<(Vector2 A, Vector2 B, float T0, float T1)>();
+        // Owner (2026-11-23, second pass): the perfect sixfold
+        // dendrite read as a printed icon - too regular to be
+        // weather. A real flake is ALMOST regular: arms of
+        // uneven length, branch pairs that come and go, one arm
+        // broken by a melted gap, specks that came off it. All
+        // jitter comes from a fixed-seed LCG, so it is the same
+        // imperfect flake every run. Peak alpha 0.55 (was 0.92):
+        // more transparent, per the same note.
+        uint rng = 20261123u;
+        float Rand() { rng = rng * 1664525u + 1013904223u; return (rng >> 8) / 16777216f; }
+        int[] pairs = { 2, 1, 2, 0, 2, 1 };
         for (int k = 0; k < 6; k++)
         {
-            float a = k * Mathf.Pi / 3f;
+            float a = k * Mathf.Pi / 3f + (Rand() - 0.5f) * 0.24f;
             var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-            segs.Add((Vector2.Zero, dir * 0.92f, 0.050f, 0.016f));
-            foreach (float rb in new[] { 0.42f, 0.64f })
+            var side = new Vector2(-dir.Y, dir.X);
+            float len = 0.92f * (0.74f + 0.26f * Rand());
+            float w0 = 0.050f * (0.8f + 0.4f * Rand());
+            if (k == 3)
             {
-                float bl = 0.34f * (1.05f - rb);
+                // the broken arm: a melted gap mid-shaft
+                segs.Add((Vector2.Zero, dir * (len * 0.34f), w0, w0 * 0.8f));
+                segs.Add((dir * (len * 0.58f), dir * len, w0 * 0.62f, 0.014f));
+            }
+            else segs.Add((Vector2.Zero, dir * len, w0, 0.016f));
+            for (int b = 0; b < pairs[k]; b++)
+            {
+                float t = pairs[k] == 1 ? 0.52f + (Rand() - 0.5f) * 0.1f
+                                        : 0.40f + 0.24f * b + (Rand() - 0.5f) * 0.08f;
+                var bas = dir * (len * t);
+                float bl = len * (1f - t) * (0.52f + 0.22f * Rand()) / 0.92f;
                 foreach (float sgn in new[] { -1f, 1f })
                 {
-                    float ba = a + sgn * 0.96f;
-                    var bd = new Vector2(Mathf.Cos(ba), Mathf.Sin(ba));
-                    var bas = dir * rb;
-                    segs.Add((bas, bas + bd * bl, 0.034f, 0.008f));
+                    float ba = 0.96f + (Rand() - 0.5f) * 0.3f;
+                    var bd = (dir * Mathf.Cos(ba) + side * (sgn * Mathf.Sin(ba))).Normalized();
+                    float l2 = (k == 1 && b == 0 && sgn > 0f) ? bl * 0.4f : bl; // one snapped branch
+                    segs.Add((bas, bas + bd * l2, 0.030f, 0.007f));
                 }
             }
+        }
+        // melt specks drifting off the flake
+        for (int i = 0; i < 4; i++)
+        {
+            float a = Rand() * Mathf.Tau, d = 0.92f * (0.5f + 0.5f * Rand());
+            var c = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * d;
+            float r = 0.016f + 0.02f * Rand();
+            segs.Add((c, c, r, r));
         }
         for (int y = 0; y < S; y++)
         for (int x = 0; x < S; x++)
@@ -233,13 +264,14 @@ public partial class RiderDuel
             foreach (var (A, B, T0, T1) in segs)
             {
                 var ab = B - A;
-                float t = Mathf.Clamp((p - A).Dot(ab) / ab.LengthSquared(), 0f, 1f);
+                float ls = ab.LengthSquared();
+                float t = ls > 1e-6f ? Mathf.Clamp((p - A).Dot(ab) / ls, 0f, 1f) : 0f;
                 float d = (p - (A + ab * t)).Length();
                 if (d < best) { best = d; thick = Mathf.Lerp(T0, T1, t); }
             }
             float core = Mathf.Clamp(1f - p.Length() / 0.16f, 0f, 1f);
-            float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.92f;
-            alpha = Mathf.Max(alpha, core * 0.55f);
+            float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.55f;
+            alpha = Mathf.Max(alpha, core * 0.34f);
             img.SetPixel(x, y, new Color(0.96f, 0.98f, 1f, alpha));
         }
         return ImageTexture.CreateFromImage(img);
