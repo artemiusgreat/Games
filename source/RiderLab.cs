@@ -592,7 +592,7 @@ public partial class RiderLab : Control
         root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
         AddChild(root);
 
-        var title = new Label { Text = $"RIDER LAB - {Spec.Name}  ·  {Spec.Tonnage:F0}t CHASSIS  ·  {Spec.ClassLabel}  ·  HOUSE {Spec.House?.ToUpperInvariant()}" };
+        var title = new Label { Text = Spec.Name }; // title is the rider name only (owner, 2026-11-23); tonnage/class/house moved to the status stack below the weapon list
         FlowUi.Heading(title);
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
@@ -625,7 +625,8 @@ public partial class RiderLab : Control
         // their first four rows in full. The minimum height
         // below is what guarantees it on a short window; the
         // root's tighter separation above pays for it.
-        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(400, 330) };
+        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(400, 280) };
+        sidePanel.SizeFlagsVertical = SizeFlags.ExpandFill; // the list adjusts to the screen height (owner, 2026-11-23)
         var sideSb = new StyleBoxFlat
         {
             BgColor = new Color(0.045f, 0.065f, 0.105f, 0.85f),
@@ -640,6 +641,7 @@ public partial class RiderLab : Control
         // it no longer runs flush into the subtitle and the
         // status lines.
         var sideWrap = new MarginContainer();
+        sideWrap.SizeFlagsVertical = SizeFlags.ExpandFill;
         sideWrap.AddThemeConstantOverride("margin_top", 16);
         sideWrap.AddThemeConstantOverride("margin_bottom", 16);
         mid.AddChild(sideWrap);
@@ -670,7 +672,7 @@ public partial class RiderLab : Control
         scroll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         catBox.AddChild(scroll);
         var rowsBox = new VBoxContainer();
-        rowsBox.AddThemeConstantOverride("separation", 4);
+        rowsBox.AddThemeConstantOverride("separation", 3);
         rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var rowsMargin = new MarginContainer();
         rowsMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill; // rows take the sidebar's full width, like the equipment page (owner, 2026-11-14): without the expand flag the scroll's child chain kept its content minimum and the rows stopped short
@@ -692,10 +694,10 @@ public partial class RiderLab : Control
         bool firstGroup = true;
         foreach (var (gTitle, gType) in catalogGroups)
         {
-            if (!firstGroup) rowsBox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+            if (!firstGroup) rowsBox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
             firstGroup = false;
             var gh = new Label { Text = gTitle };
-            gh.AddThemeFontSizeOverride("font_size", 13);
+            gh.AddThemeFontSizeOverride("font_size", 12);
             gh.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
             rowsBox.AddChild(gh);
             foreach (var w in WeaponCatalog.All)
@@ -704,18 +706,18 @@ public partial class RiderLab : Control
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text). Rows
             // carry no boxes and no separators (owner, 2026-11-14).
-            var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 52) };
-            hb.AddThemeConstantOverride("separation", 16); // clear gap between tile and name (owner)
+            var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
+            hb.AddThemeConstantOverride("separation", 12); // clear gap between tile and name (owner); rows compacted (owner, 2026-11-23)
             var drag = new DragTile { WeaponId = w.Id, Lab = this };
             drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
             drag.MouseExited += () => drag.Modulate = Colors.White;
-            var tileCtl = TileVisual(w, 40, drag);
+            var tileCtl = TileVisual(w, 34, drag);
             tileCtl.SizeFlagsVertical = SizeFlags.ShrinkCenter; // the tile fits INSIDE the row band (owner)
             hb.AddChild(tileCtl);
             var texts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
             texts.AddThemeConstantOverride("separation", 1);
             var nm = new Label { Text = w.Name, MouseFilter = MouseFilterEnum.Ignore };
-            nm.AddThemeFontSizeOverride("font_size", 14);
+            nm.AddThemeFontSizeOverride("font_size", 13);
             nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
             texts.AddChild(nm);
             var st = new Label { Text = StatsLine(w, full: true), MouseFilter = MouseFilterEnum.Ignore };
@@ -737,14 +739,14 @@ public partial class RiderLab : Control
         _pageEquipment = equipBox;
         // A plain row, like the weapons list (owner,
         // 2026-11-14): no box of its own.
-        var jhb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 52) };
-        jhb.AddThemeConstantOverride("separation", 16);
+        var jhb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
+        jhb.AddThemeConstantOverride("separation", 12);
         // The TH tile carries the weapon icons' framed look
         // (owner, 2026-11-14): a bordered square, not a plain
         // button face. The Button itself is faceless - the
         // frame and the 'TH' are children that ignore the
         // mouse, so the press lands on the button.
-        _jetsTileBtn = new Button { CustomMinimumSize = new Vector2(40, 40) };
+        _jetsTileBtn = new Button { CustomMinimumSize = new Vector2(34, 34) };
         _jetsTileBtn.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         _jetsTileBtn.TooltipText = "Fit or remove the thrusters";
         foreach (var bst in new[] { "normal", "hover", "pressed", "disabled", "focus" })
@@ -774,7 +776,7 @@ public partial class RiderLab : Control
         var jtexts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
         jtexts.AddThemeConstantOverride("separation", 1);
         var jnm = new Label { Text = "Thrusters", MouseFilter = MouseFilterEnum.Ignore };
-        jnm.AddThemeFontSizeOverride("font_size", 14);
+        jnm.AddThemeFontSizeOverride("font_size", 13);
         jnm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
         jtexts.AddChild(jnm);
         _jetsLine = new Label { MouseFilter = MouseFilterEnum.Ignore };
@@ -862,6 +864,12 @@ public partial class RiderLab : Control
         var statusBox = new VBoxContainer();
         statusBox.AddThemeConstantOverride("separation", 2);
         root.AddChild(statusBox);
+        // Identity under the list (owner, 2026-11-23): tonnage,
+        // class and house, moved out of the title.
+        var ident = new Label { Text = $"{Spec.Tonnage:F0}t  ·  {Spec.ClassLabel}  ·  HOUSE {Spec.House?.ToUpperInvariant()}" };
+        ident.AddThemeFontSizeOverride("font_size", 15);
+        ident.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        statusBox.AddChild(ident);
         _tonnage = new Label();
         _tonnage.AddThemeFontSizeOverride("font_size", 15);
         _tonnage.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
