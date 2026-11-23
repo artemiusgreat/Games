@@ -313,16 +313,19 @@ void fragment() {
         string grassSet = "leafy_grass", dirtSet = "forest_floor";
         if (WorldConfig.SnowGround)
         {
-            // Snow cover (owner): the ground matches a snowy
-            // sky - every channel lifts to blue-white snow,
-            // asphalt stays a paler plowed grey.
-            rt = new Color(1.35f, 1.45f, 1.75f); at = new Color(1.05f, 1.12f, 1.30f);
-            gt = rt; dt = rt;
-            // No green under snow (owner, 2026-11-22): where
-            // the splat calls for grass or dirt, a snow-covered
-            // mountain shows bare stone - the grass and dirt
-            // channels sample the rock set itself, so no green
-            // can show through the snow tints.
+            // Snow cover (owner, corrected 2026-11-23): snow
+            // replaces the GREEN only - grass and dirt lift to
+            // blue-white snow - while the mountains stay grey
+            // stone: the rock channel keeps a neutral stone
+            // tint. (The first pass lifted every channel to
+            // snow white and the whole range washed out.)
+            gt = new Color(1.35f, 1.45f, 1.75f); dt = gt;
+            rt = new Color(0.88f, 0.89f, 0.94f);
+            at = new Color(1.05f, 1.12f, 1.30f);
+            // No green under snow (owner, 2026-11-22): the
+            // grass and dirt channels sample the rock set
+            // itself, so no green can show through; under the
+            // snow tint it reads as snow-covered ground.
             grassSet = "aerial_rocks_02"; dirtSet = "aerial_rocks_02";
         }
         // Uniform ground zones (owner round 6, corrected
