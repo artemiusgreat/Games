@@ -196,6 +196,19 @@ void fragment() {
         nrm = mix(nrm, vec3(0.5, 0.5, 1.0), ws * 0.72);
         arm.g = mix(arm.g, 0.42 + 0.26 * grain, ws);
         arm.r = mix(arm.r, 1.0, ws);
+        // Stones show on the steeps (owner, 2026-11-23: he
+        // asked for stone on the mountains and the snow had
+        // buried every face). The splat was painted from the
+        // old analytic valley, so on the hills mesh its rock
+        // weight is meaningless; slope is the truth. Past
+        // ~30 degrees the triplanar rock takes over, its
+        // edge feathered by noise so the snow line is not a
+        // clean contour.
+        float steep = smoothstep(0.88, 0.66, wnorm.y + (vnoise(wpos.xz * 0.05) - 0.5) * 0.10);
+        alb = mix(alb, rock_tint.rgb * rkAlb, steep);
+        nrm = mix(nrm, rkNor, steep);
+        arm.g = mix(arm.g, rkArm.g, steep);
+        arm.r = mix(arm.r, rkArm.r, steep);
     }
     ALBEDO = alb;
     NORMAL_MAP = nrm;
