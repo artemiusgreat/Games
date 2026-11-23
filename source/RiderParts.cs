@@ -1044,6 +1044,7 @@ public sealed class RiderParts
     // ---------- queries ----------
 
     public bool Has(string id) => _parts.ContainsKey(id);
+    public bool PartHasVolumes(string id) => _parts.TryGetValue(id, out var p) && p.Volumes.Count > 0;
     // Tolerant lookups: a chassis may simply not HAVE a part (the
     // Hector has no missile pods). Absent reads as destroyed / 0 HP /
     // null rather than throwing - a hard dictionary lookup here

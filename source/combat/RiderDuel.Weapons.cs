@@ -290,7 +290,14 @@ public partial class RiderDuel
         // Rig-true: rockets leave from the pod part's actual center -
         // a chassis may carry a single rack, on either shoulder.
         string id = left ? SlotIds.PodL : SlotIds.PodR;
-        if (_partsPlayer != null && _partsPlayer.Has(id))
+        // A part with no volumes has no centre of its own:
+        // PartCenterWorld falls back to the rider's ROOT - the
+        // ground at its feet - and rockets spawned there die on
+        // the first rise of ground (owner, 2026-11-23: a Hector,
+        // whose pod_L is folded into the shoulder mesh, salvoed
+        // into the slope at its own feet). The torso-bone
+        // fallback below is the sane shoulder spot for such pods.
+        if (_partsPlayer != null && _partsPlayer.PartHasVolumes(id))
             return _partsPlayer.PartCenterWorld(id) + Vector3.Up * 0.3f;
         var torso = _player.BoneWorldPos("torso");
         var fwd = RiderWalker.HeadingVec(_player.TorsoYawWorld);
