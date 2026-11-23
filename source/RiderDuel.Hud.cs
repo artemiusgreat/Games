@@ -363,26 +363,27 @@ public partial class RiderDuel
 
         public override void _Draw()
         {
-            float cut = 16f;
-            var r = new Rect2(Vector2.Zero, Size);
-            Vector2[] pts =
+            // Rounded corners (owner, 2026-11-23: 'make borders
+            // round for all 4 sections in the corners of active
+            // game' - the clipped corners are retired). The
+            // frame stays the standing spec: one solid thin
+            // line at half alpha (2026-11-22).
+            var sb = new StyleBoxFlat
             {
-                new(cut, 0), new(r.Size.X, 0), new(r.Size.X, r.Size.Y - cut),
-                new(r.Size.X - cut, r.Size.Y), new(0, r.Size.Y), new(0, cut),
+                BgColor = new Color(0.010f, 0.028f, 0.058f, 0.84f),
+                BorderColor = new Color(Accent, 0.5f),
+                AntiAliasing = true,
             };
-            DrawColoredPolygon(pts, new Color(0.010f, 0.028f, 0.058f, 0.84f));
-            var ring = new Vector2[pts.Length + 1];
-            pts.CopyTo(ring, 0); ring[pts.Length] = pts[0];
-            // One solid thin frame line (owner, 2026-11-22: the
-            // glow pass and the top-edge tick read as a thickened
-            // corner - both removed).
-            DrawPolyline(ring, new Color(Accent, 0.5f), 1.0f, true);
+            sb.SetBorderWidthAll(1);
+            sb.SetCornerRadiusAll(12);
+            DrawStyleBox(sb, new Rect2(Vector2.Zero, Size));
         }
     }
 
-    // Small line icons for the panel headers, drawn to match the
-    // example: 0 weapons (list), 1 radar (arcs + sweep), 2 status
-    // (shield), 3 target (reticle).
+    // Small line icons for the panel headers: uniform round
+    // badges of one size (owner, 2026-11-23), glyphs inside:
+    // 0 weapons (lines), 1 radar (fan + sweep), 2 status
+    // (check), 3 target (reticle).
     private sealed partial class IconMark : Control
     {
         public int Kind;
@@ -392,47 +393,40 @@ public partial class RiderDuel
         {
             var c = Size / 2f;
             var col = Accent;
+            // Uniform round badges (owner, 2026-11-23: 'use
+            // round icons of the same size for all 4 corner
+            // sections... I would prefer icons to be more
+            // alike' - the elongated shield is gone). Every
+            // kind wears the same ring at the same radius; the
+            // glyph inside stays within the same inner zone.
+            float badge = Mathf.Min(Size.X, Size.Y) * 0.5f - 1f;
+            DrawArc(c, badge, 0, Mathf.Tau, 32, col, 1.6f, true);
             switch (Kind)
             {
-                case 0:
+                case 0: // weapons: three plain lines
                     for (int i = 0; i < 3; i++)
                     {
-                        float y = c.Y - 6 + i * 6;
-                        DrawCircle(new Vector2(c.X - 7, y), 1.6f, col);
-                        DrawLine(new Vector2(c.X - 3, y), new Vector2(c.X + 8, y), col, 2f);
+                        float y = c.Y - 3.2f + i * 3.2f;
+                        DrawLine(new Vector2(c.X - 4.2f, y), new Vector2(c.X + 4.2f, y), col, 1.7f, true);
                     }
                     break;
-                case 1:
-                    // The fan occupies the top half of the box;
-                    // dropping its centre by 3px centres the
-                    // glyph's mass on the box (owner, 2026-11-22:
-                    // the radar icon read shifted to the top).
-                    var rc = c + new Vector2(0, 3f);
-                    DrawArc(rc, 3.5f, -2.4f, -0.7f, 12, col, 1.8f, true);
-                    DrawArc(rc, 6.5f, -2.4f, -0.7f, 16, col, 1.8f, true);
-                    DrawArc(rc, 9.5f, -2.4f, -0.7f, 20, col, 1.8f, true);
-                    DrawLine(rc, rc + new Vector2(6.8f, -6.8f), col, 1.8f);
-                    DrawCircle(rc, 1.6f, col);
+                case 1: // radar: fan + sweep, centred in the badge
+                    DrawArc(c, 2.6f, -2.4f, -0.7f, 10, col, 1.6f, true);
+                    DrawArc(c, 5.0f, -2.4f, -0.7f, 12, col, 1.6f, true);
+                    DrawLine(c, c + new Vector2(3.4f, -3.4f), col, 1.6f, true);
+                    DrawCircle(c, 1.3f, col);
                     break;
-                case 2:
-                    Vector2[] sh =
-                    {
-                        new(c.X, c.Y - 8), new(c.X + 7, c.Y - 5), new(c.X + 7, c.Y + 1),
-                        new(c.X, c.Y + 9), new(c.X - 7, c.Y + 1), new(c.X - 7, c.Y - 5),
-                    };
-                    var ring = new Vector2[sh.Length + 1];
-                    sh.CopyTo(ring, 0); ring[sh.Length] = sh[0];
-                    DrawPolyline(ring, col, 1.8f, true);
-                    DrawLine(c + new Vector2(-3.5f, 0), c + new Vector2(-1, 3), col, 2f);
-                    DrawLine(c + new Vector2(-1, 3), c + new Vector2(4, -3.5f), col, 2f);
+                case 2: // status: a check (the shield is retired)
+                    DrawLine(c + new Vector2(-4f, 0.2f), c + new Vector2(-1.3f, 3f), col, 1.9f, true);
+                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(4.2f, -3.2f), col, 1.9f, true);
                     break;
-                default:
-                    DrawArc(c, 6.5f, 0, Mathf.Tau, 24, col, 1.8f, true);
-                    DrawCircle(c, 1.8f, col);
-                    DrawLine(c + new Vector2(-9.5f, 0), c + new Vector2(-4.5f, 0), col, 1.8f);
-                    DrawLine(c + new Vector2(4.5f, 0), c + new Vector2(9.5f, 0), col, 1.8f);
-                    DrawLine(c + new Vector2(0, -9.5f), c + new Vector2(0, -4.5f), col, 1.8f);
-                    DrawLine(c + new Vector2(0, 4.5f), c + new Vector2(0, 9.5f), col, 1.8f);
+                default: // target: inner ring, dot, four ticks
+                    DrawArc(c, 2.8f, 0, Mathf.Tau, 20, col, 1.6f, true);
+                    DrawCircle(c, 1.1f, col);
+                    DrawLine(c + new Vector2(-6.2f, 0), c + new Vector2(-4.2f, 0), col, 1.6f, true);
+                    DrawLine(c + new Vector2(4.2f, 0), c + new Vector2(6.2f, 0), col, 1.6f, true);
+                    DrawLine(c + new Vector2(0, -6.2f), c + new Vector2(0, -4.2f), col, 1.6f, true);
+                    DrawLine(c + new Vector2(0, 4.2f), c + new Vector2(0, 6.2f), col, 1.6f, true);
                     break;
             }
         }
