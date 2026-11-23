@@ -68,11 +68,11 @@ public static class WeaponCatalog
     public static readonly WeaponDef Ppc = new()
     { Id = "ppc", Name = "PPC", Short = "PPC", Type = WeaponSlotType.Energy, Weight = 9f, Damage = 22f, Cooldown = 1.4f, Range = 1000f, Beam = BeamKind.Ppc };
     public static readonly WeaponDef MachineGun = new()
-    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 250f, MuzzleSpeed = 420f, SfxPitch = -7f, SfxRate = 1.65f };
+    { Id = "machine_gun", Name = "Machine Gun", Short = "MG", Type = WeaponSlotType.Ballistic, Weight = 2f, Damage = 3f, Cooldown = 0.12f, Range = 250f, MuzzleSpeed = 4000f, SfxPitch = -7f, SfxRate = 1.65f };
     public static readonly WeaponDef Autocannon = new()
-    { Id = "autocannon", Name = "Autocannon", Short = "AC", Type = WeaponSlotType.Ballistic, Weight = 12f, Damage = 26f, Cooldown = 0.85f, Range = 750f, MuzzleSpeed = 420f };
+    { Id = "autocannon", Name = "Autocannon", Short = "AC", Type = WeaponSlotType.Ballistic, Weight = 12f, Damage = 26f, Cooldown = 0.85f, Range = 750f, MuzzleSpeed = 4000f };
     public static readonly WeaponDef HeavyCannon = new()
-    { Id = "heavy_cannon", Name = "Heavy Cannon", Short = "HVY", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 40f, Cooldown = 1.6f, Range = 750f, MuzzleSpeed = 420f, SfxRate = 0.72f };
+    { Id = "heavy_cannon", Name = "Heavy Cannon", Short = "HVY", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 40f, Cooldown = 1.6f, Range = 750f, MuzzleSpeed = 4000f, SfxRate = 0.72f };
     // Missile packs are per-pod: a full salvo fires every alive pod's
     // pack. The default fit (LRM in both pods) reproduces the original
     // 8-rocket salvo, 4 with one pod lost.
@@ -87,7 +87,7 @@ public static class WeaponCatalog
     // lab's mount list (CatalogListed = false), never from
     // resolution: no per-rider special cases in the engine.
     public static readonly WeaponDef Ac20 = new()
-    { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 500f, MuzzleSpeed = 420f, CatalogListed = false };
+    { Id = "ac20", Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 500f, MuzzleSpeed = 4000f, CatalogListed = false };
 
     public static readonly WeaponDef[] All =
     {
