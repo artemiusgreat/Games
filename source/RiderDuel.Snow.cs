@@ -118,7 +118,7 @@ public partial class RiderDuel
         };
         var flake = new QuadMesh
         {
-            Size = new Vector2(0.26f, 0.26f),
+            Size = new Vector2(0.11f, 0.11f),
             Material = new StandardMaterial3D
             {
                 AlbedoTexture = FlakeTexture(),
@@ -199,10 +199,13 @@ public partial class RiderDuel
     // field like the footprint stamp: 6 arms, two branch
     // pairs per arm at ~55 degrees, thickness tapering
     // toward every tip, a small centre knot. Semi-
-    // transparent by construction (peak alpha ~0.92, soft
+    // transparent by construction (peak alpha ~0.30, soft
     // edges). The old draw pass was a tiny sphere, which
     // rendered as a plain grey disc (owner, 2026-11-23:
-    // "just a plain circle with no shape").
+    // "just a plain circle with no shape"). Third pass the
+    // same day: smaller and fainter still - at 0.11u across
+    // and a third of the alpha, a flake is a drifting speck
+    // whose shape cannot be made out, as it should be.
     private static ImageTexture FlakeTexture()
     {
         const int S = 96;
@@ -270,8 +273,8 @@ public partial class RiderDuel
                 if (d < best) { best = d; thick = Mathf.Lerp(T0, T1, t); }
             }
             float core = Mathf.Clamp(1f - p.Length() / 0.16f, 0f, 1f);
-            float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.55f;
-            alpha = Mathf.Max(alpha, core * 0.34f);
+            float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.30f;
+            alpha = Mathf.Max(alpha, core * 0.18f);
             img.SetPixel(x, y, new Color(0.96f, 0.98f, 1f, alpha));
         }
         return ImageTexture.CreateFromImage(img);
