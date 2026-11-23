@@ -898,12 +898,34 @@ public partial class RiderDuel
             foreach (var (secTitle, items) in Sections)
             {
                 if (!firstSection)
-                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 9) });
+                {
+                    // A hairline between sections (owner),
+                    // evenly spaced above and below.
+                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 7) });
+                    var sep = new ColorRect { Color = new Color(0.80f, 0.86f, 0.96f, 0.28f), CustomMinimumSize = new Vector2(0, 1) };
+                    sep.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                    list.AddChild(sep);
+                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 7) });
+                }
                 firstSection = false;
+                // The subtitle wears a band (owner): body-size
+                // text on a padded, semi-transparent panel
+                // with a semi-transparent border.
+                var headBand = new PanelContainer();
+                var hsb = new StyleBoxFlat
+                {
+                    BgColor = new Color(0.55f, 0.65f, 0.85f, 0.13f),
+                    BorderColor = new Color(0.75f, 0.82f, 0.95f, 0.40f),
+                    ContentMarginLeft = 10, ContentMarginTop = 4,
+                    ContentMarginRight = 10, ContentMarginBottom = 4
+                };
+                hsb.SetBorderWidthAll(1);
+                headBand.AddThemeStyleboxOverride("panel", hsb);
                 var head = new Label { Text = secTitle };
-                head.AddThemeFontSizeOverride("font_size", 13);
+                head.AddThemeFontSizeOverride("font_size", 14);
                 head.AddThemeColorOverride("font_color", gold);
-                list.AddChild(head);
+                headBand.AddChild(head);
+                list.AddChild(headBand);
                 foreach (var (what, key) in items)
                 {
                     var h = new HBoxContainer();
@@ -1189,7 +1211,7 @@ public partial class RiderDuel
             if (tfg != null) tfg.BgColor = !fitted ? CdDead
                 : _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
             _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
-            _lblThr.Text = !fitted ? "THRUST -" : _player.Airborne ? "THRUST ▲" : "THRUST";
+            _lblThr.Text = !fitted ? "THRUST -" : _player.Airborne ? "THRUST \u25b2" : "THRUST";
         }
 
         // Per-part status cells (player rider).
