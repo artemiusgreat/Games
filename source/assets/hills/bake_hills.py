@@ -78,8 +78,61 @@ for iz in range(N):
             # fallback: nearest vertex height (footprint edges)
             d2 = (V[:, 0] - ox) ** 2 + (V[:, 2] - oz) ** 2
             best = V[int(np.argmin(d2)), 1]
-        grid[iz, ix] = best * factor
+        grid[iz, ix] = best  # OBJ units; the factor applies after the despike
 print(f"misses (fallback)={miss}")
+
+# --- post-process stages (OBJ units) ---
+# Despike (owner, 2026-11-22: needle spikes stand on the slopes).
+# Stage 1: a single-cell spike towers over ALL of its neighbours
+# at once; a real ridge always shares its height with at least
+# one neighbour along the ridge line, so capping only the
+# all-neighbour outliers leaves ridges and peaks intact. Border
+# cells compare against their real neighbours only (the extremes
+# pad with -/+inf, never the cell itself).
+def neighbour_extremes(g):
+    gp_hi = np.pad(g, 1, constant_values=-np.inf)
+    gp_lo = np.pad(g, 1, constant_values=np.inf)
+    hi = np.full_like(g, -np.inf); lo = np.full_like(g, np.inf)
+    for dz in range(3):
+        for dx in range(3):
+            if dz == 1 and dx == 1: continue
+            hi = np.maximum(hi, gp_hi[dz:dz + g.shape[0], dx:dx + g.shape[1]])
+            lo = np.minimum(lo, gp_lo[dz:dz + g.shape[0], dx:dx + g.shape[1]])
+    return hi, lo
+
+for p in range(3):
+    hi, lo = neighbour_extremes(grid)
+    capped = np.where(grid > hi + 0.8, hi + 0.2, grid)
+    capped = np.where(capped < lo - 0.8, lo - 0.2, capped)
+    changed = int(np.count_nonzero(capped != grid))
+    grid = capped
+    print(f"despike pass {p + 1}: {changed} cells capped/filled")
+
+# Stage 2: the scan also carries narrow ridge fins - crests only
+# 2-3 cells wide standing 12-19 game units proud of the ground a
+# few cells to either side; end-on they read as free-standing
+# spikes. Cap how far a cell may stand above BOTH cells `off`
+# away on each axis: broad slopes keep their shape (their +-off
+# neighbours are nearly as high), only sub-6-cell fins are shaved
+# toward their surroundings.
+def axis_cap(g, off, allow):
+    cap = np.full_like(g, np.inf)
+    for axis in (0, 1):
+        ga = np.moveaxis(g, axis, 0)
+        m = np.full_like(ga, -np.inf)
+        m[off:] = np.maximum(m[off:], ga[:-off])
+        m[:-off] = np.maximum(m[:-off], ga[off:])
+        ca = np.moveaxis(cap, axis, 0)
+        ca[:] = np.minimum(ca, m)
+    return np.minimum(g, cap + allow)
+
+for p in range(2):
+    capped = axis_cap(grid, 3, 0.8)
+    changed = int(np.count_nonzero(capped != grid))
+    grid = capped
+    print(f"fin-cap pass {p + 1}: {changed} cells shaved")
+# --- end post-process ---
+grid *= factor
 out = grid.astype('<f4')
 with open(out_path, 'wb') as f:
     f.write(out.tobytes())
