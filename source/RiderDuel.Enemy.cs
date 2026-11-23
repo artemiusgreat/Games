@@ -229,7 +229,8 @@ public partial class RiderDuel
     private RiderWalker _foeTargetW;
 
     // The range game, shared by both foes: advance beyond 38u,
-    // back off inside 26u, orbit in the band; the torso tracks the
+    // walk out inside 26u (turned away, torso still tracking),
+    // orbit in the band; the torso tracks the
     // target (snapping while the head lives, lagging at 0.6 rad/s
     // once it is gone). A downed foe has a leg gone, so it limps -
     // the walker's SpeedFactor throttles its drive - and keeps
@@ -244,7 +245,13 @@ public partial class RiderDuel
         float yawTo = RiderWalker.YawOf(toT.Normalized());
         float desiredYaw, spd;
         if (dist > 38f) { desiredYaw = yawTo; spd = pace; }
-        else if (dist < 26f) { desiredYaw = yawTo; spd = -pace * 0.5f; }
+        // Backing off used to be a NEGATIVE throttle on the
+        // target bearing - the legs stepped backward while the
+        // torso faced the target, which reads as walking
+        // backward (owner, 2026-11-23). Now the legs turn away
+        // and WALK out of the bubble at the same half pace; the
+        // torso keeps tracking the target on its own twist.
+        else if (dist < 26f) { desiredYaw = yawTo + Mathf.Pi; spd = pace * 0.5f; }
         else
         {
             orbitTimer += delta;
