@@ -6,6 +6,11 @@ using System.Collections.Generic;
 // stays one partial class - see RiderDuel.cs for the field block.
 public partial class RiderDuel
 {
+    // Sniper view state (T toggles; see the chase branch of
+    // UpdateCamera and the mouse-look scaling in Player input).
+    private bool _sniper;
+    private const float SniperFov = 16f;
+
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
     {
         if (_pendingPath != null || _capturing) return;
@@ -404,6 +409,15 @@ public partial class RiderDuel
             var lookTarget = _cam.GlobalPosition + aimDir;
             if (_cam.GlobalPosition.DistanceSquaredTo(lookTarget) > 0.0001f)
                 _cam.LookAt(lookTarget, Vector3.Up);
+            // Sniper view (owner, 2026-11-22, MechWarrior-style):
+            // T toggles a narrow 16-degree FOV on the same boom -
+            // the aim line is FOV-independent, so the crosshair
+            // stays true; the ease keeps the zoom from snapping.
+            if (delta > 0f)
+            {
+                float fovT = _sniper ? SniperFov : 70f;
+                _cam.Fov = Mathf.Lerp(_cam.Fov, fovT, 1f - Mathf.Exp(-11f * delta));
+            }
             if (delta > 0f && _shake > 0.002f)
             {
                 _cam.GlobalPosition += new Vector3(

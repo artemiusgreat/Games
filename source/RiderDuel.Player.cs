@@ -39,6 +39,14 @@ public partial class RiderDuel
             ResetDuel();
             return;
         }
+        if (e is InputEventKey zk && zk.Pressed && !zk.Echo && zk.Keycode == Key.T)
+        {
+            // Sniper view toggle (owner, 2026-11-22): the FOV
+            // ease and the mouse-look scaling ride on _sniper.
+            _sniper = !_sniper;
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (e is InputEventKey tk && tk.Pressed && !tk.Echo && tk.Keycode == Key.Tab)
         {
             // Cycle the ONE active enemy among the living
@@ -154,13 +162,16 @@ public partial class RiderDuel
         {
             // The mouse owns the torso's WORLD bearing (round 7);
             // MaintainTorsoWorldYaw turns it into a twist each frame.
-            _torsoWorldYaw -= mm.Relative.X * 0.0030f;
+            // In sniper view the look slows by the zoom ratio, so
+            // fine aim stays controllable at 16 degrees.
+            float sensK = _sniper ? SniperFov / 70f : 1f;
+            _torsoWorldYaw -= mm.Relative.X * 0.0030f * sensK;
             // The mouse target roams free (owner, round 13): the
             // wide aim pitch accumulates past the torso's mechanical
             // clamp, and the torso follows only as far as its stops
             // allow. Seeded from the torso on first motion.
             if (float.IsNaN(_player.AimPitchWide)) _player.AimPitchWide = _player.TorsoPitch;
-            _player.AimPitchWide = Mathf.Clamp(_player.AimPitchWide - mm.Relative.Y * 0.0025f, -1.35f, 1.35f);
+            _player.AimPitchWide = Mathf.Clamp(_player.AimPitchWide - mm.Relative.Y * 0.0025f * sensK, -1.35f, 1.35f);
             _player.TorsoPitch = _player.AimPitchWide;
         }
     }
