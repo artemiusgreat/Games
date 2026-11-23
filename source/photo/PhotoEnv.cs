@@ -132,10 +132,14 @@ void fragment() {
     // and the normal relief dissolve into per-pixel dither on
     // open slopes (owner's streaked-mountains screenshot,
     // 2026-11-15), so the mix leans on the coarse scale and
-    // the normal depth eases off as the ground recedes.
+    // the normal depth eases off as the ground recedes. The
+    // fade was too strong (owner, 2026-11-23: at gameplay
+    // distance the pattern 'looks flat') - the far lean and
+    // the depth ease below are softened; the dither guard
+    // stays, just shallower.
     float camd = distance(wpos, CAMERA_POSITION_WORLD);
     float far_k = smoothstep(150.0, 450.0, camd);
-    float detmix = mix(0.45, 0.85, far_k);
+    float detmix = mix(0.45, 0.58, far_k);
     float cellh = fract(sin(dot(floor(wpos.xz / 160.0), vec2(127.1, 311.7))) * 43758.5453);
     detmix = clamp(detmix + (cellh - 0.5) * 0.35, 0.05, 0.95);
     vec2 uv1 = wpos.xz * 0.055;
@@ -207,7 +211,7 @@ void fragment() {
         snowCol *= 0.895 + 0.21 * vnoise(wpos.xz * 0.021); // ~50u drifts
         snowCol *= 0.945 + 0.11 * vnoise(wpos.xz * 0.33);  // ~3u soft mottle
         alb = mix(alb, snowCol, ws);
-        nrm = mix(nrm, vec3(0.5, 0.5, 1.0), ws * 0.72);
+        nrm = mix(nrm, vec3(0.5, 0.5, 1.0), ws * 0.50);
         arm.g = mix(arm.g, 0.42 + 0.26 * grain, ws);
         arm.r = mix(arm.r, 1.0, ws);
         // Stones show on the steeps (owner, 2026-11-23: he
@@ -230,7 +234,7 @@ void fragment() {
     }
     ALBEDO = alb;
     NORMAL_MAP = nrm;
-    NORMAL_MAP_DEPTH = 0.9 * (1.0 - far_k * 0.7);
+    NORMAL_MAP_DEPTH = 1.05 * (1.0 - far_k * 0.35);
     ROUGHNESS = clamp(arm.g, 0.05, 1.0);
     AO = arm.r;
 }

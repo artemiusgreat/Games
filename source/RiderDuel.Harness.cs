@@ -942,7 +942,12 @@ public partial class RiderDuel
             // and to the side, above its own ground, looking
             // at the face point and a little up it.
             var side = new Vector3(-up.Z, 0f, up.X);
-            var camPos = best - up * 55f + side * 25f + Vector3.Up * 14f;
+            // ~280u out (owner's flat-mountains verdict, 2026-11-23):
+            // his screenshots are gameplay-distance views, and the
+            // terrain shader fades its detail with range - a 60u
+            // park never exercised the fade and certified a look
+            // he never sees. Frame from the distance he plays at.
+            var camPos = best - up * 260f + side * 90f + Vector3.Up * 40f;
             float camGround = Main.HeightAt(camPos.X, camPos.Z) + 10f;
             if (camPos.Y < camGround) camPos.Y = camGround;
             _stoneCamPos = camPos;
