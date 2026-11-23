@@ -84,6 +84,14 @@ public partial class RiderDuel
             _cam.GlobalPosition = new Vector3(120f, Main.HeightAt(120f, -120f) + 30f, -120f);
             _cam.LookAt(new Vector3(-40f, Main.HeightAt(-40f, 40f) + 4f, 40f), Vector3.Up);
         }
+        else if (_camMode == "stone")
+        {
+            // The mountain-stone check (--stone-shot): the
+            // probe picks a broad steep face and parks the
+            // camera off it, looking at the face.
+            _cam.GlobalPosition = _stoneCamPos;
+            _cam.LookAt(_stoneCamTarget, Vector3.Up);
+        }
         else if (_camMode == "slopeClose")
         {
             // Low on the dome flank, looking up it: planar-UV

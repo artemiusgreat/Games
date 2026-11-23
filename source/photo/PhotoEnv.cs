@@ -97,7 +97,13 @@ varying vec3 wnorm;
 // their composite has no short period left to recognise, and
 // the blend between them also drifts per 160u cell below, so
 // no two stretches of slope wear the same pattern.
-vec2 rot38(vec2 p) { return mat2(0.788, -0.616, 0.616, 0.788) * p; }
+vec2 rot38(vec2 p) { return vec2(0.788 * p.x + 0.616 * p.y, -0.616 * p.x + 0.788 * p.y); }
+// (Was mat2(0.788, -0.616, 0.616, 0.788) * p - Godot's
+// shader compiler rejects the 4-scalar mat2 constructor,
+// and the failure was SILENT in play: the whole terrain
+// shader fell back to a default material, which is why
+// the snow material and the slope stones never showed
+// from 2026-11-23 until the --stone-shot log audit.)
 void vertex() {
     wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -204,7 +210,11 @@ void fragment() {
         // ~30 degrees the triplanar rock takes over, its
         // edge feathered by noise so the snow line is not a
         // clean contour.
-        float steep = smoothstep(0.88, 0.66, wnorm.y + (vnoise(wpos.xz * 0.05) - 0.5) * 0.10);
+        // (Reversed-edge smoothstep was UB and returned 0 on
+        // real drivers - the mix NEVER fired and the owner
+        // saw no stones at all; written in the well-defined
+        // direction now, proven by the --stone-shot frame.)
+        float steep = 1.0 - smoothstep(0.66, 0.88, wnorm.y + (vnoise(wpos.xz * 0.05) - 0.5) * 0.10);
         alb = mix(alb, rock_tint.rgb * rkAlb, steep);
         nrm = mix(nrm, rkNor, steep);
         arm.g = mix(arm.g, rkArm.g, steep);

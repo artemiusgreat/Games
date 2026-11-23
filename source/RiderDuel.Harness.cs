@@ -888,6 +888,71 @@ public partial class RiderDuel
         }
     }
 
+    // ---------- Slope shot ----------
+    // Owner (2026-11-23): "I still don't see any stones in
+    // the mountains." The slope-rock mix in the snow shader
+    // was never frame-verified (the Babylon vista capture
+    // times out on this VM). Stage the player at the foot of
+    // the steepest HIGH slope on the real gameplay surface
+    // and take the standard chase capture facing uphill.
+    private int _ssPhase;
+    private double _ssT;
+
+    private void UpdateStoneShot(float dt)
+    {
+        _ssT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_ssPhase == 0 && _ssT > 1.2f)
+        {
+            // A BROAD face, not the single steepest cell: the
+            // first staging picked a 76-degree needle remnant
+            // and the rider slid off it. Score each candidate
+            // by the WEAKEST slope in its +-24u neighbourhood -
+            // the winner is steep everywhere around it.
+            float SlopeAt(float x, float z)
+            {
+                float gx = (Main.HeightAt(x + 6f, z) - Main.HeightAt(x - 6f, z)) / 12f;
+                float gz = (Main.HeightAt(x, z + 6f) - Main.HeightAt(x, z - 6f)) / 12f;
+                return Mathf.Sqrt(gx * gx + gz * gz);
+            }
+            Vector3 best = Vector3.Zero, bgrad = Vector3.Zero;
+            float bs = 0f, bh = 0f;
+            for (float x = -860f; x <= 860f; x += 8f)
+            for (float z = -860f; z <= 860f; z += 8f)
+            {
+                float h = Main.HeightAt(x, z);
+                if (h < 300f) continue; // high faces only - no river banks or site rims
+                float s0 = SlopeAt(x, z);
+                if (s0 < 0.6f) continue; // ~31 deg at the centre, minimum
+                float sMin = Mathf.Min(Mathf.Min(SlopeAt(x - 24f, z), SlopeAt(x + 24f, z)),
+                                       Mathf.Min(SlopeAt(x, z - 24f), SlopeAt(x, z + 24f)));
+                float score = Mathf.Min(s0, sMin);
+                if (score > bs)
+                {
+                    bs = score;
+                    best = new Vector3(x, h, z); bh = h;
+                    float gx = (Main.HeightAt(x + 6f, z) - Main.HeightAt(x - 6f, z)) / 12f;
+                    float gz = (Main.HeightAt(x, z + 6f) - Main.HeightAt(x, z - 6f)) / 12f;
+                    bgrad = new Vector3(gx, 0f, gz);
+                }
+            }
+            var up = bgrad.Normalized();
+            // Park the camera off the face (the chase boom
+            // buries itself in a 50-degree hillside): downhill
+            // and to the side, above its own ground, looking
+            // at the face point and a little up it.
+            var side = new Vector3(-up.Z, 0f, up.X);
+            var camPos = best - up * 55f + side * 25f + Vector3.Up * 14f;
+            float camGround = Main.HeightAt(camPos.X, camPos.Z) + 10f;
+            if (camPos.Y < camGround) camPos.Y = camGround;
+            _stoneCamPos = camPos;
+            _stoneCamTarget = best + up * 10f;
+            GD.Print($"STONESHOT point={best} h={bh:F0} weakest-slope={Mathf.RadToDeg(Mathf.Atan(bs)):F1}deg cam={camPos}");
+            QueueCapture("res://proof/stone.png", "stone", "stone", () => GetTree().Quit());
+            _ssPhase = 1;
+        }
+    }
+
     // ---------- Controls popup capture ----------
     private double _csT;
     private void UpdateControlsShot(float dt)
