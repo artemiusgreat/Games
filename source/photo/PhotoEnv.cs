@@ -74,6 +74,7 @@ uniform sampler2D asph_diff : source_color, repeat_enable;
 uniform sampler2D asph_nor : hint_normal, repeat_enable;
 uniform sampler2D asph_arm : repeat_enable;
 uniform vec4 grass_tint : source_color = vec4(1.0);
+uniform float snow_mode = 0.0;
 uniform vec4 dirt_tint : source_color = vec4(1.0);
 uniform vec4 rock_tint : source_color = vec4(1.0);
 uniform vec4 asph_tint : source_color = vec4(1.0);
@@ -100,6 +101,12 @@ vec2 rot38(vec2 p) { return mat2(0.788, -0.616, 0.616, 0.788) * p; }
 void vertex() {
     wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+float vhash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(vhash(i), vhash(i + vec2(1.0, 0.0)), f.x),
+               mix(vhash(i + vec2(0.0, 1.0)), vhash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 void fragment() {
     vec4 sp = texture(splat, wpos.xz / WORLD_SIZE + 0.5);
@@ -161,6 +168,35 @@ void fragment() {
     vec3 arm = vec3(1.0, 0.9, 0.0);
     arm *= wg * texture(grass_arm, uv1).rgb + wb * texture(dirt_arm, uv1).rgb
          + wr * rkArm + wa * texture(asph_arm, uv1).rgb;
+    // Snow's own micro-surface (owner, 2026-11-23): under snow
+    // cover the grass/dirt weights ARE the snowfield, and they
+    // were sampling the rock set - sedimentary strata normals
+    // and rock roughness tinted white, which reads as painted
+    // rock. Snow gets near-flat normals (a whisper of grain),
+    // its own fine-grained roughness, and full AO; the rock
+    // weight keeps the stone's maps, so steeps stay exposed.
+    if (snow_mode > 0.5) {
+        float ws = clamp(wg + wb, 0.0, 1.0);
+        float grain = fract(sin(dot(floor(wpos.xz * 9.0), vec2(127.1, 311.7))) * 43758.5453);
+        float grain2 = fract(sin(dot(floor(wpos.xz * 2.3 + 40.0), vec2(269.5, 183.3))) * 28001.8384);
+        // The snowfield's albedo: the underlying texture kept
+        // as VALUE only - its luminance becomes soft shading
+        // (dips and drifts), its chroma and contrast go.
+        // (v1 flattened the normals over the tinted rock
+        // albedo and the field blew out to a featureless
+        // white void in the ground capture.)
+        float lum = clamp(dot(alb, vec3(0.3333)), 0.0, 1.3);
+        vec3 snowCol = vec3(0.88, 0.925, 1.05) * (0.84 + 0.34 * lum);
+        // Soft value patches at gameplay scales - v2's grain
+        // cells were sub-metre and the field still read as a
+        // flat white void in the ground capture.
+        snowCol *= 0.895 + 0.21 * vnoise(wpos.xz * 0.021); // ~50u drifts
+        snowCol *= 0.945 + 0.11 * vnoise(wpos.xz * 0.33);  // ~3u soft mottle
+        alb = mix(alb, snowCol, ws);
+        nrm = mix(nrm, vec3(0.5, 0.5, 1.0), ws * 0.72);
+        arm.g = mix(arm.g, 0.42 + 0.26 * grain, ws);
+        arm.r = mix(arm.r, 1.0, ws);
+    }
     ALBEDO = alb;
     NORMAL_MAP = nrm;
     NORMAL_MAP_DEPTH = 0.9 * (1.0 - far_k * 0.7);
@@ -345,6 +381,7 @@ void fragment() {
                 zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
         }
         m.SetShaderParameter("solid_zones", zones);
+        m.SetShaderParameter("snow_mode", WorldConfig.SnowGround ? 1f : 0f);
         m.SetShaderParameter("grass_tint", gt);
         m.SetShaderParameter("dirt_tint", dt);
         m.SetShaderParameter("rock_tint", rt);
