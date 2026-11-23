@@ -863,16 +863,20 @@ public partial class RiderDuel
             var ink = new Color(0.92f, 0.94f, 0.96f);
             foreach (var (key, what) in Rows)
             {
+                // Owner (2026-11-23): label first, key second -
+                // the label right-aligned so the descriptions
+                // form a clean column ending at the keys.
                 var h = new HBoxContainer();
                 h.AddThemeConstantOverride("separation", 16);
+                var w = new Label { Text = what, HorizontalAlignment = HorizontalAlignment.Right };
+                w.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                w.AddThemeFontSizeOverride("font_size", 14);
+                w.AddThemeColorOverride("font_color", ink);
+                h.AddChild(w);
                 var k = new Label { Text = key, CustomMinimumSize = new Vector2(170, 0) };
                 k.AddThemeFontSizeOverride("font_size", 14);
                 k.AddThemeColorOverride("font_color", gold);
                 h.AddChild(k);
-                var w = new Label { Text = what };
-                w.AddThemeFontSizeOverride("font_size", 14);
-                w.AddThemeColorOverride("font_color", ink);
-                h.AddChild(w);
                 v.AddChild(h);
             }
 
