@@ -153,6 +153,14 @@ void fragment() {
     rkAlb += tw.y * mix(texture(rock_diff, uv1).rgb, texture(rock_diff, uv2).rgb, detmix);
     rkAlb += tw.x * mix(texture(rock_diff, wpos.zy * 0.055).rgb, texture(rock_diff, rot38(wpos.zy * 0.019) + 0.37).rgb, detmix);
     rkAlb += tw.z * mix(texture(rock_diff, wpos.xy * 0.055).rgb, texture(rock_diff, rot38(wpos.xy * 0.019) + 0.37).rgb, detmix);
+    // Winter rule (owner, 2026-11-23): under snow the stone
+    // is GREY or the field is WHITE - the scanned set's warm
+    // brown chroma reads as mossy green in the winter light.
+    // The rock albedo goes value-only under snow_mode, like
+    // the snowfield itself; the relief and roughness maps
+    // keep all the detail. (Both the splat rock weight and
+    // the slope mix drink from rkAlb, so this covers both.)
+    if (snow_mode > 0.5) rkAlb = vec3(dot(rkAlb, vec3(0.299, 0.587, 0.114)));
     vec3 rkNor = vec3(0.0);
     rkNor += tw.y * texture(rock_nor, uv1).rgb;
     rkNor += tw.x * texture(rock_nor, wpos.zy * 0.055).rgb;
