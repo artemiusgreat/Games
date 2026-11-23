@@ -1257,6 +1257,23 @@ public sealed class RiderParts
             rec.SavedOverlay = rec.Mi.MaterialOverlay;
             var pivot = rec.Mi.Mesh.GetAabb().GetCenter();
             var d = new Transform3D(rs, pivot - rs * pivot);
+            // Audit (owner report, 2026-11-23: a chunk of a
+            // wrecked Hector leg hung in the air beside it):
+            // the deformation must move a mesh's skinned centre
+            // by centimetres, not metres - measure it in the
+            // same skinning chain BreakPart uses and log any
+            // mesh the wreck throws off its part.
+            var bind = rec.OrigSkin != null && rec.BindIndex >= 0
+                ? rec.OrigSkin.GetBindPose(rec.BindIndex)
+                : _skel.GetBoneGlobalRest(rec.Bone).AffineInverse();
+            var skin = _skel.GetBoneGlobalPose(rec.Bone) * bind;
+            var cBefore = (rec.Mi.GlobalTransform * skin) * pivot;
+            var after = new Transform3D(rec.Mi.GlobalTransform.Basis * (rec.OrigLocal * d).Basis,
+                rec.Mi.GlobalTransform.Origin + rec.Mi.GlobalTransform.Basis * (rec.OrigLocal * d).Origin);
+            var cAfter = (after * skin) * pivot;
+            float disp = cBefore.DistanceTo(cAfter);
+            if (disp > 0.3f)
+                Dbg.Print($"BRK WRECKAUDIT {_riderId} {part.Id} mesh={rec.Mi.Name} disp={disp:F2}u bone={rec.BoneName} origLocalOrigin={rec.OrigLocal.Origin} aabbC={pivot}");
             rec.Mi.Transform = rec.OrigLocal * d;
             rec.Mi.MaterialOverlay = WreckOverlay;
         }
@@ -1329,6 +1346,20 @@ public sealed class RiderParts
             AngSpeed = 1.6f
         };
         _debris.Add(d);
+    }
+
+    // Probe dump: every debris piece's rest state against the
+    // terrain under its own box (owner report, 2026-11-23: a
+    // chunk hanging in the air beside a walking Hector).
+    public void DumpDebris(string tag)
+    {
+        foreach (var d in _debris)
+        {
+            var box = WorldAabb(d.Node);
+            var low = LowestCorner(box);
+            GD.Print($"DEBRISDUMP {tag} {_riderId} part={d.Part.Id} settled={d.Settled} pos={d.Node.GlobalPosition} aabbMinY={box.Position.Y:F2} lowCornerY={low.Y:F2} groundAtLow={Main.HeightAt(low.X, low.Z):F2} groundAtCenter={Main.HeightAt(box.GetCenter().X, box.GetCenter().Z):F2}");
+        }
+        if (_debris.Count == 0) GD.Print($"DEBRISDUMP {tag} {_riderId} (no debris)");
     }
 
     public void StepDebris(float dt)

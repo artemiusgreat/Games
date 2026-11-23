@@ -700,6 +700,67 @@ public partial class RiderDuel
     }
 
 
+
+    // ---------- Debris-on-a-slope probe ----------
+    // Owner report (2026-11-23): after shooting a Hector's
+    // leg, a chunk hung in the air beside him. Stage it: a
+    // Hector on the steepest slope near the home pad, break
+    // everything that detaches, wreck a leg, walk him away
+    // for five seconds, then dump every debris piece's rest
+    // state against the terrain under its own box and take
+    // the chase frame.
+    private int _dbPhase;
+    private double _dbT;
+
+    private void UpdateDebrisProbe(float dt)
+    {
+        _dbT += dt;
+        if (_dbPhase == 0 && _dbT > 1.2f)
+        {
+            SetRiderSelection("hector", "enyo"); ApplyLoadout();
+            _camMode = CamModes.Chase;
+            // Find the steepest ground on the map (the pad
+            // fan only found flattened site ground, ~12 deg -
+            // the slope conform never engaged there).
+            Vector3 best = PadWorld(0); float bestSlope = 0f;
+            for (float gx = -900f; gx <= 900f; gx += 25f)
+            for (float gz = -900f; gz <= 900f; gz += 25f)
+            {
+                float sl = Mathf.Abs(Main.HeightAt(gx + 3f, gz) - Main.HeightAt(gx - 3f, gz))
+                         + Mathf.Abs(Main.HeightAt(gx, gz + 3f) - Main.HeightAt(gx, gz - 3f));
+                if (sl > bestSlope) { bestSlope = sl; best = new Vector3(gx, Main.HeightAt(gx, gz), gz); }
+            }
+            _player.Teleport(best, 0f);
+            _hpPlayer = 100000f; _hpEnemy = 100000f;
+            GD.Print($"DEBRISPROBE staged at {best} slopeMetric={bestSlope:F1}");
+            _dbPhase = 1; _dbT = 0f;
+        }
+        else if (_dbPhase == 1 && _dbT > 0.5f)
+        {
+            _partsPlayer.DamagePart("arm_L", 100000f);
+            if (_partsPlayer.Has("gun")) _partsPlayer.DamagePart("gun", 100000f);
+            _partsPlayer.DamagePart("leg_L", 100000f);
+            _partsPlayer.DumpDebris("t0");
+            _dbPhase = 2; _dbT = 0f;
+        }
+        else if (_dbPhase == 2)
+        {
+            _player.SetDrive(0f, 0.55f); // walk away from the wreck site
+            if (_dbT > 5f)
+            {
+                _player.SetDrive(0f, 0f);
+                _partsPlayer.DumpDebris("t5");
+                QueueCapture("res://proof/debris_probe.png", "debris", CamModes.Chase);
+                _dbPhase = 3; _dbT = 0f;
+            }
+        }
+        else if (_dbPhase == 3 && _dbT > 1.5f)
+        {
+            GD.Print("DEBRISPROBE DONE");
+            GetTree().Quit(0);
+        }
+    }
+
     // ---------- PPC long-lane probe ----------
     // Owner report (2026-11-23): a target read 0.91 km on the
     // panel and the PPC did no damage. Stage the exact geometry
