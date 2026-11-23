@@ -27,13 +27,11 @@ public partial class SniperScope : Control
         var c = size * 0.5f;
         var cyan = new Color(0.45f, 0.85f, 1f, 0.9f);
         var red = new Color(1f, 0.38f, 0.28f, 0.55f);
-        // Semi-transparent backdrop over everything.
-        DrawRect(new Rect2(Vector2.Zero, size), new Color(0.02f, 0.05f, 0.10f, 0.36f));
-        // The scope disc: lighter than the backdrop, rimmed.
-        float scopeR = Mathf.Min(size.X, size.Y) * 0.46f;
-        DrawCircle(c, scopeR, new Color(0.55f, 0.75f, 0.95f, 0.08f));
-        DrawArc(c, scopeR, 0f, Mathf.Tau, 128, new Color(0.45f, 0.85f, 1f, 0.5f), 2.5f, true);
-        DrawArc(c, scopeR * 0.93f, 0f, Mathf.Tau, 128, red, 1.5f, true);
+        // Semi-transparent backdrop over everything (owner,
+        // 2026-11-23: less transparent than the first cut,
+        // and the two big outer circles around the reticle
+        // are gone - backdrop + reticle only).
+        DrawRect(new Rect2(Vector2.Zero, size), new Color(0.02f, 0.05f, 0.10f, 0.60f));
         // Round reticle, the radar's size: 300 px across.
         float r = 150f;
         DrawArc(c, r, 0f, Mathf.Tau, 128, cyan, 2f, true);
