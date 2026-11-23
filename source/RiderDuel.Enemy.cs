@@ -48,6 +48,33 @@ public partial class RiderDuel
         return engaged;
     }
 
+    // An NPC fires exactly ONE ballistic weapon - the one picked
+    // at spawn. When that weapon's mount is shot away (or the
+    // slot never had a weapon), the record used to go silent
+    // forever: the shared gunnery returns on the dead mount and
+    // nothing ever re-picked, so a disarmed Hector stood inert
+    // at point blank (owner, 2026-11-22). Re-pick any other
+    // fitted cannon on a living part; only a rider with no live
+    // cannon mount at all is truly disarmed.
+    private bool EnsureBallistic(Ally a)
+    {
+        if (a.DefBallistic != null && a.Parts != null && a.Parts.Alive(a.BallisticSlot))
+            return true;
+        for (int n = 0; ; n++)
+        {
+            string s = SlotOf(a.Spec, WeaponSlotType.Ballistic, n);
+            if (s == null) break;
+            string wid = a.Loadout.WeaponIn(s);
+            if (wid == null) continue;
+            if (a.Parts == null || !a.Parts.Alive(s)) continue;
+            a.BallisticSlot = s;
+            a.DefBallistic = WeaponCatalog.ById(wid);
+            if (a.DefBallistic != null) return true;
+        }
+        a.DefBallistic = null;
+        return false;
+    }
+
     // Walk a slow circuit of the home base: pick a point on the
     // plateau disc, stroll to it, pick another. The torso faces
     // the walk direction; weapons stay silent (gunnery is gated
@@ -281,6 +308,7 @@ public partial class RiderDuel
     {
         if (_foe.Dead || _foe.Cd > 0f) return;
         if (WorldConfig.IsMission && !_foe.Engaged) return;
+        if (!EnsureBallistic(_foe)) return;
         RiderWalker target; Vector3 vel; string tag;
         if (WorldConfig.IsMission)
         {

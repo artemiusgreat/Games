@@ -146,7 +146,7 @@ public partial class RiderDuel
                 float pace = PaceFor(a.Spec, a.Walker.RootPos.DistanceTo(tgt.RootPos));
                 UpdateFoeMovement(a.Walker, a.Parts, pace,
                     ref a.Yaw, ref a.OrbitDir, ref a.OrbitTimer, tgt, dt);
-                if (a.Cd <= 0f && a.DefBallistic != null)
+                if (a.Cd <= 0f && EnsureBallistic(a))
                     UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                         a.Role, TagOf(tgt), tgt, VelOf(tgt),
                         () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _allyShots++; });
@@ -188,7 +188,7 @@ public partial class RiderDuel
             float pace = PaceFor(a.Spec, a.Walker.RootPos.DistanceTo(tgt.RootPos));
             UpdateFoeMovement(a.Walker, a.Parts, pace,
                 ref a.Yaw, ref a.OrbitDir, ref a.OrbitTimer, tgt, dt);
-            if (a.Cd <= 0f && a.DefBallistic != null)
+            if (a.Cd <= 0f && EnsureBallistic(a))
                 UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                     a.Role, TagOf(tgt), tgt, VelOf(tgt),
                     () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _allyShots++; });
@@ -216,7 +216,7 @@ public partial class RiderDuel
             float pace = PaceFor(a.Spec, a.Walker.RootPos.DistanceTo(tgt.RootPos));
             UpdateFoeMovement(a.Walker, a.Parts, pace,
                 ref a.Yaw, ref a.OrbitDir, ref a.OrbitTimer, tgt, dt);
-            if (a.Cd <= 0f && a.DefBallistic != null)
+            if (a.Cd <= 0f && EnsureBallistic(a))
                 UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                     a.Role, TagOf(tgt), tgt, VelOf(tgt),
                     () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _bracketShots++; });
