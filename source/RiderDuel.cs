@@ -315,7 +315,7 @@ public partial class RiderDuel : Node3D
     private PanelContainer _panelRadar; // square radar panel, top-right (owner)
     private RadarView _radar;
     private TargetFrame _targetFrame; // screen-space frame on the active target (owner, 2026-11-11)
-    private Label _lblRange, _lblSpeed, _lblLegs;
+    private Label _lblRange, _lblSpeed;
     private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
     private float _shake;
     private float _playerDroopT, _enemyDroopT;

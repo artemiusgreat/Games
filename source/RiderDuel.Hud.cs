@@ -276,8 +276,8 @@ public partial class RiderDuel
         rightBox.AddChild(_lblRange);
         _lblSpeed = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
         rightBox.AddChild(_lblSpeed);
-        _lblLegs = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
-        rightBox.AddChild(_lblLegs);
+        // No LEGS line in this panel (owner, 2026-11-22: the
+        // "Legs: OK" readout is removed).
 
         // Leave-game confirmation (owner): Esc opens it, the
         // sim pauses behind it, YES exits the match. Styled
@@ -1039,12 +1039,7 @@ public partial class RiderDuel
         else
             _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {Units.Km(tgtRange)}";
         _lblSpeed.Text = $"SPEED: {Units.Kmh(_playerVel.Length())}" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
-        bool lLeg = _partsPlayer.Alive("leg_L"), rLeg = _partsPlayer.Alive("leg_R");
-        _lblLegs.Text = lLeg && rLeg ? "LEGS: OK"
-            : !lLeg && !rLeg ? "LEGS: BOTH WRECKED - CRAWL"
-            : lLeg ? "LEGS: RIGHT WRECKED - LIMPING" : "LEGS: LEFT WRECKED - LIMPING";
-        _lblLegs.AddThemeColorOverride("font_color",
-            lLeg && rLeg ? new Color(0.85f, 0.88f, 0.9f) : new Color(1f, 0.42f, 0.32f));
+
         if (_radar != null)
         {
             // Refresh EVERY reference every frame (owner,
@@ -1072,12 +1067,6 @@ public partial class RiderDuel
             }
             _radar.QueueRedraw();
         }
-        if (_player.IsKnockedDown)
-        {
-            _lblLegs.Text = "STATUS: DOWN - LEG LOST";
-            _lblLegs.AddThemeColorOverride("font_color", new Color(1f, 0.42f, 0.32f));
-        }
-
         var status = new System.Collections.Generic.List<string>();
         for (int gi = 0; gi < _groups.Count; gi++)
             if (grpDead[gi]) status.Add($"GROUP {_groups[gi].Num} DESTROYED - ALL MOUNTS LOST");
