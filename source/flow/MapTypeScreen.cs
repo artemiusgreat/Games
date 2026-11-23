@@ -4,8 +4,9 @@ using Godot;
 // owner's menu concept (2026-11-13), restyled the same day at
 // his word as a command-deck CONTROL PANEL: engraved serif
 // display fonts (Cinzel) for the headings and action bars,
-// a clean sans (Open Sans) for subtitles and body, chamfered
-// "rhombus-cut" panels instead of rounded corners, and
+// a clean sans (Open Sans) for subtitles and body, rounded
+// panel corners (the chamfered "rhombus-cut" corners were
+// retired at the owner's word, 2026-11-23), and
 // small mono telemetry readouts in the bottom corners.
 // No rewards block, no bottom status bar, no top-right text.
 // The whole card is the button, as before. (The screen
@@ -209,7 +210,7 @@ public partial class MapTypeScreen : Control
         };
         v.AddChild(rule);
 
-        // Illustration, hard-edged like the panel cuts.
+        // Illustration (inset from the card's rounded frame).
         var art = new TextureRect
         {
             Texture = GD.Load<Texture2D>(artPath),
@@ -282,9 +283,12 @@ public partial class MapTypeScreen : Control
     }
 }
 
-// A chamfered ("rhombus-cut") panel face: a rectangle with
-// its four corners cut at 45 degrees, drawn as a filled
-// polygon with a stroked frame. State colours are set by the
+// A panel face with ROUNDED corners (owner, 2026-11-23:
+// 'make all corners round on the 1st screen' - the
+// chamfered "rhombus-cut" corners this class was built for
+// are retired on this screen; the class name stays because
+// the screens wiring it predate the change). The Cut field
+// is now the corner radius. State colours are set by the
 // owning button.
 public partial class CutPanel : Control
 {
@@ -297,35 +301,19 @@ public partial class CutPanel : Control
     public Color BorderHover = new(1, 1, 1, 0.8f);
     public bool Hover, Pressed, Focused;
 
-    private Vector2[] Points(float inset)
-    {
-        float x = inset, y = inset;
-        float w = Size.X - inset * 2f, h = Size.Y - inset * 2f;
-        float c = Mathf.Max(2f, Cut + inset);
-        return new[]
-        {
-            new Vector2(x + c, y), new Vector2(x + w - c, y),
-            new Vector2(x + w, y + c), new Vector2(x + w, y + h - c),
-            new Vector2(x + w - c, y + h), new Vector2(x + c, y + h),
-            new Vector2(x, y + h - c), new Vector2(x, y + c)
-        };
-    }
-
-    private static Vector2[] Loop(Vector2[] pts)
-    {
-        var loop = new Vector2[pts.Length + 1];
-        pts.CopyTo(loop, 0);
-        loop[pts.Length] = pts[0];
-        return loop;
-    }
-
     public override void _Draw()
     {
         var fill = Pressed ? FillPressed : Hover ? FillHover : FillNormal;
         var border = Hover || Focused ? BorderHover : BorderNormal;
-        var pts = Points(0f);
-        if (fill.A > 0.001f) DrawPolygon(pts, new[] { fill });
-        DrawPolyline(Loop(pts), border, BorderWidth, true);
+        var sb = new StyleBoxFlat
+        {
+            BgColor = fill,
+            BorderColor = border,
+            AntiAliasing = true,
+        };
+        sb.SetBorderWidthAll(Mathf.Max(1, Mathf.RoundToInt(BorderWidth)));
+        sb.SetCornerRadiusAll(Mathf.RoundToInt(Cut));
+        DrawStyleBox(sb, new Rect2(Vector2.Zero, Size));
     }
 }
 
