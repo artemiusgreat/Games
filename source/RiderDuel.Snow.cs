@@ -116,14 +116,16 @@ public partial class RiderDuel
             ScaleMin = 0.7f,
             ScaleMax = 1.4f,
         };
-        var flake = new SphereMesh
+        var flake = new QuadMesh
         {
-            Radius = 0.07f, Height = 0.14f,
-            RadialSegments = 6, Rings = 3,
+            Size = new Vector2(0.26f, 0.26f),
             Material = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.95f, 0.97f, 1f, 0.9f),
+                AlbedoTexture = FlakeTexture(),
+                AlbedoColor = new Color(1f, 1f, 1f, 0.95f),
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
             },
         };
         _snowfall = new GpuParticles3D
@@ -193,4 +195,54 @@ public partial class RiderDuel
             if (_cam != null) _snowfall.GlobalPosition = _cam.GlobalPosition + Vector3.Up * 4f;
         }
     }
+    // A six-armed dendrite snowflake, drawn as a distance
+    // field like the footprint stamp: 6 arms, two branch
+    // pairs per arm at ~55 degrees, thickness tapering
+    // toward every tip, a small centre knot. Semi-
+    // transparent by construction (peak alpha ~0.92, soft
+    // edges). The old draw pass was a tiny sphere, which
+    // rendered as a plain grey disc (owner, 2026-11-23:
+    // "just a plain circle with no shape").
+    private static ImageTexture FlakeTexture()
+    {
+        const int S = 96;
+        var img = Image.CreateEmpty(S, S, false, Image.Format.Rgba8);
+        var segs = new System.Collections.Generic.List<(Vector2 A, Vector2 B, float T0, float T1)>();
+        for (int k = 0; k < 6; k++)
+        {
+            float a = k * Mathf.Pi / 3f;
+            var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+            segs.Add((Vector2.Zero, dir * 0.92f, 0.050f, 0.016f));
+            foreach (float rb in new[] { 0.42f, 0.64f })
+            {
+                float bl = 0.34f * (1.05f - rb);
+                foreach (float sgn in new[] { -1f, 1f })
+                {
+                    float ba = a + sgn * 0.96f;
+                    var bd = new Vector2(Mathf.Cos(ba), Mathf.Sin(ba));
+                    var bas = dir * rb;
+                    segs.Add((bas, bas + bd * bl, 0.034f, 0.008f));
+                }
+            }
+        }
+        for (int y = 0; y < S; y++)
+        for (int x = 0; x < S; x++)
+        {
+            var p = new Vector2((x + 0.5f) / S * 2f - 1f, (y + 0.5f) / S * 2f - 1f);
+            float best = 1e9f, thick = 0.01f;
+            foreach (var (A, B, T0, T1) in segs)
+            {
+                var ab = B - A;
+                float t = Mathf.Clamp((p - A).Dot(ab) / ab.LengthSquared(), 0f, 1f);
+                float d = (p - (A + ab * t)).Length();
+                if (d < best) { best = d; thick = Mathf.Lerp(T0, T1, t); }
+            }
+            float core = Mathf.Clamp(1f - p.Length() / 0.16f, 0f, 1f);
+            float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.92f;
+            alpha = Mathf.Max(alpha, core * 0.55f);
+            img.SetPixel(x, y, new Color(0.96f, 0.98f, 1f, alpha));
+        }
+        return ImageTexture.CreateFromImage(img);
+    }
+
 }
