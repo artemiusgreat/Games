@@ -1378,6 +1378,7 @@ public sealed class RiderParts
                 }
                 else
                 {
+                    ConformDebrisToSlope(d);
                     d.Settled = true;
                     d.Vel = Vector3.Zero;
                     d.AngSpeed = 0f;
@@ -1502,19 +1503,62 @@ public sealed class RiderParts
         }
     }
 
+    private static Vector3 CornerOf(Aabb box, int i) => new Vector3(
+        (i & 1) == 0 ? box.Position.X : box.End.X,
+        (i & 2) == 0 ? box.Position.Y : box.End.Y,
+        (i & 4) == 0 ? box.Position.Z : box.End.Z);
+
     private static Vector3 LowestCorner(Aabb box)
     {
         Vector3 best = box.Position;
         float bestY = float.MaxValue;
         for (int i = 0; i < 8; i++)
         {
-            var c = new Vector3(
-                (i & 1) == 0 ? box.Position.X : box.End.X,
-                (i & 2) == 0 ? box.Position.Y : box.End.Y,
-                (i & 4) == 0 ? box.Position.Z : box.End.Z);
+            var c = CornerOf(box, i);
             if (c.Y < bestY) { bestY = c.Y; best = c; }
         }
         return best;
+    }
+
+    // A piece settles at its first AABB-corner touch, frozen in
+    // whatever tumble orientation it had: on a steep slope the
+    // rest of the piece hangs in the air over the downhill side
+    // (owner, 2026-11-22: a destroyed enemy floated above the
+    // snow). On steep ground only, rotate the settled piece
+    // about its contact corner until world down meets the
+    // terrain normal, then re-seat it: lift out of any corner
+    // penetration, drop the lowest corner back onto its own
+    // ground. Gentle ground keeps the original rest untouched.
+    private void ConformDebrisToSlope(Debris d)
+    {
+        var box = WorldAabb(d.Node);
+        var centre = box.GetCenter();
+        float e = 2.0f;
+        float hx = (Main.HeightAt(centre.X + e, centre.Z) - Main.HeightAt(centre.X - e, centre.Z)) / (2f * e);
+        float hz = (Main.HeightAt(centre.X, centre.Z + e) - Main.HeightAt(centre.X, centre.Z - e)) / (2f * e);
+        var n = new Vector3(-hx, 1f, -hz).Normalized();
+        if (n.Y > 0.94f) return; // under ~20 degrees the corner rest reads fine
+        var low = LowestCorner(box);
+        var axis = Vector3.Up.Cross(n);
+        if (axis.LengthSquared() < 1e-8f) return;
+        float ang = Mathf.Acos(Mathf.Clamp(Vector3.Up.Dot(n), -1f, 1f));
+        var q = new Quaternion(axis.Normalized(), ang);
+        var gt = d.Node.GlobalTransform;
+        d.Node.GlobalTransform = new Transform3D(new Basis(q) * gt.Basis, low + q * (gt.Origin - low));
+        box = WorldAabb(d.Node);
+        float lift = 0f;
+        for (int i = 0; i < 8; i++)
+        {
+            var c = CornerOf(box, i);
+            lift = Mathf.Max(lift, Main.HeightAt(c.X, c.Z) - c.Y);
+        }
+        if (lift > 0f) { d.Node.GlobalPosition += Vector3.Up * lift; box = WorldAabb(d.Node); }
+        low = LowestCorner(box);
+        float drop = low.Y - Main.HeightAt(low.X, low.Z);
+        if (Mathf.Abs(drop) > 0.001f) d.Node.GlobalPosition -= Vector3.Up * drop;
+        var fb = WorldAabb(d.Node);
+        d.RestMinY = fb.Position.Y;
+        d.RestGroundY = Main.HeightAt(fb.GetCenter().X, fb.GetCenter().Z);
     }
 
     private static Aabb WorldAabb(Node node)
