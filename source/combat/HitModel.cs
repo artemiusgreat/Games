@@ -60,7 +60,8 @@ public sealed class HitModel
 
     // inflateProps widens PROP cylinders for this cast only (the
     // laser's hit thickness - the beam visual stays hair-thin).
-    public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId, float inflateProps = 0f)
+    public Result Ray(Vector3 from, Vector3 dir, float maxDist, string ignoreId, float inflateProps = 0f,
+        System.Collections.Generic.HashSet<string> ignoreIds = null)
     {
         dir = dir.Normalized();
         var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
@@ -80,7 +81,7 @@ public sealed class HitModel
         }
         foreach (var m in Riders)
         {
-            if (m.Id == ignoreId) continue;
+            if (m.Id == ignoreId || (ignoreIds != null && ignoreIds.Contains(m.Id))) continue;
             var root = m.Root();
             // The capsule stands on the rider's LIVE sole level
             // (its root), not the terrain: on a deck the root is

@@ -702,6 +702,116 @@ public partial class RiderDuel
 
 
 
+
+    // ---------- Friendly-fire aim probe ----------
+    // Owner (2026-11-23): with a teammate close BEHIND him,
+    // missiles fired the opposite way still hit the teammate.
+    // Suspect: TorsoAimPoint's convergence cast excludes only
+    // the player, so a teammate standing in the camera's line
+    // becomes the aim surface - the reticle point lands on his
+    // back, behind the pods, and the salvo solves backward
+    // onto him. Stage exactly that: teammate 8u behind the
+    // player on the camera axis, enemy 120u ahead; aim at the
+    // enemy, fire the salvo, watch both riders' HP.
+    private int _ffPhase;
+    private double _ffT;
+    private Ally _ffMate;
+    private float _ffMateHp0, _ffEnemyHp0;
+
+    private void UpdateFfProbe(float dt)
+    {
+        _ffT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_ffPhase == 0 && _ffT > 1.2f)
+        {
+            _camMode = CamModes.Chase;
+            var home = PadWorld(0); home.Y = Main.HeightAt(home.X, home.Z);
+            _player.Teleport(home, 0f);
+            _hpPlayer = 100000f; _hpEnemy = 100000f;
+            var eSpot = home + new Vector3(0f, 0f, -120f); eSpot.Y = Main.HeightAt(eSpot.X, eSpot.Z);
+            _enemy.Teleport(eSpot, Mathf.Pi);
+            var mSpot = home + new Vector3(0f, 0f, 8f); mSpot.Y = Main.HeightAt(mSpot.X, mSpot.Z);
+            _ffMate = MakeAlly(TeamRoster.Make(RiderSpecs.ById("hector")), Roles.AllyPrefix + "FF", 50, 0, mSpot, 0f, "FFMate");
+            _ffMate.Hp = 100000f;
+            _allies.Add(_ffMate);
+            RefreshHitCaps(); // a hand-made ally needs its hit capsule registered, like the roster-built ones
+            _ffMateHp0 = _ffMate.Hp; _ffEnemyHp0 = _hpEnemy;
+            _ffPhase = 1; _ffT = 0f;
+        }
+        else if (_ffPhase == 1)
+        {
+            // Construct the live-play geometry exactly: the
+            // enemy stands on the camera->mate line, beyond
+            // the mate, so aiming at the enemy means looking
+            // THROUGH the teammate's chest. (Free placement
+            // missed twice: the boom holds the camera ~18u up,
+            // and a shallow ray to a far target passes over a
+            // same-height rider's head - the bug needs the
+            // steeper lines of real fights and slopes.)
+            var camPos = _cam.GlobalPosition;
+            var mateChest = _ffMate.Walker.RootPos + Vector3.Up * 7f;
+            var dirM = (mateChest - camPos).Normalized();
+            var eSpot = camPos + dirM * 170f;
+            eSpot.Y = Main.HeightAt(eSpot.X, eSpot.Z);
+            _enemy.Teleport(eSpot, Mathf.Pi);
+            var mech = _hit.Ray(camPos, dirM, 60f, Roles.Player);
+            GD.Print($"FFPROBE mechanism cast through mate chest: target='{mech.Target}' (mate role '{_ffMate.Role}')");
+            _ffPhase = 3; _ffT = 0f;
+        }
+        else if (_ffPhase == 3)
+        {
+            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
+            // The harness camera parks ~18u over the player -
+            // higher than the live chase boom - and from up
+            // there the aim ray sails over a standing rider's
+            // head. Put the camera where the boom puts it in
+            // play (26u behind the torso heading, ~9.5u up)
+            // before asking for the aim point.
+            var hd = AimDirWorld(); hd.Y = 0f; hd = hd.Normalized();
+            _cam.GlobalPosition = _player.RootPos - hd * 26f + Vector3.Up * 9.5f;
+            // The enemy stands on THIS camera's line through
+            // the mate's chest, 55u out - in clear view past
+            // him. (The far placement from the parked harness
+            // camera ended behind a crest from here.)
+            var mateChest = _ffMate.Walker.RootPos + Vector3.Up * 7f;
+            var dirM = (mateChest - _cam.GlobalPosition).Normalized();
+            var eSpot = _cam.GlobalPosition + dirM * 55f;
+            eSpot.Y = Main.HeightAt(eSpot.X, eSpot.Z);
+            _enemy.Teleport(eSpot, Mathf.Pi);
+            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
+            var aim = TorsoAimPoint();
+            if (_aimTarget == Roles.Enemy || _ffT > 2.5f)
+            {
+                GD.Print($"FFPROBE aim: target='{_aimTarget}' reticle={aim} player={_player.RootPos} mate={_ffMate.Walker.RootPos} cam={_cam.GlobalPosition}");
+                FireSalvoVolley(aim, _podGunsL, _podGunsR);
+                _ffPhase = 2; _ffT = 0f;
+            }
+        }
+        else if (_ffPhase == 2 && _ffT > 7f)
+        {
+            bool mateSafe = _ffMate.Hp >= _ffMateHp0 - 0.01f;
+            bool enemyHit = _hpEnemy < _ffEnemyHp0 - 0.01f;
+            GD.Print($"FFPROBE mate {_ffMateHp0:F0} -> {_ffMate.Hp:F0}; enemy {_ffEnemyHp0:F0} -> {_hpEnemy:F0}");
+            GD.Print(mateSafe && enemyHit ? "FFPROBE PASS" : "FFPROBE FAIL");
+            GetTree().Quit(mateSafe && enemyHit ? 0 : 1);
+        }
+    }
+
+    // ---------- Controls popup capture ----------
+    private double _csT;
+    private void UpdateControlsShot(float dt)
+    {
+        _csT += dt;
+        if (_csT > 1.5f && _csT <= 1.5f + dt && _controlsDialog != null) _controlsDialog.Open();
+        if (_csT > 2.6f)
+        {
+            var img = GetViewport().GetTexture().GetImage();
+            img.SavePng("res://proof/controls.png");
+            GD.Print("CONTROLSSHOT saved");
+            GetTree().Quit(0);
+        }
+    }
+
     // ---------- Guard targeting probe ----------
     // Owner reports (2026-11-23): defenders walked backward
     // and ignored the team member shooting them - traced to

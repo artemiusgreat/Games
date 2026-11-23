@@ -50,6 +50,20 @@ public partial class RiderDuel
         return new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
     }
 
+    // The player's whole team, for aim casts: your own riders
+    // are never aim surfaces (owner, 2026-11-23 - a teammate
+    // standing in the camera's line became the reticle point,
+    // and every weapon converged on the point ON HIS BACK,
+    // behind the pods: salvos solved backward into him).
+    private readonly System.Collections.Generic.HashSet<string> _team0Ids = new();
+    private System.Collections.Generic.HashSet<string> Team0Ids()
+    {
+        _team0Ids.Clear();
+        _team0Ids.Add(Roles.Player);
+        foreach (var a in _allies) if (a.Team == 0) _team0Ids.Add(a.Role);
+        return _team0Ids;
+    }
+
     private Vector3 TorsoAimPoint()
     {
         var dir = AimDirWorld();
@@ -69,7 +83,7 @@ public partial class RiderDuel
         if (_camMode == CamModes.Chase)
         {
             var camPos = _cam.GlobalPosition;
-            var viewHit = _hit.Ray(camPos, dir, Aim.ConvergenceRange, Roles.Player);
+            var viewHit = _hit.Ray(camPos, dir, Aim.ConvergenceRange, Roles.Player, 0f, Team0Ids());
             _aimTarget = viewHit.Hit ? viewHit.Target : "";
             _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * Aim.ConvergenceRange;
             _aimParallel = !viewHit.Hit;
@@ -80,14 +94,14 @@ public partial class RiderDuel
                 // the rangefinder's reach) so far shells can
                 // converge on THAT point and land on the
                 // crosshair at mission ranges.
-                var farHit = _hit.Ray(camPos, dir, Aim.FarRange, Roles.Player);
+                var farHit = _hit.Ray(camPos, dir, Aim.FarRange, Roles.Player, 0f, Team0Ids());
                 _farConverge = farHit.Hit ? farHit.T : Aim.FarRange;
             }
             return _reticlePoint;
         }
         // Fallback (round 11): the chest ray's RIDER/PROP hit within
         // weapon reach, else the free 40u point.
-        var hit = _hit.Ray(from, dir, 200f, Roles.Player);
+        var hit = _hit.Ray(from, dir, 200f, Roles.Player, 0f, Team0Ids());
         _aimTarget = hit.Hit ? hit.Target : "";
         if (hit.Hit && hit.T <= 140f && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
             return hit.Point;
