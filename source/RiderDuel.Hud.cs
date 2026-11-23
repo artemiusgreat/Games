@@ -196,6 +196,7 @@ public partial class RiderDuel
             lab.Text = name;
             lab.CustomMinimumSize = new Vector2(136, 0); // THRUST row: sized so its bar starts on the weapon bars' line (112 name + digit cell)
             lab.ClipText = true;
+            lab.HorizontalAlignment = HorizontalAlignment.Right; // panel labels right-aligned (owner, 2026-11-22)
             row.AddChild(lab);
             var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
@@ -234,6 +235,7 @@ public partial class RiderDuel
             var wlab = MakeLabel(14, CdLabelNormal);
             wlab.CustomMinimumSize = new Vector2(112, 0); // tight to the longest name (owner: less space before the bar)
             wlab.ClipText = true;
+            wlab.HorizontalAlignment = HorizontalAlignment.Right; // panel labels right-aligned (owner, 2026-11-22)
             wrow.AddChild(wlab);
             var wbar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
             wbar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
