@@ -191,6 +191,10 @@ public partial class RiderWalker : Node3D
     public float Height => _cfg.TargetHeight;
     public Vector3 RootPos => _rootPos;
     public int Steps => _steps;
+    // Last foot plant (world position + foot basis), for the
+    // snow footprints (RiderDuel.Snow).
+    public Vector3 LastPlantPos;
+    public Basis LastPlantBasis = Basis.Identity;
     public float MaxSlide => _maxSlide;
 
     private float _torsoTwist;
@@ -731,6 +735,8 @@ public partial class RiderWalker : Node3D
             leg.PlantBasisW = leg.StepBasisTo;
             leg.CurBasisW = leg.StepBasisTo;
             _steps++;
+            LastPlantPos = leg.StepTo;
+            LastPlantBasis = leg.PlantBasisW;
         }
     }
 
