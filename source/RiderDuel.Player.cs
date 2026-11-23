@@ -133,28 +133,45 @@ public partial class RiderDuel
             // the sim, and ask for confirmation. Esc is ONLY
             // the exit path (owner, 2026-11-17: Esc and the
             // team screen are separated - the team screen is
-            // F1 now, next branch down; it used to open on Esc
-            // in missions).
+            // F2, the controls screen F1, branches below).
             Input.MouseMode = Input.MouseModeEnum.Visible;
-            bool teamUp = _teamDialog != null && _teamDialog.Visible;
+            bool teamUp = (_teamDialog != null && _teamDialog.Visible)
+                || (_controlsDialog != null && _controlsDialog.Visible);
             if (_leaveDialog != null && !_leaveDialog.Visible && !teamUp)
             {
                 _leaveDialog.Open();
                 GetTree().Paused = true;
             }
         }
-        else if (e is InputEventKey kf && kf.Pressed && !kf.Echo && kf.Keycode == Key.F1)
+        else if (e is InputEventKey kf && kf.Pressed && !kf.Echo && kf.Keycode == Key.F2)
         {
-            // Team screen (owner, 2026-11-17): F1 opens it in
-            // a mission - pick a leader there, or exit from
-            // it. Pressing F1 again closes it (the dialog's
-            // own input handler); Esc closes it too.
+            // Team screen (owner, 2026-11-17; moved F1 -> F2,
+            // 2026-11-23): F2 opens it in a mission - pick a
+            // leader there, or exit from it. Pressing F2 again
+            // closes it (the dialog's own input handler); Esc
+            // closes it too.
             bool leaveUp = _leaveDialog != null && _leaveDialog.Visible;
             bool teamUp = _teamDialog != null && _teamDialog.Visible;
             if (!leaveUp && !teamUp && WorldConfig.IsMission && _teamDialog != null)
             {
                 Input.MouseMode = Input.MouseModeEnum.Visible;
                 _teamDialog.Open(TeamRows());
+                GetTree().Paused = true;
+            }
+        }
+        else if (e is InputEventKey kc && kc.Pressed && !kc.Echo && kc.Keycode == Key.F1)
+        {
+            // Controls screen (owner, 2026-11-23): F1 lists
+            // the game's key bindings. Same pause contract as
+            // the other dialogs; F1 or Esc closes it (the
+            // dialog's own input handler).
+            bool leaveUp = _leaveDialog != null && _leaveDialog.Visible;
+            bool teamUp = _teamDialog != null && _teamDialog.Visible;
+            bool ctlUp = _controlsDialog != null && _controlsDialog.Visible;
+            if (!leaveUp && !teamUp && !ctlUp && !_labOpen && _controlsDialog != null)
+            {
+                Input.MouseMode = Input.MouseModeEnum.Visible;
+                _controlsDialog.Open();
                 GetTree().Paused = true;
             }
         }

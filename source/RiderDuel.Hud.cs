@@ -291,6 +291,11 @@ public partial class RiderDuel
         _leaveDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; RecaptureMouse(); };
         layer.AddChild(_leaveDialog);
 
+        // The controls screen rides the same contract too.
+        _controlsDialog = new ControlsOverlay();
+        _controlsDialog.Hidden += () => { if (GetTree().Paused) GetTree().Paused = false; RecaptureMouse(); };
+        layer.AddChild(_controlsDialog);
+
         // The team screen rides the same pause/unpause contract.
         _teamDialog = new TeamOverlay();
         _teamDialog.LeaderChosen += slot =>
@@ -778,6 +783,122 @@ public partial class RiderDuel
         {
             if (!Visible) return;
             if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening key
+            if (e is InputEventKey k && k.Pressed && !k.Echo && (k.Keycode == Key.Escape || k.Keycode == Key.F2))
+            {
+                Visible = false;
+                GetViewport().SetInputAsHandled();
+            }
+        }
+    }
+
+    // The controls screen (owner, 2026-11-23): F1 in a match
+    // lists the game's bindings - movement, weapons, team
+    // orders, views. Static content, built once; F1 or Esc
+    // closes it, Resume does the same with the mouse. Same
+    // visual idiom as the team screen.
+    private sealed partial class ControlsOverlay : Control
+    {
+        private ulong _openedAt;
+
+        private static readonly (string Key, string What)[] Rows =
+        {
+            ("W", "Throttle forward"),
+            ("S", "Throttle back"),
+            ("A / D", "Turn the legs left / right"),
+            ("Mouse", "Aim the torso (full 360°)"),
+            ("Left mouse button", "Fire the selected weapon group"),
+            ("1 – 6", "Select weapon group"),
+            ("Mouse wheel", "Cycle weapon group"),
+            ("Shift + W", "Run (3× walk speed)"),
+            ("Space (hold)", "Thrusters — fly while held, when fitted"),
+            ("Tab", "Cycle target"),
+            ("Shift + 1", "Team order: follow me"),
+            ("Shift + 2", "Team order: attack my target"),
+            ("Shift + 3", "Team order: attack nearby enemy"),
+            ("Shift + 4", "Team order: protect my target"),
+            ("Shift + 5", "Team order: full stop"),
+            ("T", "Sniper view"),
+            ("F1", "This controls screen"),
+            ("F2", "Team screen"),
+            ("R", "Reset the match (arena)"),
+            ("Esc", "Leave the match"),
+        };
+
+        public ControlsOverlay()
+        {
+            ProcessMode = ProcessModeEnum.Always;
+            Visible = false;
+            SetAnchorsPreset(LayoutPreset.FullRect);
+            MouseFilter = MouseFilterEnum.Stop;
+
+            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.45f) };
+            dim.SetAnchorsPreset(LayoutPreset.FullRect);
+            AddChild(dim);
+
+            var center = new CenterContainer();
+            center.SetAnchorsPreset(LayoutPreset.FullRect);
+            AddChild(center);
+
+            var root = new Control { CustomMinimumSize = new Vector2(560, 640) };
+            center.AddChild(root);
+
+            var panel = new PanelContainer();
+            panel.SetAnchorsPreset(LayoutPreset.FullRect);
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f) });
+            root.AddChild(panel);
+
+            var v = new VBoxContainer();
+            v.SetAnchorsPreset(LayoutPreset.FullRect);
+            v.OffsetLeft = 30; v.OffsetTop = 26; v.OffsetRight = -30; v.OffsetBottom = -24;
+            v.AddThemeConstantOverride("separation", 7);
+            root.AddChild(v);
+
+            var title = new Label { Text = "CONTROLS", HorizontalAlignment = HorizontalAlignment.Center };
+            title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
+            title.AddThemeFontSizeOverride("font_size", 21);
+            title.AddThemeColorOverride("font_color", new Color(0.92f, 0.94f, 0.96f));
+            v.AddChild(title);
+
+            var gold = new Color(0.98f, 0.80f, 0.35f);
+            var ink = new Color(0.92f, 0.94f, 0.96f);
+            foreach (var (key, what) in Rows)
+            {
+                var h = new HBoxContainer();
+                h.AddThemeConstantOverride("separation", 16);
+                var k = new Label { Text = key, CustomMinimumSize = new Vector2(170, 0) };
+                k.AddThemeFontSizeOverride("font_size", 14);
+                k.AddThemeColorOverride("font_color", gold);
+                h.AddChild(k);
+                var w = new Label { Text = what };
+                w.AddThemeFontSizeOverride("font_size", 14);
+                w.AddThemeColorOverride("font_color", ink);
+                h.AddChild(w);
+                v.AddChild(h);
+            }
+
+            var resume = new Button { Text = "Resume", CustomMinimumSize = new Vector2(120, 36) };
+            resume.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
+            var sb = new StyleBoxFlat { BgColor = new Color(0.08f, 0.11f, 0.17f, 0.95f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.65f) };
+            sb.SetBorderWidthAll(1);
+            resume.AddThemeStyleboxOverride("normal", sb);
+            resume.AddThemeStyleboxOverride("hover", sb);
+            resume.AddThemeStyleboxOverride("pressed", sb);
+            resume.AddThemeStyleboxOverride("focus", sb);
+            resume.AddThemeColorOverride("font_color", ink);
+            resume.Pressed += () => Visible = false;
+            v.AddChild(resume);
+        }
+
+        public void Open()
+        {
+            _openedAt = Time.GetTicksMsec();
+            Visible = true;
+        }
+
+        public override void _Input(InputEvent e)
+        {
+            if (!Visible) return;
+            if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening key
             if (e is InputEventKey k && k.Pressed && !k.Echo && (k.Keycode == Key.Escape || k.Keycode == Key.F1))
             {
                 Visible = false;
@@ -1032,7 +1153,7 @@ public partial class RiderDuel
         bool liveTgt = tgt.W != null && !tgt.Dead;
         if (_camMode == CamModes.Chase && _cam != null && !liveTgt && tgt.W == null)
         {
-            var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, Roles.Player);
+            var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, Roles.Player, 0f, Team0Ids());
             _lblRange.Text = rHit.Hit
                 ? $"TARGET RANGE: {Units.Km(_player.RootPos.DistanceTo(rHit.Point))}"
                 : $"TARGET RANGE: {Units.KmVal(Aim.FarRange):0.##}+ km";
