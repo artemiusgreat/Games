@@ -15,7 +15,7 @@ public sealed class RiderSpec
     public string Id;
     public string Name;
     // House affiliation (owner, 2026-11-23): five houses -
-    // Ravens, Scorpions, Hounds, Manticores, Dragons. Assigned
+    // Ravens, Scorpions, Hounds, Shadows, Dragons. Assigned
     // randomly for now; the categorization (and the rider
     // renames that follow from it) comes later at his word.
     public string House;
@@ -65,7 +65,7 @@ public static class RiderSpecs
 
     public static readonly RiderSpec Enyo = new()
     {
-        Id = "enyo", Name = "ENYO", Tonnage = 75f, House = "Manticores", JumpCapable = true,
+        Id = "enyo", Name = "ENYO", Tonnage = 75f, House = "Shadows", JumpCapable = true,
         ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -272,7 +272,7 @@ public static class RiderSpecs
     // Caps sum to the 70t budget; all three types aboard.
     public static readonly RiderSpec Apollo = new()
     {
-        Id = "apollo", Name = "APOLLO", Tonnage = 70f, House = "Manticores", JumpCapable = true,
+        Id = "apollo", Name = "APOLLO", Tonnage = 70f, House = "Shadows", JumpCapable = true,
         ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
         Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
         FlipKneePole = false, SagittalKneePole = true,
