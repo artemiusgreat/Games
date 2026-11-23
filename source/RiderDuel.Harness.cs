@@ -797,6 +797,97 @@ public partial class RiderDuel
         }
     }
 
+    // ---------- Bindings probe ----------
+    // Owner (2026-11-23): the TAB family and the re-mapped
+    // orders. Synthetic key events go through the REAL _Input
+    // path (Input.ParseInputEvent), so the modifier routing
+    // itself is what is on trial: CTRL+TAB cycles the active
+    // companion, SHIFT+TAB locks the closest enemy, SHIFT+4
+    // is Stop, SHIFT+5 is Protect-my-companion.
+    private int _bpPhase;
+    private double _bpT;
+    private Ally _bpMate1, _bpMate2;
+
+    private static void SendKey(Key code, bool shift = false, bool ctrl = false)
+    {
+        Input.ParseInputEvent(new InputEventKey
+        {
+            Keycode = code,
+            Pressed = true,
+            ShiftPressed = shift,
+            CtrlPressed = ctrl
+        });
+    }
+
+    private void UpdateBindingsProbe(float dt)
+    {
+        _bpT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_bpPhase == 0 && _bpT > 1.2f)
+        {
+            var home = PadWorld(0); home.Y = Main.HeightAt(home.X, home.Z);
+            _player.Teleport(home, 0f);
+            var s1 = home + new Vector3(15f, 0f, 0f); s1.Y = Main.HeightAt(s1.X, s1.Z);
+            var s2 = home + new Vector3(30f, 0f, 0f); s2.Y = Main.HeightAt(s2.X, s2.Z);
+            _bpMate1 = MakeAlly(TeamRoster.Make(RiderSpecs.ById("hector")), Roles.AllyPrefix + "BP1", 60, 0, s1, 0f, "BPMate1");
+            _bpMate2 = MakeAlly(TeamRoster.Make(RiderSpecs.ById("enyo")), Roles.AllyPrefix + "BP2", 61, 0, s2, 0f, "BPMate2");
+            _allies.Add(_bpMate1); _allies.Add(_bpMate2);
+            var living = CompanionList().FindAll(a => !a.Dead);
+            GD.Print($"BINDPROBE staged: companions={living.Count} first={(living.Count > 0 ? living[0].Spec.Name : "-")}");
+            SendKey(Key.Tab, ctrl: true);
+            _bpPhase = 1; _bpT = 0f;
+        }
+        else if (_bpPhase == 1 && _bpT > 0.4f)
+        {
+            var living = CompanionList().FindAll(a => !a.Dead);
+            var cur = ActiveCompanion();
+            GD.Print($"BINDPROBE ctrl+tab#1 -> companion={(cur != null ? cur.Spec.Name : "null")} (expect living[1] of {living.Count})");
+            if (living.Count < 2 || cur != living[1]) { GD.Print("BINDPROBE FAIL companion cycle 1"); GetTree().Quit(1); return; }
+            SendKey(Key.Tab, ctrl: true);
+            _bpPhase = 2; _bpT = 0f;
+        }
+        else if (_bpPhase == 2 && _bpT > 0.4f)
+        {
+            var living = CompanionList().FindAll(a => !a.Dead);
+            var cur = ActiveCompanion();
+            int expect = living.Count >= 3 ? 2 : 0;
+            GD.Print($"BINDPROBE ctrl+tab#2 -> companion={(cur != null ? cur.Spec.Name : "null")} (expect living[{expect}])");
+            if (cur != living[expect]) { GD.Print("BINDPROBE FAIL companion cycle 2"); GetTree().Quit(1); return; }
+            SendKey(Key.Tab, shift: true);
+            _bpPhase = 3; _bpT = 0f;
+        }
+        else if (_bpPhase == 3 && _bpT > 0.4f)
+        {
+            var cyc = OpposingTargets();
+            int best = -1; float bd = float.MaxValue;
+            for (int i = 0; i < cyc.Count; i++)
+            {
+                if (cyc[i].Dead || cyc[i].W == null) continue;
+                float d = _player.RootPos.DistanceSquaredTo(cyc[i].W.RootPos);
+                if (d < bd) { bd = d; best = i; }
+            }
+            var tgt = ActiveTargetWalker();
+            GD.Print($"BINDPROBE shift+tab -> targetIdx={_targetIdx} expect={best} dist={(tgt != null ? _player.RootPos.DistanceTo(tgt.RootPos) : -1f):F1}");
+            if (best < 0 || _targetIdx != best) { GD.Print("BINDPROBE FAIL closest enemy"); GetTree().Quit(1); return; }
+            SendKey(Key.Key4, shift: true);
+            _bpPhase = 4; _bpT = 0f;
+        }
+        else if (_bpPhase == 4 && _bpT > 0.4f)
+        {
+            GD.Print($"BINDPROBE shift+4 -> order={_teamOrder} (expect Hold)");
+            if (_teamOrder != TeamOrder.Hold) { GD.Print("BINDPROBE FAIL order 4"); GetTree().Quit(1); return; }
+            SendKey(Key.Key5, shift: true);
+            _bpPhase = 5; _bpT = 0f;
+        }
+        else if (_bpPhase == 5 && _bpT > 0.4f)
+        {
+            GD.Print($"BINDPROBE shift+5 -> order={_teamOrder} (expect ProtectCompanion); anchor={ProtectAnchor()} companion={(ActiveCompanion() != null ? ActiveCompanion().Walker.RootPos.ToString() : "null")}");
+            bool ok = _teamOrder == TeamOrder.ProtectCompanion;
+            GD.Print(ok ? "BINDPROBE PASS" : "BINDPROBE FAIL order 5");
+            GetTree().Quit(ok ? 0 : 1);
+        }
+    }
+
     // ---------- Controls popup capture ----------
     private double _csT;
     private void UpdateControlsShot(float dt)

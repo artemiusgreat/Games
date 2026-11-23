@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 // RiderDuel module: the NPC teammates' brain and the leader's
 // orders (owner, teams stage step 5). Allies run the SAME
@@ -24,7 +25,7 @@ using Godot;
 // day's Attack-my-target default: the default is Follow me).
 public partial class RiderDuel
 {
-    private enum TeamOrder { Follow, AttackTarget, AttackNearby, ProtectLeader, Hold }
+    private enum TeamOrder { Follow, AttackTarget, AttackNearby, ProtectCompanion, Hold }
 
     private TeamOrder _teamOrder = TeamOrder.Follow;
     private int _allyShots; // harness counter (the team test reads it)
@@ -33,6 +34,48 @@ public partial class RiderDuel
     {
         _teamOrder = o;
         GD.Print($"TEAM order={o}");
+    }
+
+    // The active companion (owner, 2026-11-23): CTRL+TAB
+    // cycles the player's chosen teammate, and SHIFT+5's
+    // protect order anchors on him. Defaults to the first
+    // living teammate; village guards never count - they
+    // hold their posts, not the player's wing.
+    private Ally _companion;
+
+    private List<Ally> CompanionList()
+    {
+        var list = new List<Ally>();
+        foreach (var a in _allies)
+            if (a.Team == 0 && !a.Guard && a.Walker != null) list.Add(a);
+        return list;
+    }
+
+    private Ally ActiveCompanion()
+    {
+        var list = CompanionList();
+        if (_companion != null && !_companion.Dead && list.Contains(_companion)) return _companion;
+        foreach (var a in list)
+            if (!a.Dead) { _companion = a; return a; }
+        return null;
+    }
+
+    private void CycleCompanion()
+    {
+        var living = CompanionList().FindAll(a => !a.Dead);
+        if (living.Count == 0) return;
+        var cur = ActiveCompanion();
+        int i = cur == null ? -1 : living.IndexOf(cur);
+        _companion = living[(i + 1) % living.Count];
+        AddFeed("COMPANION: " + _companion.Spec.Name.ToUpperInvariant());
+    }
+
+    // Where the protect order anchors: the active companion,
+    // or the player himself when no companion is standing.
+    private Vector3 ProtectAnchor()
+    {
+        var c = ActiveCompanion();
+        return c != null ? c.Walker.RootPos : _player.RootPos;
     }
 
     // The leader's Tab-selected enemy (the HUD's one active
@@ -137,7 +180,7 @@ public partial class RiderDuel
             {
                 TeamOrder.Follow => NearestEnemyWalker(a.Walker.RootPos, 260f),
                 TeamOrder.AttackTarget => ActiveTargetWalker() ?? NearestEnemyWalker(a.Walker.RootPos, 450f),
-                TeamOrder.ProtectLeader => NearestEnemyWalker(_player.RootPos, 170f),
+                TeamOrder.ProtectCompanion => NearestEnemyWalker(ProtectAnchor(), 170f),
                 _ => NearestEnemyWalker(a.Walker.RootPos, 450f)
             };
             if (tgt != null)
@@ -154,7 +197,15 @@ public partial class RiderDuel
             else
             {
                 a.TargetW = null;
-                MoveToward(a, FormationPoint(a), dt);
+                // Under the protect order the formation itself
+                // re-anchors on the companion, not the leader.
+                var fp = FormationPoint(a);
+                if (_teamOrder == TeamOrder.ProtectCompanion)
+                {
+                    var c = ActiveCompanion();
+                    if (c != null) fp = c.Walker.RootPos + (fp - _player.RootPos);
+                }
+                MoveToward(a, fp, dt);
             }
         }
     }

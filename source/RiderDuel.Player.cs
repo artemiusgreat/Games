@@ -49,19 +49,46 @@ public partial class RiderDuel
         }
         if (e is InputEventKey tk && tk.Pressed && !tk.Echo && tk.Keycode == Key.Tab)
         {
-            // Cycle the ONE active enemy among the living
-            // opponents (owner); handled here so Tab never
-            // moves UI focus. The cycle spans every opposing
-            // rider on the field (Stage D3) - in the classic
-            // arena that is the two AI seats, as before.
-            var cyc = OpposingTargets();
-            int next = _targetIdx;
-            for (int i = 0; i < cyc.Count; i++)
+            // The TAB family (owner; the two modifier forms
+            // added 2026-11-23). Handled here so Tab never
+            // moves UI focus.
+            if (tk.CtrlPressed)
             {
-                next = (next + 1) % cyc.Count;
-                if (!cyc[next].Dead) break;
+                // CTRL+TAB: cycle the active companion -
+                // SHIFT+5's protect order anchors on him.
+                // The feed names the pick.
+                CycleCompanion();
             }
-            _targetIdx = next;
+            else if (tk.ShiftPressed)
+            {
+                // SHIFT+TAB: jump the target lock straight
+                // to the CLOSEST living enemy.
+                var cycS = OpposingTargets();
+                int best = -1; float bd = float.MaxValue;
+                for (int i = 0; i < cycS.Count; i++)
+                {
+                    if (cycS[i].Dead || cycS[i].W == null) continue;
+                    float d = _player.RootPos.DistanceSquaredTo(cycS[i].W.RootPos);
+                    if (d < bd) { bd = d; best = i; }
+                }
+                if (best >= 0) _targetIdx = best;
+            }
+            else
+            {
+                // Plain TAB: cycle the ONE active enemy among
+                // the living opponents. The cycle spans every
+                // opposing rider on the field (Stage D3) - in
+                // the classic arena that is the two AI seats,
+                // as before.
+                var cyc = OpposingTargets();
+                int next = _targetIdx;
+                for (int i = 0; i < cyc.Count; i++)
+                {
+                    next = (next + 1) % cyc.Count;
+                    if (!cyc[next].Dead) break;
+                }
+                _targetIdx = next;
+            }
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -79,8 +106,8 @@ public partial class RiderDuel
                     Key.Key1 => TeamOrder.Follow,
                     Key.Key2 => TeamOrder.AttackTarget,
                     Key.Key3 => TeamOrder.AttackNearby,
-                    Key.Key4 => TeamOrder.ProtectLeader,
-                    Key.Key5 => TeamOrder.Hold,
+                    Key.Key4 => TeamOrder.Hold,
+                    Key.Key5 => TeamOrder.ProtectCompanion,
                     _ => null
                 };
                 if (ord.HasValue)
@@ -90,9 +117,9 @@ public partial class RiderDuel
                     {
                         TeamOrder.Follow => "ORDER: FOLLOW ME",
                         TeamOrder.AttackTarget => "ORDER: ATTACK MY TARGET",
-                        TeamOrder.AttackNearby => "ORDER: ATTACK NEARBY ENEMY",
-                        TeamOrder.ProtectLeader => "ORDER: PROTECT MY TARGET",
-                        _ => "ORDER: FULL STOP"
+                        TeamOrder.AttackNearby => "ORDER: ATTACK CLOSEST ENEMY",
+                        TeamOrder.ProtectCompanion => "ORDER: PROTECT MY COMPANION",
+                        _ => "ORDER: STOP"
                     });
                     GetViewport().SetInputAsHandled();
                     return;
