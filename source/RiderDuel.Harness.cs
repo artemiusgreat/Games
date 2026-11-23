@@ -701,6 +701,63 @@ public partial class RiderDuel
 
 
 
+
+    // ---------- Guard targeting probe ----------
+    // Owner reports (2026-11-23): defenders walked backward
+    // and ignored the team member shooting them - traced to
+    // NearestTeamWalker's missing team filter (a guard's
+    // nearest "team rider" was itself). Stage it: put the
+    // player 30u from a village guard, read its target; then
+    // put a TEAMMATE 12u from it and read again - the guard
+    // must engage the player first, then the nearer teammate.
+    private int _gpPhase;
+    private double _gpT;
+    private Ally _gpGuard, _gpMate;
+    private int _gpShots0;
+
+    private void UpdateGuardProbe(float dt)
+    {
+        // The harness dispatch replaces the live sim block, so
+        // step the guard AI here (no harness ever needed it
+        // before this probe existed).
+        UpdateGuardAI(dt);
+        _gpT += dt;
+        if (_gpPhase == 0 && _gpT > 1.5f)
+        {
+            foreach (var a in _allies)
+            {
+                if (a.Guard && !a.Dead && _gpGuard == null) _gpGuard = a;
+                if (!a.Guard && a.Team == 0 && !a.Dead && _gpMate == null) _gpMate = a;
+            }
+            if (_gpGuard == null) { GD.Print("GUARDPROBE no guard staged"); GetTree().Quit(1); return; }
+            _hpPlayer = 100000f;
+            var spot = _gpGuard.GuardHome + new Vector3(30f, 0f, 0f);
+            spot.Y = Main.HeightAt(spot.X, spot.Z);
+            _player.Teleport(spot, -Mathf.Pi / 2f);
+            _gpShots0 = _allyShots;
+            GD.Print($"GUARDPROBE guard={_gpGuard.Role} home={_gpGuard.GuardHome} mate={(_gpMate != null ? _gpMate.Role : "none")}");
+            _gpPhase = 1; _gpT = 0f;
+        }
+        else if (_gpPhase == 1 && _gpT > 4f)
+        {
+            var nearW = NearestTeamWalker(_gpGuard.Walker.RootPos);
+            GD.Print($"GUARDPROBE t4 target={(_gpGuard.TargetW != null ? TagOf(_gpGuard.TargetW) : "none")} engaged={_gpGuard.Engaged} guardShots={_allyShots - _gpShots0} playerPos={_player.RootPos} guardPos={_gpGuard.Walker.RootPos} dist={_gpGuard.Walker.RootPos.DistanceTo(_player.RootPos):F0} nearTeam={(nearW != null ? TagOf(nearW) : "null")} tickReady={TickReady(_gpGuard.Walker)} isMission={WorldConfig.IsMission}");
+            if (_gpMate != null)
+            {
+                var spot = _gpGuard.GuardHome + new Vector3(-12f, 0f, 0f);
+                spot.Y = Main.HeightAt(spot.X, spot.Z);
+                _gpMate.Walker.Teleport(spot, Mathf.Pi / 2f);
+            }
+            _gpPhase = 2; _gpT = 0f;
+        }
+        else if (_gpPhase == 2 && _gpT > 4f)
+        {
+            GD.Print($"GUARDPROBE t8 target={(_gpGuard.TargetW != null ? TagOf(_gpGuard.TargetW) : "none")} engaged={_gpGuard.Engaged} guardShots={_allyShots - _gpShots0}");
+            GD.Print("GUARDPROBE DONE");
+            GetTree().Quit(0);
+        }
+    }
+
     // ---------- Debris-on-a-slope probe ----------
     // Owner report (2026-11-23): after shooting a Hector's
     // leg, a chunk hung in the air beside him. Stage it: a

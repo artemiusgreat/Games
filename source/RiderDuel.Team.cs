@@ -169,7 +169,17 @@ public partial class RiderDuel
         }
         foreach (var a in _allies)
         {
-            if (a.Dead) continue;
+            // TEAM FILTER (owner reports, 2026-11-23): this
+            // scan once took every record in _allies - but the
+            // Ascent work put the defenders themselves in that
+            // list, so a guard's "nearest team rider" resolved
+            // to ITSELF at distance 0. The guard then targeted
+            // itself: torso on a zero-vector bearing, legs
+            // driving a constant heading (which reads as
+            // walking backward), and it never engaged anyone -
+            // not the player, not the team member shooting it.
+            // Only Team 0 (the player's own side) counts here.
+            if (a.Dead || a.Team != 0) continue;
             float d = from.DistanceSquaredTo(a.Walker.RootPos);
             if (d < bd) { bd = d; best = a.Walker; }
         }
@@ -299,7 +309,7 @@ public partial class RiderDuel
     // (CheckMissionEnd counts them).
     private void BuildGuards()
     {
-        if (!WorldConfig.IsMission || !WorldConfig.Ascent || AnyHarness) return;
+        if (!WorldConfig.IsMission || !WorldConfig.Ascent || (AnyHarness && !_guardProbe)) return; // the guard probe musters them on purpose
         int n = 0;
         void Muster(Vector2 centre, int count, int seed)
         {

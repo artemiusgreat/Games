@@ -184,6 +184,7 @@ public partial class RiderDuel
                 continue;
             }
             var tgt = NearestTeamWalker(a.Walker.RootPos) ?? _player;
+            if (tgt != a.TargetW) Dbg.Print($"GUARD {a.Role} target -> {TagOf(tgt)}");
             a.TargetW = tgt;
             float pace = PaceFor(a.Spec, a.Walker.RootPos.DistanceTo(tgt.RootPos));
             UpdateFoeMovement(a.Walker, a.Parts, pace,
