@@ -301,13 +301,20 @@ void fragment() {
             WorldConfig.BiomeKind.City => (new Color(0.55f, 0.58f, 0.55f), new Color(0.80f, 0.78f, 0.75f), new Color(1.0f, 1.0f, 1.0f), new Color(0.78f, 0.78f, 0.82f)),
             _ => (new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f))
         };
+        string grassSet = "leafy_grass", dirtSet = "forest_floor";
         if (WorldConfig.SnowGround)
         {
             // Snow cover (owner): the ground matches a snowy
             // sky - every channel lifts to blue-white snow,
             // asphalt stays a paler plowed grey.
-            gt = new Color(1.55f, 1.65f, 1.95f); dt = new Color(1.45f, 1.55f, 1.85f);
             rt = new Color(1.35f, 1.45f, 1.75f); at = new Color(1.05f, 1.12f, 1.30f);
+            gt = rt; dt = rt;
+            // No green under snow (owner, 2026-11-22): where
+            // the splat calls for grass or dirt, a snow-covered
+            // mountain shows bare stone - the grass and dirt
+            // channels sample the rock set itself, so no green
+            // can show through the snow tints.
+            grassSet = "aerial_rocks_02"; dirtSet = "aerial_rocks_02";
         }
         // Uniform ground zones (owner round 6, corrected
         // round 7): on mission city maps the valley floors
@@ -330,12 +337,12 @@ void fragment() {
         m.SetShaderParameter("dirt_tint", dt);
         m.SetShaderParameter("rock_tint", rt);
         m.SetShaderParameter("asph_tint", at);
-        m.SetShaderParameter("grass_diff", Tex("leafy_grass", "diff"));
-        m.SetShaderParameter("grass_nor", Tex("leafy_grass", "nor_gl"));
-        m.SetShaderParameter("grass_arm", Tex("leafy_grass", "arm"));
-        m.SetShaderParameter("dirt_diff", Tex("forest_floor", "diff"));
-        m.SetShaderParameter("dirt_nor", Tex("forest_floor", "nor_gl"));
-        m.SetShaderParameter("dirt_arm", Tex("forest_floor", "arm"));
+        m.SetShaderParameter("grass_diff", Tex(grassSet, "diff"));
+        m.SetShaderParameter("grass_nor", Tex(grassSet, "nor_gl"));
+        m.SetShaderParameter("grass_arm", Tex(grassSet, "arm"));
+        m.SetShaderParameter("dirt_diff", Tex(dirtSet, "diff"));
+        m.SetShaderParameter("dirt_nor", Tex(dirtSet, "nor_gl"));
+        m.SetShaderParameter("dirt_arm", Tex(dirtSet, "arm"));
         m.SetShaderParameter("rock_diff", Tex("aerial_rocks_02", "diff"));
         m.SetShaderParameter("rock_nor", Tex("aerial_rocks_02", "nor_gl"));
         m.SetShaderParameter("rock_arm", Tex("aerial_rocks_02", "arm"));
