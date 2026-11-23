@@ -1023,15 +1023,14 @@ public partial class RiderDuel
                 part.Destroyed ? CdLabelDead : new Color(0.75f, 0.8f, 0.85f));
         }
 
-        // Systems readouts. TARGET RANGE is a reticle
-        // rangefinder (owner): the distance from the rider to
-        // whatever the crosshair rests on - building, tree,
-        // enemy, ground - not just the active target. The cast
-        // runs far past weapon reach (1500u) so Mission
-        // sightlines read true; past that it reports the cap.
-        // Non-chase views (harness cameras) keep the old
-        // active-target reading.
-        if (_camMode == CamModes.Chase && _cam != null)
+        // Systems readouts. TARGET RANGE is the distance to
+        // the ACTIVE TARGET (owner, corrected 2026-11-23: the
+        // reticle rangefinder reading was mistaken for the
+        // target's range at 0.91 km - the number now always
+        // names the target). The old rangefinder survives only
+        // as the no-target fallback (harness cameras, no foes).
+        bool liveTgt = tgt.W != null && !tgt.Dead;
+        if (_camMode == CamModes.Chase && _cam != null && !liveTgt && tgt.W == null)
         {
             var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, Roles.Player);
             _lblRange.Text = rHit.Hit
@@ -1039,7 +1038,7 @@ public partial class RiderDuel
                 : $"TARGET RANGE: {Units.KmVal(Aim.FarRange):0.##}+ km";
         }
         else
-            _lblRange.Text = tgt.W == null || tgt.Dead ? "TARGET: DESTROYED" : $"TARGET RANGE: {Units.Km(tgtRange)}";
+            _lblRange.Text = !liveTgt ? "TARGET: DESTROYED" : $"TARGET RANGE: {Units.Km(tgtRange)}";
         _lblSpeed.Text = $"SPEED: {Units.Kmh(_playerVel.Length())}" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
 
         if (_radar != null)
