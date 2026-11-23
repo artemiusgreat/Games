@@ -14,6 +14,11 @@ public sealed class RiderSpec
 {
     public string Id;
     public string Name;
+    // House affiliation (owner, 2026-11-23): five houses -
+    // Ravens, Scorpions, Hounds, Manticores, Dragons. Assigned
+    // randomly for now; the categorization (and the rider
+    // renames that follow from it) comes later at his word.
+    public string House;
     public float Tonnage;
     // Weight class for the lab label (owner, 2026-11-01):
     // Light under 40t, Medium under 60t, Heavy from 60t.
@@ -60,7 +65,7 @@ public static class RiderSpecs
 
     public static readonly RiderSpec Enyo = new()
     {
-        Id = "enyo", Name = "ENYO", Tonnage = 75f, JumpCapable = true,
+        Id = "enyo", Name = "ENYO", Tonnage = 75f, House = "Manticores", JumpCapable = true,
         ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -98,7 +103,7 @@ public static class RiderSpecs
     // the fused SRM housing (see its spec).
     public static readonly RiderSpec Hector = new()
     {
-        Id = "hector", Name = "HECTOR", Tonnage = 100f, JumpCapable = false,
+        Id = "hector", Name = "HECTOR", Tonnage = 100f, House = "Ravens", JumpCapable = false,
         ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
         Height = 14f, Radius = 1.90f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 50f / 9f,
         // Radius 1.90 for the Hector-Front sculpt (2026-11-15):
@@ -139,7 +144,7 @@ public static class RiderSpecs
     // left it with two. Caps sum to the 65t budget.
     public static readonly RiderSpec Prometheus = new()
     {
-        Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, JumpCapable = true,
+        Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, House = "Hounds", JumpCapable = true,
         ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
         Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -160,7 +165,7 @@ public static class RiderSpecs
     // shield arm. Caps sum to the 85t budget.
     public static readonly RiderSpec Medea = new()
     {
-        Id = "medea", Name = "MEDEA", Tonnage = 85f, JumpCapable = false,
+        Id = "medea", Name = "MEDEA", Tonnage = 85f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 290f,
         Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -184,7 +189,7 @@ public static class RiderSpecs
     // Caps sum to 100t.
     public static readonly RiderSpec Demeter = new()
     {
-        Id = "demeter", Name = "DEMETER", Tonnage = 100f, JumpCapable = false,
+        Id = "demeter", Name = "DEMETER", Tonnage = 100f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/demeter.fbx", PartsId = "demeter", MaxHp = 340f,
         Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -204,7 +209,7 @@ public static class RiderSpecs
     // Caps sum to 95t.
     public static readonly RiderSpec Theseus = new()
     {
-        Id = "theseus", Name = "THESEUS", Tonnage = 95f, JumpCapable = false,
+        Id = "theseus", Name = "THESEUS", Tonnage = 95f, House = "Hounds", JumpCapable = false,
         ModelPath = "res://assets/theseus.fbx", PartsId = "theseus", MaxHp = 320f,
         Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -233,7 +238,7 @@ public static class RiderSpecs
     // sum to the 75t budget; all three types aboard.
     public static readonly RiderSpec Hermes = new()
     {
-        Id = "hermes", Name = "HERMES", Tonnage = 75f, JumpCapable = false,
+        Id = "hermes", Name = "HERMES", Tonnage = 75f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/hermes.fbx", PartsId = "hermes", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -267,7 +272,7 @@ public static class RiderSpecs
     // Caps sum to the 70t budget; all three types aboard.
     public static readonly RiderSpec Apollo = new()
     {
-        Id = "apollo", Name = "APOLLO", Tonnage = 70f, JumpCapable = true,
+        Id = "apollo", Name = "APOLLO", Tonnage = 70f, House = "Manticores", JumpCapable = true,
         ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
         Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
         FlipKneePole = false, SagittalKneePole = true,
@@ -291,7 +296,7 @@ public static class RiderSpecs
     // the hip-ankle line - no mirror. Caps sum to 75t.
     public static readonly RiderSpec Hades = new()
     {
-        Id = "hades", Name = "HADES", Tonnage = 75f, JumpCapable = false,
+        Id = "hades", Name = "HADES", Tonnage = 75f, House = "Dragons", JumpCapable = false,
         ModelPath = "res://assets/hades.fbx", PartsId = "hades", MaxHp = 265f,
         Height = 13.5f, Radius = 2.0f, StepTime = 0.52f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.4f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -311,7 +316,7 @@ public static class RiderSpecs
     // no mirror. Caps sum to 85t; defaults fill every slot.
     public static readonly RiderSpec Ares = new()
     {
-        Id = "ares", Name = "ARES", Tonnage = 85f, JumpCapable = false,
+        Id = "ares", Name = "ARES", Tonnage = 85f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/ares.fbx", PartsId = "ares", MaxHp = 295f,
         Height = 13.0f, Radius = 2.3f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.2f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
@@ -336,7 +341,7 @@ public static class RiderSpecs
     // it in RiderParts. Caps sum to 90t.
     public static readonly RiderSpec Amadeus = new()
     {
-        Id = "amadeus", Name = "AMADEUS", Tonnage = 90f, JumpCapable = false,
+        Id = "amadeus", Name = "AMADEUS", Tonnage = 90f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/amadeus.fbx", PartsId = "amadeus", MaxHp = 310f,
         Height = 13.5f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
