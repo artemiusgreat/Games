@@ -90,6 +90,13 @@ uniform vec4 asph_tint : source_color = vec4(1.0);
 uniform vec4 solid_zones[4];
 varying vec3 wpos;
 varying vec3 wnorm;
+// The coarse detail scale is sampled through a 38-degree
+// rotation (owner, 2026-11-22: the mountain texture read as
+// one repeating tile): with the two scales sharing no axis,
+// their composite has no short period left to recognise, and
+// the blend between them also drifts per 160u cell below, so
+// no two stretches of slope wear the same pattern.
+vec2 rot38(vec2 p) { return mat2(0.788, -0.616, 0.616, 0.788) * p; }
 void vertex() {
     wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -116,8 +123,10 @@ void fragment() {
     float camd = distance(wpos, CAMERA_POSITION_WORLD);
     float far_k = smoothstep(150.0, 450.0, camd);
     float detmix = mix(0.45, 0.85, far_k);
+    float cellh = fract(sin(dot(floor(wpos.xz / 160.0), vec2(127.1, 311.7))) * 43758.5453);
+    detmix = clamp(detmix + (cellh - 0.5) * 0.35, 0.05, 0.95);
     vec2 uv1 = wpos.xz * 0.055;
-    vec2 uv2 = wpos.xz * 0.019 + 0.37;
+    vec2 uv2 = rot38(wpos.xz * 0.019) + 0.37;
     // Rock is TRIPLANAR (owner, 2026-11-15): the scanned rock
     // set carries strong sedimentary strata, and planar XZ
     // sampling wrapped those strata around every slope as
@@ -129,8 +138,8 @@ void fragment() {
     tw /= max(tw.x + tw.y + tw.z, 0.001);
     vec3 rkAlb = vec3(0.0);
     rkAlb += tw.y * mix(texture(rock_diff, uv1).rgb, texture(rock_diff, uv2).rgb, detmix);
-    rkAlb += tw.x * mix(texture(rock_diff, wpos.zy * 0.055).rgb, texture(rock_diff, wpos.zy * 0.019 + 0.37).rgb, detmix);
-    rkAlb += tw.z * mix(texture(rock_diff, wpos.xy * 0.055).rgb, texture(rock_diff, wpos.xy * 0.019 + 0.37).rgb, detmix);
+    rkAlb += tw.x * mix(texture(rock_diff, wpos.zy * 0.055).rgb, texture(rock_diff, rot38(wpos.zy * 0.019) + 0.37).rgb, detmix);
+    rkAlb += tw.z * mix(texture(rock_diff, wpos.xy * 0.055).rgb, texture(rock_diff, rot38(wpos.xy * 0.019) + 0.37).rgb, detmix);
     vec3 rkNor = vec3(0.0);
     rkNor += tw.y * texture(rock_nor, uv1).rgb;
     rkNor += tw.x * texture(rock_nor, wpos.zy * 0.055).rgb;
