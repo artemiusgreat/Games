@@ -1211,7 +1211,7 @@ public partial class RiderDuel
             if (tfg != null) tfg.BgColor = !fitted ? CdDead
                 : _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
             _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
-            _lblThr.Text = !fitted ? "THRUST -" : _player.Airborne ? "THRUST \u25b2" : "THRUST";
+            _lblThr.Text = fitted ? "THRUST" : "THRUST -";
         }
 
         // Per-part status cells (player rider).
