@@ -25,17 +25,43 @@ public partial class RiderDuel
     // ---- Falling snow ----
     private GpuParticles3D _snowfall;
 
+    // Signed-distance rounded rect (p, centre, half-size,
+    // corner radius) for the stamp shapes below.
+    private static float RRect(Vector2 p, Vector2 c, Vector2 h, float r)
+    {
+        var q = new Vector2(Mathf.Abs(p.X - c.X), Mathf.Abs(p.Y - c.Y)) - (h - new Vector2(r, r));
+        float ax = Mathf.Max(q.X, 0f), ay = Mathf.Max(q.Y, 0f);
+        return Mathf.Sqrt(ax * ax + ay * ay) + Mathf.Min(Mathf.Max(q.X, q.Y), 0f) - r;
+    }
+
     private static Texture2D PrintTexture()
     {
-        // Soft rounded blob: a compressed-snow footprint.
-        var img = Image.CreateEmpty(64, 96, false, Image.Format.Rgba8);
-        for (int y = 0; y < 96; y++)
-        for (int x = 0; x < 64; x++)
+        // Abstract mech-foot stamp (owner, 2026-11-23: the
+        // plain oval read as a smudge and clipped on slopes):
+        // a wide toe pad with two tread grooves, a narrow
+        // arch, and a heel block - one stylised shape that
+        // suits every chassis's foot. Canvas top (v=0) is the
+        // toe: the print basis puts v=0 toward the foot's
+        // forward. Alpha comes from the shapes' signed
+        // distance, so the rim is soft and a corner sunk into
+        // a slope fades instead of slicing the shape.
+        var img = Image.CreateEmpty(96, 144, false, Image.Format.Rgba8);
+        for (int y = 0; y < 144; y++)
+        for (int x = 0; x < 96; x++)
         {
-            float nx = (x - 31.5f) / 30f, ny = (y - 47.5f) / 46f;
-            float d = nx * nx + ny * ny;
-            float a = Mathf.Clamp(1f - d, 0f, 1f);
+            var p = new Vector2((x + 0.5f) / 96f, (y + 0.5f) / 144f);
+            float dToe = RRect(p, new Vector2(0.5f, 0.30f), new Vector2(0.31f, 0.235f), 0.10f);
+            float dArch = RRect(p, new Vector2(0.5f, 0.545f), new Vector2(0.155f, 0.075f), 0.06f);
+            float dHeel = RRect(p, new Vector2(0.5f, 0.775f), new Vector2(0.235f, 0.155f), 0.08f);
+            float d = Mathf.Min(Mathf.Min(dToe, dHeel), dArch + 0.012f); // arch sits lighter (less contact)
+            float a = Mathf.Clamp(0.5f - d / 0.055f, 0f, 1f);
             a = a * a * (3f - 2f * a);
+            // Tread grooves across the toe pad.
+            if (dToe < -0.015f)
+            {
+                float g1 = Mathf.Abs(p.Y - 0.185f), g2 = Mathf.Abs(p.Y - 0.415f);
+                if (Mathf.Min(g1, g2) < 0.016f) a *= 0.45f;
+            }
             img.SetPixel(x, y, new Color(1f, 1f, 1f, a));
         }
         return ImageTexture.CreateFromImage(img);
@@ -47,15 +73,19 @@ public partial class RiderDuel
         _prints = new MeshInstance3D[PrintPool];
         _printMats = new StandardMaterial3D[PrintPool];
         _printAge = new float[PrintPool];
-        var mesh = new PlaneMesh { Size = new Vector2(1.7f, 2.7f) };
+        var mesh = new PlaneMesh { Size = new Vector2(1.8f, 2.7f) };
         for (int i = 0; i < PrintPool; i++)
         {
             var mat = new StandardMaterial3D
             {
                 AlbedoTexture = tex,
-                AlbedoColor = new Color(0.52f, 0.60f, 0.78f, 0f),
+                // Shaded, a compressed-snow blue-grey darker
+                // than the field: the unshaded pale oval read
+                // as a blob pasted ON the snow (owner,
+                // 2026-11-23); a depression reads darker and
+                // takes the scene's light.
+                AlbedoColor = new Color(0.40f, 0.48f, 0.68f, 0f),
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
                 NoDepthTest = false,
             };
@@ -127,7 +157,7 @@ public partial class RiderDuel
         int i = _printHead;
         _printHead = (_printHead + 1) % PrintPool;
         _printAge[i] = 0f;
-        _prints[i].GlobalTransform = new Transform3D(basis, pos + n * 0.05f);
+        _prints[i].GlobalTransform = new Transform3D(basis, pos + n * 0.12f); // 0.05 clipped corners into slopes (owner, 2026-11-23)
         _prints[i].Visible = true;
     }
 
@@ -153,7 +183,7 @@ public partial class RiderDuel
             _printAge[i] += dt;
             float fade = Mathf.Clamp((PrintLife - _printAge[i]) / 20f, 0f, 1f);
             var c = _printMats[i].AlbedoColor;
-            c.A = 0.5f * fade;
+            c.A = 0.55f * fade;
             _printMats[i].AlbedoColor = c;
         }
 
