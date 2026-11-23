@@ -366,7 +366,11 @@ public partial class RiderDuel
         }
         var toSolve = (muzzle + toAim) - solveFrom;
         float dist = Mathf.Max(toSolve.Length(), 1f);
-        var dir = ApplyInaccuracy(toSolve.Normalized(), 1.1f);
+        // Per-pack dispersion (owner, 2026-11-23): the LRM
+        // converges on the reticle - spread 0, every rocket
+        // flies the exact solve - strictly inside its Range
+        // (the clamp above). The SRM keeps its 1.1-degree cone.
+        var dir = def.RocketSpread > 0f ? ApplyInaccuracy(toSolve.Normalized(), def.RocketSpread) : toSolve.Normalized();
         float tof = Mathf.Min(dist / baseSpeed, tofMax);
         float speed = dist / tof;
         var vel = dir * speed + Vector3.Up * (0.5f * grav * tof);
