@@ -4831,7 +4831,7 @@ public partial class RiderDuel
                 // and the gain/pitch mapping are the parts
                 // observable here; audibility is his playtest.
                 bool ok = _windPlayer.Stream == _sfxWind && _servoPlayer.Stream == _sfxServo
-                          && _windPlayer.VolumeDb > -29f && _windPlayer.VolumeDb < -23f
+                          && _windPlayer.VolumeDb > -35f && _windPlayer.VolumeDb < -29f
                           && _ambRestServo <= -50f && _servoPlayer.VolumeDb > -25f;
                 GD.Print(ok ? "AMBPROBE PASS" : "AMBPROBE FAIL");
                 GetTree().Quit(ok ? 0 : 1);
