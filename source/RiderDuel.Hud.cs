@@ -1248,7 +1248,7 @@ public partial class RiderDuel
         bool liveTgt = tgt.W != null && !tgt.Dead;
         if (_camMode == CamModes.Chase && _cam != null && !liveTgt && tgt.W == null)
         {
-            var rHit = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, Roles.Player, 0f, Team0Ids());
+            var rHit = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange);
             _lblRange.Text = rHit.Hit
                 ? $"TARGET RANGE: {Units.Km(_player.RootPos.DistanceTo(rHit.Point))}"
                 : $"TARGET RANGE: {Units.KmVal(Aim.FarRange):0.##}+ km";

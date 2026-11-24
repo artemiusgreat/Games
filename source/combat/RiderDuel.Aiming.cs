@@ -50,11 +50,10 @@ public partial class RiderDuel
         return new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
     }
 
-    // The player's whole team, for aim casts: your own riders
-    // are never aim surfaces (owner, 2026-11-23 - a teammate
-    // standing in the camera's line became the reticle point,
-    // and every weapon converged on the point ON HIS BACK,
-    // behind the pods: salvos solved backward into him).
+    // The player's whole team, for aim casts - see AimRay
+    // for the two-sided rule (never a surface on the camera
+    // side of the player; a blocking surface in the line of
+    // fire).
     private readonly System.Collections.Generic.HashSet<string> _team0Ids = new();
     private System.Collections.Generic.HashSet<string> Team0Ids()
     {
@@ -62,6 +61,29 @@ public partial class RiderDuel
         _team0Ids.Add(Roles.Player);
         foreach (var a in _allies) if (a.Team == 0) _team0Ids.Add(a.Role);
         return _team0Ids;
+    }
+
+    // The aim cast's team rule (owner, 2026-11-23, both halves
+    // of it): a teammate on the CAMERA side of the player -
+    // standing in the camera's line, behind the rider - is
+    // never an aim surface (the backward-salvo bug: the
+    // reticle point landed on his back and every weapon
+    // converged behind the pods). A teammate on the TARGET
+    // side - in the line of fire, beyond the rider - BLOCKS
+    // like any rider: weapons do not shoot through your own
+    // team (his follow-up the same day). So: cast open; if
+    // the first surface is a teammate nearer than the player
+    // himself along the ray, recast with the team ignored.
+    private HitModel.Result AimRay(Vector3 from, Vector3 dir, float range, float inflate = 0f)
+    {
+        var hit = _hit.Ray(from, dir, range, Roles.Player, inflate);
+        if (hit.Hit && Team0Ids().Contains(hit.Target))
+        {
+            float playerT = (_player.RootPos - from).Dot(dir);
+            if (hit.T < playerT)
+                return _hit.Ray(from, dir, range, Roles.Player, inflate, Team0Ids());
+        }
+        return hit;
     }
 
     private Vector3 TorsoAimPoint()
@@ -83,7 +105,7 @@ public partial class RiderDuel
         if (_camMode == CamModes.Chase)
         {
             var camPos = _cam.GlobalPosition;
-            var viewHit = _hit.Ray(camPos, dir, Aim.ConvergenceRange, Roles.Player, 0f, Team0Ids());
+            var viewHit = AimRay(camPos, dir, Aim.ConvergenceRange);
             _aimTarget = viewHit.Hit ? viewHit.Target : "";
             _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * Aim.ConvergenceRange;
             _aimParallel = !viewHit.Hit;
@@ -94,14 +116,14 @@ public partial class RiderDuel
                 // the rangefinder's reach) so far shells can
                 // converge on THAT point and land on the
                 // crosshair at mission ranges.
-                var farHit = _hit.Ray(camPos, dir, Aim.FarRange, Roles.Player, 0f, Team0Ids());
+                var farHit = AimRay(camPos, dir, Aim.FarRange);
                 _farConverge = farHit.Hit ? farHit.T : Aim.FarRange;
             }
             return _reticlePoint;
         }
         // Fallback (round 11): the chest ray's RIDER/PROP hit within
         // weapon reach, else the free 40u point.
-        var hit = _hit.Ray(from, dir, 200f, Roles.Player, 0f, Team0Ids());
+        var hit = AimRay(from, dir, 200f);
         _aimTarget = hit.Hit ? hit.Target : "";
         if (hit.Hit && hit.T <= 140f && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
             return hit.Point;

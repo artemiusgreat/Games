@@ -717,6 +717,7 @@ public partial class RiderDuel
     private double _ffT;
     private Ally _ffMate;
     private float _ffMateHp0, _ffEnemyHp0;
+    private bool _ffCase1;
 
     private void UpdateFfProbe(float dt)
     {
@@ -793,7 +794,43 @@ public partial class RiderDuel
             bool enemyHit = _hpEnemy < _ffEnemyHp0 - 0.01f;
             GD.Print($"FFPROBE mate {_ffMateHp0:F0} -> {_ffMate.Hp:F0}; enemy {_ffEnemyHp0:F0} -> {_hpEnemy:F0}");
             GD.Print(mateSafe && enemyHit ? "FFPROBE PASS" : "FFPROBE FAIL");
-            GetTree().Quit(mateSafe && enemyHit ? 0 : 1);
+            _ffCase1 = mateSafe && enemyHit;
+            // Case 2 (owner's follow-up, same day): the mate in
+            // FRONT, in the line of fire - now he must BLOCK:
+            // the salvo stops on him and the enemy stays clean.
+            var home = PadWorld(0); home.Y = Main.HeightAt(home.X, home.Z);
+            _player.Teleport(home, 0f);
+            var mSpot = home + new Vector3(0f, 0f, -25f); mSpot.Y = Main.HeightAt(mSpot.X, mSpot.Z);
+            _ffMate.Walker.Teleport(mSpot, 0f);
+            _ffMate.Hp = 100000f; _hpEnemy = 100000f;
+            _ffMateHp0 = _ffMate.Hp; _ffEnemyHp0 = _hpEnemy;
+            _ffPhase = 4; _ffT = 0f;
+        }
+        else if (_ffPhase == 4)
+        {
+            var hd = AimDirWorld(); hd.Y = 0f; hd = hd.Normalized();
+            _cam.GlobalPosition = _player.RootPos - hd * 26f + Vector3.Up * 9.5f;
+            var mateChest = _ffMate.Walker.RootPos + Vector3.Up * 7f;
+            var dirM = (mateChest - _cam.GlobalPosition).Normalized();
+            var eSpot = _cam.GlobalPosition + dirM * 110f;
+            eSpot.Y = Main.HeightAt(eSpot.X, eSpot.Z);
+            _enemy.Teleport(eSpot, Mathf.Pi);
+            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
+            var aim = TorsoAimPoint();
+            if (_aimTarget == _ffMate.Role || _ffT > 2.5f)
+            {
+                GD.Print($"FFPROBE2 aim: target='{_aimTarget}' (mate role '{_ffMate.Role}') reticle={aim} player={_player.RootPos} mate={_ffMate.Walker.RootPos}");
+                FireSalvoVolley(aim, _podGunsL, _podGunsR);
+                _ffPhase = 5; _ffT = 0f;
+            }
+        }
+        else if (_ffPhase == 5 && _ffT > 7f)
+        {
+            bool mateHit = _ffMate.Hp < _ffMateHp0 - 0.01f;
+            bool enemyClean = _hpEnemy >= _ffEnemyHp0 - 0.01f;
+            GD.Print($"FFPROBE2 mate {_ffMateHp0:F0} -> {_ffMate.Hp:F0}; enemy {_ffEnemyHp0:F0} -> {_hpEnemy:F0}");
+            GD.Print(mateHit && enemyClean ? "FFPROBE2 PASS" : "FFPROBE2 FAIL");
+            GetTree().Quit(_ffCase1 && mateHit && enemyClean ? 0 : 1);
         }
     }
 

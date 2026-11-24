@@ -108,7 +108,7 @@ public partial class RiderDuel
             // the mouse points by construction, so the axis is the
             // truth in play and in tests alike.
             var camDir = AimDirWorld();
-            hit = _hit.Ray(_cam.GlobalPosition, camDir, maxRange, Roles.Player, 0.9f, Team0Ids());
+            hit = AimRay(_cam.GlobalPosition, camDir, maxRange, 0.9f);
             bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
@@ -120,13 +120,13 @@ public partial class RiderDuel
                 // harness asked for, the muzzle cast is the truth
                 // there. Live play never takes this branch.
                 var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-                hit = _hit.Ray(muzzle, fbDir, maxRange, Roles.Player, 0.9f, Team0Ids());
+                hit = AimRay(muzzle, fbDir, maxRange, 0.9f);
             }
         }
         else
         {
             var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-            hit = _hit.Ray(muzzle, dir, maxRange, Roles.Player, 0.9f, Team0Ids());
+            hit = AimRay(muzzle, dir, maxRange, 0.9f);
         }
         // The beams end where the shot ends (owner): on a hit a
         // beam ends on the hit when ITS weapon reaches it, else
