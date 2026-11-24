@@ -829,13 +829,13 @@ public sealed class RiderParts
     // classifies triangles by centroid, so the core's boundary and
     // the chunk's boundary are two different polylines a triangle
     // apart, sharing almost no vertices - the plate therefore fans
-    // over the UNION of both rims (only the verts near the chunk;
-    // the sculpt's older openings elsewhere on the torso are far
-    // away and excluded by the radius test). Each fan vert keeps
-    // its own slice's bone data. The plate is an extra surface of
-    // the core mesh: hidden inside the pod while it is attached,
-    // it stays with the torso when the pod tears away and reads
-    // as the empty socket (owner, 2026-11-22).
+    // over the UNION of both rims (per slice, the boundary loop
+    // nearest the chunk; the sculpt's other openings - the neck,
+    // the waist - are separate loops and stay out). Each fan vert
+    // keeps its own slice's bone data. The plate is an extra
+    // surface of the core mesh: hidden inside the pod while it is
+    // attached, it stays with the torso when the pod tears away
+    // and reads as the empty socket (owner, 2026-11-22).
     private void AddSocketPlug(ArrayMesh coreMesh, Godot.Collections.Array coreArr, int[] coreIdx, Godot.Collections.Array podArr, int[] podIdx)
     {
         var pv = podArr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
@@ -846,38 +846,125 @@ public sealed class RiderParts
         float podR = 0f;
         foreach (var p in pv) podR = Mathf.Max(podR, (p - podC).Length());
 
+        // Rim = the boundary loop of each slice that belongs to
+        // THIS wound: walk each slice's boundary edges into
+        // connected loops, then take the MATING pair - the core
+        // loop and the pod loop whose centroids coincide (the
+        // two rims of one wound sit on top of each other; the
+        // neck, the waist, Enyo's missile-tube rings and stray
+        // 2-vert debris loops do not mate with anything).
+        // (The old rule - every boundary vert within podR + 0.35
+        // of the centre, deduped at an absolute 0.02 - was
+        // written in model units but runs on raw mesh-local
+        // verts, whose scale differs per kit: on Prometheus it
+        // merged the whole rim into 12 clusters and the fan
+        // left see-through crescents along the wound, owner
+        // report 2026-11-24. Loop pairing + radii relative to
+        // podR are scale-free.)
         var rim = new List<(Vector3 Pos, Godot.Collections.Array Arr, int Src, int VertCount)>();
-        void Collect(Godot.Collections.Array arr, int[] idx)
+        // Loops are traced on POSITION keys, not vertex indices:
+        // the kits carry split verts along the carve seam (same
+        // position, several indices), so an index graph shatters
+        // the rim into ~14-vert fragments - the fan then caps a
+        // fragment and leaves the rest of the wound open (the
+        // first loop-pairing build still read verts=14 in-game).
+        // Welding by position (quantum 0.2% of podR) restores
+        // the true loops; each key's first index stands as its
+        // representative for bone data.
+        List<(List<int> Comp, Vector3 Cen)> LoopsOf(Godot.Collections.Array arr, int[] idx)
         {
             var vs = arr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
-            var use = new Dictionary<(int, int), int>();
+            float q = Mathf.Max(podR * 0.002f, 1e-6f);
+            var keyOf = new (int, int, int)[vs.Length];
+            var repOf = new Dictionary<(int, int, int), int>();
+            for (int i = 0; i < vs.Length; i++)
+            {
+                var key = ((int)Mathf.Round(vs[i].X / q), (int)Mathf.Round(vs[i].Y / q), (int)Mathf.Round(vs[i].Z / q));
+                keyOf[i] = key;
+                if (!repOf.ContainsKey(key)) repOf[key] = i;
+            }
+            var use = new Dictionary<((int, int, int), (int, int, int)), int>();
             for (int t = 0; t + 2 < idx.Length; t += 3)
                 for (int k = 0; k < 3; k++)
                 {
-                    int a = idx[t + k], b = idx[t + (k + 1) % 3];
-                    var e = a < b ? (a, b) : (b, a);
+                    var a = keyOf[idx[t + k]]; var b = keyOf[idx[t + (k + 1) % 3]];
+                    if (a.Equals(b)) continue;
+                    var e = a.CompareTo(b) < 0 ? (a, b) : (b, a);
                     use[e] = use.TryGetValue(e, out int cnt) ? cnt + 1 : 1;
                 }
-            var seen = new HashSet<int>();
+            var adj = new Dictionary<(int, int, int), List<(int, int, int)>>();
             foreach (var kv in use)
             {
                 if (kv.Value != 1) continue;
-                foreach (int vi in new[] { kv.Key.Item1, kv.Key.Item2 })
-                    if (seen.Add(vi) && (vs[vi] - podC).Length() <= podR + 0.35f)
-                        rim.Add((vs[vi], arr, vi, vs.Length));
+                if (!adj.TryGetValue(kv.Key.Item1, out var l1)) adj[kv.Key.Item1] = l1 = new List<(int, int, int)>();
+                if (!adj.TryGetValue(kv.Key.Item2, out var l2)) adj[kv.Key.Item2] = l2 = new List<(int, int, int)>();
+                l1.Add(kv.Key.Item2);
+                l2.Add(kv.Key.Item1);
+            }
+            var loops = new List<(List<int>, Vector3)>();
+            var seen = new HashSet<(int, int, int)>();
+            foreach (var start in adj.Keys)
+            {
+                if (!seen.Add(start)) continue;
+                var comp = new List<int> { repOf[start] };
+                var stack = new Stack<(int, int, int)>();
+                stack.Push(start);
+                var cc = vs[repOf[start]];
+                while (stack.Count > 0)
+                {
+                    var x = stack.Pop();
+                    foreach (var y in adj[x])
+                        if (seen.Add(y)) { comp.Add(repOf[y]); cc += vs[repOf[y]]; stack.Push(y); }
+                }
+                cc /= comp.Count;
+                loops.Add((comp, cc));
+            }
+            return loops;
+        }
+        var coreLoops = LoopsOf(coreArr, coreIdx);
+        var podLoops = LoopsOf(podArr, podIdx);
+        (List<int> Comp, Vector3 Cen) coreBest = (null, Vector3.Zero), podBest = (null, Vector3.Zero);
+        float pairD = float.MaxValue;
+        foreach (var cl in coreLoops)
+        {
+            if (cl.Comp.Count < 8) continue;
+            foreach (var pl in podLoops)
+            {
+                if (pl.Comp.Count < 8) continue;
+                float d = (cl.Cen - pl.Cen).Length();
+                if (d < pairD) { pairD = d; coreBest = cl; podBest = pl; }
             }
         }
-        Collect(coreArr, coreIdx);
-        Collect(podArr, podIdx);
+        if (coreBest.Comp == null)
+        {
+            // No sane pair - fall back to each slice's loop
+            // nearest the pod centre.
+            float bd = float.MaxValue;
+            foreach (var cl in coreLoops) { float d = (cl.Cen - podC).Length(); if (d < bd) { bd = d; coreBest = cl; } }
+            bd = float.MaxValue;
+            foreach (var pl in podLoops) { float d = (pl.Cen - podC).Length(); if (d < bd) { bd = d; podBest = pl; } }
+        }
+        if (coreBest.Comp != null)
+        {
+            var vs = coreArr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+            foreach (int vi in coreBest.Comp) rim.Add((vs[vi], coreArr, vi, vs.Length));
+        }
+        if (podBest.Comp != null)
+        {
+            var vs = podArr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+            foreach (int vi in podBest.Comp) rim.Add((vs[vi], podArr, vi, vs.Length));
+        }
         if (rim.Count < 3) { Dbg.Print($"{_riderId} SOCKET skip: rim {rim.Count} verts"); return; }
 
         // The two rims pass through nearly the same points; drop
         // near-duplicates or the fan fills with sliver triangles.
+        // Threshold relative to the pod's own radius (scale-free).
+        float dd = podR * 0.015f;
         var dedup = new List<(Vector3 Pos, Godot.Collections.Array Arr, int Src, int VertCount)>();
         foreach (var r in rim)
         {
             bool dup = false;
-            foreach (var q in dedup) if (q.Pos.DistanceSquaredTo(r.Pos) < 0.0004f) { dup = true; break; }
+            foreach (var q in dedup) if (q.Pos.DistanceSquaredTo(r.Pos) < dd * dd) { dup = true; break; }
             if (!dup) dedup.Add(r);
         }
         rim = dedup;
@@ -953,7 +1040,10 @@ public sealed class RiderParts
         {
             AlbedoColor = new Color(0.05f, 0.05f, 0.06f),
             Roughness = 0.92f,
-            Metallic = 0.25f
+            Metallic = 0.25f,
+            // The plate is read at glancing angles from either
+            // side of the wound - never let it cull away.
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled
         };
         int si = coreMesh.GetSurfaceCount();
         coreMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
