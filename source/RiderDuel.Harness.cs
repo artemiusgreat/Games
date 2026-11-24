@@ -4782,4 +4782,48 @@ public partial class RiderDuel
         }
     }
 
+
+    // ---------- Ambient probe ----------
+    // Owner (2026-11-24): the wind and servo beds. The
+    // harness replaces the live step, so the probe steps
+    // StepAmbient itself: at rest the wind must sit at its
+    // field level and the servo at the floor; with the
+    // player at full walk speed (fed into _playerVel, the
+    // field the live step maintains) the servo must rise.
+    private int _ambPhase;
+    private double _ambT;
+    private float _ambRestServo;
+
+    private void UpdateAmbientProbe(float dt)
+    {
+        _ambT += dt;
+        StepAmbient(0.05f);
+        if (_ambPhase == 0 && _ambT > 5.0)
+        {
+            _ambRestServo = _servoPlayer.VolumeDb;
+            GD.Print($"AMBPROBE rest: windPlaying={_windPlayer.Playing} windDb={_windPlayer.VolumeDb:F1} servoPlaying={_servoPlayer.Playing} servoDb={_ambRestServo:F1}");
+            _ambPhase = 1; _ambT = 0;
+        }
+        else if (_ambPhase == 1)
+        {
+            _playerVel = new Vector3(0f, 0f, 4.2f);
+            if (_ambT > 2.0)
+            {
+                GD.Print($"AMBPROBE walking: servoDb={_servoPlayer.VolumeDb:F1} pitch={_servoPlayer.PitchScale:F2}");
+                // Playing itself is not asserted: on this
+                // VM's headless dummy audio driver it reads
+                // False even for the pool voices that are
+                // audibly fine on the owner's build (the sfx
+                // probe showed the same). Stream assignment
+                // and the gain/pitch mapping are the parts
+                // observable here; audibility is his playtest.
+                bool ok = _windPlayer.Stream == _sfxWind && _servoPlayer.Stream == _sfxServo
+                          && _windPlayer.VolumeDb > -29f && _windPlayer.VolumeDb < -23f
+                          && _ambRestServo <= -50f && _servoPlayer.VolumeDb > -25f;
+                GD.Print(ok ? "AMBPROBE PASS" : "AMBPROBE FAIL");
+                GetTree().Quit(ok ? 0 : 1);
+            }
+        }
+    }
+
 }

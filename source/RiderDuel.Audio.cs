@@ -10,6 +10,12 @@ public partial class RiderDuel
     // assets/sfx (make_sfx.py - no external samples), played
     // through a small pool of 3D players so distance attenuates.
     private AudioStream _sfxLaser, _sfxPpc, _sfxCannon, _sfxRocket, _sfxHit, _sfxTree, _sfxExplosion, _sfxStepA, _sfxStepB, _sfxThruster;
+    // Ambience (owner, 2026-11-24): a wind bed for the world
+    // and a servo bed for the player's own rider - two
+    // dedicated 2D players, always running, faded by state.
+    private AudioStream _sfxWind, _sfxServo;
+    private AudioStreamPlayer _windPlayer, _servoPlayer;
+    private float _windDb = -60f, _servoDb = -60f, _prevTorsoYaw;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();
     private int _sfxNext;
     private double _lastHitSfxT = -1;
@@ -43,6 +49,19 @@ public partial class RiderDuel
             tw.LoopBegin = 0;
             tw.LoopEnd = (int)tw.GetLength() * 22050;
         }
+        _sfxWind = GD.Load<AudioStream>("res://assets/sfx/wind.wav");
+        _sfxServo = GD.Load<AudioStream>("res://assets/sfx/servo.wav");
+        foreach (var st in new[] { _sfxWind, _sfxServo })
+            if (st is AudioStreamWav lw)
+            {
+                lw.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
+                lw.LoopBegin = 0;
+                lw.LoopEnd = (int)lw.GetLength() * 22050;
+            }
+        _windPlayer = new AudioStreamPlayer { Stream = _sfxWind, VolumeDb = _windDb };
+        AddChild(_windPlayer); _windPlayer.Play();
+        _servoPlayer = new AudioStreamPlayer { Stream = _sfxServo, VolumeDb = _servoDb };
+        AddChild(_servoPlayer); _servoPlayer.Play();
         for (int i = 0; i < 16; i++)
         {
             var p = new AudioStreamPlayer3D { MaxDistance = 220f, VolumeDb = -6f };
@@ -50,6 +69,35 @@ public partial class RiderDuel
             _sfxPool.Add(p);
         }
         Dbg.Print($"SFX loaded laser={_sfxLaser != null} ppc={_sfxPpc != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
+    }
+
+    // Ambience step (owner, 2026-11-24): fades only - the two
+    // loops run continuously, so state changes never click.
+    // Wind belongs to the world (silent in the lab); the
+    // servo bed follows the player's OWN activity - ground
+    // speed plus torso twist rate - and sits at the floor
+    // when he stands still.
+    private void StepAmbient(float dt)
+    {
+        if (_windPlayer == null || dt <= 0f) return;
+        float windTarget = _labOpen ? -60f : -26f;
+        _windDb = Mathf.MoveToward(_windDb, windTarget, dt * 9f);
+        _windPlayer.VolumeDb = _windDb;
+
+        float torso = _player != null ? _player.TorsoYawWorld : 0f;
+        float yawRate = Mathf.Abs(Mathf.Wrap(torso - _prevTorsoYaw, -Mathf.Pi, Mathf.Pi)) / dt;
+        _prevTorsoYaw = torso;
+        float activity = 0f;
+        if (!_labOpen && _player != null && !_playerDead)
+        {
+            activity = Mathf.Clamp(_playerVel.Length() / 4.2f, 0f, 1f) * 0.75f
+                     + Mathf.Clamp(yawRate / 1.2f, 0f, 1f) * 0.6f;
+            activity = Mathf.Clamp(activity, 0f, 1f);
+        }
+        float servoTarget = activity <= 0.02f ? -60f : -30f + activity * 14f;
+        _servoDb = Mathf.MoveToward(_servoDb, servoTarget, dt * 26f);
+        _servoPlayer.VolumeDb = _servoDb;
+        _servoPlayer.PitchScale = 0.92f + 0.16f * activity;
     }
 
     private void PlaySfx(AudioStream stream, Vector3 pos, float volDb = 0f, float pitch = 1f)
