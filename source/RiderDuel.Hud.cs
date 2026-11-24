@@ -893,18 +893,17 @@ public partial class RiderDuel
             {
                 if (!firstSection)
                 {
-                    // A hairline between sections (owner),
-                    // evenly spaced above and below.
-                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 7) });
-                    var sep = new ColorRect { Color = new Color(0.80f, 0.86f, 0.96f, 0.28f), CustomMinimumSize = new Vector2(0, 1) };
-                    sep.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-                    list.AddChild(sep);
-                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 7) });
+                    // Air between sections (owner, 2026-11-23:
+                    // the hairline that stood here is removed -
+                    // separators now live between the ROWS).
+                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
                 }
                 firstSection = false;
                 // The subtitle wears a band (owner): body-size
                 // text on a padded, semi-transparent panel
-                // with a semi-transparent border.
+                // with a semi-transparent border. The band is
+                // inset from the right edge and gets extra air
+                // below it (owner, 2026-11-23).
                 var headBand = new PanelContainer();
                 var hsb = new StyleBoxFlat
                 {
@@ -919,9 +918,23 @@ public partial class RiderDuel
                 head.AddThemeFontSizeOverride("font_size", 14);
                 head.AddThemeColorOverride("font_color", gold);
                 headBand.AddChild(head);
-                list.AddChild(headBand);
+                var bandWrap = new MarginContainer();
+                bandWrap.AddThemeConstantOverride("margin_right", 14);
+                bandWrap.AddChild(headBand);
+                list.AddChild(bandWrap);
+                list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+                bool firstRow = true;
                 foreach (var (what, key) in items)
                 {
+                    if (!firstRow)
+                    {
+                        // A hairline between rows inside the
+                        // section (owner, 2026-11-23).
+                        var rsep = new ColorRect { Color = new Color(0.80f, 0.86f, 0.96f, 0.16f), CustomMinimumSize = new Vector2(0, 1) };
+                        rsep.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                        list.AddChild(rsep);
+                    }
+                    firstRow = false;
                     var h = new HBoxContainer();
                     h.AddThemeConstantOverride("separation", 10);
                     var bullet = new Label { Text = "\u2022", CustomMinimumSize = new Vector2(12, 0) };
