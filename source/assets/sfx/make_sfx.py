@@ -196,5 +196,21 @@ def servo():
         s[i] = s[i] * w + s[n - fade + i] * (1 - w)
     return s[:n - fade]
 
+def click():
+    # UI tick (owner, 2026-11-24): a 55ms mechanical click -
+    # a noise snap over a short sine ping. Local rng, so the
+    # other sounds stay byte-identical.
+    r = random.Random(20261124)
+    n = int(0.055 * SR)
+    out = []
+    for i in range(n):
+        t = i / SR
+        snap = r.uniform(-1, 1) * math.exp(-t / 0.0016) * 0.55
+        ping = math.sin(2 * math.pi * 1450 * t) * math.exp(-t / 0.0085) * 0.62
+        ping += math.sin(2 * math.pi * 2600 * t) * math.exp(-t / 0.004) * 0.20
+        out.append(snap + ping)
+    return out
+
 save('wind.wav', wind())
 save('servo.wav', servo())
+save('click.wav', click())
