@@ -185,7 +185,7 @@ public partial class MissionScreen : Control
             row.GuiInput += ev =>
             {
                 if (ev is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-                    Select(idx);
+                { UiSfx.Play(); Select(idx); }
             };
             var h = new HBoxContainer();
             h.AddThemeConstantOverride("separation", 12);

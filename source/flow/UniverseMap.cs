@@ -72,7 +72,7 @@ public partial class UniverseMap : Control
         if (ev is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
         {
             int hit = NodeAt(mb.Position);
-            if (hit >= 0) { OnSelect?.Invoke(hit); AcceptEvent(); }
+            if (hit >= 0) { UiSfx.Play(); OnSelect?.Invoke(hit); AcceptEvent(); }
         }
         else if (ev is InputEventMouseMotion mm)
         {

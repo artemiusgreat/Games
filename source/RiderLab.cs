@@ -73,7 +73,7 @@ public partial class RiderLab : Control
         public override void _GuiInput(InputEvent e)
         {
             if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-                Lab?.SelectWeapon(WeaponId);
+            { UiSfx.Play(); Lab?.SelectWeapon(WeaponId); }
         }
     }
 
@@ -830,6 +830,7 @@ public partial class RiderLab : Control
             {
                 if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left && _selectedWeapon != null)
                 {
+                    UiSfx.Play();
                     var w = WeaponCatalog.ById(_selectedWeapon);
                     var err = Loadout.TryAssign(Spec, capturedSlot.Id, w);
                     SetHint(err ?? $"{w.Name} installed in the {capturedSlot.Display}.");
@@ -841,6 +842,7 @@ public partial class RiderLab : Control
                     // Peel ONE weapon by click: left-click an occupied
                     // hardpoint with no weapon selected removes the
                     // last one fitted (right-click empties the slot).
+                    UiSfx.Play();
                     if (Loadout.RemoveLast(capturedSlot.Id, out var rid))
                         SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {capturedSlot.Display}.");
                     Refresh();
@@ -1190,6 +1192,7 @@ public partial class RiderLab : Control
                     if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
                     {
                         if (grpBtn.GetGlobalRect().HasPoint(mb.GlobalPosition)) return; // the G-button's click is not a removal
+                        UiSfx.Play();
                         if (Loadout.RemoveAt(sid, idx, out var rid))
                             SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
                         Refresh();

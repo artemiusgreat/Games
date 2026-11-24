@@ -349,6 +349,7 @@ public partial class RiderDuel : Node3D
 
     public override async void _Ready()
     {
+        UiSfx.Install(this); // UI clicks on the lab + every popup (owner, 2026-11-24)
         foreach (var arg in OS.GetCmdlineUserArgs())
         {
             if (arg == "--duel-test") _test = true;

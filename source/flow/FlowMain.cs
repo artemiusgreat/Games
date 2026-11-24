@@ -61,6 +61,8 @@ public partial class FlowMain : Node3D
             if (arg.StartsWith("--flowfocus=")) _focusTarget = int.Parse(arg.Substring("--flowfocus=".Length));
             if (arg == "--flowtest-nav") _navTest = true;
         }
+        UiSfx.Install(this); // UI clicks across the whole wizard (owner, 2026-11-24)
+        if (_flowshot != null || _navTest) Dbg.On = true; // harness runs may log (UISFX wiring)
 
         // Front-door boot (owner, 2026-11-15): arriving at
         // the home screen from a left match (StartScreen
