@@ -4682,4 +4682,58 @@ public partial class RiderDuel
         }
     }
 
+    // ---------- Target-pick probe ----------
+    // Owner (2026-11-23): TARGET RANGE always read ~1.49 km
+    // on Babylon. Stage the mission spawn: the HUD's first
+    // pick must be a NEAR foe, and after it dies the pick
+    // must move to the next nearest - never snap back to
+    // the far anchor seat.
+    private int _tgtPhase;
+    private double _tgtT;
+    private int _tgtFirstIdx = -2;
+    private float _tgtFirstRange;
+
+    private (int Idx, float Range, string Name) ActiveTargetReadout()
+    {
+        var foes = OpposingTargets();
+        if (_targetIdx < 0 || _targetIdx >= foes.Count) return (-1, -1f, "?");
+        var t = foes[_targetIdx];
+        float r = t.W != null
+            ? new Vector2(t.W.RootPos.X - _player.RootPos.X, t.W.RootPos.Z - _player.RootPos.Z).Length()
+            : -1f;
+        return (_targetIdx, r, t.Spec != null ? t.Spec.Name : "?");
+    }
+
+    private void KillTarget(int idx)
+    {
+        var foes = OpposingTargets();
+        var t = foes[idx];
+        if (idx == 0) { _hpEnemy = 0f; _enemyDead = true; return; }
+        if (_foe != null && t.W == _foe.Walker) { _foe.Hp = 0f; _foe.Dead = true; return; }
+        foreach (var a in _allies)
+            if (a.Walker == t.W) { a.Hp = 0f; a.Dead = true; return; }
+    }
+
+    private void UpdateTargetProbe(float dt)
+    {
+        _tgtT += dt;
+        if (_tgtPhase == 0 && _tgtT > 2.5)
+        {
+            var (idx, range, name) = ActiveTargetReadout();
+            GD.Print($"TGTPROBE first pick idx={idx} name={name} range={range:F0}");
+            _tgtFirstIdx = idx; _tgtFirstRange = range;
+            if (idx >= 0) KillTarget(idx);
+            _tgtPhase = 1; _tgtT = 0;
+        }
+        else if (_tgtPhase == 1 && _tgtT > 2.0)
+        {
+            var (idx, range, name) = ActiveTargetReadout();
+            GD.Print($"TGTPROBE after kill idx={idx} name={name} range={range:F0}");
+            bool ok = _tgtFirstIdx >= 0 && _tgtFirstRange > 0f && _tgtFirstRange < 1000f
+                      && idx != _tgtFirstIdx && range > 0f && range < 1000f && range >= _tgtFirstRange - 1f;
+            GD.Print(ok ? "TGTPROBE PASS" : "TGTPROBE FAIL");
+            GetTree().Quit(ok ? 0 : 1);
+        }
+    }
+
 }

@@ -1075,7 +1075,7 @@ public partial class RiderDuel
         var tlist = OpposingTargets();
         if (tlist.Count > 0)
         {
-            if (_targetIdx < 0 || _targetIdx >= tlist.Count) _targetIdx = 0;
+            PickTargetIdx(tlist);
             var t = tlist[_targetIdx];
             w = t.W; spec = t.Spec; dead = t.Dead;
         }
@@ -1150,10 +1150,7 @@ public partial class RiderDuel
         // even then it appears only while at least one living
         // weapon group can reach that enemy.
         var foes = OpposingTargets();
-        if (_targetIdx < 0 || _targetIdx >= foes.Count) _targetIdx = 0;
-        if (foes[_targetIdx].Dead)
-            for (int i = 0; i < foes.Count; i++)
-                if (!foes[i].Dead) { _targetIdx = i; break; }
+        PickTargetIdx(foes); // a live pick stands; an empty/dead one becomes the nearest living foe
         var tgt = foes[_targetIdx];
         float tgtRange = tgt.W != null
             ? new Vector2(tgt.W.RootPos.X - _player.RootPos.X,

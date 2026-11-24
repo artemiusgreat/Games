@@ -84,8 +84,7 @@ public partial class RiderDuel
     {
         var list = OpposingTargets();
         if (list.Count == 0) return null;
-        if (_targetIdx < 0 || _targetIdx >= list.Count) _targetIdx = 0;
-        var t = list[_targetIdx];
+        var t = list[PickTargetIdx(list)];
         return t.Dead ? null : t.W;
     }
 

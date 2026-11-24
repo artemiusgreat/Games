@@ -111,6 +111,31 @@ public partial class RiderDuel
 
     private readonly System.Collections.Generic.List<TargetInfo> _targetsScratch = new();
 
+    // The active-target pick, shared by the HUD readout,
+    // the target frame and the allies' AttackTarget order.
+    // A live pick stands (the owner's Tab choice included);
+    // an empty or dead pick is replaced by the NEAREST
+    // living foe (owner, 2026-11-23: list order made the
+    // mission's far anchor rider the standing target, so
+    // TARGET RANGE read ~1.49 km from spawn to summit
+    // whatever stood in front of him, and every kill
+    // snapped it back there).
+    private int PickTargetIdx(System.Collections.Generic.List<TargetInfo> foes)
+    {
+        if (_targetIdx >= 0 && _targetIdx < foes.Count && !foes[_targetIdx].Dead)
+            return _targetIdx;
+        int best = -1; float bestD = float.MaxValue;
+        for (int i = 0; i < foes.Count; i++)
+        {
+            if (foes[i].Dead || foes[i].W == null) continue;
+            float d = new Vector2(foes[i].W.RootPos.X - _player.RootPos.X,
+                                  foes[i].W.RootPos.Z - _player.RootPos.Z).LengthSquared();
+            if (d < bestD) { bestD = d; best = i; }
+        }
+        _targetIdx = best >= 0 ? best : 0;
+        return _targetIdx;
+    }
+
     private System.Collections.Generic.List<TargetInfo> OpposingTargets()
     {
         var list = _targetsScratch;
