@@ -235,8 +235,10 @@ public partial class RadarView : Control
             }
         }
 
-        // Sharp square border on top of the dressing.
-        DrawRect(border, new Color(ink, 0.8f), false, 1.5f);
+        // Thin round rim on top of the dressing (owner,
+        // 2026-11-23: the internal border goes thinner and
+        // round - a ring on the scope disc, not the square).
+        DrawArc(c, half, 0f, Mathf.Tau, 96, new Color(ink, 0.55f), 1.0f, true);
         if (Player == null) return;
 
         // Enemy contacts, clamped to the rim when out of range.
