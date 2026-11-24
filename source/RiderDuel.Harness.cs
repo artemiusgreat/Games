@@ -4838,4 +4838,55 @@ public partial class RiderDuel
             }
         }
     }
+
+
+    // ---------- Beam shot ----------
+    // Owner (2026-11-24): lasers yellow, the PPC a white
+    // lightning bolt. Stage it: swap the player to Hector
+    // (his rack carries the PPC) by the lab ritual, park
+    // the enemy 70u ahead, fire one PPC volley and one
+    // laser volley, and save the frame after each.
+    private int _bsPhase;
+    private double _bsT;
+
+    private void UpdateBeamShot(float dt)
+    {
+        _bsT += dt;
+        if (_bsPhase == 0 && _bsT > 1.2)
+        {
+            SetRiderSelection("hector", "enyo");
+            ApplyLoadout();
+            if (_lab != null) { _lab.QueueFree(); _lab = null; }
+            _labOpen = false;
+            if (_labLight != null) _labLight.Visible = false;
+            SetHudPanelsVisible(true); if (_radar != null) _radar.Visible = true;
+            var ahead = _player.RootPos + RiderWalker.HeadingVec(_player.TorsoYawWorld) * 70f;
+            ahead.Y = Main.HeightAt(ahead.X, ahead.Z);
+            _enemy.Teleport(ahead, _player.TorsoYawWorld + Mathf.Pi);
+            _bsPhase = 1; _bsT = 0;
+        }
+        else if (_bsPhase == 1 && _bsT > 0.4)
+        {
+            var aim = _enemy.RootPos + Vector3.Up * 8f;
+            var ppc = _gunsEnergy.FindAll(g => g.Def.Beam == BeamKind.Ppc);
+            GD.Print($"BEAMSHOT ppc guns={ppc.Count} energy guns={_gunsEnergy.Count}");
+            if (ppc.Count > 0) FireLaserVolley(aim, ppc);
+            _bsPhase = 2; _bsT = 0;
+        }
+        else if (_bsPhase == 2 && _bsT > 0.05)
+        {
+            GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_ppc.png");
+            var aim = _enemy.RootPos + Vector3.Up * 8f;
+            var las = _gunsEnergy.FindAll(g => g.Def.Beam != BeamKind.Ppc);
+            if (las.Count > 0) FireLaserVolley(aim, las);
+            _bsPhase = 3; _bsT = 0;
+        }
+        else if (_bsPhase == 3 && _bsT > 0.05)
+        {
+            GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_laser.png");
+            GD.Print("BEAMSHOT DONE");
+            GetTree().Quit(0);
+        }
+    }
+
 }
