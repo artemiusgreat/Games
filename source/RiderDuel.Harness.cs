@@ -4691,8 +4691,27 @@ public partial class RiderDuel
                 if (p.Stream == _sfxCannon) cHolders++;
             GD.Print($"SFXPROBE cannon stream holders={cHolders}");
             if (cHolders != 1) { GD.Print("SFXPROBE FAIL cannon"); GetTree().Quit(1); return; }
-            GD.Print("SFXPROBE PASS");
-            GetTree().Quit(0);
+            _sfxPhase = 2; _sfxT = 0;
+        }
+        else if (_sfxPhase == 2 && _sfxT > 0.3)
+        {
+            // Phase 3 (2026-11-24): the hit's turn - his
+            // explosion recording (1.5s) was the one fight
+            // sound left expendable, and salvo traffic kept
+            // cutting it to a 'plastic bottle' pop. Reset the
+            // pool, stage one hit, burst 24 expendable steps:
+            // the hit's player must survive.
+            foreach (var p in _sfxPool) { p.Stop(); p.Stream = null; }
+            for (int i = 0; i < _sfxProtected.Count; i++) _sfxProtected[i] = false;
+            PlaySfx(_sfxHit, _player.RootPos);
+            for (int i = 0; i < 24; i++)
+                PlaySfx(_sfxStepA, _player.RootPos);
+            int hHolders = 0;
+            foreach (var p in _sfxPool)
+                if (p.Stream == _sfxHit) hHolders++;
+            GD.Print($"SFXPROBE hit stream holders={hHolders}");
+            GD.Print(hHolders == 1 ? "SFXPROBE PASS" : "SFXPROBE FAIL hit");
+            GetTree().Quit(hHolders == 1 ? 0 : 1);
         }
     }
 

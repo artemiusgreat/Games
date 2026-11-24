@@ -120,8 +120,14 @@ public partial class RiderDuel
         // that window - the steal then landed on the cannon
         // mid-report. A protected sound is never the steal
         // victim while any expendable voice is playing.
+        // The HIT joins the protected set (owner, 2026-11-24):
+        // it is his 1.5s explosion recording, it was the one
+        // fight sound left expendable, and in a missile salvo
+        // (impacts every 60ms, steps and NPC fire crowding
+        // the pool) the steal kept cutting it to its attack
+        // transient - the 'plastic bottle' pop he reported.
         bool prot = stream == _sfxLaser || stream == _sfxPpc || stream == _sfxCannon
-                    || stream == _sfxRocket || stream == _sfxExplosion;
+                    || stream == _sfxRocket || stream == _sfxExplosion || stream == _sfxHit;
         AudioStreamPlayer3D p = null; int pi = -1;
         for (int k = 0; k < _sfxPool.Count; k++)
         {
