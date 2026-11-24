@@ -4690,8 +4690,9 @@ public partial class RiderDuel
             foreach (var p in _sfxPool)
                 if (p.Stream == _sfxCannon) cHolders++;
             GD.Print($"SFXPROBE cannon stream holders={cHolders}");
-            GD.Print(cHolders == 1 ? "SFXPROBE PASS" : "SFXPROBE FAIL cannon");
-            GetTree().Quit(cHolders == 1 ? 0 : 1);
+            if (cHolders != 1) { GD.Print("SFXPROBE FAIL cannon"); GetTree().Quit(1); return; }
+            GD.Print("SFXPROBE PASS");
+            GetTree().Quit(0);
         }
     }
 
@@ -4831,7 +4832,7 @@ public partial class RiderDuel
                 // and the gain/pitch mapping are the parts
                 // observable here; audibility is his playtest.
                 bool ok = _windPlayer.Stream == _sfxWind && _servoPlayer.Stream == _sfxServo
-                          && _windPlayer.VolumeDb > -35f && _windPlayer.VolumeDb < -29f
+                          && _windPlayer.VolumeDb > -41f && _windPlayer.VolumeDb < -35f
                           && _ambRestServo <= -50f && _servoPlayer.VolumeDb > -25f;
                 GD.Print(ok ? "AMBPROBE PASS" : "AMBPROBE FAIL");
                 GetTree().Quit(ok ? 0 : 1);

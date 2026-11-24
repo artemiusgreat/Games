@@ -82,7 +82,7 @@ public partial class RiderDuel
     private void StepAmbient(float dt)
     {
         if (_windPlayer == null || dt <= 0f) return;
-        float windTarget = _labOpen ? -60f : -32f; // owner, 2026-11-24: -26 buried the fight; the bed sits lower now
+        float windTarget = _labOpen ? -60f : -38f; // owner, 2026-11-24: -26 buried the fight, -32 still too loud - the bed sits lower now
         _windDb = Mathf.MoveToward(_windDb, windTarget, dt * 9f);
         _windPlayer.VolumeDb = _windDb;
 
