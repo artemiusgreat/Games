@@ -153,3 +153,48 @@ save('explosion.wav', explosion())
 save('step_a.wav', step(True))
 save('step_b.wav', step(False))
 save('thruster.wav', thruster())
+
+def wind():
+    # Ambient wind bed (owner, 2026-11-24): one long seamless
+    # loop - white noise through a slow-wandering lowpass over
+    # a brown-noise body, with the swells on whole cycles per
+    # loop so the tail-into-head crossfade cannot jump. Level
+    # lives in the game's player volume, not here. LOCAL rng.
+    lr = random.Random(4242)
+    n = int(14 * SR); s = []; lp = 0.0; acc = 0.0
+    for i in range(n):
+        t = i / SR; ph = t / 14.0
+        cut = 0.055 + 0.030 * math.sin(2 * math.pi * (2 * ph) + 1.1) + 0.016 * math.sin(2 * math.pi * (5 * ph) + 4.0)
+        lp += max(0.012, cut) * (lr.uniform(-1, 1) - lp)
+        acc = acc * 0.995 + lr.uniform(-1, 1) * 0.005 * 6
+        swell = 0.72 + 0.20 * math.sin(2 * math.pi * (1 * ph) + 0.6) + 0.08 * math.sin(2 * math.pi * (3 * ph) + 2.9)
+        s.append((lp * 2.2 + acc * 0.8) * swell)
+    fade = int(0.6 * SR)
+    for i in range(fade):
+        w = i / fade
+        s[i] = s[i] * w + s[n - fade + i] * (1 - w)
+    return s[:n - fade]
+
+def servo():
+    # Own-rider servo/hydraulic bed (owner, 2026-11-24): a
+    # short seamless loop - a low harmonic stack (48 Hz) with
+    # a breathing lowpass plus a whisper of hydraulic hiss.
+    # The game fades it by the rider's own activity; at rest
+    # it sits at the floor, effectively silent. LOCAL rng.
+    lr = random.Random(1313)
+    n = int(2.8 * SR); s = []; lp = 0.0; ph1 = 0.0
+    for i in range(n):
+        t = i / SR; ph = t / 2.8
+        ph1 += 2 * math.pi * 48 / SR
+        tone = math.sin(ph1) + 0.5 * math.sin(2 * ph1) + 0.22 * math.sin(3 * ph1 + 0.4)
+        lp += 0.05 * (lr.uniform(-1, 1) - lp)
+        breath = 0.8 + 0.2 * math.sin(2 * math.pi * (2 * ph) + 1.9)
+        s.append((tone * 0.55 + lp * 0.8) * breath)
+    fade = int(0.25 * SR)
+    for i in range(fade):
+        w = i / fade
+        s[i] = s[i] * w + s[n - fade + i] * (1 - w)
+    return s[:n - fade]
+
+save('wind.wav', wind())
+save('servo.wav', servo())
