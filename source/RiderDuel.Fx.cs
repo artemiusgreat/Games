@@ -318,7 +318,22 @@ public partial class RiderDuel
             "mg" => 0.3f,
             _ => 0.4f,
         };
-        if (_simT - _lastHitSfxT > 0.06) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); }
+        // Hit-sound throttle: 60ms for ordinary fire, but a
+        // whole second-plus for rockets (owner, 2026-11-24).
+        // A salvo's rockets arrive spread over ~0.9s (staged
+        // probe: 6-8 triggers per 16-rocket salvo at ~130ms
+        // spacing), and every trigger restarts the explosion
+        // clip - a rattle of attack transients he heard as a
+        // 'plastic bottle', NOT a pool steal (the batch-16
+        // protection was not the cause; it stays). One boom
+        // per salvo: the window sits safely under the SRM
+        // (2.0s) and LRM (3.5s) cooldowns, so two distinct
+        // salvos never merge.
+        if (kind == "rocket")
+        {
+            if (_simT - _lastRocketHitSfxT > 1.1) { _lastRocketHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
+        }
+        else if (_simT - _lastHitSfxT > 0.06) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
         if (jolt > 0f)
         {
             RiderWalker shooter = source == Roles.Player ? _player : source == Roles.Enemy ? _enemy : null;

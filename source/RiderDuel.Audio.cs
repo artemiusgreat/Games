@@ -20,6 +20,7 @@ public partial class RiderDuel
     private readonly System.Collections.Generic.List<bool> _sfxProtected = new();
     private int _sfxNext;
     private double _lastHitSfxT = -1;
+    private double _lastRocketHitSfxT = -1;
     // Per-walker sound state (owner, 2026-11-17): EVERY rider
     // stomps, not just the duel pair, and every thrusting rider
     // gets its own looping thruster player.
