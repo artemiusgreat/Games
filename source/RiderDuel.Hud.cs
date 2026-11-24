@@ -515,7 +515,7 @@ public partial class RiderDuel
             SetAnchorsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Stop;
 
-            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.45f) };
+            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.75f) };
             dim.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(dim);
 
@@ -635,7 +635,7 @@ public partial class RiderDuel
             SetAnchorsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Stop;
 
-            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.45f) };
+            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.75f) };
             dim.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(dim);
 
@@ -861,7 +861,7 @@ public partial class RiderDuel
             SetAnchorsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Stop;
 
-            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.45f) };
+            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.75f) };
             dim.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(dim);
 
