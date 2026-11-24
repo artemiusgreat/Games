@@ -4677,8 +4677,21 @@ public partial class RiderDuel
             foreach (var p in _sfxPool)
                 if (p.Stream == _sfxLaser) { holders++; playing |= p.Playing; }
             GD.Print($"SFXPROBE laser stream holders={holders} anyPlaying={playing} pool={_sfxPool.Count}");
-            GD.Print(holders == 1 ? "SFXPROBE PASS" : "SFXPROBE FAIL");
-            GetTree().Quit(holders == 1 ? 0 : 1);
+            if (holders != 1) { GD.Print("SFXPROBE FAIL laser"); GetTree().Quit(1); return; }
+            // Phase 2 (2026-11-24): the cannon's turn - its
+            // clip runs 1.92s, and a 24-sound expendable
+            // burst (more than the whole pool) must not take
+            // its player: protected voices are never stolen
+            // while an expendable one is playing.
+            PlaySfx(_sfxCannon, _player.RootPos);
+            for (int i = 0; i < 24; i++)
+                PlaySfx(i % 2 == 0 ? _sfxStepA : _sfxHit, _player.RootPos);
+            int cHolders = 0;
+            foreach (var p in _sfxPool)
+                if (p.Stream == _sfxCannon) cHolders++;
+            GD.Print($"SFXPROBE cannon stream holders={cHolders}");
+            GD.Print(cHolders == 1 ? "SFXPROBE PASS" : "SFXPROBE FAIL cannon");
+            GetTree().Quit(cHolders == 1 ? 0 : 1);
         }
     }
 
@@ -4825,5 +4838,4 @@ public partial class RiderDuel
             }
         }
     }
-
 }

@@ -17,6 +17,7 @@ public partial class RiderDuel
     private AudioStreamPlayer _windPlayer, _servoPlayer;
     private float _windDb = -60f, _servoDb = -60f, _prevTorsoYaw;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();
+    private readonly System.Collections.Generic.List<bool> _sfxProtected = new();
     private int _sfxNext;
     private double _lastHitSfxT = -1;
     // Per-walker sound state (owner, 2026-11-17): EVERY rider
@@ -62,11 +63,12 @@ public partial class RiderDuel
         AddChild(_windPlayer); _windPlayer.Play();
         _servoPlayer = new AudioStreamPlayer { Stream = _sfxServo, VolumeDb = _servoDb };
         AddChild(_servoPlayer); _servoPlayer.Play();
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 20; i++)
         {
             var p = new AudioStreamPlayer3D { MaxDistance = 220f, VolumeDb = -6f };
             AddChild(p);
             _sfxPool.Add(p);
+            _sfxProtected.Add(false);
         }
         Dbg.Print($"SFX loaded laser={_sfxLaser != null} ppc={_sfxPpc != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
     }
@@ -111,13 +113,31 @@ public partial class RiderDuel
         // wrap landed inside the clip and the laser audibly
         // disappeared. Take the next FREE player; steal the
         // round-robin slot only when every player is busy.
-        AudioStreamPlayer3D p = null;
+        // Weapon reports and the death explosion are
+        // PROTECTED (owner, 2026-11-24): his cannon clip
+        // runs 1.92s, and in a busy fight the expendable
+        // traffic (steps, hits) fills every voice inside
+        // that window - the steal then landed on the cannon
+        // mid-report. A protected sound is never the steal
+        // victim while any expendable voice is playing.
+        bool prot = stream == _sfxLaser || stream == _sfxPpc || stream == _sfxCannon
+                    || stream == _sfxRocket || stream == _sfxExplosion;
+        AudioStreamPlayer3D p = null; int pi = -1;
         for (int k = 0; k < _sfxPool.Count; k++)
         {
-            var cand = _sfxPool[(_sfxNext + k) % _sfxPool.Count];
-            if (!cand.Playing) { p = cand; _sfxNext = (_sfxNext + k + 1) % _sfxPool.Count; break; }
+            int idx = (_sfxNext + k) % _sfxPool.Count;
+            if (!_sfxPool[idx].Playing) { p = _sfxPool[idx]; pi = idx; _sfxNext = (idx + 1) % _sfxPool.Count; break; }
         }
-        p ??= _sfxPool[_sfxNext++ % _sfxPool.Count];
+        if (p == null)
+        {
+            for (int k = 0; k < _sfxPool.Count; k++)
+            {
+                int idx = (_sfxNext + k) % _sfxPool.Count;
+                if (!_sfxProtected[idx]) { p = _sfxPool[idx]; pi = idx; _sfxNext = (idx + 1) % _sfxPool.Count; break; }
+            }
+        }
+        if (p == null) { pi = _sfxNext++ % _sfxPool.Count; p = _sfxPool[pi]; }
+        _sfxProtected[pi] = prot;
         p.Stream = stream;
         p.GlobalPosition = pos;
         p.VolumeDb = -6f + volDb;
