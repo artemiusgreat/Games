@@ -572,12 +572,16 @@ public partial class RiderDuel
         {
             var b = new Button { Text = text, CustomMinimumSize = new Vector2(148, 38) };
             b.AddThemeFontSizeOverride("font_size", 15);
-            var bg = dark ? new Color(0.03f, 0.03f, 0.04f) : new Color(0.93f, 0.93f, 0.94f);
+            // The dark face was near-black (0.03) on the near-
+            // black panel - once the popup backdrop deepened
+            // to 0.93 it all but vanished (owner, 2026-11-24).
+            // Lifted to a slate that reads against both.
+            var bg = dark ? new Color(0.16f, 0.19f, 0.25f) : new Color(0.93f, 0.93f, 0.94f);
             var fg = dark ? Colors.White : new Color(0.05f, 0.05f, 0.06f);
             StyleBoxFlat S(Color c) => new() { BgColor = c };
             b.AddThemeStyleboxOverride("normal", S(bg));
-            b.AddThemeStyleboxOverride("hover", S(dark ? new Color(0.13f, 0.13f, 0.15f) : Colors.White));
-            b.AddThemeStyleboxOverride("pressed", S(dark ? new Color(0.22f, 0.22f, 0.24f) : new Color(0.78f, 0.78f, 0.8f)));
+            b.AddThemeStyleboxOverride("hover", S(dark ? new Color(0.24f, 0.28f, 0.36f) : Colors.White));
+            b.AddThemeStyleboxOverride("pressed", S(dark ? new Color(0.33f, 0.38f, 0.47f) : new Color(0.78f, 0.78f, 0.8f)));
             b.AddThemeStyleboxOverride("focus", S(bg));
             b.AddThemeColorOverride("font_color", fg);
             b.AddThemeColorOverride("font_hover_color", fg);
