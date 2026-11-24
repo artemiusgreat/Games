@@ -3,21 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctbapfa3rmpsg"
-path.bptc="res://.godot/imported/sky_harbor.jpg-41d61847c4ae802d9929c27c11a98b9b.bptc.ctex"
+path="res://.godot/imported/sky_harbor.jpg-41d61847c4ae802d9929c27c11a98b9b.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/skies/sky_harbor.jpg"
-dest_files=["res://.godot/imported/sky_harbor.jpg-41d61847c4ae802d9929c27c11a98b9b.bptc.ctex"]
+dest_files=["res://.godot/imported/sky_harbor.jpg-41d61847c4ae802d9929c27c11a98b9b.ctex"]
 
 [params]
 
-compress/mode=2
-compress/high_quality=true
+compress/mode=0
+compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

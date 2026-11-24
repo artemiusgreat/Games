@@ -3,21 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://djxq4ptecyt4e"
-path.bptc="res://.godot/imported/sky_ice.jpg-1973b0ca2e655bed5cf61b691ecbe556.bptc.ctex"
+path="res://.godot/imported/sky_ice.jpg-1973b0ca2e655bed5cf61b691ecbe556.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/skies/sky_ice.jpg"
-dest_files=["res://.godot/imported/sky_ice.jpg-1973b0ca2e655bed5cf61b691ecbe556.bptc.ctex"]
+dest_files=["res://.godot/imported/sky_ice.jpg-1973b0ca2e655bed5cf61b691ecbe556.ctex"]
 
 [params]
 
-compress/mode=2
-compress/high_quality=true
+compress/mode=0
+compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

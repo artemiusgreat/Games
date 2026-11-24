@@ -3,21 +3,20 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfimcrlb02flf"
-path.bptc="res://.godot/imported/sky_nebula.jpg-45be592017da4a3de3212d1bc20e0ff0.bptc.ctex"
+path="res://.godot/imported/sky_nebula.jpg-45be592017da4a3de3212d1bc20e0ff0.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/skies/sky_nebula.jpg"
-dest_files=["res://.godot/imported/sky_nebula.jpg-45be592017da4a3de3212d1bc20e0ff0.bptc.ctex"]
+dest_files=["res://.godot/imported/sky_nebula.jpg-45be592017da4a3de3212d1bc20e0ff0.ctex"]
 
 [params]
 
-compress/mode=2
-compress/high_quality=true
+compress/mode=0
+compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
