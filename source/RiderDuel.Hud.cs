@@ -365,20 +365,27 @@ public partial class RiderDuel
 
         public override void _Draw()
         {
-            // Rounded corners (owner, 2026-11-23: 'make borders
-            // round for all 4 sections in the corners of active
-            // game' - the clipped corners are retired). The
-            // frame stays the standing spec: one solid thin
-            // line at half alpha (2026-11-22).
-            var sb = new StyleBoxFlat
-            {
-                BgColor = new Color(0.010f, 0.028f, 0.058f, 0.84f),
-                BorderColor = new Color(Accent, 0.5f),
-                AntiAliasing = true,
-            };
-            sb.SetBorderWidthAll(1);
-            sb.SetCornerRadiusAll(12);
-            DrawStyleBox(sb, new Rect2(Vector2.Zero, Size));
+            // Exit-popup chrome (owner, 2026-11-24: 'style all
+            // 4 corner info sections the same way as exit
+            // confirmation popup') - the rounded accent frame
+            // is retired. The panel is the popup's own square
+            // semi-transparent fill, and the white corner
+            // brackets replicate CornerFrame exactly: same
+            // colour and weight, arms 17 long, standing 6px
+            // proud of the panel's corners (the popup's frame
+            // sits 7 out with its lines 1 in).
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color(0.015f, 0.03f, 0.07f, 0.85f));
+            var col = new Color(1f, 1f, 1f, 0.9f);
+            float o = 6f, L = 17f, w = 2f;
+            var s = Size;
+            DrawLine(new Vector2(-o, -o + L), new Vector2(-o, -o), col, w);
+            DrawLine(new Vector2(-o, -o), new Vector2(-o + L, -o), col, w);
+            DrawLine(new Vector2(s.X + o - L, -o), new Vector2(s.X + o, -o), col, w);
+            DrawLine(new Vector2(s.X + o, -o), new Vector2(s.X + o, -o + L), col, w);
+            DrawLine(new Vector2(s.X + o, s.Y + o - L), new Vector2(s.X + o, s.Y + o), col, w);
+            DrawLine(new Vector2(s.X + o, s.Y + o), new Vector2(s.X + o - L, s.Y + o), col, w);
+            DrawLine(new Vector2(-o + L, s.Y + o), new Vector2(-o, s.Y + o), col, w);
+            DrawLine(new Vector2(-o, s.Y + o - L), new Vector2(-o, s.Y + o), col, w);
         }
     }
 
