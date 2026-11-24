@@ -378,7 +378,7 @@ public partial class RiderDuel
             // Barely-there hairline border (owner, 2026-11-24):
             // the header separator's own recipe - the panel's
             // accent at 0.35 alpha, 1px (see PanelDivider).
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Accent, 0.35f), false, 1f);
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Accent, 0.18f), false, 1f);
             var col = new Color(1f, 1f, 1f, 0.9f);
             float o = 6f, L = 17f, w = 2f;
             var s = Size;
@@ -530,7 +530,7 @@ public partial class RiderDuel
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
             // Some transparency (owner): the game ghosts
             // through the panel; buttons stay solid.
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.85f), BorderColor = new Color(1f, 1f, 1f, 0.35f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.85f), BorderColor = new Color(1f, 1f, 1f, 0.18f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
             root.AddChild(panel);
 
             var v = new VBoxContainer();
@@ -648,7 +648,7 @@ public partial class RiderDuel
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f), BorderColor = new Color(1f, 1f, 1f, 0.35f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f), BorderColor = new Color(1f, 1f, 1f, 0.18f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
             _root.AddChild(panel);
 
             var v = new VBoxContainer();
@@ -874,7 +874,7 @@ public partial class RiderDuel
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f), BorderColor = new Color(1f, 1f, 1f, 0.35f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f), BorderColor = new Color(1f, 1f, 1f, 0.18f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
             _root.AddChild(panel);
 
             var v = new VBoxContainer();
