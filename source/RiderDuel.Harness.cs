@@ -4649,4 +4649,37 @@ public partial class RiderDuel
                 QueueCapture("res://proof/gait_hector_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
     }
 
+    // ---------- SFX pool probe ----------
+    // Owner (2026-11-23): the laser sound sometimes disappears
+    // under quick intermittent fire. The pool was round-robin:
+    // after 10 further PlaySfx calls (steps, hits, NPC fire -
+    // all one pool) the wrap reassigned the laser's player
+    // mid-clip. Stage it: fire the laser, then burst 12 more
+    // sounds; the laser's player must still hold the laser
+    // stream (stream identity is the steal evidence - it is
+    // exact even on the headless dummy audio driver).
+    private int _sfxPhase;
+    private double _sfxT;
+
+    private void UpdateSfxProbe(float dt)
+    {
+        _sfxT += dt;
+        if (_sfxPhase == 0 && _sfxT > 1.0)
+        {
+            PlaySfx(_sfxLaser, _player.RootPos);
+            for (int i = 0; i < 12; i++)
+                PlaySfx(i % 2 == 0 ? _sfxStepA : _sfxHit, _player.RootPos);
+            _sfxPhase = 1; _sfxT = 0;
+        }
+        else if (_sfxPhase == 1 && _sfxT > 0.3)
+        {
+            int holders = 0; bool playing = false;
+            foreach (var p in _sfxPool)
+                if (p.Stream == _sfxLaser) { holders++; playing |= p.Playing; }
+            GD.Print($"SFXPROBE laser stream holders={holders} anyPlaying={playing} pool={_sfxPool.Count}");
+            GD.Print(holders == 1 ? "SFXPROBE PASS" : "SFXPROBE FAIL");
+            GetTree().Quit(holders == 1 ? 0 : 1);
+        }
+    }
+
 }

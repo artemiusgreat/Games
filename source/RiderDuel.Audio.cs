@@ -43,7 +43,7 @@ public partial class RiderDuel
             tw.LoopBegin = 0;
             tw.LoopEnd = (int)tw.GetLength() * 22050;
         }
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 16; i++)
         {
             var p = new AudioStreamPlayer3D { MaxDistance = 220f, VolumeDb = -6f };
             AddChild(p);
@@ -55,7 +55,21 @@ public partial class RiderDuel
     private void PlaySfx(AudioStream stream, Vector3 pos, float volDb = 0f, float pitch = 1f)
     {
         if (stream == null || _sfxPool.Count == 0) return;
-        var p = _sfxPool[_sfxNext++ % _sfxPool.Count];
+        // Idle-first (owner, 2026-11-23): the old round-robin
+        // reassigned players that were still playing, cutting
+        // sounds mid-play. His laser recording runs 1.1s and
+        // every system shares this pool - footsteps, hits,
+        // NPC fire - so under quick intermittent fire the
+        // wrap landed inside the clip and the laser audibly
+        // disappeared. Take the next FREE player; steal the
+        // round-robin slot only when every player is busy.
+        AudioStreamPlayer3D p = null;
+        for (int k = 0; k < _sfxPool.Count; k++)
+        {
+            var cand = _sfxPool[(_sfxNext + k) % _sfxPool.Count];
+            if (!cand.Playing) { p = cand; _sfxNext = (_sfxNext + k + 1) % _sfxPool.Count; break; }
+        }
+        p ??= _sfxPool[_sfxNext++ % _sfxPool.Count];
         p.Stream = stream;
         p.GlobalPosition = pos;
         p.VolumeDb = -6f + volDb;

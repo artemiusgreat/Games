@@ -171,6 +171,7 @@ public partial class RiderDuel : Node3D
     private bool _debrisProbe; // --debris-probe: break a Hector on a steep slope, walk him off, dump the debris rest state
     private bool _guardProbe; // --guard-probe: stage the player (then a teammate) beside a village guard, print its target
     private bool _ffProbe; // --ff-probe: teammate behind the player on the camera axis, salvo fired forward - does he get hit?
+    private bool _sfxProbe; // --sfx-probe: burst of pool sounds after a laser shot - does the laser's player get stolen mid-clip?
     private bool _bindingsProbe; // --bindings-probe: synthetic TAB-family + order keys through the real _Input path
     private bool _stoneShot; // --stone-shot: close capture of the steepest high slope on the mission map (the mountain-stone check)
     private Vector3 _stoneCamPos, _stoneCamTarget; // --stone-shot: where the stone camera parks and what it faces
@@ -383,6 +384,7 @@ public partial class RiderDuel : Node3D
             if (arg == "--debris-probe") { _debrisProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--guard-probe") { _guardProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--ff-probe") { _ffProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
+            if (arg == "--sfx-probe") { _sfxProbe = true; }
             if (arg == "--bindings-probe") { _bindingsProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--stone-shot") { _stoneShot = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--controls-shot") { _controlsShot = true; }
@@ -411,7 +413,7 @@ public partial class RiderDuel : Node3D
         // AOT_VERBOSE set - normal play stays quiet.
         Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest
             || _labShot || _photo || _photoTest || _ffaTest || _teamTest || _bracketTest
-            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe || _guardProbe || _ffProbe || _controlsShot || _bindingsProbe || _stoneShot
+            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe || _guardProbe || _ffProbe || _sfxProbe || _controlsShot || _bindingsProbe || _stoneShot
             || OS.HasEnvironment("AOT_VERBOSE");
         if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
@@ -641,7 +643,7 @@ public partial class RiderDuel : Node3D
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         await BuildFrame(); // staged build: player + enemy in, foe next
-        if (((!PrecisionTest && !_lrmProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
+        if (((!PrecisionTest && !_lrmProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
             && (!_bracketActive || _foeMember != null)) BuildFoe();
         if (_bracketActive && _foe != null && _foeMember != null && _foeMemberTeam != 2)
         {
@@ -691,7 +693,7 @@ public partial class RiderDuel : Node3D
         if (System.Environment.GetEnvironmentVariable("AOT_SNIPER") == "1") _sniper = true; // harness: scope captures
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -1155,6 +1157,7 @@ public partial class RiderDuel : Node3D
             else if (_debrisProbe) UpdateDebrisProbe(dt);
             else if (_guardProbe) UpdateGuardProbe(dt);
             else if (_ffProbe) UpdateFfProbe(dt);
+            else if (_sfxProbe) UpdateSfxProbe(dt);
             else if (_bindingsProbe) UpdateBindingsProbe(dt);
             else if (_stoneShot) UpdateStoneShot(dt);
             else if (_controlsShot) UpdateControlsShot(dt);
