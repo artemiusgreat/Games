@@ -248,7 +248,7 @@ public partial class RiderDuel
             _wpnGroupCells[wi] = gcell; _wpnLabels[wi] = wlab;
             _wpnBars[wi] = wbar; _wpnMarks[wi] = wmark; _wpnRows[wi] = wrow;
         }
-        var rowThr = CdRow("THRUST");
+        var rowThr = CdRow("Thrusters");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         // No controls hint line (owner: remove the introductory
         // text) - the panel ends at the THRUST row.
@@ -1223,7 +1223,7 @@ public partial class RiderDuel
             if (tfg != null) tfg.BgColor = !fitted ? CdDead
                 : _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
             _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
-            _lblThr.Text = fitted ? "THRUST" : "THRUST -";
+            _lblThr.Text = fitted ? "Thrusters" : "Thrusters -";
         }
 
         // Per-part status cells (player rider).
