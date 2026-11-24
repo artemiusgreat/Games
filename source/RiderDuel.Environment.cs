@@ -1092,6 +1092,16 @@ public partial class RiderDuel
 
     private void AddBuilding(Vector3 pos, Vector3 size, float baseY = float.NaN)
     {
+        // ALL BUILDINGS REMOVED (owner, 2026-11-24): every
+        // placement path in the game flows through this one
+        // method - the city kits, the mission bases, the
+        // Ascent villages, checkpoint and towers - so the
+        // no-op sweeps them all at once, like AddRock before
+        // it. Nothing registers: no node, no prop collider,
+        // no roof, no streaming entry. Sites, guards and
+        // terrain are untouched; he will provide something
+        // more realistic later.
+        return;
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
         // City kits (owner): when the active contract carries a
         // building kit, the placement instances a real building
