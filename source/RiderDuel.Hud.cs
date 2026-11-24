@@ -1117,6 +1117,12 @@ public partial class RiderDuel
     {
         _feed.Add((text, 6f));
         while (_feed.Count > 5) _feed.RemoveAt(0);
+        // Every order announces itself (owner, 2026-11-24):
+        // posting a line is what makes the feed visible -
+        // a reset used to hide the label for good, and no
+        // live path ever showed it again, so orders after
+        // an R went nowhere visible.
+        if (_feedLabel != null) _feedLabel.Visible = true;
     }
 
     private void UpdateHud()
@@ -1350,6 +1356,7 @@ public partial class RiderDuel
         if (_panelWeapons != null) _panelWeapons.Visible = v;
         if (_panelTarget != null) _panelTarget.Visible = v;
         if (_panelRadar != null) _panelRadar.Visible = v;
+        if (_feedLabel != null) _feedLabel.Visible = v;
     }
 
     // Corner blocks hug their content: widths and heights come

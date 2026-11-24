@@ -4737,4 +4737,49 @@ public partial class RiderDuel
         }
     }
 
+
+    // ---------- Feed probe ----------
+    // Owner (2026-11-24): after his whole wing was destroyed
+    // an order produced no feed line, and after an R reset
+    // orders never announced again. Stage both: reset first
+    // (the old ResetDuel hid the feed label permanently),
+    // order ATTACK MY TARGET; then kill the whole wing and
+    // order ATTACK CLOSEST ENEMY. Both lines must be in the
+    // feed with the label visible.
+    private int _fpPhase;
+    private double _fpT;
+
+    private bool FeedHas(string frag)
+    {
+        foreach (var e in _feed) if (e.Text.Contains(frag)) return true;
+        return false;
+    }
+
+    private void UpdateFeedProbe(float dt)
+    {
+        _fpT += dt;
+        if (_fpPhase == 0 && _fpT > 2.5)
+        {
+            ResetDuel();
+            SendKey(Key.Key2, shift: true);
+            _fpPhase = 1; _fpT = 0;
+        }
+        else if (_fpPhase == 1 && _fpT > 0.6)
+        {
+            GD.Print($"FEEDPROBE after reset: order={_teamOrder} feedAttack={FeedHas("ATTACK MY TARGET")} labelVisible={(_feedLabel != null && _feedLabel.Visible)} labelText=[{(_feedLabel != null ? _feedLabel.Text : "null")}]");
+            if (_teamOrder != TeamOrder.AttackTarget || !FeedHas("ATTACK MY TARGET") || _feedLabel == null || !_feedLabel.Visible)
+            { GD.Print("FEEDPROBE FAIL reset"); GetTree().Quit(1); return; }
+            foreach (var a in _allies) if (a.Team == 0 && !a.Guard) { a.Hp = 0f; a.Dead = true; }
+            SendKey(Key.Key3, shift: true);
+            _fpPhase = 2; _fpT = 0;
+        }
+        else if (_fpPhase == 2 && _fpT > 0.6)
+        {
+            GD.Print($"FEEDPROBE wing dead: order={_teamOrder} feedClosest={FeedHas("ATTACK CLOSEST ENEMY")} labelVisible={(_feedLabel != null && _feedLabel.Visible)}");
+            bool ok = _teamOrder == TeamOrder.AttackNearby && FeedHas("ATTACK CLOSEST ENEMY") && _feedLabel != null && _feedLabel.Visible;
+            GD.Print(ok ? "FEEDPROBE PASS" : "FEEDPROBE FAIL wing");
+            GetTree().Quit(ok ? 0 : 1);
+        }
+    }
+
 }
