@@ -4721,6 +4721,7 @@ public partial class RiderDuel
         {
             var (idx, range, name) = ActiveTargetReadout();
             GD.Print($"TGTPROBE first pick idx={idx} name={name} range={range:F0}");
+            GD.Print($"TGTPROBE labels [{_lblRange.Text}] [{_lblReticle.Text}]");
             _tgtFirstIdx = idx; _tgtFirstRange = range;
             if (idx >= 0) KillTarget(idx);
             _tgtPhase = 1; _tgtT = 0;

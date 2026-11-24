@@ -276,6 +276,8 @@ public partial class RiderDuel
         rightBox.AddChild(_barFoe);
         _lblRange = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
         rightBox.AddChild(_lblRange);
+        _lblReticle = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        rightBox.AddChild(_lblReticle);
         _lblSpeed = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
         rightBox.AddChild(_lblSpeed);
         // No LEGS line in this panel (owner, 2026-11-22: the
@@ -1252,6 +1254,20 @@ public partial class RiderDuel
         }
         else
             _lblRange.Text = !liveTgt ? "TARGET: DESTROYED" : $"TARGET RANGE: {Units.Km(tgtRange)}";
+        // RANGE (owner, 2026-11-23): its own line under
+        // TARGET RANGE - the reticle rangefinder, the
+        // distance from the rider to whatever the
+        // crosshair is on (terrain included). AimRay's
+        // team rule applies: a mate on the camera side
+        // does not block it, one in the line of fire does.
+        if (_cam != null)
+        {
+            var pHit = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange);
+            _lblReticle.Text = pHit.Hit
+                ? $"RANGE: {Units.Km(_player.RootPos.DistanceTo(pHit.Point))}"
+                : $"RANGE: {Units.KmVal(Aim.FarRange):0.##}+ km";
+        }
+        else _lblReticle.Text = "RANGE: -";
         _lblSpeed.Text = $"SPEED: {Units.Kmh(_playerVel.Length())}" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
 
         if (_radar != null)
