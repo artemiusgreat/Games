@@ -52,7 +52,7 @@ public sealed class WeaponDef
     public float RocketBaseSpeed;  // missile packs: solver base speed
     public float RocketGravity;    // missile packs: solver gravity
     public float RocketTofMax;     // missile packs: time-of-flight cap
-    public float RocketSpread = 1.1f; // missile packs: per-rocket cone in degrees (LRM: 0 - converges on the reticle, owner 2026-11-23)
+    public float RocketSpread = 1.1f; // missile packs: per-rocket cone in degrees (both packs set 0 - every rocket converges on the reticle; LRM 2026-11-23, SRM 2026-11-25)
 
     public float PerRocketWeight => Rockets > 0 ? Weight / Rockets : Weight;
 }
@@ -77,7 +77,7 @@ public static class WeaponCatalog
     // pack. The default fit (LRM in both pods) reproduces the original
     // 8-rocket salvo, 4 with one pod lost.
     public static readonly WeaponDef Srm = new()
-    { Id = "srm", Name = "SRM Pack", Short = "SRM", Type = WeaponSlotType.Missile, Weight = 4f, Damage = 5f, Cooldown = 2.0f, Rockets = 3, Splash = 2.0f, Range = 250f, RocketBaseSpeed = 46f, RocketGravity = 9f, RocketTofMax = 1.6f };
+    { Id = "srm", Name = "SRM Pack", Short = "SRM", Type = WeaponSlotType.Missile, Weight = 4f, Damage = 5f, Cooldown = 2.0f, Rockets = 3, Splash = 2.0f, Range = 250f, RocketBaseSpeed = 46f, RocketGravity = 9f, RocketTofMax = 1.6f, RocketSpread = 0f };
     public static readonly WeaponDef Lrm = new()
     { Id = "lrm", Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f, Range = 1500f, RocketBaseSpeed = 36f, RocketGravity = 11f, RocketTofMax = 2.2f, RocketSpread = 0f };
 
