@@ -41,6 +41,10 @@ public sealed class MissionDef
     // darker/colder ones) as a res:// path to an equirect
     // texture in assets/skies/. "" = the procedural sky.
     public string SkyTex = "";
+    // A seamless sky TILE (owner, 2026-11-25) repeated over
+    // the dome by the triplanar tiled-sky shader; when set
+    // it takes precedence over SkyTex. "" = no tile.
+    public string SkyTile = "";
     // Procedural star layer over the painted sky (owner:
     // hybrid sky - the photo carries the nebula, a sky shader
     // adds resolution-independent stars). Atlantis only.
@@ -84,14 +88,14 @@ public static class MissionCatalog
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
         bool flat = false, string sky = "", bool snow = false, bool terraces = false,
         bool stars = false, bool ascent = false, bool alwaysAvailable = false,
-        bool photoreal = false, bool hills = false)
+        bool photoreal = false, bool hills = false, string tile = "")
     {
         var m = new MissionDef
         {
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
-            FlatTerrain = flat, SkyTex = sky, SnowGround = snow, Terraces = terraces, Planet = p,
+            FlatTerrain = flat, SkyTex = sky, SkyTile = tile, SnowGround = snow, Terraces = terraces, Planet = p,
             ProceduralStars = stars, Ascent = ascent, AlwaysAvailable = alwaysAvailable,
             Photoreal = photoreal, Hills = hills
         };
@@ -158,7 +162,7 @@ public static class MissionCatalog
             "and ten defenders waiting on top. Take the villages one by one, slip past them, or " +
             "drive straight up the road: the contract pays when the summit falls and your team " +
             "still stands.",
-            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, stars: true, photoreal: true, ascent: true, hills: true);
+            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, stars: true, photoreal: true, ascent: true, hills: true, tile: "res://assets/skies/sky_tile_stars.png");
         M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +

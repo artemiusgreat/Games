@@ -1960,6 +1960,24 @@ public partial class RiderDuel
     // under it. No SkyTex = the standing day setup, untouched.
     private void ApplyMapSky(Environment env, DirectionalLight3D sun)
     {
+        // Tiled sky (owner, 2026-11-25): Babylon trials his
+        // seamless star tile - the triplanar tiled-sky shader
+        // repeats it over the dome at one uniform scale, so
+        // nothing stretches and the zenith does not streak.
+        // Takes precedence over the painted panorama; the
+        // lighting tune below is shared by both paths.
+        var tilePath = WorldConfig.SkyTile;
+        if (!string.IsNullOrEmpty(tilePath)
+            && ResourceLoader.Load<Texture2D>(tilePath) is Texture2D tileTex
+            && ResourceLoader.Load<Shader>("res://assets/skies/tiled_sky.gdshader") is Shader tileShader)
+        {
+            var tm = new ShaderMaterial { Shader = tileShader };
+            tm.SetShaderParameter("tile", tileTex);
+            env.Sky = new Sky { SkyMaterial = tm };
+            TunePaintedSky(env, sun);
+            Dbg.Print($"SKY tiled sky applied: {tilePath}");
+            return;
+        }
         var path = WorldConfig.SkyTex;
         if (string.IsNullOrEmpty(path)) return;
         var tex = ResourceLoader.Load<Texture2D>(path);
@@ -1981,6 +1999,16 @@ public partial class RiderDuel
         else
             skyMat = new PanoramaSkyMaterial { Panorama = tex };
         env.Sky = new Sky { SkyMaterial = skyMat };
+        TunePaintedSky(env, sun);
+        Dbg.Print($"SKY map panorama applied: {path}");
+        if (starsOn) Dbg.Print("SKY star layer: procedural stars over the photo (hybrid)");
+    }
+
+    // The lighting tune every painted/tiled sky shares:
+    // darker sky than the lit scene, ambient decoupled from
+    // the sky, moonlight sun, fog kept off the sky itself.
+    private void TunePaintedSky(Environment env, DirectionalLight3D sun)
+    {
         // Godot maps the panorama's center to +Z; the paintings
         // are composed to be looked AT, so turn the composition
         // to -Z (the direction of advance on most maps).
@@ -2001,8 +2029,6 @@ public partial class RiderDuel
         // applies to terrain and buildings normally.
         env.FogSkyAffect = 0f;
         env.VolumetricFogAlbedo = new Color(0.10f, 0.14f, 0.24f);
-        Dbg.Print($"SKY map panorama applied: {path}");
-        if (starsOn) Dbg.Print("SKY star layer: procedural stars over the photo (hybrid)");
     }
 
 }

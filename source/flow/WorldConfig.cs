@@ -105,6 +105,18 @@ public static class WorldConfig
         return string.IsNullOrEmpty(f) ? "" : "res://assets/skies/" + f;
     }
 
+    // Tiled sky (owner, 2026-11-25): a seamless tile repeated
+    // over the dome by the triplanar sky shader instead of a
+    // stretched panorama. EnterLab copies the contract's
+    // SkyTile here; AOT_SKYTILE=<file name> forces one.
+    public static string SkyTile = InitSkyTile();
+
+    private static string InitSkyTile()
+    {
+        var f = System.Environment.GetEnvironmentVariable("AOT_SKYTILE");
+        return string.IsNullOrEmpty(f) ? "" : "res://assets/skies/" + f;
+    }
+
     // Flat maps (owner): a contract whose streets must all be
     // level - The Harbor Stacks - skips the height map entirely;
     // its world builds at height 0 everywhere. EnterLab copies
@@ -133,6 +145,7 @@ public static class WorldConfig
         SelectedMission = null;
         CityKit = InitCityKit();
         SkyTex = InitSky();
+        SkyTile = InitSkyTile();
         SkyStars = InitStars();
         SnowGround = InitSnow();
         TerracedCity = InitTerraces();
