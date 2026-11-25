@@ -1085,8 +1085,9 @@ public partial class Titans : Node3D
             // (owner, MW4-style) - the rider stands front three-
             // quarter in the paperdoll area, lit by a lab fill, so
             // the slot panels sit ON the machine. A fixed angle
-            // (plus a barely-there sway) replaces the orbit: the
-            // paperdoll mapping only makes sense from the front.
+            // replaces the orbit (the slow sway it once carried
+            // is gone, owner 2026-11-25): the paperdoll mapping
+            // only makes sense from the front.
             _labLight.Visible = true;
             if (_photo && _warmPose < 4)
             {
@@ -1149,8 +1150,11 @@ public partial class Titans : Node3D
             float labK = _playerSpec.Height / 13f; // showroom framing scales with the chassis, like the chase cam
             var center = _player.RootPos + Vector3.Up * (5.6f * labK);
             var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
-            float sway = Mathf.Sin(Time.GetTicksMsec() / 1000f * 0.15f) * 0.045f;
-            var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the rider, slightly to its side
+            // Static showroom camera (owner, 2026-11-25): the
+            // slow sinusoidal sway that used to ride this angle
+            // is gone - the frame is fixed, straight and level
+            // with the horizon (LookAt on world Up, no roll).
+            var viewDir = fwd.Rotated(Vector3.Up, 2.72f); // mostly in front of the rider, slightly to its side
             _cam.GlobalPosition = center + viewDir * (14.5f * labK) + Vector3.Up * (3.4f * labK);
             _cam.LookAt(center, Vector3.Up);
             _cam.RotateY(0.46f); // pan in camera space: rider right, centered under its slot panels (owner, adjusted twice at his word)
