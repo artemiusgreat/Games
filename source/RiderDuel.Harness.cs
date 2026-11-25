@@ -1020,7 +1020,7 @@ public partial class RiderDuel
     // must engage the player first, then the nearer teammate.
     private int _gpPhase;
     private double _gpT;
-    private Ally _gpGuard, _gpMate;
+    private Ally _gpGuard, _gpMate, _gpGuard2;
     private int _gpShots0;
 
     private void UpdateGuardProbe(float dt)
@@ -1061,6 +1061,53 @@ public partial class RiderDuel
         else if (_gpPhase == 2 && _gpT > 4f)
         {
             GD.Print($"GUARDPROBE t8 target={(_gpGuard.TargetW != null ? TagOf(_gpGuard.TargetW) : "none")} engaged={_gpGuard.Engaged} guardShots={_allyShots - _gpShots0}");
+            // Detection phases (owner, 2026-11-25): a SECOND
+            // guard, never engaged - stage the player close
+            // but behind terrain and expect NO engagement;
+            // then land a player hit on it and expect the
+            // alert to engage it sight unseen.
+            foreach (var a in _allies)
+                if (a.Guard && !a.Dead && a != _gpGuard && _gpGuard2 == null) _gpGuard2 = a;
+            if (_gpGuard2 == null) { GD.Print("GUARDPROBE no second guard"); GetTree().Quit(1); return; }
+            var home2 = _gpGuard2.GuardHome;
+            var gChest = _gpGuard2.Walker.RootPos + Vector3.Up * 8f;
+            Vector3 spot = Vector3.Zero; bool found = false;
+            foreach (float r in new[] { 70f, 100f, 130f, 160f })
+            {
+                for (int k = 0; k < 16 && !found; k++)
+                {
+                    float ang = k * Mathf.Tau / 16f;
+                    var cand = home2 + new Vector3(Mathf.Cos(ang) * r, 0f, Mathf.Sin(ang) * r);
+                    cand.Y = Main.HeightAt(cand.X, cand.Z);
+                    var pChest = cand + Vector3.Up * 8f;
+                    bool blocked = false;
+                    int steps = Mathf.Max(2, (int)(gChest.DistanceTo(pChest) / 6f));
+                    for (int i = 1; i < steps; i++)
+                    {
+                        var p = gChest.Lerp(pChest, (float)i / steps);
+                        if (Main.HeightAt(p.X, p.Z) > p.Y - 0.75f) { blocked = true; break; }
+                    }
+                    if (blocked) { spot = cand; found = true; }
+                }
+                if (found) break;
+            }
+            if (!found) { GD.Print("GUARDPROBE no blocked spot found near guard2"); GetTree().Quit(1); return; }
+            _gpGuard2.Engaged = false; _gpGuard2.Alerted = false;
+            _player.Teleport(spot, 0f);
+            GD.Print($"GUARDPROBE los-stage guard2={_gpGuard2.Role} spot={spot} dist={_gpGuard2.Walker.RootPos.DistanceTo(spot):F0} losClear={HasLineOfSight(_gpGuard2.Walker, _player)}");
+            _gpPhase = 3; _gpT = 0f;
+        }
+        else if (_gpPhase == 3 && _gpT > 3.5f)
+        {
+            GD.Print($"GUARDPROBE los-blocked engaged={_gpGuard2.Engaged} target={(_gpGuard2.TargetW != null ? TagOf(_gpGuard2.TargetW) : "none")} (expect False/none)");
+            var hit = new HitModel.Result { Hit = true, T = 1f, Point = _gpGuard2.Walker.RootPos + Vector3.Up * 8f, Target = _gpGuard2.Role, Zone = "torso", ZoneFrac = 0.6f, Part = "" };
+            ApplyDamage(_gpGuard2.Walker, 5f, hit, Roles.Player, 10f, "cannon");
+            GD.Print($"GUARDPROBE alert-applied alerted={_gpGuard2.Alerted} (expect True)");
+            _gpPhase = 4; _gpT = 0f;
+        }
+        else if (_gpPhase == 4 && _gpT > 3f)
+        {
+            GD.Print($"GUARDPROBE los-alerted engaged={_gpGuard2.Engaged} target={(_gpGuard2.TargetW != null ? TagOf(_gpGuard2.TargetW) : "none")} (expect True/player)");
             GD.Print("GUARDPROBE DONE");
             GetTree().Quit(0);
         }

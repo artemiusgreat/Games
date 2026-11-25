@@ -1,8 +1,10 @@
 using Godot;
 
-// UI click sounds (owner, 2026-11-24): every selector,
-// button and stepper on every screen ticks - the flow
-// wizard, the lab, the in-game popups. One Install() per
+// UI select sounds (owner, 2026-11-24; the tick became
+// a laser-like whoosh at his word, 2026-11-25): every
+// selector, button and stepper on every screen sounds -
+// the flow wizard, the lab, the in-game popups. One
+// Install() per
 // scene root (FlowMain for the wizard, RiderDuel for the
 // lab and the match): the tree's NodeAdded signal wires
 // every BaseButton as it appears (screens rebuild their
@@ -22,7 +24,7 @@ public partial class UiSfx : Node
 
     public static void Install(Node root)
     {
-        _stream ??= GD.Load<AudioStream>("res://assets/sfx/click.wav");
+        _stream ??= GD.Load<AudioStream>("res://assets/sfx/uiwhoosh.wav");
         var sfx = new UiSfx();
         root.AddChild(sfx);
         for (int i = 0; i < sfx._pool.Length; i++)

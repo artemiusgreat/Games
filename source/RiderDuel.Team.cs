@@ -50,6 +50,7 @@ public partial class RiderDuel
         public bool Guard;
         public Vector3 GuardHome;
         public bool Engaged;
+        public bool Alerted; // hit by the player: engages at any distance (owner, 2026-11-25)
         public Vector3 Patrol;
         public float PatrolT;
     }
@@ -470,6 +471,7 @@ public partial class RiderDuel
         {
             a.Hp = a.Spec.MaxHp;
             a.Dead = false;
+            a.Alerted = false;
             a.Cd = 0f;
             a.DroopT = 0f;
             a.TargetW = null;

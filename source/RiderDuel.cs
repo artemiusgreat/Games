@@ -153,6 +153,7 @@ public partial class RiderDuel : Node3D
         public Vector3 Vel;
         // Mission guard duty: engagement latch + patrol point.
         public bool Engaged;
+        public bool Alerted; // hit by the player: engages at any distance (owner, 2026-11-25)
         public Vector3 Patrol;
         public float PatrolT;
     }
@@ -751,6 +752,7 @@ public partial class RiderDuel : Node3D
         _hpEnemy = _enemySpec.MaxHp;
         _playerDead = _enemyDead = false;
         _targetIdx = -1; // a reset re-picks the nearest living foe
+        _foe0Alerted = false; // a reset also clears what the defenders know
         _partsPlayer.RestoreAll();
         _partsEnemy.RestoreAll();
         SyncLegConsequences(_player, _partsPlayer);
@@ -759,6 +761,7 @@ public partial class RiderDuel : Node3D
         {
             _foe.Hp = _foe.Spec.MaxHp;
             _foe.Dead = false;
+            _foe.Alerted = false;
             _foe.Cd = 0f;
             _foe.DroopT = 0f;
             _foe.Parts.RestoreAll();

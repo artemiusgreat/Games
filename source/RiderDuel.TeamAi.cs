@@ -226,7 +226,7 @@ public partial class RiderDuel
             if (!TickReady(a.Walker)) continue;
             dt = TickDt(a.Walker, dtFrame);
             if (a.Dead) { a.Walker.SetDrive(a.Yaw, 0f); a.TargetW = null; continue; }
-            if (!GuardGate(a.Walker, ref a.Engaged))
+            if (!GuardGate(a.Walker, ref a.Engaged, a.Alerted))
             {
                 a.TargetW = null;
                 PatrolMove(a.Walker, a.Parts, a.GuardHome, ref a.Yaw,

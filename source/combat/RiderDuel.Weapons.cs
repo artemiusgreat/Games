@@ -555,6 +555,15 @@ public partial class RiderDuel
         }
         float hp = isPlayer ? _hpPlayer : isFoe ? _foe.Hp : isAlly ? ally.Hp : _hpEnemy;
         Dbg.Print($"WPN DMG target={(isPlayer ? Roles.Player : isFoe ? Roles.Foe : isAlly ? ally.Role : Roles.Enemy)} dmg={dmg:F1} zone={hit.Zone} part={partId} poolDmg={poolDmg:F1} hp={hp:F1} src={source}");
+        // Detection (owner, 2026-11-25): being HIT by the
+        // player alerts a defender at any distance - it knows
+        // it is under attack and engages, sight or no sight.
+        if (source == Roles.Player)
+        {
+            if (isFoe) _foe.Alerted = true;
+            else if (isAlly && ally.Guard) ally.Alerted = true;
+            else if (!isPlayer && !isAlly) _foe0Alerted = true;
+        }
         OnDamaged(target, dmg, hit.Point, source, kind);
         if (hp <= 0f) { Die(target); return; }
         // Knockdown (owner's rule, current): weapon impacts NEVER topple

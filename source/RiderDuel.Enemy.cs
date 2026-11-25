@@ -13,17 +13,23 @@ using System.Collections.Generic;
 // other foe while the player watches.
 public partial class RiderDuel
 {
-    // Mission guard duty (owner, 2026-11-06): on the big map the
-    // defenders PATROL their own base and only engage when the
-    // player closes inside AggroRange; past LeashRange they break
-    // off and go back to patrolling. No new AI framework - a
-    // two-state latch (patrol/engaged) around the existing range
-    // game, which still runs the fight once engaged. Tournament
-    // keeps the free-for-all hunt untouched.
-    private const float AggroRange = 260f;
-    private const float LeashRange = 360f;
+    // Mission guard duty (owner, 2026-11-06; detection rule
+    // reworked 2026-11-25): on the big map the defenders
+    // PATROL their own base and engage only on literal sight -
+    // the nearest team rider within DetectRange with an
+    // unobstructed chest-to-chest line - or when the player
+    // has HIT them, which alerts at any distance and never
+    // lapses. Past LeashRange an unalerted defender breaks
+    // off and goes back to patrolling. No new AI framework -
+    // a two-state latch (patrol/engaged) around the existing
+    // range game, which still runs the fight once engaged.
+    // Gunnery was already ray-gated, so an engaged defender
+    // still cannot shoot through a hill; it has to crest it.
+    private const float DetectRange = 500f;
+    private const float LeashRange = 560f;
     private const float PatrolRadius = 55f; // the base plateau's flat disc is 60
     private bool _foe0Engaged;
+    private bool _foe0Alerted;
     private Vector3 _foe0Patrol;
     private float _foe0PatrolT;
 
@@ -33,19 +39,40 @@ public partial class RiderDuel
         return new Vector3(p.X, Main.HeightAt(p.X, p.Y), p.Y);
     }
 
-    // The engagement latch, with hysteresis: trips in at
-    // AggroRange, out at LeashRange, so a defender on the boundary
-    // does not flicker between states. The reference is the
-    // nearest living rider of the player's TEAM (teams stage) -
-    // with a solo team that is the player, the original rule.
-    private bool GuardGate(RiderWalker self, ref bool engaged)
+    // The engagement latch, with hysteresis: trips in on
+    // sight inside DetectRange, out at LeashRange, so a
+    // defender on the boundary does not flicker between
+    // states. The reference is the nearest living rider of
+    // the player's TEAM (teams stage) - with a solo team
+    // that is the player, the original rule.
+    private bool GuardGate(RiderWalker self, ref bool engaged, bool alerted)
     {
         var near = NearestTeamWalker(self.RootPos);
         if (near == null) { engaged = false; return false; }
+        if (alerted) { engaged = true; return true; }
         float dp = self.RootPos.DistanceTo(near.RootPos);
-        if (!engaged && dp < AggroRange) engaged = true;
+        if (!engaged && dp < DetectRange && HasLineOfSight(self, near)) engaged = true;
         else if (engaged && dp > LeashRange) engaged = false;
         return engaged;
+    }
+
+    // Literal sight between two riders: the straight line
+    // from chest to chest, sampled against the terrain
+    // every few units - a crest between them blocks the
+    // view even at close range (owner's screenshot, 2026-
+    // 11-25: hidden behind the hilltop, already hunted).
+    private bool HasLineOfSight(RiderWalker a, RiderWalker b)
+    {
+        var pa = a.RootPos + Vector3.Up * 8f;
+        var pb = b.RootPos + Vector3.Up * 8f;
+        float dist = pa.DistanceTo(pb);
+        int steps = Mathf.Max(2, (int)(dist / 6f));
+        for (int i = 1; i < steps; i++)
+        {
+            var p = pa.Lerp(pb, (float)i / steps);
+            if (Main.HeightAt(p.X, p.Z) > p.Y - 0.75f) return false;
+        }
+        return true;
     }
 
     // An NPC fires exactly ONE ballistic weapon - the one picked
@@ -180,7 +207,7 @@ public partial class RiderDuel
     {
         if (WorldConfig.IsMission)
         {
-            if (!GuardGate(_enemy, ref _foe0Engaged))
+            if (!GuardGate(_enemy, ref _foe0Engaged, _foe0Alerted))
             {
                 _foe0TargetW = null;
                 PatrolMove(_enemy, _partsEnemy, PadWorld(1), ref _enemyYaw,
@@ -205,7 +232,7 @@ public partial class RiderDuel
         if (_foe.Dead) { _foe.Walker.SetDrive(_foe.Yaw, 0f); return; }
         if (WorldConfig.IsMission)
         {
-            if (!GuardGate(_foe.Walker, ref _foe.Engaged))
+            if (!GuardGate(_foe.Walker, ref _foe.Engaged, _foe.Alerted))
             {
                 _foeTargetW = null;
                 PatrolMove(_foe.Walker, _foe.Parts, PadWorld(2), ref _foe.Yaw,
