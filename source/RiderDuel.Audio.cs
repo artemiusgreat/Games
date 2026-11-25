@@ -15,6 +15,12 @@ public partial class RiderDuel
     // dedicated 2D players, always running, faded by state.
     private AudioStream _sfxWind, _sfxServo;
     private AudioStreamPlayer _windPlayer, _servoPlayer;
+    // Order announcements (owner, 2026-11-25): recorded
+    // voice clips for the five team orders - his pick over
+    // live text-to-speech. One dedicated 2D player; a new
+    // order cuts the clip still speaking.
+    private AudioStream _voxFollow, _voxAttackTarget, _voxAttackNearby, _voxProtect, _voxStop;
+    private AudioStreamPlayer _voxPlayer;
     private float _windDb = -60f, _servoDb = -60f, _prevTorsoYaw;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();
     private readonly System.Collections.Generic.List<bool> _sfxProtected = new();
@@ -64,6 +70,13 @@ public partial class RiderDuel
         AddChild(_windPlayer); _windPlayer.Play();
         _servoPlayer = new AudioStreamPlayer { Stream = _sfxServo, VolumeDb = _servoDb };
         AddChild(_servoPlayer); _servoPlayer.Play();
+        _voxFollow = GD.Load<AudioStream>("res://assets/sfx/vox_follow.mp3");
+        _voxAttackTarget = GD.Load<AudioStream>("res://assets/sfx/vox_attack_target.mp3");
+        _voxAttackNearby = GD.Load<AudioStream>("res://assets/sfx/vox_attack_nearby.mp3");
+        _voxProtect = GD.Load<AudioStream>("res://assets/sfx/vox_protect.mp3");
+        _voxStop = GD.Load<AudioStream>("res://assets/sfx/vox_stop.mp3");
+        _voxPlayer = new AudioStreamPlayer { VolumeDb = -4f }; // announcement level; tune here
+        AddChild(_voxPlayer);
         for (int i = 0; i < 20; i++)
         {
             var p = new AudioStreamPlayer3D { MaxDistance = 220f, VolumeDb = -6f };
@@ -72,6 +85,27 @@ public partial class RiderDuel
             _sfxProtected.Add(false);
         }
         Dbg.Print($"SFX loaded laser={_sfxLaser != null} ppc={_sfxPpc != null} cannon={_sfxCannon != null} rocket={_sfxRocket != null} hit={_sfxHit != null} tree={_sfxTree != null} explosion={_sfxExplosion != null} steps={_sfxStepA != null}/{_sfxStepB != null} thruster={_sfxThruster != null}");
+    }
+
+    // Speak the order (owner, 2026-11-25): SetTeamOrder is
+    // the only caller, so the voice clip and the feed line
+    // always go together. A new order cuts the clip still
+    // speaking - the latest command is the one that counts.
+    private void AnnounceOrder(TeamOrder o)
+    {
+        if (_voxPlayer == null) return;
+        _voxPlayer.Stream = o switch
+        {
+            TeamOrder.Follow => _voxFollow,
+            TeamOrder.AttackTarget => _voxAttackTarget,
+            TeamOrder.AttackNearby => _voxAttackNearby,
+            TeamOrder.ProtectCompanion => _voxProtect,
+            _ => _voxStop,
+        };
+        if (_voxPlayer.Stream == null) return;
+        _voxPlayer.Stop();
+        _voxPlayer.Play();
+        Dbg.Print($"VOX order={o}");
     }
 
     // Ambience step (owner, 2026-11-24): fades only - the two

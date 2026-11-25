@@ -34,6 +34,7 @@ public partial class RiderDuel
     {
         _teamOrder = o;
         GD.Print($"TEAM order={o}");
+        AnnounceOrder(o); // the voice clip rides the feed line (owner, 2026-11-25)
     }
 
     // The active companion (owner, 2026-11-23): CTRL+TAB
