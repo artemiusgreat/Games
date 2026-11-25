@@ -192,7 +192,7 @@ public partial class RiderWalker : Node3D
     public Vector3 RootPos => _rootPos;
     public int Steps => _steps;
     // Last foot plant (world position + foot basis), for the
-    // snow footprints (RiderDuel.Snow).
+    // snow footprints (Titans.Snow).
     public Vector3 LastPlantPos;
     public Basis LastPlantBasis = Basis.Identity;
     public float MaxSlide => _maxSlide;
@@ -213,7 +213,7 @@ public partial class RiderWalker : Node3D
     // by the torso's clamp - the reticle must reach the
     // ground in front of the feet and the sky above. The torso mesh
     // follows TorsoPitch to its stops; the aim direction uses this
-    // wider range (RiderDuel owns the live value; NaN there means
+    // wider range (Titans owns the live value; NaN there means
     // "follow TorsoPitch", which is what every harness phase sets).
     public float AimPitchWide = float.NaN;
     public float TorsoYawWorld => _legsYaw + _torsoTwist;

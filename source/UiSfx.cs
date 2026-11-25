@@ -5,7 +5,7 @@ using Godot;
 // whoosh detour): every selector, button and stepper
 // on every screen ticks - the flow wizard, the lab,
 // the in-game popups. One Install() per
-// scene root (FlowMain for the wizard, RiderDuel for the
+// scene root (FlowMain for the wizard, Titans for the
 // lab and the match): the tree's NodeAdded signal wires
 // every BaseButton as it appears (screens rebuild their
 // rows on the fly), a meta flag keeps a button from

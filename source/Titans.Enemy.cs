@@ -1,9 +1,9 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: the opponent brains: movement AI, torso tracking,
+// Titans module: the opponent brains: movement AI, torso tracking,
 // gunnery. Split from the single-file build (round 22 cleanup); the
-// class stays one partial class - see RiderDuel.cs for the field
+// class stays one partial class - see Titans.cs for the field
 // block.
 //
 // Free-for-all (owner, 2026-10-31): two AI opponents share this
@@ -11,7 +11,7 @@ using System.Collections.Generic;
 // the other AI - and plays the same range game against it. No
 // teams, no collaboration: a foe will happily finish off the
 // other foe while the player watches.
-public partial class RiderDuel
+public partial class Titans
 {
     // Mission guard duty (owner, 2026-11-06; detection rule
     // reworked 2026-11-25): on the big map the defenders

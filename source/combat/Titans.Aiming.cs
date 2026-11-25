@@ -1,13 +1,13 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: AIMING - the torso aim ray, the camera-ray
+// Titans module: AIMING - the torso aim ray, the camera-ray
 // convergence that defines the aim point every weapon uses,
 // and the reticle that rides that point on screen. Part of
 // the Combat folder: everything that aims or shoots lives
-// here (firing itself is in Combat/RiderDuel.Weapons.cs).
-// The class stays one partial class - see RiderDuel.cs.
-public partial class RiderDuel
+// here (firing itself is in Combat/Titans.Weapons.cs).
+// The class stays one partial class - see Titans.cs.
+public partial class Titans
 {
     // Aim (owner's model, round 27 - center crosshair, his pick
     // over the free reticle point): the crosshair is fixed at the

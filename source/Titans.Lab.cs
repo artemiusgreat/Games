@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: RiderLab glue: construction from specs, selection, loadout application.
+// Titans module: RiderLab glue: construction from specs, selection, loadout application.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class - see RiderDuel.cs for the field block.
-public partial class RiderDuel
+// stays one partial class - see Titans.cs for the field block.
+public partial class Titans
 {
     // Viewport position of a slot's part on the player's rider -
     // the lab's paperdoll dots are drawn there, so the mapping

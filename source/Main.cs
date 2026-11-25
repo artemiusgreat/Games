@@ -269,7 +269,7 @@ public partial class Main : Node3D
 	public static float GridHeightAt(int i, int j) => Grid[j * GridN + i];
 
 	// Building roofs a rider can stand on (owner, 2026-10-31):
-	// registered by RiderDuel's AddBuilding, removed when the
+	// registered by Titans's AddBuilding, removed when the
 	// building is destroyed. Axis-aligned rectangles with a top.
 	// Under: the surface's underside height when the space
 	// below it is open (terrace decks, lift pads, the island
@@ -345,7 +345,7 @@ public partial class Main : Node3D
 	}
 
 	// Axis-aligned walls with a top (terrace platform sides,
-	// the island bridge under-deck): RiderDuel's ResolveOne
+	// the island bridge under-deck): Titans's ResolveOne
 	// pushes walkers out while their soles are below Top, in
 	// the same spirit as the building circles' RoofTop gate.
 	public static readonly System.Collections.Generic.List<RoofRect> Walls = new();

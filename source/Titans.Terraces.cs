@@ -18,7 +18,7 @@ using System.Collections.Generic;
 // (Main.Roofs / Walls / Ramps / DiscRoofs) with undersides,
 // so decks collide both ways. Gated by
 // WorldConfig.TerracedCity (the Harbor Stacks contract).
-public partial class RiderDuel
+public partial class Titans
 {
     // Level heights (owner): decks high enough that a rider
     // walking UNDER a platform - chase camera included -

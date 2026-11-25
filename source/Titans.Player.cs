@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: player input: throttle/turn, torso bearing, thruster key.
+// Titans module: player input: throttle/turn, torso bearing, thruster key.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class - see RiderDuel.cs for the field block.
-public partial class RiderDuel
+// stays one partial class - see Titans.cs for the field block.
+public partial class Titans
 {
     // ---------- input ----------
 

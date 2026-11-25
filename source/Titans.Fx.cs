@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: particles, lights, flashes, damage numbers, death feedback.
+// Titans module: particles, lights, flashes, damage numbers, death feedback.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class - see RiderDuel.cs for the field block.
-public partial class RiderDuel
+// stays one partial class - see Titans.cs for the field block.
+public partial class Titans
 {
     // ---------- GPU particles (round 9) ----------
     // The mesh-box puffs and short flashes did not read at cockpit

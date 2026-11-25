@@ -96,7 +96,7 @@ public static class SlotIds
 // mission map (Harbor Stacks, Gate City): a street grid of
 // building plots on a level plateau. Shared by the heightfield
 // (Main), both ground colorings (Main.TerrainColor, PhotoEnv)
-// and the building placement (RiderDuel ScatterCity).
+// and the building placement (Titans ScatterCity).
 /// <summary>
 /// Display scale (owner, 2026-11-14): every label in the
 /// game measures in kilometres and kilometres per hour.

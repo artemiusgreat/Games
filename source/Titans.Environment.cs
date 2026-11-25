@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: terrain, props, destructibles, debris chunks, collisions.
+// Titans module: terrain, props, destructibles, debris chunks, collisions.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class - see RiderDuel.cs for the field block.
-public partial class RiderDuel
+// stays one partial class - see Titans.cs for the field block.
+public partial class Titans
 {
     private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on - a rider entirely below it (under the deck it stands on) is NOT blocked. Pass: the circle never blocks movement (stones - owner, round 29: only TALL objects block a rider)
 

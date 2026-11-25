@@ -22,7 +22,7 @@ using System.Collections.Generic;
 //    still patrols and can still be fought at range;
 //    beyond 1500u nothing can reach it, so it freezes and
 //    hides until the player closes in.
-public partial class RiderDuel
+public partial class Titans
 {
     private readonly List<(Node3D Node, Vector2 Centre, float Range)> _streamed = new();
     private readonly List<MeshInstance3D> _terrainChunks = new();

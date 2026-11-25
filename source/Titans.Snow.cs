@@ -5,7 +5,7 @@
 using Godot;
 using System.Collections.Generic;
 
-public partial class RiderDuel
+public partial class Titans
 {
     // ---- Footprints ----
     // A ring pool of soft dark prints stamped at each foot

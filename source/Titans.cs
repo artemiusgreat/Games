@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel: two-rider duel - a PLAYER rider vs an ENEMY rider, each
+// Titans: two-rider duel - a PLAYER rider vs an ENEMY rider, each
 // fielding a chassis chosen in the RiderLab (Enyo / Hector
 // are the two chassis in Data/RiderSpec.cs; code names the ROLES,
 // the specs name the machines). W/S throttle along the legs
@@ -13,19 +13,19 @@ using System.Collections.Generic;
 // bodies); terrain height stays with Main.HeightAt.
 //
 // This class is split into partial modules (round 22):
-//   RiderDuel.cs            fields, _Ready, _Process, combat stepper, reset
-//   RiderDuel.Player.cs     input            RiderDuel.Enemy.cs    AI + gunnery
-//   RiderDuel.Weapons.cs    aim/fire/damage  RiderDuel.Fx.cs       particles/feedback
-//   RiderDuel.Audio.cs      sound            RiderDuel.Environment.cs world + props
-//   RiderDuel.Lab.cs        lab/construction RiderDuel.Hud.cs      cockpit panel
-//   RiderDuel.Camera.cs     captures/camera  RiderDuel.Harness.cs  test drivers
+//   Titans.cs            fields, _Ready, _Process, combat stepper, reset
+//   Titans.Player.cs     input            Titans.Enemy.cs    AI + gunnery
+//   Titans.Weapons.cs    aim/fire/damage  Titans.Fx.cs       particles/feedback
+//   Titans.Audio.cs      sound            Titans.Environment.cs world + props
+//   Titans.Lab.cs        lab/construction Titans.Hud.cs      cockpit panel
+//   Titans.Camera.cs     captures/camera  Titans.Harness.cs  test drivers
 // The photoreal scene (photo/PhotoDuel.tscn, the project's main
 // scene) runs this same class with the photo dressing on.
 // Verification: --duel-test / --weapons-test / --breakable-test /
 // --terrain-test / --photo-test run scripted choreographies and
 // capture proof frames.
 
-public partial class RiderDuel : Node3D
+public partial class Titans : Node3D
 {
     private const float EnemyMaxSpeed = 2.2f; // AI tactical pace cap; the chassis cap is RiderSpec.MaxSpeed
     private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
@@ -1146,10 +1146,10 @@ public partial class RiderDuel : Node3D
                 if (warmEl > sliceEnd && _warmPoseFrames >= 2) { _warmPose++; _warmPoseFrames = 0; }
                 return;
             }
-            float sway = Mathf.Sin((float)Time.GetTicksMsec() / 1000f * 0.15f) * 0.045f;
             float labK = _playerSpec.Height / 13f; // showroom framing scales with the chassis, like the chase cam
             var center = _player.RootPos + Vector3.Up * (5.6f * labK);
             var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
+            float sway = Mathf.Sin(Time.GetTicksMsec() / 1000f * 0.15f) * 0.045f;
             var viewDir = fwd.Rotated(Vector3.Up, 2.72f + sway); // mostly in front of the rider, slightly to its side
             _cam.GlobalPosition = center + viewDir * (14.5f * labK) + Vector3.Up * (3.4f * labK);
             _cam.LookAt(center, Vector3.Up);

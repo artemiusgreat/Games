@@ -1,10 +1,10 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: capture pipeline and the proof/live camera modes.
+// Titans module: capture pipeline and the proof/live camera modes.
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class - see RiderDuel.cs for the field block.
-public partial class RiderDuel
+// stays one partial class - see Titans.cs for the field block.
+public partial class Titans
 {
     // Sniper view state (T toggles; see the chase branch of
     // UpdateCamera and the mouse-look scaling in Player input).

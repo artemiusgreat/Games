@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 
-// RiderDuel module: the NPC teammates' brain and the leader's
+// Titans module: the NPC teammates' brain and the leader's
 // orders (owner, teams stage step 5). Allies run the SAME
 // range game and cannon gunnery as the AI foes - no second AI
 // framework; the team order only decides WHAT they engage and
@@ -23,7 +23,7 @@ using System.Collections.Generic;
 // The standing order before any key is pressed is SHIFT+1's
 // (owner's ruling, 2026-11-14 evening - supersedes the same
 // day's Attack-my-target default: the default is Follow me).
-public partial class RiderDuel
+public partial class Titans
 {
     private enum TeamOrder { Follow, AttackTarget, AttackNearby, ProtectCompanion, Hold }
 

@@ -2,19 +2,19 @@ using Godot;
 using System.Collections.Generic;
 using System.Linq;
 
-// RiderDuel module: the Story team in the duel (owner, teams
+// Titans module: the Story team in the duel (owner, teams
 // stage, step 4-5). The roster formed in the lab (TeamRoster.
 // Story) takes the field in missions: the leader is the rider
 // the player drives (the plain _player state, exactly as
 // before teams existed); every other member is an NPC teammate
 // - an Ally record below, driven by the shared foe brain under
-// the current team order (RiderDuel.TeamAi.cs).
+// the current team order (Titans.TeamAi.cs).
 //
 // Solo missions (a one-rider roster) build no allies and play
 // exactly as missions always have; every harness mode is
 // excluded, so the scripted suites keep their calibrated
 // two/three-rider fields.
-public partial class RiderDuel
+public partial class Titans
 {
     // One NPC teammate. Mirrors the Foe record's shape - the
     // shared AI/gunnery/damage code dispatches on walker

@@ -2,12 +2,12 @@ using Godot;
 using System.Collections.Generic;
 using System.Linq;
 
-// RiderDuel module: firing, projectiles, damage and part consequences.
-// (Aiming - the aim ray and reticle - lives in Combat/RiderDuel.Aiming.cs;
+// Titans module: firing, projectiles, damage and part consequences.
+// (Aiming - the aim ray and reticle - lives in Combat/Titans.Aiming.cs;
 // this file is part of the Combat folder: everything that aims or shoots.)
 // Split from the single-file build (round 22 cleanup); the class
-// stays one partial class - see RiderDuel.cs for the field block.
-public partial class RiderDuel
+// stays one partial class - see Titans.cs for the field block.
+public partial class Titans
 {
 
     // Muzzle hardpoints: forearm weapons sit on the elbow bones
