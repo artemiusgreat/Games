@@ -849,7 +849,7 @@ public partial class Titans
                 ("Next enemy", "TAB"),
                 ("Closest enemy", "SHIFT + TAB"),
                 ("Next companion", "CTRL + TAB"),
-                ("Sniper view", "T"),
+                ("Sniper view", "RMB"),
             }),
             ("Commands", new (string, string)[]
             {

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // stays one partial class - see Titans.cs for the field block.
 public partial class Titans
 {
-    // Sniper view state (T toggles; see the chase branch of
+    // Sniper view state (RMB toggles; see the chase branch of
     // UpdateCamera and the mouse-look scaling in Player input).
     private bool _sniper;
     private const float SniperFov = 16f;
@@ -418,7 +418,7 @@ public partial class Titans
             if (_cam.GlobalPosition.DistanceSquaredTo(lookTarget) > 0.0001f)
                 _cam.LookAt(lookTarget, Vector3.Up);
             // Sniper view (owner, 2026-11-22, MechWarrior-style):
-            // T toggles a narrow 16-degree FOV on the same boom -
+            // RMB toggles a narrow 16-degree FOV on the same boom -
             // the aim line is FOV-independent, so the crosshair
             // stays true; the ease keeps the zoom from snapping.
             if (delta > 0f)

@@ -974,7 +974,9 @@ public partial class Titans
     // path (Input.ParseInputEvent), so the modifier routing
     // itself is what is on trial: CTRL+TAB cycles the active
     // companion, SHIFT+TAB locks the closest enemy, SHIFT+4
-    // is Stop, SHIFT+5 is Protect-my-companion.
+    // is Stop, SHIFT+5 is Protect-my-companion. The sniper
+    // phases (added 2026-11-25) put the T -> RMB move on
+    // trial the same way: RMB toggles, T must not.
     private int _bpPhase;
     private double _bpT;
     private Ally _bpMate1, _bpMate2;
@@ -987,6 +989,15 @@ public partial class Titans
             Pressed = true,
             ShiftPressed = shift,
             CtrlPressed = ctrl
+        });
+    }
+
+    private static void SendMouse(MouseButton btn)
+    {
+        Input.ParseInputEvent(new InputEventMouseButton
+        {
+            ButtonIndex = btn,
+            Pressed = true
         });
     }
 
@@ -1053,8 +1064,32 @@ public partial class Titans
         else if (_bpPhase == 5 && _bpT > 0.4f)
         {
             GD.Print($"BINDPROBE shift+5 -> order={_teamOrder} (expect ProtectCompanion); anchor={ProtectAnchor()} companion={(ActiveCompanion() != null ? ActiveCompanion().Walker.RootPos.ToString() : "null")}");
-            bool ok = _teamOrder == TeamOrder.ProtectCompanion;
-            GD.Print(ok ? "BINDPROBE PASS" : "BINDPROBE FAIL order 5");
+            if (_teamOrder != TeamOrder.ProtectCompanion) { GD.Print("BINDPROBE FAIL order 5"); GetTree().Quit(1); return; }
+            // Sniper view moved T -> RMB (owner, 2026-11-25):
+            // RMB toggles it on, T must do nothing, RMB again
+            // toggles it off - all through the real _Input.
+            SendMouse(MouseButton.Right);
+            _bpPhase = 6; _bpT = 0f;
+        }
+        else if (_bpPhase == 6 && _bpT > 0.4f)
+        {
+            GD.Print($"BINDPROBE rmb#1 -> sniper={_sniper} (expect True)");
+            if (!_sniper) { GD.Print("BINDPROBE FAIL sniper on RMB"); GetTree().Quit(1); return; }
+            SendKey(Key.T);
+            _bpPhase = 7; _bpT = 0f;
+        }
+        else if (_bpPhase == 7 && _bpT > 0.4f)
+        {
+            GD.Print($"BINDPROBE T -> sniper={_sniper} (expect True - T is unbound)");
+            if (!_sniper) { GD.Print("BINDPROBE FAIL T still toggles sniper"); GetTree().Quit(1); return; }
+            SendMouse(MouseButton.Right);
+            _bpPhase = 8; _bpT = 0f;
+        }
+        else if (_bpPhase == 8 && _bpT > 0.4f)
+        {
+            GD.Print($"BINDPROBE rmb#2 -> sniper={_sniper} (expect False)");
+            bool ok = !_sniper;
+            GD.Print(ok ? "BINDPROBE PASS" : "BINDPROBE FAIL sniper off RMB");
             GetTree().Quit(ok ? 0 : 1);
         }
     }

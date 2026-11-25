@@ -39,11 +39,15 @@ public partial class Titans
             ResetDuel();
             return;
         }
-        if (e is InputEventKey zk && zk.Pressed && !zk.Echo && zk.Keycode == Key.T)
+        if (e is InputEventMouseButton zb && zb.Pressed && zb.ButtonIndex == MouseButton.Right)
         {
-            // Sniper view toggle (owner, 2026-11-22): the FOV
-            // ease and the mouse-look scaling ride on _sniper.
+            // Sniper view toggle (owner, 2026-11-22; moved
+            // from T to RMB at the owner's word, 2026-11-25):
+            // the FOV ease and the mouse-look scaling ride on
+            // _sniper. A press toggles, as T did.
             _sniper = !_sniper;
+            if (Input.MouseMode != Input.MouseModeEnum.Captured)
+                Input.MouseMode = Input.MouseModeEnum.Captured;
             GetViewport().SetInputAsHandled();
             return;
         }
