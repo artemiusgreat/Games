@@ -129,51 +129,6 @@ public static class WeaponFx
         return mi;
     }
 
-    // PPC bolt (owner, 2026-11-24): a lightning arc, not a
-    // straight beam - a chain of thin boxes through jittered
-    // midpoints plus a couple of short forks. The jitter is
-    // seeded, so the core and its glow (same seed) trace the
-    // identical path. Ends stay on the line; the deviation
-    // peaks mid-flight.
-    public static Node3D MakeBolt(Vector3 a, Vector3 b, Color core, float width, int seed)
-    {
-        var root = new Node3D();
-        var rng = new System.Random(seed);
-        float len = a.DistanceTo(b);
-        var dir = (b - a).Normalized();
-        var side = dir.Cross(Vector3.Up);
-        if (side.Length() < 0.1f) side = dir.Cross(Vector3.Right);
-        side = side.Normalized();
-        var up2 = side.Cross(dir).Normalized();
-        int n = Mathf.Clamp(Mathf.RoundToInt(len / 16f), 4, 16);
-        var pts = new Vector3[n + 1];
-        pts[0] = a; pts[n] = b;
-        for (int i = 1; i < n; i++)
-        {
-            float t = (float)i / n;
-            float amp = Mathf.Min(len * 0.03f, 3.2f) * Mathf.Pow(Mathf.Sin(Mathf.Pi * t), 0.7f);
-            pts[i] = a + dir * (len * t)
-                   + side * (float)(rng.NextDouble() * 2 - 1) * amp
-                   + up2 * (float)(rng.NextDouble() * 2 - 1) * amp;
-        }
-        for (int i = 0; i < n; i++)
-        {
-            var seg = MakeBeam(pts[i], pts[i + 1], core, width);
-            root.AddChild(seg);
-        }
-        int forks = rng.Next(2, 4);
-        for (int f = 0; f < forks; f++)
-        {
-            int at = rng.Next(1, n);
-            float fl = len * (0.07f + (float)rng.NextDouble() * 0.08f);
-            var tip = pts[at] + dir * fl * 0.55f
-                    + side * (float)(rng.NextDouble() * 2 - 1) * fl
-                    + up2 * (float)(rng.NextDouble() * 2 - 1) * fl;
-            root.AddChild(MakeBeam(pts[at], tip, core, width * 0.55f));
-        }
-        return root;
-    }
-
     // Impact / muzzle flash: one unshaded sphere.
     public static MeshInstance3D MakeFlash(Vector3 point, Color col, float radius)
     {

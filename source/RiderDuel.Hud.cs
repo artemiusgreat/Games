@@ -71,6 +71,17 @@ public partial class RiderDuel
         _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
         layer.AddChild(_feedLabel);
 
+        // Loss messages (owner, 2026-11-25): NOT inside the
+        // weapons panel - a free label under it, stacked
+        // between the panel and the order feed; FitCornerPanels
+        // positions it every frame.
+        _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
+        _lblWeaponStatus.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        _lblWeaponStatus.AutowrapMode = TextServer.AutowrapMode.Word;
+        _lblWeaponStatus.OffsetLeft = 18; _lblWeaponStatus.OffsetTop = 14;
+        _lblWeaponStatus.OffsetRight = 560; _lblWeaponStatus.OffsetBottom = 130;
+        layer.AddChild(_lblWeaponStatus);
+
         // Radar, top-right (owner): a SQUARE semi-transparent
         // panel the same width as the range/speed block below
         // it, with the exit popup's white corner brackets. The
@@ -251,10 +262,9 @@ public partial class RiderDuel
         var rowThr = CdRow("Thrusters");
         _lblThr = rowThr.Item1; _cdBarThr = rowThr.Item2;
         // No controls hint line (owner: remove the introductory
-        // text) - the panel ends at the THRUST row.
-        _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
-        _lblWeaponStatus.AutowrapMode = TextServer.AutowrapMode.Word;
-        midBox.AddChild(_lblWeaponStatus);
+        // text) - the panel ends at the THRUST row. The loss
+        // messages moved OUT of the panel (owner, 2026-11-25):
+        // _lblWeaponStatus is a free label under it, built above.
 
 
         // -- Right: target + own systems readouts.
@@ -1233,12 +1243,20 @@ public partial class RiderDuel
         if (_cdBarThr != null)
         {
             bool fitted = _player.JumpJets;
-            _cdBarThr.Value = fitted ? _player.JumpCharge : 0f;
-            var tfg = _cdBarThr.GetThemeStylebox("fill") as StyleBoxFlat;
-            if (tfg != null) tfg.BgColor = !fitted ? CdDead
-                : _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
-            _lblThr.AddThemeColorOverride("font_color", fitted ? CdLabelNormal : CdLabelDead);
-            _lblThr.Text = fitted ? "Thrusters" : "Thrusters -";
+            // Thrusters line (owner, 2026-11-25): the label
+            // reads exactly "Thrusters" - no dash, no state
+            // symbols - and when thrusters are not fitted
+            // the whole line (label + charge bar) is hidden.
+            _lblThr.Visible = fitted;
+            _cdBarThr.Visible = fitted;
+            if (fitted)
+            {
+                _cdBarThr.Value = _player.JumpCharge;
+                var tfg = _cdBarThr.GetThemeStylebox("fill") as StyleBoxFlat;
+                if (tfg != null) tfg.BgColor = _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
+                _lblThr.AddThemeColorOverride("font_color", CdLabelNormal);
+                _lblThr.Text = "Thrusters";
+            }
         }
 
         // Per-part status cells (player rider).
@@ -1372,6 +1390,7 @@ public partial class RiderDuel
         if (_panelTarget != null) _panelTarget.Visible = v;
         if (_panelRadar != null) _panelRadar.Visible = v;
         if (_feedLabel != null) _feedLabel.Visible = v;
+        if (_lblWeaponStatus != null) _lblWeaponStatus.Visible = v;
     }
 
     // Corner blocks hug their content: widths and heights come
@@ -1388,7 +1407,19 @@ public partial class RiderDuel
         var ws = _panelWeapons.GetCombinedMinimumSize();
         _panelWeapons.OffsetLeft = 16; _panelWeapons.OffsetTop = 14;
         _panelWeapons.OffsetRight = 16 + w; _panelWeapons.OffsetBottom = 14 + ws.Y;
-        if (_feedLabel != null) _feedLabel.OffsetTop = 14 + ws.Y + 10;
+        // Loss lines under the panel (owner, 2026-11-25), the
+        // order feed under them; with no losses the feed sits
+        // exactly where it always did.
+        float feedTop = 14 + ws.Y + 10;
+        if (_lblWeaponStatus != null)
+        {
+            _lblWeaponStatus.OffsetLeft = 18;
+            _lblWeaponStatus.OffsetRight = 16 + w;
+            _lblWeaponStatus.OffsetTop = 14 + ws.Y + 8;
+            float lh = _lblWeaponStatus.GetCombinedMinimumSize().Y;
+            if (lh > 0f) feedTop = 14 + ws.Y + 8 + lh + 8;
+        }
+        if (_feedLabel != null) _feedLabel.OffsetTop = feedTop;
         var hs = _panelHealth.GetCombinedMinimumSize();
         _panelHealth.OffsetLeft = 16; _panelHealth.OffsetBottom = -14;
         _panelHealth.OffsetRight = 16 + w; _panelHealth.OffsetTop = -14 - hs.Y;

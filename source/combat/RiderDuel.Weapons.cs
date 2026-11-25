@@ -60,21 +60,6 @@ public partial class RiderDuel
         _fx.Add((glow, life, 0));
     }
 
-    // PPC fire draws a bolt (owner, 2026-11-24): white
-    // lightning - a jagged core with forks, wrapped in the
-    // same path at glow width. Lasers stay straight beams.
-    private void SpawnBolt(Vector3 a, Vector3 b, float width, float life)
-    {
-        _beamsSpawned++;
-        int seed = _fxRng.RandiRange(1, 1 << 30);
-        var core = WeaponFx.MakeBolt(a, b, new Color(1f, 1f, 1f), width, seed);
-        AddChild(core);
-        _fx.Add((core, life, 0));
-        var glow = WeaponFx.MakeBolt(a, b, new Color(0.82f, 0.9f, 1f, 0.40f), width * 3.4f, seed);
-        AddChild(glow);
-        _fx.Add((glow, life, 0));
-    }
-
     // Legacy type volleys (FireLaser / FireAutocannon /
     // FireLrmSalvo) keep their signatures for the test
     // harnesses; live play fires the player's lab groups
@@ -161,9 +146,11 @@ public partial class RiderDuel
                 : hit.T <= fired[i].Def.Range ? hit.Point
                 : camTruth ? _cam.GlobalPosition + AimDirWorld() * fired[i].Def.Range
                 : mz + (aimPoint - mz).Normalized() * fired[i].Def.Range;
-            // Beam colours (owner, 2026-11-24): ALL lasers
-            // are yellow; the PPC is a white lightning bolt.
-            if (ppc) SpawnBolt(mz, beamEnd, 0.18f, 0.12f);
+            // Beam colours (owner, 2026-11-24; PPC reworked
+            // 2026-11-25): ALL lasers are yellow; the PPC is
+            // the same beam in white - the lightning bolt
+            // read badly in play.
+            if (ppc) SpawnBeam(mz, beamEnd, new Color(1f, 1f, 1f), 0.15f, 0.12f);
             else SpawnBeam(mz, beamEnd, new Color(1f, 0.82f, 0.18f), 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
             if (i == 0) PlaySfx(ppc ? _sfxPpc : _sfxLaser, mz, 0f, 1f); // the owner's recordings play at natural pitch; PPC has its own (2026-11-22) - the old 0.9/1.125 factors tuned the synthetic whistle they replace
             SpawnFlash(mz, ppc ? new Color(1f, 1f, 1f) : new Color(1f, 0.8f, 0.25f), 0.3f, 0.07f);

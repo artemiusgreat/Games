@@ -122,8 +122,14 @@ public partial class RiderDuel
             return;
         }
         w.Visible = true;
-        if (d < DormantRange)
+        if (d < DormantRange || _sniper)
         {
+            // Sniper view (owner, 2026-11-25): in the 5 Hz
+            // band a far rider's walk reads as jitter under
+            // the scope's magnification, so while the scope
+            // is up every visible rider ticks at full frame
+            // rate - the view is temporary and the rider
+            // count is small.
             _tickNow[w] = dt;
             _tickAcc.Remove(w);
             return;
