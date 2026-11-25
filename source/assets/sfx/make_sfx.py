@@ -14,9 +14,9 @@ SR = 22050
 OUT = os.path.dirname(os.path.abspath(__file__))
 rng = random.Random(20261030)
 
-def save(name, samples):
+def save(name, samples, target_peak=0.88):
     peak = max(1e-6, max(abs(x) for x in samples))
-    gain = 0.88 / peak
+    gain = target_peak / peak
     with wave.open(os.path.join(OUT, name), 'wb') as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes(b''.join(struct.pack('<h', int(max(-1, min(1, x * gain)) * 32767)) for x in samples))
@@ -204,8 +204,13 @@ def click():
     # its gain and decay are down, and the ping drops to
     # 700 Hz, weaker and shorter - a soft thock at the
     # edge of attention. The player volume also went
-    # -20 -> -27 dB (UiSfx.Install). Local rng, other
-    # sounds byte-identical.
+    # -20 -> -27 dB (UiSfx.Install). Still too loud at
+    # his word the same evening: the clip is saved at a
+    # 0.44 peak instead of the usual 0.88 (save()
+    # normalizes every sound to its target peak, which
+    # silently undid a plain gain cut), and the player
+    # went to -36 dB. Local rng, other sounds
+    # byte-identical.
     r = random.Random(20261124)
     n = int(0.04 * SR)
     out = []
@@ -220,4 +225,4 @@ def click():
 
 save('wind.wav', wind())
 save('servo.wav', servo())
-save('click.wav', click())
+save('click.wav', click(), 0.44)
