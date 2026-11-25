@@ -1114,6 +1114,48 @@ public partial class Titans
         GetTree().Quit(0);
     }
 
+    // ---------- Bone probe ----------
+    // Owner (2026-11-25, Prometheus screenshot): on the
+    // centre-line build a laser still appeared to cross the
+    // hill and the impact sat off the reticle vertical. The
+    // centre line's origin is the rider's TORSO BONE - if a
+    // rig parks that bone off the body's centre axis, the
+    // "centre" line is off-centre for that rider only (the
+    // hill probe's Enyo measures clean). This probe swaps
+    // every chassis into the player seat and prints the
+    // torso bone's offset in rider-local space (lateral /
+    // forward / height above the root), plus each fitted
+    // energy muzzle's lateral offset for scale.
+    private double _boneT;
+    private int _boneIdx = -1;
+    private void UpdateBoneProbe(float dt)
+    {
+        _boneT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_boneT < 0.6f) return;
+        _boneT = 0f;
+        _boneIdx++;
+        if (_boneIdx >= RiderSpecs.All.Length)
+        {
+            GD.Print("BONEPROBE DONE");
+            GetTree().Quit(0);
+            return;
+        }
+        var spec = RiderSpecs.All[_boneIdx];
+        SetRiderSelection(spec.Id, "enyo");
+        var root = _player.RootPos;
+        var h = RiderWalker.HeadingVec(_player.LegsYaw);
+        var right = new Vector3(-h.Z, 0f, h.X);
+        var off = _player.BoneWorldPos("torso") - root;
+        string muzzles = "";
+        foreach (var g in _gunsEnergy)
+        {
+            var mo = MuzzleForSlot(g.Slot, false) - root;
+            muzzles += $" {g.Slot}:lat{mo.Dot(right):F2}";
+        }
+        GD.Print($"BONEPROBE {spec.Id}: torso local lat={off.Dot(right):F2} fwd={off.Dot(h):F2} h={off.Y:F2} | energy muzzles:{muzzles}");
+    }
+
     // ---------- Bindings probe ----------
     // Owner (2026-11-23): the TAB family and the re-mapped
     // orders. Synthetic key events go through the REAL _Input
