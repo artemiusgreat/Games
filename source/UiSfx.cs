@@ -27,7 +27,7 @@ public partial class UiSfx : Node
         root.AddChild(sfx);
         for (int i = 0; i < sfx._pool.Length; i++)
         {
-            var p = new AudioStreamPlayer { Stream = _stream, VolumeDb = -11f };
+            var p = new AudioStreamPlayer { Stream = _stream, VolumeDb = -20f }; // owner: the first cut (-11) was too loud; tune here
             sfx.AddChild(p);
             sfx._pool[i] = p;
         }
