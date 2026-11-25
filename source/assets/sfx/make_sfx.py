@@ -211,6 +211,25 @@ def click():
         out.append(snap + ping)
     return out
 
+def whoosh():
+    # UI select sound (owner, 2026-11-25): replaces the
+    # click tick - a short laser-like whistle: a falling
+    # sine sweep (1750 -> 700 Hz over 0.14s) over a breath
+    # of lowpassed noise. Local rng, other sounds stay
+    # byte-identical.
+    r = random.Random(20261125)
+    n = int(0.14 * SR)
+    out = []
+    lp = 0.0
+    for i in range(n):
+        t = i / SR
+        env = (1 - math.exp(-t / 0.008)) * math.exp(-t / 0.045)
+        tone = math.sin(2 * math.pi * (1750.0 * t - 3750.0 * t * t)) * env * 0.55
+        lp += 0.35 * (r.uniform(-1, 1) - lp)
+        out.append(tone + lp * env * 0.30)
+    return out
+
 save('wind.wav', wind())
 save('servo.wav', servo())
 save('click.wav', click())
+save('uiwhoosh.wav', whoosh())
