@@ -65,7 +65,18 @@ public partial class Projectile : Node3D
             // decrement below is skipped while guided; the swept
             // segment test below runs on the blend's step exactly
             // as it does for a ballistic step.
-            GuideTime += dt;
+            // The track check runs BEFORE the clock advance
+            // (owner's LRM report, 2026-11-25): a re-solve
+            // re-anchors the arc at the rocket's position and
+            // zeroes GuideTime - when the target moves more
+            // than the 0.15u threshold in one step (a running
+            // rider at frame rate, or any target at a low
+            // frame rate), the re-solve fired EVERY step and
+            // the increment was discarded before the position
+            // formula ran, so the salvo hung frozen at the
+            // pods for its whole Life. Measured by the
+            // instrumented --lrm-probe: GuideTime 0.00 at
+            // age 45, positions bit-identical to the muzzles.
             if (GuideTrack != null)
             {
                 var tp = GuideTrack();
@@ -86,6 +97,7 @@ public partial class Projectile : Node3D
                     }
                 }
             }
+            GuideTime += dt;
             float u = Mathf.Clamp(GuideTime / GuideDur, 0f, 1f);
             float beta = u * u * (3f - 2f * u);
             float betaDeriv = GuideTime < GuideDur ? 6f * u * (1f - u) / GuideDur : 0f;

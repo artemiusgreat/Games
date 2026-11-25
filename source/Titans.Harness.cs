@@ -641,7 +641,7 @@ public partial class Titans
             LrmStage(0);
             return;
         }
-        if (_lrmT < 0.6) return; // settle after teleport
+        if (_lrmT < (_lrmCase == 6 ? 3.0f : 0.6f)) return; // settle after teleport (case 6 waits longer: the chase camera needs real frames to swing behind the player before the aim is staged from it)
         if (!_lrmFired)
         {
             _lrmFired = true;
@@ -653,10 +653,109 @@ public partial class Titans
             // with a lock on the enemy, case 5 without - in
             // both the enemy then walks sideways out of the
             // aim point, so only the locked salvo can hit.
+            if (_lrmCase == 6)
+            {
+                // Acquisition case: the lock must come from
+                // the REAL path - chase camera updated, torso
+                // aimed at the enemy 226u away, AimLockWalker
+                // asked. (Cases 4/5 hand the lock in, which is
+                // how the 220u acquisition cap shipped
+                // unnoticed in batch 22.)
+                _camMode = CamModes.Chase;
+                // Survey first: this arena's plain undulates
+                // +-15u and the mesa stands in the middle, so
+                // most 226u chords have no line of sight at
+                // all (measured: three fixed chords, three
+                // honest TERRAIN blocks). Rotate the enemy
+                // around the player on the 226u ring (clamped
+                // inside the world bound) and keep the first
+                // bearing where the far cast actually reaches
+                // him - the same thing a player does when he
+                // picks a target he can see. The two-pass aim
+                // (aim from the rider, let the boom place the
+                // camera, re-aim from the camera) is how live
+                // play converges; AimDirWorld's heading is
+                // the NEGATED HeadingVec, so the aiming yaw
+                // is atan2 of the negated offset.
+                // Survey ALL bearings and keep the LONGEST
+                // clear cast that locks: the rim-side bearings
+                // clamp short (a 122u clear one was found
+                // first and proves nothing about the old cap).
+                RiderWalker lk6 = null;
+                float castT6 = 0f;
+                Vector3 best6 = Vector3.Zero;
+                for (int step = 0; step < 72; step++)
+                {
+                    // The enemy rides the bound RIM (r=110),
+                    // not a ring around the player: from a
+                    // rim-side player, ring points overshoot
+                    // the disc and radial clamping dragged
+                    // them along the rim, shortening every
+                    // chord (longest found: 205u). Rim bearings
+                    // reach the true antipode, ~220u away. The
+                    // step is 5 degrees: at 15 the best clear
+                    // cast measured 218.4u - the exact diameter
+                    // is mesa-blocked, and the line that clears
+                    // the shoulder past the 220u cap is narrow.
+                    float ang = step * (Mathf.Pi / 36f);
+                    var ePos = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * 110f;
+                    ePos.Y = Main.HeightAt(ePos.X, ePos.Z);
+                    _enemy.Teleport(ePos, 0f);
+                    var chest6 = _enemy.RootPos + Vector3.Up * 7.6f;
+                    for (int pass = 0; pass < 2; pass++)
+                    {
+                        var origin6 = pass == 0 ? _player.RootPos + Vector3.Up * 15f : _cam.GlobalPosition;
+                        var from6 = chest6 - origin6;
+                        _player.AimPitchWide = Mathf.Atan2(from6.Y, new Vector2(from6.X, from6.Z).Length());
+                        _player.TorsoTwist = Mathf.Atan2(-from6.X, -from6.Z) - _player.LegsYaw;
+                        UpdateCamera(0f);
+                    }
+                    TorsoAimPoint();
+                    var cast6 = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, 2.5f);
+                    if (cast6.Hit && cast6.Target == Roles.Enemy && cast6.T > castT6)
+                    {
+                        var lkTry = AimLockWalker();
+                        if (lkTry == _enemy) { castT6 = cast6.T; best6 = ePos; lk6 = lkTry; }
+                        GD.Print($"LRMPROBE case=6 survey step={step} enemy={ePos} castT={cast6.T:F1} lock={(lkTry == _enemy ? "ENEMY" : lkTry == null ? "none" : "other")}");
+                    }
+                }
+                if (lk6 != _enemy) { GD.PrintErr("LRMPROBE FAIL acquisition: no clear sightline in the arena survey locked the enemy"); GetTree().Quit(1); return; }
+                // The arena's longest clear cast measures
+                // 218.4u (survey, 5-degree steps): the exact
+                // diameter is mesa-blocked and the shoulder
+                // lines cap just under the old 220u
+                // ConvergenceRange, so this case proves
+                // acquisition through the real path at the
+                // longest sightline the arena offers. The far
+                // branch's extra reach is the rangefinder's
+                // own FarRange cast - the same AimRay call
+                // TorsoAimPoint already runs at 1500u every
+                // frame - so the untested delta is the range
+                // argument, not new machinery.
+                GD.Print($"LRMPROBE case=6 note: longest arena sightline castT={castT6:F1}u (old cap 220u)");
+                // Re-stage the winning bearing and fire on it.
+                _enemy.Teleport(best6, 0f);
+                _lrmAim = EnemyAim();
+                var chest6w = _enemy.RootPos + Vector3.Up * 7.6f;
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    var origin6 = pass == 0 ? _player.RootPos + Vector3.Up * 15f : _cam.GlobalPosition;
+                    var from6 = chest6w - origin6;
+                    _player.AimPitchWide = Mathf.Atan2(from6.Y, new Vector2(from6.X, from6.Z).Length());
+                    _player.TorsoTwist = Mathf.Atan2(-from6.X, -from6.Z) - _player.LegsYaw;
+                    UpdateCamera(0f);
+                }
+                TorsoAimPoint();
+                lk6 = AimLockWalker();
+                GD.Print($"LRMPROBE case=6 firing: enemy={best6} castT={castT6:F1} lock={(lk6 == _enemy ? "ENEMY" : lk6 == null ? "none" : "other")}");
+                if (lk6 != _enemy) { GD.PrintErr("LRMPROBE FAIL acquisition: the lock did not take on the re-staged winning bearing"); GetTree().Quit(1); return; }
+                FireLrmSalvo(_lrmAim, lk6);
+                return;
+            }
             FireLrmSalvo(_lrmAim, _lrmCase == 4 ? _enemy : null);
             return;
         }
-        if ((_lrmCase == 4 || _lrmCase == 5) && _lrmFired)
+        if ((_lrmCase == 4 || _lrmCase == 5 || _lrmCase == 6) && _lrmFired)
         {
             // 3.5 u/s over the ~2.1 s flight = ~7.4u of drift:
             // far outside the stale point's capsule + splash
@@ -696,8 +795,10 @@ public partial class Titans
             { GD.PrintErr($"LRMPROBE FAIL homing: locked salvo hit the moved enemy only {onTarget}/{launched}"); GetTree().Quit(1); return; }
             if (_lrmCase == 5 && onTarget > 0)
             { GD.PrintErr($"LRMPROBE FAIL homing control: UNLOCKED salvo hit the moved enemy {onTarget}x - the aim point was stale, so any hit means the control is broken"); GetTree().Quit(1); return; }
+            if (_lrmCase == 6 && onTarget < launched / 2)
+            { GD.PrintErr($"LRMPROBE FAIL acquisition-homing: reticle-acquired salvo hit the moved enemy only {onTarget}/{launched}"); GetTree().Quit(1); return; }
             _lrmCase++;
-            if (_lrmCase > 5) { GD.Print("LRMPROBE DONE"); GetTree().Quit(0); return; }
+            if (_lrmCase > 6) { GD.Print("LRMPROBE DONE"); GetTree().Quit(0); return; }
             LrmStage(_lrmCase);
         }
     }
@@ -716,6 +817,7 @@ public partial class Titans
             2 => (new Vector3(0f, Main.HeightAt(0f, 2f), 2f), new Vector3(0f, Main.HeightAt(0f, -46f), -46f)),        // mesa setback -> slope foot, 48u
             4 => (new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -52f), -52f)),  // homing: locked, target walks off (76u, flat line east of the mesa)
             5 => (new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -52f), -52f)),  // homing control: unlocked, same walk
+            6 => (new Vector3(110f, Main.HeightAt(110f, 30f), 30f), new Vector3(-95f, Main.HeightAt(-95f, -65f), -65f)), // acquisition: lock via the REAL reticle path at 226u (past the old 220u cap; the arena's 115u world bound forbids a longer chord), target walks off
             _ => (new Vector3(0f, Main.HeightAt(0f, 10f), 10f), new Vector3(0f, Main.HeightAt(0f, -100f), -100f)),    // long, 110u (past the 75u solve cap)
         };
         _player.Teleport(pp, Mathf.Pi);

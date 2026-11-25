@@ -345,9 +345,30 @@ public partial class Titans
     // rests on him, but the salvo stays a reticle salvo.
     private RiderWalker AimLockWalker()
     {
-        RiderWalker w = _aimTarget == Roles.Enemy ? _enemy
-            : _aimTarget == Roles.Foe && _foe != null ? _foe.Walker
-            : AllyByRole(_aimTarget)?.Walker;
+        // Fast path: the rider the reticle already names.
+        var w = LockWalkerForRole(_aimTarget);
+        if (w != null) return w;
+        // LRM reach (owner, 2026-11-25: "LRM don't seem to
+        // follow the target after it's moved"): the cast
+        // that fills _aimTarget (TorsoAimPoint) only reaches
+        // Aim.ConvergenceRange = 220u, so at real LRM ranges
+        // no lock was EVER acquired in live play - the
+        // batch-22 probe passed the lock in directly and
+        // never tested acquisition. The lock gets its own
+        // cast at full FarRange along the live aim, with a
+        // small inflate so "reticle on the enemy" stays
+        // achievable by hand at 1000u+. First hit wins:
+        // terrain or a teammate in the line blocks the lock
+        // exactly as it blocks the shot (AimRay's team rule).
+        var hit = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, 2.5f);
+        return LockWalkerForRole(hit.Hit ? hit.Target : "");
+    }
+
+    private RiderWalker LockWalkerForRole(string role)
+    {
+        RiderWalker w = role == Roles.Enemy ? _enemy
+            : role == Roles.Foe && _foe != null ? _foe.Walker
+            : AllyByRole(role)?.Walker;
         return w != null && TeamOf(w) > 0 ? w : null;
     }
 
