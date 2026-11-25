@@ -94,6 +94,16 @@ public partial class Titans
             GD.Print("LAB deploy: duel started with the lab loadout");
         };
         lab.OnSelectionChanged = () => SetRiderSelection(lab.PlayerSpecId, lab.EnemySpecId);
+        // Showroom stance (owner, 2026-11-25): the lab rider
+        // does not turn and stands straight. Whatever state
+        // the walker arrived in - a torso twist left over
+        // from aiming, a staggered gait pose - the lab pins
+        // the neutral stance: torso untwisted, feet
+        // re-planted at their home slots, facing unchanged.
+        // OpenLab re-runs on every rider cycle, so the pin
+        // covers swaps too.
+        _player.TorsoTwist = 0f;
+        _player.Teleport(_player.RootPos, _player.LegsYaw);
         BuildLabStand();
         _cross.Visible = false; // no target cursor in the lab view (owner)
         _uiLayer.AddChild(lab);
