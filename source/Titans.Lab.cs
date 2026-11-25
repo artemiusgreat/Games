@@ -105,6 +105,23 @@ public partial class Titans
         _player.TorsoTwist = 0f;
         _player.Teleport(_player.RootPos, _player.LegsYaw);
         BuildLabStand();
+        // Deck alignment (owner, 2026-11-25): the stand's
+        // plate grid is yawed to the lab camera's view
+        // direction, so one seam family runs parallel to
+        // the horizon and the other converges on the view
+        // axis. An axis-aligned deck read as ROTATED from
+        // the front three-quarter camera - measured in the
+        // lab: the camera itself is level (its right
+        // vector's Y is 0.0000), the grid was simply oblique
+        // to the view. The yaw follows the same viewDir the
+        // lab camera block computes, so it tracks rider
+        // swaps (each rider's facing differs).
+        if (_labDeck != null)
+        {
+            var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
+            var viewDir = fwd.Rotated(Vector3.Up, 2.72f);
+            _labDeck.Rotation = new Vector3(0f, Mathf.Atan2(viewDir.X, viewDir.Z), 0f);
+        }
         _cross.Visible = false; // no target cursor in the lab view (owner)
         _uiLayer.AddChild(lab);
     }
@@ -123,6 +140,7 @@ public partial class Titans
     // supersedes the same-day lab facing turn, which still
     // left the arena rim in frame on Hyle.)
     private Node3D _labStand;
+    private MeshInstance3D _labDeck;
     private readonly System.Collections.Generic.List<Node3D> _labHidden = new();
 
     private void BuildLabStand()
@@ -156,10 +174,17 @@ public partial class Titans
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoTexture = PlateTexture(), Roughness = 0.75f, Metallic = 0.15f,
-                DisableFog = true
+                DisableFog = true,
+                // Tiled 4x (owner, 2026-11-25): one stretch of
+                // the plate sheet over 160u read overstretched
+                // and cheap - tiled, the plates are 2.5u and
+                // the texel density is 4x (Uv1Scale alone
+                // tiles here, as on the PhotoEnv materials).
+                Uv1Scale = new Vector3(4f, 4f, 1f)
             },
             Position = new Vector3(c.X, c.Y + 0.02f, c.Z)
         };
+        _labDeck = disc;
         _labStand.AddChild(disc);
         var dome = new MeshInstance3D
         {
