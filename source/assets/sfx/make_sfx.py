@@ -197,39 +197,24 @@ def servo():
     return s[:n - fade]
 
 def click():
-    # UI tick (owner, 2026-11-24): a 55ms mechanical click -
-    # a noise snap over a short sine ping. Local rng, so the
-    # other sounds stay byte-identical.
+    # UI tick (owner, 2026-11-24; MUFFLED at his word
+    # 2026-11-25, after the whoosh detour): a short dull
+    # tick - the noise snap runs through a one-pole
+    # lowpass and the ping drops to ~1050 Hz with the
+    # bright 2600 Hz partial gone, so it sits in the
+    # background. Local rng, other sounds byte-identical.
     r = random.Random(20261124)
-    n = int(0.055 * SR)
-    out = []
-    for i in range(n):
-        t = i / SR
-        snap = r.uniform(-1, 1) * math.exp(-t / 0.0016) * 0.55
-        ping = math.sin(2 * math.pi * 1450 * t) * math.exp(-t / 0.0085) * 0.62
-        ping += math.sin(2 * math.pi * 2600 * t) * math.exp(-t / 0.004) * 0.20
-        out.append(snap + ping)
-    return out
-
-def whoosh():
-    # UI select sound (owner, 2026-11-25): replaces the
-    # click tick - a short laser-like whistle: a falling
-    # sine sweep (1750 -> 700 Hz over 0.14s) over a breath
-    # of lowpassed noise. Local rng, other sounds stay
-    # byte-identical.
-    r = random.Random(20261125)
-    n = int(0.14 * SR)
+    n = int(0.05 * SR)
     out = []
     lp = 0.0
     for i in range(n):
         t = i / SR
-        env = (1 - math.exp(-t / 0.008)) * math.exp(-t / 0.045)
-        tone = math.sin(2 * math.pi * (1750.0 * t - 3750.0 * t * t)) * env * 0.55
-        lp += 0.35 * (r.uniform(-1, 1) - lp)
-        out.append(tone + lp * env * 0.30)
+        lp += 0.18 * (r.uniform(-1, 1) - lp)
+        snap = lp * math.exp(-t / 0.004) * 1.5
+        ping = math.sin(2 * math.pi * 1050 * t) * math.exp(-t / 0.007) * 0.34
+        out.append(snap + ping)
     return out
 
 save('wind.wav', wind())
 save('servo.wav', servo())
 save('click.wav', click())
-save('uiwhoosh.wav', whoosh())
