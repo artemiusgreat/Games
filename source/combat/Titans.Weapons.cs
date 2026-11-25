@@ -130,23 +130,36 @@ public partial class Titans
         }
         // Muzzle obstruction (owner, 2026-11-25, hill repro):
         // the camera's line decides WHAT the reticle rests on,
-        // but the beam still leaves the gun - if terrain,
-        // another rider or a prop stands between the muzzle
-        // and that point, the beam stops there, exactly as a
-        // cannon shell does. Before this, the laser damaged a
-        // target in the valley through the hill in front of
-        // the guns while shells buried in the same hill. Sky
-        // shots keep the round-20 rule untouched: no camera
-        // hit, no obstruction check - the beam ends at the
-        // cursor's point and hits nothing, so aiming just
-        // over a crest still does not strike the crest.
+        // but the shot still has to get there from the rider -
+        // if terrain, another rider or a prop stands in the
+        // way, the beam stops there, exactly as a cannon shell
+        // does. Before this, the laser damaged a target in the
+        // valley through the hill in front of the guns while
+        // shells buried in the same hill. Sky shots keep the
+        // round-20 rule untouched: no camera hit, no
+        // obstruction check - the beam ends at the cursor's
+        // point and hits nothing, so aiming just over a crest
+        // still does not strike the crest.
+        // The obstruction is cast from the TORSO CENTRE (the
+        // TorsoAimPoint origin), never from a gun (owner,
+        // held-fire repro, same day): the first cut cast from
+        // the first ready gun's muzzle, and under held fire
+        // the ready subset rotates with per-gun cooldowns, so
+        // the reference muzzle jumped between the arms - the
+        // verdict flipped on and off between volleys, and the
+        // impact point sat on the leading gun's line, visibly
+        // shifted off the reticle's vertical. The centre line
+        // is fixed, and it lies in the aim's vertical plane,
+        // so a blocker verdict lands ON that vertical -
+        // centred under the crosshair, every volley alike.
         if (camTruth && !inTest && hit.Hit)
         {
-            var toHit = hit.Point - muzzle;
+            var gunOrigin = _player.BoneWorldPos("torso") + AimDirWorld() * 3.2f;
+            var toHit = hit.Point - gunOrigin;
             float dist = toHit.Length();
             if (dist > 3f)
             {
-                var ob = AimRay(muzzle, toHit / dist, dist - 1.5f, 0.9f);
+                var ob = AimRay(gunOrigin, toHit / dist, dist - 1.5f, 0.9f);
                 if (ob.Hit) hit = ob;
             }
         }
