@@ -168,7 +168,6 @@ public partial class Titans : Node3D
     private bool _rangeTest; // --range-test: per-weapon Range enforcement proofs (laser reach, LRM clamp, shell burnout)
     private int _foeShots;
     private bool _lrmProbe; // --lrm-probe: staged rocket-impact measurement
-    private bool _hillProbe; // --hill-probe: laser vs hill - camera line reaches the enemy, muzzle line blocked; he must take no damage
     private bool _boneProbe; // --bone-probe: per-rider torso-bone local offsets (the obstruction origin audit)
     private bool _ppcProbe; // --ppc-probe: PPC damage at a staged 910u lane (owner report 2026-11-23)
     private bool _debrisProbe; // --debris-probe: break a Hector on a steep slope, walk him off, dump the debris rest state
@@ -388,7 +387,6 @@ public partial class Titans : Node3D
             if (arg == "--bracket-test") { _bracketTest = true; WorldConfig.Mode = WorldConfig.MapMode.Tournament; }
             if (arg == "--deploy-test") { _deployTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--lrm-probe") _lrmProbe = true;
-            if (arg == "--hill-probe") _hillProbe = true;
             if (arg == "--bone-probe") _boneProbe = true;
             if (arg == "--ppc-probe") { _ppcProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--debris-probe") { _debrisProbe = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
@@ -427,7 +425,7 @@ public partial class Titans : Node3D
         // AOT_VERBOSE set - normal play stays quiet.
         Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest
             || _labShot || _photo || _photoTest || _ffaTest || _teamTest || _bracketTest
-            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe || _guardProbe || _ffProbe || _sfxProbe || _targetProbe || _feedProbe || _ambientProbe || _beamShot || _controlsShot || _bindingsProbe || _stoneShot || _hillProbe || _boneProbe
+            || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe || _guardProbe || _ffProbe || _sfxProbe || _targetProbe || _feedProbe || _ambientProbe || _beamShot || _controlsShot || _bindingsProbe || _stoneShot || _boneProbe
             || OS.HasEnvironment("AOT_VERBOSE");
         if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
@@ -657,7 +655,7 @@ public partial class Titans : Node3D
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         await BuildFrame(); // staged build: player + enemy in, foe next
-        if (((!PrecisionTest && !_lrmProbe && !_hillProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
+        if (((!PrecisionTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
             && (!_bracketActive || _foeMember != null)) BuildFoe();
         if (_bracketActive && _foe != null && _foeMember != null && _foeMemberTeam != 2)
         {
@@ -708,7 +706,7 @@ public partial class Titans : Node3D
         if (System.Environment.GetEnvironmentVariable("AOT_SNIPER") == "1") _sniper = true; // harness: scope captures
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_hillProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -1188,7 +1186,6 @@ public partial class Titans : Node3D
             else if (_brakeTest) UpdateBrakeTest(dt);
             else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
-            else if (_hillProbe) UpdateHillProbe(dt);
             else if (_boneProbe) UpdateBoneProbe(dt);
             else if (_ppcProbe) UpdatePpcProbe(dt);
             else if (_debrisProbe) UpdateDebrisProbe(dt);

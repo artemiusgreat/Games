@@ -15,7 +15,6 @@ public partial class Titans
     // peak this time, not by counters alone.
     private int _fxParticles;
 
-    private int _laserRescues; // test-fallback rescues inside FireLaser; the duel AIM phase asserts zero during stable shots
     private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
     // Round 20 (owner: the fire looked like "a couple of yellow
     // bubbles" - it WAS bubbles: the draw pass was a low-poly

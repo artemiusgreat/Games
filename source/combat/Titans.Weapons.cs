@@ -75,186 +75,64 @@ public partial class Titans
         FireLaserVolley(aimPoint, fired);
     }
 
-    // Test hook (hill probe): the beam endpoints the last
-    // volley actually drew, in fired order.
-    private readonly System.Collections.Generic.List<Vector3> _lastBeamEnds = new();
-
     private void FireLaserVolley(Vector3 aimPoint, System.Collections.Generic.List<(string Slot, WeaponDef Def)> fired)
     {
-        _lastBeamEnds.Clear();
-        var muzzle = MuzzleForSlot(fired[0].Slot, false);
-        // Per-weapon reach (owner): the shared view-ray cast runs
-        // to the LONGEST fitted range; each weapon then hits
-        // only what lies within its own Range.
-        float maxRange = 0f;
-        foreach (var g in fired) maxRange = Mathf.Max(maxRange, g.Def.Range);
-        // Round 20 (owner, two repros): the hit resolves on the
-        // CAMERA's ray, not on a re-cast from the muzzle. The muzzle
-        // re-cast kept disagreeing with the reticle by parallax -
-        // aiming at sky just over a crest, the lower muzzle line
-        // clipped the hill (a hit the cursor never touched); aiming
-        // just above a building, the beam ran to the muzzle line's
-        // far endpoint, past the cursor. What the reticle rests on
-        // is what the laser hits, first thing on that line, at any
-        // range; a clean sky shot hits nothing and the beam still
-        // ends at the cursor's point. (Test harnesses keep a muzzle
-        // fallback on a camera miss: they aim by explicit points
-        // from posed cameras.)
-        HitModel.Result hit;
-        bool camTruth = _camMode == CamModes.Chase && !_labOpen;
-        bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
-        if (camTruth)
-        {
-            // The view line is the camera's axis - AimDirWorld,
-            // the SAME direction the chase camera looks and
-            // TorsoAimPoint casts. Round 20's first cut used the
-            // camera's raw forward (-Basis.Z) under the OLD
-            // fixed-tilt camera and hit the dirt at the rider's
-            // feet; round 27's center-crosshair camera aims where
-            // the mouse points by construction, so the axis is the
-            // truth in play and in tests alike.
-            var camDir = AimDirWorld();
-            hit = AimRay(_cam.GlobalPosition, camDir, maxRange, 0.9f);
-            if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
-            {
-                _laserRescues++;
-                Dbg.Print("WPN LASER fallback-rescue (camera verdict disagreed with the harness aim point)");
-                // Harness shots aim by explicit point from cameras
-                // that may still be settling between phases - when
-                // the camera's verdict disagrees with the point the
-                // harness asked for, the muzzle cast is the truth
-                // there. Live play never takes this branch.
-                var fbDir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-                hit = AimRay(muzzle, fbDir, maxRange, 0.9f);
-            }
-        }
-        else
-        {
-            var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-            hit = AimRay(muzzle, dir, maxRange, 0.9f);
-        }
-        // Muzzle obstruction (owner, 2026-11-25, hill repro):
-        // the camera's line decides WHAT the reticle rests on,
-        // but the shot still has to get there from the rider -
-        // if terrain, another rider or a prop stands in the
-        // way, the beam stops there, exactly as a cannon shell
-        // does. Before this, the laser damaged a target in the
-        // valley through the hill in front of the guns while
-        // shells buried in the same hill. Sky shots keep the
-        // round-20 rule untouched: no camera hit, no
-        // obstruction check - the beam ends at the cursor's
-        // point and hits nothing, so aiming just over a crest
-        // still does not strike the crest.
-        // The obstruction is cast from the TORSO CENTRE (the
-        // TorsoAimPoint origin), never from a gun (owner,
-        // held-fire repro, same day): the first cut cast from
-        // the first ready gun's muzzle, and under held fire
-        // the ready subset rotates with per-gun cooldowns, so
-        // the reference muzzle jumped between the arms - the
-        // verdict flipped on and off between volleys, and the
-        // impact point sat on the leading gun's line, visibly
-        // shifted off the reticle's vertical. The centre line
-        // is fixed, and it lies in the aim's vertical plane,
-        // so a blocker verdict lands ON that vertical -
-        // centred under the crosshair, every volley alike.
-        if (camTruth && !inTest && hit.Hit)
-        {
-            var gunOrigin = _player.BoneWorldPos("torso") + AimDirWorld() * 3.2f;
-            var toHit = hit.Point - gunOrigin;
-            float dist = toHit.Length();
-            if (dist > 3f)
-            {
-                var ob = AimRay(gunOrigin, toHit / dist, dist - 1.5f, 0.9f);
-                if (ob.Hit) hit = ob;
-            }
-        }
-        // The beams end where the shot ends (owner): on a hit a
-        // beam ends on the hit when ITS weapon reaches it, else
-        // in mid-air at its own range along the shot line; on a
-        // miss - the sky - every beam ends at the cursor's own
-        // point (the round-20 rule, test-asserted). Every fitted
-        // laser fires its own beam from its own hardpoint
-        // (multi-fit volley); the hit itself was resolved once,
-        // on the camera's line, above.
-        bool anyReach = false;
-        if (hit.Hit) foreach (var g in fired) if (hit.T <= g.Def.Range) { anyReach = true; break; }
-        // Impact tint follows the volley (owner, 2026-11-24):
-        // electric blue-white when a PPC is in it, warm
-        // yellow for a pure laser volley.
+        // Physical beams (owner, 2026-11-25): every gun casts
+        // from its OWN muzzle along its line through the aim
+        // point and hits the first surface within its own
+        // range - the same honesty as a cannon shell. A sky
+        // aim sends the beam past the reticle point out to
+        // its range. This replaces the round-20 camera-truth
+        // model and everything that grew on it (the camera
+        // verdict, the test rescue, the centre-line
+        // obstruction pass, the per-beam clip): the owner
+        // accepted beams striking a crest the reticle clears
+        // in exchange for deleting that machinery. One cast
+        // per gun is the whole model now.
         bool anyPpc = false;
         foreach (var g in fired) if (g.Def.Beam == BeamKind.Ppc) { anyPpc = true; break; }
-        var clipPoints = new System.Collections.Generic.List<Vector3>();
+        var fxPoints = new System.Collections.Generic.List<Vector3>();
+        bool anyHit = false;
         for (int i = 0; i < fired.Count; i++)
         {
             var mz = MuzzleForSlot(fired[i].Slot, false);
             bool ppc = fired[i].Def.Beam == BeamKind.Ppc;
-            var beamEnd = !hit.Hit ? aimPoint
-                : hit.T <= fired[i].Def.Range ? hit.Point
-                : camTruth ? _cam.GlobalPosition + AimDirWorld() * fired[i].Def.Range
-                : mz + (aimPoint - mz).Normalized() * fired[i].Def.Range;
-            // Beam truth (owner, option A, 2026-11-25): the
-            // DAMAGE verdict above belongs to the camera /
-            // centre line, but the beam is drawn from this
-            // gun's own muzzle - and a low arm gun's straight
-            // segment to a verdict point, a range point or
-            // the sky point can cross a slope that both of
-            // those higher lines clear. The beam then visibly
-            // tunnelled through the hill and ended with no
-            // impact sparks (the owner's sniper repro: the
-            // through-ray was the only one without sparkles
-            // at its end). Clip every beam at the first
-            // surface on its OWN segment, and spark where it
-            // stops - the same honesty a cannon shell has.
-            // Damage is untouched. The 0.75u end margin keeps
-            // the verdict surface itself from stealing the
-            // endpoint it already owns.
-            var seg = beamEnd - mz;
-            float segLen = seg.Length();
-            if (segLen > 2f)
-            {
-                var clip = AimRay(mz, seg / segLen, segLen - 0.75f, 0.9f);
-                if (clip.Hit)
-                {
-                    beamEnd = clip.Point;
-                    bool fresh = true;
-                    foreach (var p in clipPoints) if (p.DistanceTo(clip.Point) < 1.0f) { fresh = false; break; }
-                    if (fresh) clipPoints.Add(clip.Point);
-                }
-            }
-            _lastBeamEnds.Add(beamEnd);
+            var toAim = aimPoint - mz;
+            var dir = toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
+            var hit = AimRay(mz, dir, fired[i].Def.Range, 0.9f);
+            var beamEnd = hit.Hit ? hit.Point : mz + dir * fired[i].Def.Range;
             // Beam colours (owner, 2026-11-24; PPC reworked
             // 2026-11-25): ALL lasers are yellow; the PPC is
-            // the same beam in white - the lightning bolt
-            // read badly in play.
+            // the same beam in white.
             if (ppc) SpawnBeam(mz, beamEnd, new Color(1f, 1f, 1f), 0.15f, 0.12f);
-            else SpawnBeam(mz, beamEnd, new Color(1f, 0.82f, 0.18f), 0.15f, 0.12f); // laser core 0.085 -> 0.15 (owner: thicker)
-            if (i == 0) PlaySfx(ppc ? _sfxPpc : _sfxLaser, mz, 0f, 1f); // the owner's recordings play at natural pitch; PPC has its own (2026-11-22) - the old 0.9/1.125 factors tuned the synthetic whistle they replace
+            else SpawnBeam(mz, beamEnd, new Color(1f, 0.82f, 0.18f), 0.15f, 0.12f);
+            if (i == 0) PlaySfx(ppc ? _sfxPpc : _sfxLaser, mz, 0f, 1f); // the owner's recordings play at natural pitch; PPC has its own (2026-11-22)
             SpawnFlash(mz, ppc ? new Color(1f, 1f, 1f) : new Color(1f, 0.8f, 0.25f), 0.3f, 0.07f);
-        }
-        // Clip impacts spark where the beam stopped (the
-        // owner's cue: a beam that ends on a surface shows
-        // it). A clip point on the verdict point itself is
-        // the verdict's own impact - its FX below covers it.
-        foreach (var p in clipPoints)
-        {
-            if (anyReach && p.DistanceTo(hit.Point) < 1.0f) continue;
-            SpawnFlash(p, anyPpc ? new Color(0.7f, 0.95f, 1f) : new Color(1f, 0.88f, 0.35f), 0.55f, 0.16f);
-            SpawnSparks(p, anyPpc ? new Color(0.65f, 0.95f, 1f) : new Color(1f, 0.82f, 0.3f), 16, 6.0f);
-            SpawnImpactLight(p, anyPpc ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.78f, 0.3f), 2.4f, 10f, 0.3f);
-        }
-        if (anyReach)
-        {
-            SpawnFlash(hit.Point, anyPpc ? new Color(0.7f, 0.95f, 1f) : new Color(1f, 0.88f, 0.35f), 0.55f, 0.16f);
-            SpawnSparks(hit.Point, anyPpc ? new Color(0.65f, 0.95f, 1f) : new Color(1f, 0.82f, 0.3f), 16, 6.0f); // electric breaker spray
-            SpawnImpactLight(hit.Point, anyPpc ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.78f, 0.3f), 2.4f, 10f, 0.3f);
-            SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
+            if (!hit.Hit) continue;
+            anyHit = true;
+            // Impact FX once per distinct hit point (a
+            // volley's guns converge, so most share one);
+            // damage is per gun, on its own hit. Impact tint
+            // follows the volley (owner, 2026-11-24):
+            // electric blue-white when a PPC is in it, warm
+            // yellow for a pure laser volley.
+            bool fresh = true;
+            foreach (var pt in fxPoints) if (pt.DistanceTo(hit.Point) < 1.0f) { fresh = false; break; }
+            if (fresh)
+            {
+                fxPoints.Add(hit.Point);
+                SpawnFlash(hit.Point, anyPpc ? new Color(0.7f, 0.95f, 1f) : new Color(1f, 0.88f, 0.35f), 0.55f, 0.16f);
+                SpawnSparks(hit.Point, anyPpc ? new Color(0.65f, 0.95f, 1f) : new Color(1f, 0.82f, 0.3f), 16, 6.0f); // electric breaker spray
+                SpawnImpactLight(hit.Point, anyPpc ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.78f, 0.3f), 2.4f, 10f, 0.3f);
+                SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
+            }
             Dbg.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == Roles.Enemy) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_enemy, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
-            else if (hit.Target == Roles.Foe && _foe != null) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(_foe.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
-            else if (AllyByRole(hit.Target) is { } la) foreach (var g in fired) { if (hit.T <= g.Def.Range) ApplyDamage(la.Walker, g.Def.Damage, hit, Roles.Player, g.Def.Weight, "laser"); }
-            else if (hit.Target == Roles.Prop) foreach (var g in fired) { if (hit.T <= g.Def.Range) DamageProp(hit.Point, g.Def.Damage, 0.9f); } // laser attribution reaches as far as its hit thickness
+            if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, "laser");
+            else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, "laser");
+            else if (AllyByRole(hit.Target) is { } la) ApplyDamage(la.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, "laser");
+            else if (hit.Target == Roles.Prop) DamageProp(hit.Point, fired[i].Def.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
         }
-        else Dbg.Print("WPN LASER hit=none");
+        if (!anyHit) Dbg.Print("WPN LASER hit=none");
     }
 
     // Player projectiles converge at most this far (round 7). Aiming

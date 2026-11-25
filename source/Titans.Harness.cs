@@ -424,10 +424,10 @@ public partial class Titans
                     // The synthesis contract, tested through the REAL
                     // weapon: cursor low on the Hector => the laser
                     // HITS him; cursor raised above him => it MISSES
-                    // (round 9: the weapons converge on the cursor's
-                    // own point, so the pointer and the shots agree).
+                    // (the guns fire along their own lines through
+                    // the cursor's point, so the pointer and the
+                    // shots agree).
                     _enemyDmgEvents = 0;
-                    int rescues0 = _laserRescues;
                     _cdLaser = 0f;
                     // Round 27: hunt the pitch that puts the center
                     // crosshair on the Hector, the way a player
@@ -446,15 +446,6 @@ public partial class Titans
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents < 1)
                     { GD.PrintErr("DUEL FAIL: cursor low on the Hector but the laser missed him"); GetTree().Quit(1); break; }
-                    // Regression guard scoped to THIS shot: a stable
-                    // chase shot that HITS must come from the camera
-                    // path unaided. (The raised shot below may
-                    // legitimately rescue: its aim point is a
-                    // synthetic free point over the Hector, and the
-                    // camera's far-terrain verdict disagrees on the
-                    // endpoint while agreeing on the miss.)
-                    if (_laserRescues != rescues0)
-                    { GD.PrintErr("DUEL FAIL: the laser needed the harness fallback for a stable hitting shot - the live camera path is broken (round 20 regression guard)"); GetTree().Quit(1); break; }
                     int evAfterHit = _enemyDmgEvents;
                     _cdLaser = 0f;
                     // 1.0 rad, not the old 0.30: on the domed map
@@ -470,16 +461,18 @@ public partial class Titans
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents > evAfterHit)
                     { GD.PrintErr("DUEL FAIL: cursor above the Hector but a shot still hit him"); GetTree().Quit(1); break; }
-                    // Beam length on a miss (owner): the ray stops
-                    // at the cursor's point - it must NOT run to
-                    // the raycast's 140u no-hit endpoint.
+                    // Beam length on a miss (owner, 2026-11-25,
+                    // physical beams): the beam runs its gun's
+                    // full range along its own line, PAST the
+                    // cursor's point - the round-20 rule that it
+                    // stops at the cursor is retired.
                     float beamLen = -1f;
                     for (int i = _fx.Count - 1; i >= 0; i--)
                         if (_fx[i].Node is MeshInstance3D bmi && bmi.Mesh is BoxMesh bxm) { beamLen = bxm.Size.Z; break; }
-                    float wantLen = PlayerMuzzle(true).DistanceTo(_aimPoint);
+                    float wantLen = _gunsEnergy[_gunsEnergy.Count - 1].Def.Range;
                     if (beamLen < 0f || Mathf.Abs(beamLen - wantLen) > 3f)
-                    { GD.PrintErr($"DUEL FAIL: sky-shot beam runs {beamLen:F1}u but the cursor point is {wantLen:F1}u from the muzzle"); GetTree().Quit(1); break; }
-                    GD.Print($"DUEL BEAMEND PASS sky-shot beam stops at the cursor point ({beamLen:F1}u, not the 140u raycast end)");
+                    { GD.PrintErr($"DUEL FAIL: sky-shot beam runs {beamLen:F1}u but the firing gun's range is {wantLen:F1}u"); GetTree().Quit(1); break; }
+                    GD.Print($"DUEL BEAMEND PASS sky-shot beam runs its gun's full range ({beamLen:F1}u) past the cursor point");
                     // Torso twist is UNCLAMPED (owner, 2026-10-29):
                     // a 195° command must stick - the torso rotates
                     // the full 360°, fully backward included.
@@ -966,213 +959,6 @@ public partial class Titans
             GD.Print(mateHit && enemyClean ? "FFPROBE2 PASS" : "FFPROBE2 FAIL");
             GetTree().Quit(_ffCase1 && mateHit && enemyClean ? 0 : 1);
         }
-    }
-
-    // ---------- Hill obstruction probe ----------
-    // Owner (2026-11-25): standing off a hill, reticle on a
-    // target in the valley - the laser damaged him THROUGH
-    // the hill (its hit resolves on the camera's line) while
-    // cannon shells buried in the hill (real projectiles
-    // from the muzzle). The energy volley now checks the
-    // torso-centre -> hit segment and stops at the blocker
-    // (the centre line, not a gun's: a gun-led verdict
-    // flipped between volleys under held fire and dragged
-    // the impact off the reticle's vertical). This probe
-    // surveys the arena for a real sightline with exactly
-    // that geometry (camera line reaches the enemy, centre
-    // line blocked by terrain well short of him), fires
-    // the real laser and asserts he takes NO damage and
-    // the blocked impact projects onto the screen centre
-    // column; single-gun volleys assert the verdict does
-    // not depend on which gun leads; a clear-line control
-    // then asserts damage DOES land.
-    private double _hillT;
-    private bool _hillDone;
-    private void UpdateHillProbe(float dt)
-    {
-        if (_hillDone) return;
-        _hillT += dt;
-        _player.SetDrive(_playerYaw, 0f);
-        if (_hillT < 1.0f) return;
-        _hillDone = true;
-        _camMode = CamModes.Chase;
-        _player.Teleport(new Vector3(110f, Main.HeightAt(110f, 30f), 30f), Mathf.Pi);
-        if (_gunsEnergy.Count == 0) { GD.PrintErr("HILLPROBE FAIL no energy weapon fitted"); GetTree().Quit(1); return; }
-
-        // Two-pass aim at the enemy (aim from the rider, let
-        // the boom place the camera, re-aim from the camera -
-        // the LRM case-6 pattern), then the camera's own cast.
-        HitModel.Result AimAtEnemy()
-        {
-            var chest = _enemy.RootPos + Vector3.Up * 7.6f;
-            for (int pass = 0; pass < 2; pass++)
-            {
-                var origin = pass == 0 ? _player.RootPos + Vector3.Up * 15f : _cam.GlobalPosition;
-                var from = chest - origin;
-                _player.AimPitchWide = Mathf.Atan2(from.Y, new Vector2(from.X, from.Z).Length());
-                _player.TorsoTwist = Mathf.Atan2(-from.X, -from.Z) - _player.LegsYaw;
-                UpdateCamera(0f);
-            }
-            return AimRay(_cam.GlobalPosition, AimDirWorld(), 750f, 0.9f);
-        }
-
-        // The game's obstruction origin: the torso centre
-        // line (FireLaserVolley casts from exactly this).
-        Vector3 GunOrigin() => _player.BoneWorldPos("torso") + AimDirWorld() * 3.2f;
-
-        HitModel.Result CentreObstruction(HitModel.Result camHit, out float dist)
-        {
-            var o = GunOrigin();
-            var toHit = camHit.Point - o;
-            dist = toHit.Length();
-            if (dist < 12f) return new HitModel.Result { Hit = false };
-            return AimRay(o, toHit / dist, dist - 1.5f, 0.9f);
-        }
-
-        bool Survey(bool wantBlocked, out float camT)
-        {
-            camT = 0f;
-            for (int step = 0; step < 72; step++)
-            {
-                float ang = step * (Mathf.Pi / 36f);
-                var ePos = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * 110f;
-                ePos.Y = Main.HeightAt(ePos.X, ePos.Z);
-                _enemy.Teleport(ePos, 0f);
-                var camHit = AimAtEnemy();
-                if (!camHit.Hit || camHit.Target != Roles.Enemy) continue;
-                var ob = CentreObstruction(camHit, out float dist);
-                bool blocked = ob.Hit && ob.Target == Roles.Terrain && ob.T < dist - 6f;
-                if (blocked == wantBlocked && (wantBlocked || !ob.Hit))
-                {
-                    camT = camHit.T;
-                    GD.Print($"HILLPROBE staged {(wantBlocked ? "blocked" : "clear")}: enemy={ePos} camT={camHit.T:F1} centreCast={(ob.Hit ? ob.Target + "@" + ob.T.ToString("F1") : "clean")} of {dist:F1}");
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        if (!Survey(true, out float _)) { GD.PrintErr("HILLPROBE FAIL no blocked sightline found in the arena survey"); GetTree().Quit(1); return; }
-        float hp0 = _hpEnemy;
-        _cdLaser = 0f;
-        FireLaser(TorsoAimPoint());
-        GD.Print($"HILLPROBE blocked shot: enemy HP {hp0:F1} -> {_hpEnemy:F1} (expect unchanged)");
-        if (_hpEnemy < hp0 - 0.01f) { GD.PrintErr("HILLPROBE FAIL laser damaged the enemy through the hill"); GetTree().Quit(1); return; }
-
-        // Centring (owner's held-fire repro, point 2): the
-        // blocked verdict point must project onto the
-        // reticle's vertical line - the centre line lies in
-        // the aim's vertical plane, a gun's line does not.
-        {
-            var camHit = AimAtEnemy();
-            var obC = CentreObstruction(camHit, out float _);
-            float cx = GetViewport().GetVisibleRect().Size.X * 0.5f;
-            if (!obC.Hit) { GD.PrintErr("HILLPROBE FAIL blocked staging lost for the centring check"); GetTree().Quit(1); return; }
-            float offC = _cam.UnprojectPosition(obC.Point).X - cx;
-            // Contrast, print only: the first gun's own line
-            // obstruction point on the same sightline.
-            var mz0 = MuzzleForSlot(_gunsEnergy[0].Slot, false);
-            var toG = camHit.Point - mz0;
-            var obG = AimRay(mz0, toG / toG.Length(), toG.Length() - 1.5f, 0.9f);
-            float offG = obG.Hit ? _cam.UnprojectPosition(obG.Point).X - cx : float.NaN;
-            GD.Print($"HILLPROBE centring: centre-line impact offset {offC:F1}px from screen centre; first-gun-line offset {(float.IsNaN(offG) ? "n/a" : offG.ToString("F1") + "px")}");
-            if (Mathf.Abs(offC) > 10f) { GD.PrintErr("HILLPROBE FAIL blocked impact is not centred on the reticle vertical"); GetTree().Quit(1); return; }
-        }
-
-        // Stability (point 1): single-gun volleys led by the
-        // FIRST and by the LAST gun of the group must give
-        // the same blocked verdict - the reference line no
-        // longer belongs to any gun, so which gun leads a
-        // volley cannot flip it.
-        foreach (int idx in new[] { 0, _gunsEnergy.Count - 1 })
-        {
-            var single = new System.Collections.Generic.List<(string Slot, WeaponDef Def)> { _gunsEnergy[idx] };
-            _cdLaser = 0f;
-            FireLaserVolley(TorsoAimPoint(), single);
-            GD.Print($"HILLPROBE blocked single-gun volley (gun {idx}, slot {_gunsEnergy[idx].Slot}): enemy HP -> {_hpEnemy:F1} (expect unchanged)");
-            if (_hpEnemy < hp0 - 0.01f) { GD.PrintErr($"HILLPROBE FAIL single-gun volley {idx} damaged the enemy through the hill"); GetTree().Quit(1); return; }
-        }
-
-        if (!Survey(false, out float _)) { GD.PrintErr("HILLPROBE FAIL no clear sightline found for the control"); GetTree().Quit(1); return; }
-        _hpEnemy = hp0;
-        _cdLaser = 0f;
-        FireLaser(TorsoAimPoint());
-        float fullDelta = hp0 - _hpEnemy;
-        GD.Print($"HILLPROBE clear shot: enemy HP {hp0:F1} -> {_hpEnemy:F1} (expect lower)");
-        if (fullDelta < 0.01f) { GD.PrintErr("HILLPROBE FAIL laser did no damage on a clear line"); GetTree().Quit(1); return; }
-        if (_gunsEnergy.Count > 1)
-        {
-            var single = new System.Collections.Generic.List<(string Slot, WeaponDef Def)> { _gunsEnergy[_gunsEnergy.Count - 1] };
-            _hpEnemy = hp0;
-            _cdLaser = 0f;
-            FireLaserVolley(TorsoAimPoint(), single);
-            float singleDelta = hp0 - _hpEnemy;
-            GD.Print($"HILLPROBE clear single-gun volley (last gun): delta {singleDelta:F1} (expect 0 < delta < full {fullDelta:F1})");
-            if (singleDelta < 0.01f || singleDelta > fullDelta - 0.01f) { GD.PrintErr("HILLPROBE FAIL clear single-gun volley delta out of bounds"); GetTree().Quit(1); return; }
-        }
-        // Beam clip (owner, option A): stage a sightline the
-        // camera AND the centre line both clear, but where
-        // at least one gun's own segment to the verdict
-        // point crosses terrain. Damage must still land
-        // (verdict untouched), the crossing gun's drawn beam
-        // must end at its own crossing point - not tunnel
-        // through to the enemy - and a clean gun's beam must
-        // still end at the verdict point.
-        {
-            bool stagedClip = false;
-            Vector3 crossPoint = Vector3.Zero;
-            int crossIdx = -1, cleanIdx = -1;
-            // Several rings: at 110u the muzzle spread is
-            // small against the path and the arena's broad
-            // undulation takes all lines together or none;
-            // shorter rings separate the lines.
-            foreach (float ring in new[] { 60f, 80f, 100f, 110f, 125f })
-            {
-            for (int step = 0; step < 72 && !stagedClip; step++)
-            {
-                float ang = step * (Mathf.Pi / 36f);
-                var ePos = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * ring;
-                ePos.Y = Main.HeightAt(ePos.X, ePos.Z);
-                _enemy.Teleport(ePos, 0f);
-                var camHit = AimAtEnemy();
-                if (!camHit.Hit || camHit.Target != Roles.Enemy) continue;
-                var obC = CentreObstruction(camHit, out float _);
-                if (obC.Hit) continue; // the centre line must be CLEAR on this staging
-                crossIdx = -1; cleanIdx = -1;
-                for (int gi = 0; gi < _gunsEnergy.Count; gi++)
-                {
-                    var mzG = MuzzleForSlot(_gunsEnergy[gi].Slot, false);
-                    var toG = camHit.Point - mzG;
-                    float dG = toG.Length();
-                    if (dG < 12f) continue;
-                    var seg = AimRay(mzG, toG / dG, dG - 0.75f, 0.9f);
-                    if (seg.Hit && seg.Target == Roles.Terrain && crossIdx < 0) { crossIdx = gi; crossPoint = seg.Point; }
-                    else if (!seg.Hit && cleanIdx < 0) cleanIdx = gi;
-                }
-                if (crossIdx >= 0 && cleanIdx >= 0)
-                {
-                    stagedClip = true;
-                    GD.Print($"HILLPROBE staged beam-clip: enemy={ePos} camT={camHit.T:F1} crossing gun={crossIdx} ({_gunsEnergy[crossIdx].Slot}) clean gun={cleanIdx} ({_gunsEnergy[cleanIdx].Slot})");
-                }
-            }
-            }
-            if (!stagedClip) { GD.PrintErr("HILLPROBE FAIL no beam-clip sightline found"); GetTree().Quit(1); return; }
-            _hpEnemy = hp0;
-            _cdLaser = 0f;
-            FireLaser(TorsoAimPoint());
-            float clipDelta = hp0 - _hpEnemy;
-            GD.Print($"HILLPROBE beam-clip shot: enemy HP {hp0:F1} -> {_hpEnemy:F1} (expect damage - the verdict is untouched)");
-            if (clipDelta < 0.01f) { GD.PrintErr("HILLPROBE FAIL beam-clip staging lost the damage verdict"); GetTree().Quit(1); return; }
-            if (_lastBeamEnds.Count != _gunsEnergy.Count) { GD.PrintErr($"HILLPROBE FAIL beam ends recorded {_lastBeamEnds.Count} != guns {_gunsEnergy.Count}"); GetTree().Quit(1); return; }
-            float crossErr = _lastBeamEnds[crossIdx].DistanceTo(crossPoint);
-            var camHit2 = AimAtEnemy();
-            float cleanErr = _lastBeamEnds[cleanIdx].DistanceTo(camHit2.Point);
-            GD.Print($"HILLPROBE beam ends: crossing gun's end is {crossErr:F2}u from its terrain crossing; clean gun's end is {cleanErr:F2}u from the verdict point");
-            if (crossErr > 1.5f) { GD.PrintErr("HILLPROBE FAIL crossing gun's beam did not stop at its own terrain crossing"); GetTree().Quit(1); return; }
-            if (cleanErr > 1.5f) { GD.PrintErr("HILLPROBE FAIL clean gun's beam did not end at the verdict point"); GetTree().Quit(1); return; }
-        }
-        GD.Print("HILLPROBE PASS");
-        GetTree().Quit(0);
     }
 
     // ---------- Bone probe ----------
