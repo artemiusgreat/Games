@@ -968,6 +968,92 @@ public partial class Titans
         }
     }
 
+    // ---------- Hill obstruction probe ----------
+    // Owner (2026-11-25): standing off a hill, reticle on a
+    // target in the valley - the laser damaged him THROUGH
+    // the hill (its hit resolves on the camera's line) while
+    // cannon shells buried in the hill (real projectiles
+    // from the muzzle). The energy volley now checks the
+    // muzzle -> hit segment and stops at the blocker. This
+    // probe surveys the arena for a real sightline with
+    // exactly that geometry (camera line reaches the enemy,
+    // muzzle line blocked by terrain well short of him),
+    // fires the real laser and asserts he takes NO damage;
+    // a clear-line control then asserts he DOES.
+    private double _hillT;
+    private bool _hillDone;
+    private void UpdateHillProbe(float dt)
+    {
+        if (_hillDone) return;
+        _hillT += dt;
+        _player.SetDrive(_playerYaw, 0f);
+        if (_hillT < 1.0f) return;
+        _hillDone = true;
+        _camMode = CamModes.Chase;
+        _player.Teleport(new Vector3(110f, Main.HeightAt(110f, 30f), 30f), Mathf.Pi);
+        if (_gunsEnergy.Count == 0) { GD.PrintErr("HILLPROBE FAIL no energy weapon fitted"); GetTree().Quit(1); return; }
+        string muzzleSlot = _gunsEnergy[0].Slot;
+
+        // Two-pass aim at the enemy (aim from the rider, let
+        // the boom place the camera, re-aim from the camera -
+        // the LRM case-6 pattern), then the camera's own cast.
+        HitModel.Result AimAtEnemy()
+        {
+            var chest = _enemy.RootPos + Vector3.Up * 7.6f;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                var origin = pass == 0 ? _player.RootPos + Vector3.Up * 15f : _cam.GlobalPosition;
+                var from = chest - origin;
+                _player.AimPitchWide = Mathf.Atan2(from.Y, new Vector2(from.X, from.Z).Length());
+                _player.TorsoTwist = Mathf.Atan2(-from.X, -from.Z) - _player.LegsYaw;
+                UpdateCamera(0f);
+            }
+            return AimRay(_cam.GlobalPosition, AimDirWorld(), 750f, 0.9f);
+        }
+
+        bool Survey(bool wantBlocked, out float camT)
+        {
+            camT = 0f;
+            for (int step = 0; step < 72; step++)
+            {
+                float ang = step * (Mathf.Pi / 36f);
+                var ePos = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * 110f;
+                ePos.Y = Main.HeightAt(ePos.X, ePos.Z);
+                _enemy.Teleport(ePos, 0f);
+                var camHit = AimAtEnemy();
+                if (!camHit.Hit || camHit.Target != Roles.Enemy) continue;
+                var mz = MuzzleForSlot(muzzleSlot, false);
+                var toHit = camHit.Point - mz;
+                float dist = toHit.Length();
+                if (dist < 12f) continue;
+                var ob = AimRay(mz, toHit / dist, dist - 1.5f, 0.9f);
+                bool blocked = ob.Hit && ob.Target == Roles.Terrain && ob.T < dist - 6f;
+                if (blocked == wantBlocked && (wantBlocked || !ob.Hit))
+                {
+                    camT = camHit.T;
+                    GD.Print($"HILLPROBE staged {(wantBlocked ? "blocked" : "clear")}: enemy={ePos} camT={camHit.T:F1} muzzleCast={(ob.Hit ? ob.Target + "@" + ob.T.ToString("F1") : "clean")} of {dist:F1}");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        if (!Survey(true, out float _)) { GD.PrintErr("HILLPROBE FAIL no blocked sightline found in the arena survey"); GetTree().Quit(1); return; }
+        float hp0 = _hpEnemy;
+        _cdLaser = 0f;
+        FireLaser(TorsoAimPoint());
+        GD.Print($"HILLPROBE blocked shot: enemy HP {hp0:F1} -> {_hpEnemy:F1} (expect unchanged)");
+        if (_hpEnemy < hp0 - 0.01f) { GD.PrintErr("HILLPROBE FAIL laser damaged the enemy through the hill"); GetTree().Quit(1); return; }
+
+        if (!Survey(false, out float _)) { GD.PrintErr("HILLPROBE FAIL no clear sightline found for the control"); GetTree().Quit(1); return; }
+        _cdLaser = 0f;
+        FireLaser(TorsoAimPoint());
+        GD.Print($"HILLPROBE clear shot: enemy HP {hp0:F1} -> {_hpEnemy:F1} (expect lower)");
+        if (_hpEnemy > hp0 - 0.01f) { GD.PrintErr("HILLPROBE FAIL laser did no damage on a clear line"); GetTree().Quit(1); return; }
+        GD.Print("HILLPROBE PASS");
+        GetTree().Quit(0);
+    }
+
     // ---------- Bindings probe ----------
     // Owner (2026-11-23): the TAB family and the re-mapped
     // orders. Synthetic key events go through the REAL _Input

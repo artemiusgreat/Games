@@ -97,6 +97,7 @@ public partial class Titans
         // from posed cameras.)
         HitModel.Result hit;
         bool camTruth = _camMode == CamModes.Chase && !_labOpen;
+        bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
         if (camTruth)
         {
             // The view line is the camera's axis - AimDirWorld,
@@ -109,7 +110,6 @@ public partial class Titans
             // truth in play and in tests alike.
             var camDir = AimDirWorld();
             hit = AimRay(_cam.GlobalPosition, camDir, maxRange, 0.9f);
-            bool inTest = _test || _weaponsTest || _breakTest || _terrainTest || _photoTest;
             if (inTest && (!hit.Hit || hit.Point.DistanceTo(aimPoint) > 6f))
             {
                 _laserRescues++;
@@ -127,6 +127,28 @@ public partial class Titans
         {
             var dir = (aimPoint - muzzle).Length() > 0.5f ? (aimPoint - muzzle).Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             hit = AimRay(muzzle, dir, maxRange, 0.9f);
+        }
+        // Muzzle obstruction (owner, 2026-11-25, hill repro):
+        // the camera's line decides WHAT the reticle rests on,
+        // but the beam still leaves the gun - if terrain,
+        // another rider or a prop stands between the muzzle
+        // and that point, the beam stops there, exactly as a
+        // cannon shell does. Before this, the laser damaged a
+        // target in the valley through the hill in front of
+        // the guns while shells buried in the same hill. Sky
+        // shots keep the round-20 rule untouched: no camera
+        // hit, no obstruction check - the beam ends at the
+        // cursor's point and hits nothing, so aiming just
+        // over a crest still does not strike the crest.
+        if (camTruth && !inTest && hit.Hit)
+        {
+            var toHit = hit.Point - muzzle;
+            float dist = toHit.Length();
+            if (dist > 3f)
+            {
+                var ob = AimRay(muzzle, toHit / dist, dist - 1.5f, 0.9f);
+                if (ob.Hit) hit = ob;
+            }
         }
         // The beams end where the shot ends (owner): on a hit a
         // beam ends on the hit when ITS weapon reaches it, else
