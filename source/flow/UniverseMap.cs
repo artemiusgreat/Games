@@ -125,7 +125,12 @@ public partial class UniverseMap : Control
             var body = p.BaseColor.Lerp(p.LandColor, 0.55f);
             DrawCircle(ctr, 12f, body);
             DrawCircle(ctr + new Vector2(-4f, -4f), 5f, new Color(p.PolarColor, 0.5f));
-            DrawArc(ctr, 14f, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Steel, sel ? 2.5f : 1.5f, true);
+            // Border ring (owner, 2026-11-25, screenshot of a
+            // node): the old 1.5px Steel ring (0.5 grey at 0.6
+            // alpha) washed out against the photograph - the
+            // ring is now thicker and brighter on every planet:
+            // near-white Ink at full alpha, Gold when selected.
+            DrawArc(ctr, 14f, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Ink, sel ? 4.5f : 3.5f, true);
             // Text shadow under the name lines (owner,
             // 2026-11-25): over the photograph's bright
             // nebulae the bare labels washed out - a soft
