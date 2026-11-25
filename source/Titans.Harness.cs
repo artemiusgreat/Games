@@ -1110,6 +1110,67 @@ public partial class Titans
             GD.Print($"HILLPROBE clear single-gun volley (last gun): delta {singleDelta:F1} (expect 0 < delta < full {fullDelta:F1})");
             if (singleDelta < 0.01f || singleDelta > fullDelta - 0.01f) { GD.PrintErr("HILLPROBE FAIL clear single-gun volley delta out of bounds"); GetTree().Quit(1); return; }
         }
+        // Beam clip (owner, option A): stage a sightline the
+        // camera AND the centre line both clear, but where
+        // at least one gun's own segment to the verdict
+        // point crosses terrain. Damage must still land
+        // (verdict untouched), the crossing gun's drawn beam
+        // must end at its own crossing point - not tunnel
+        // through to the enemy - and a clean gun's beam must
+        // still end at the verdict point.
+        {
+            bool stagedClip = false;
+            Vector3 crossPoint = Vector3.Zero;
+            int crossIdx = -1, cleanIdx = -1;
+            // Several rings: at 110u the muzzle spread is
+            // small against the path and the arena's broad
+            // undulation takes all lines together or none;
+            // shorter rings separate the lines.
+            foreach (float ring in new[] { 60f, 80f, 100f, 110f, 125f })
+            {
+            for (int step = 0; step < 72 && !stagedClip; step++)
+            {
+                float ang = step * (Mathf.Pi / 36f);
+                var ePos = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * ring;
+                ePos.Y = Main.HeightAt(ePos.X, ePos.Z);
+                _enemy.Teleport(ePos, 0f);
+                var camHit = AimAtEnemy();
+                if (!camHit.Hit || camHit.Target != Roles.Enemy) continue;
+                var obC = CentreObstruction(camHit, out float _);
+                if (obC.Hit) continue; // the centre line must be CLEAR on this staging
+                crossIdx = -1; cleanIdx = -1;
+                for (int gi = 0; gi < _gunsEnergy.Count; gi++)
+                {
+                    var mzG = MuzzleForSlot(_gunsEnergy[gi].Slot, false);
+                    var toG = camHit.Point - mzG;
+                    float dG = toG.Length();
+                    if (dG < 12f) continue;
+                    var seg = AimRay(mzG, toG / dG, dG - 0.75f, 0.9f);
+                    if (seg.Hit && seg.Target == Roles.Terrain && crossIdx < 0) { crossIdx = gi; crossPoint = seg.Point; }
+                    else if (!seg.Hit && cleanIdx < 0) cleanIdx = gi;
+                }
+                if (crossIdx >= 0 && cleanIdx >= 0)
+                {
+                    stagedClip = true;
+                    GD.Print($"HILLPROBE staged beam-clip: enemy={ePos} camT={camHit.T:F1} crossing gun={crossIdx} ({_gunsEnergy[crossIdx].Slot}) clean gun={cleanIdx} ({_gunsEnergy[cleanIdx].Slot})");
+                }
+            }
+            }
+            if (!stagedClip) { GD.PrintErr("HILLPROBE FAIL no beam-clip sightline found"); GetTree().Quit(1); return; }
+            _hpEnemy = hp0;
+            _cdLaser = 0f;
+            FireLaser(TorsoAimPoint());
+            float clipDelta = hp0 - _hpEnemy;
+            GD.Print($"HILLPROBE beam-clip shot: enemy HP {hp0:F1} -> {_hpEnemy:F1} (expect damage - the verdict is untouched)");
+            if (clipDelta < 0.01f) { GD.PrintErr("HILLPROBE FAIL beam-clip staging lost the damage verdict"); GetTree().Quit(1); return; }
+            if (_lastBeamEnds.Count != _gunsEnergy.Count) { GD.PrintErr($"HILLPROBE FAIL beam ends recorded {_lastBeamEnds.Count} != guns {_gunsEnergy.Count}"); GetTree().Quit(1); return; }
+            float crossErr = _lastBeamEnds[crossIdx].DistanceTo(crossPoint);
+            var camHit2 = AimAtEnemy();
+            float cleanErr = _lastBeamEnds[cleanIdx].DistanceTo(camHit2.Point);
+            GD.Print($"HILLPROBE beam ends: crossing gun's end is {crossErr:F2}u from its terrain crossing; clean gun's end is {cleanErr:F2}u from the verdict point");
+            if (crossErr > 1.5f) { GD.PrintErr("HILLPROBE FAIL crossing gun's beam did not stop at its own terrain crossing"); GetTree().Quit(1); return; }
+            if (cleanErr > 1.5f) { GD.PrintErr("HILLPROBE FAIL clean gun's beam did not end at the verdict point"); GetTree().Quit(1); return; }
+        }
         GD.Print("HILLPROBE PASS");
         GetTree().Quit(0);
     }

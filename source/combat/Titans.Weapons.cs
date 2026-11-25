@@ -75,8 +75,13 @@ public partial class Titans
         FireLaserVolley(aimPoint, fired);
     }
 
+    // Test hook (hill probe): the beam endpoints the last
+    // volley actually drew, in fired order.
+    private readonly System.Collections.Generic.List<Vector3> _lastBeamEnds = new();
+
     private void FireLaserVolley(Vector3 aimPoint, System.Collections.Generic.List<(string Slot, WeaponDef Def)> fired)
     {
+        _lastBeamEnds.Clear();
         var muzzle = MuzzleForSlot(fired[0].Slot, false);
         // Per-weapon reach (owner): the shared view-ray cast runs
         // to the LONGEST fitted range; each weapon then hits
@@ -173,6 +178,12 @@ public partial class Titans
         // on the camera's line, above.
         bool anyReach = false;
         if (hit.Hit) foreach (var g in fired) if (hit.T <= g.Def.Range) { anyReach = true; break; }
+        // Impact tint follows the volley (owner, 2026-11-24):
+        // electric blue-white when a PPC is in it, warm
+        // yellow for a pure laser volley.
+        bool anyPpc = false;
+        foreach (var g in fired) if (g.Def.Beam == BeamKind.Ppc) { anyPpc = true; break; }
+        var clipPoints = new System.Collections.Generic.List<Vector3>();
         for (int i = 0; i < fired.Count; i++)
         {
             var mz = MuzzleForSlot(fired[i].Slot, false);
@@ -181,6 +192,36 @@ public partial class Titans
                 : hit.T <= fired[i].Def.Range ? hit.Point
                 : camTruth ? _cam.GlobalPosition + AimDirWorld() * fired[i].Def.Range
                 : mz + (aimPoint - mz).Normalized() * fired[i].Def.Range;
+            // Beam truth (owner, option A, 2026-11-25): the
+            // DAMAGE verdict above belongs to the camera /
+            // centre line, but the beam is drawn from this
+            // gun's own muzzle - and a low arm gun's straight
+            // segment to a verdict point, a range point or
+            // the sky point can cross a slope that both of
+            // those higher lines clear. The beam then visibly
+            // tunnelled through the hill and ended with no
+            // impact sparks (the owner's sniper repro: the
+            // through-ray was the only one without sparkles
+            // at its end). Clip every beam at the first
+            // surface on its OWN segment, and spark where it
+            // stops - the same honesty a cannon shell has.
+            // Damage is untouched. The 0.75u end margin keeps
+            // the verdict surface itself from stealing the
+            // endpoint it already owns.
+            var seg = beamEnd - mz;
+            float segLen = seg.Length();
+            if (segLen > 2f)
+            {
+                var clip = AimRay(mz, seg / segLen, segLen - 0.75f, 0.9f);
+                if (clip.Hit)
+                {
+                    beamEnd = clip.Point;
+                    bool fresh = true;
+                    foreach (var p in clipPoints) if (p.DistanceTo(clip.Point) < 1.0f) { fresh = false; break; }
+                    if (fresh) clipPoints.Add(clip.Point);
+                }
+            }
+            _lastBeamEnds.Add(beamEnd);
             // Beam colours (owner, 2026-11-24; PPC reworked
             // 2026-11-25): ALL lasers are yellow; the PPC is
             // the same beam in white - the lightning bolt
@@ -190,13 +231,19 @@ public partial class Titans
             if (i == 0) PlaySfx(ppc ? _sfxPpc : _sfxLaser, mz, 0f, 1f); // the owner's recordings play at natural pitch; PPC has its own (2026-11-22) - the old 0.9/1.125 factors tuned the synthetic whistle they replace
             SpawnFlash(mz, ppc ? new Color(1f, 1f, 1f) : new Color(1f, 0.8f, 0.25f), 0.3f, 0.07f);
         }
+        // Clip impacts spark where the beam stopped (the
+        // owner's cue: a beam that ends on a surface shows
+        // it). A clip point on the verdict point itself is
+        // the verdict's own impact - its FX below covers it.
+        foreach (var p in clipPoints)
+        {
+            if (anyReach && p.DistanceTo(hit.Point) < 1.0f) continue;
+            SpawnFlash(p, anyPpc ? new Color(0.7f, 0.95f, 1f) : new Color(1f, 0.88f, 0.35f), 0.55f, 0.16f);
+            SpawnSparks(p, anyPpc ? new Color(0.65f, 0.95f, 1f) : new Color(1f, 0.82f, 0.3f), 16, 6.0f);
+            SpawnImpactLight(p, anyPpc ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.78f, 0.3f), 2.4f, 10f, 0.3f);
+        }
         if (anyReach)
         {
-            // Impact tint follows the volley (owner,
-            // 2026-11-24): electric blue-white when a PPC
-            // is in it, warm yellow for a pure laser volley.
-            bool anyPpc = false;
-            foreach (var g in fired) if (g.Def.Beam == BeamKind.Ppc) { anyPpc = true; break; }
             SpawnFlash(hit.Point, anyPpc ? new Color(0.7f, 0.95f, 1f) : new Color(1f, 0.88f, 0.35f), 0.55f, 0.16f);
             SpawnSparks(hit.Point, anyPpc ? new Color(0.65f, 0.95f, 1f) : new Color(1f, 0.82f, 0.3f), 16, 6.0f); // electric breaker spray
             SpawnImpactLight(hit.Point, anyPpc ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.78f, 0.3f), 2.4f, 10f, 0.3f);
