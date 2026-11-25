@@ -198,20 +198,23 @@ def servo():
 
 def click():
     # UI tick (owner, 2026-11-24; MUFFLED at his word
-    # 2026-11-25, after the whoosh detour): a short dull
-    # tick - the noise snap runs through a one-pole
-    # lowpass and the ping drops to ~1050 Hz with the
-    # bright 2600 Hz partial gone, so it sits in the
-    # background. Local rng, other sounds byte-identical.
+    # 2026-11-25, after the whoosh detour; DULLED FURTHER
+    # the same evening - 'even less noticeable'): the noise
+    # snap runs through a much heavier one-pole lowpass,
+    # its gain and decay are down, and the ping drops to
+    # 700 Hz, weaker and shorter - a soft thock at the
+    # edge of attention. The player volume also went
+    # -20 -> -27 dB (UiSfx.Install). Local rng, other
+    # sounds byte-identical.
     r = random.Random(20261124)
-    n = int(0.05 * SR)
+    n = int(0.04 * SR)
     out = []
     lp = 0.0
     for i in range(n):
         t = i / SR
-        lp += 0.18 * (r.uniform(-1, 1) - lp)
-        snap = lp * math.exp(-t / 0.004) * 1.5
-        ping = math.sin(2 * math.pi * 1050 * t) * math.exp(-t / 0.007) * 0.34
+        lp += 0.08 * (r.uniform(-1, 1) - lp)
+        snap = lp * math.exp(-t / 0.003) * 1.0
+        ping = math.sin(2 * math.pi * 700 * t) * math.exp(-t / 0.005) * 0.20
         out.append(snap + ping)
     return out
 
