@@ -15,12 +15,28 @@ public partial class PlanetScreen : Control
     private Label _nameLabel, _subLabel, _descLabel;
     private UniverseMap _map;
 
+    private static Texture2D _bgTex;
+    private static Texture2D BgTex => _bgTex ??= GD.Load<Texture2D>("res://assets/ui/universe_bg.jpg");
+
     private bool IsMission => WorldConfig.IsMission;
     private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];
 
     public override void _Ready()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        // Whole-screen backdrop (owner, 2026-11-25): his
+        // universe photograph covers the full screen behind
+        // the selector and the chart, replacing the flow's
+        // shared panorama on this screen only.
+        var bg = new TextureRect
+        {
+            Texture = BgTex,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(bg);
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         margin.AddThemeConstantOverride("margin_left", 18);
@@ -80,7 +96,9 @@ public partial class PlanetScreen : Control
         sv.AddChild(FlowUi.MakeLabel("Select a planet with the selector, or click its node on the star chart.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
 
         var mapPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.3f };
-        mapPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.75f));
+        // Frame only, no fill: the screen's photograph is the
+        // chart's background too (owner, 2026-11-25).
+        mapPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0f));
         mid.AddChild(mapPanel);
         _map = new UniverseMap
         {

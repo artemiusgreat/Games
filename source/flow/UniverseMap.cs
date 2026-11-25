@@ -2,21 +2,20 @@ using Godot;
 using System.Collections.Generic;
 
 // The universe map (owner, teams stage): a Freelancer-style star
-// chart for the planet step - nebula wash, a faint grid, star
-// dots, decorative neighbour systems joined by trade lanes, and
-// the three playable planets as glowing nodes with route lines
-// between them. Clicking a planet node selects it, in sync with
-// the planet selector on the left. Pure presentation + picking;
-// the planet data (names, colours, MapPos) is MissionCatalog's.
+// chart for the planet step - the owner's universe photograph
+// fills the whole screen behind it (PlanetScreen draws it), a
+// faint grid, decorative neighbour systems joined by trade
+// lanes, and the three playable planets as glowing nodes with
+// route lines between them. Clicking a planet node selects it,
+// in sync with the planet selector on the left. Pure
+// presentation + picking; the planet data (names, colours,
+// MapPos) is MissionCatalog's.
 public partial class UniverseMap : Control
 {
     public System.Action<int> OnSelect;
     public int Selected;
 
     private int _hover = -1;
-    private readonly List<Vector2> _stars = new();
-    private readonly List<float> _starA = new();
-    private readonly List<(Vector2 P, float R, Color C)> _nebula = new();
     private static readonly Vector2[] DecoPos =
     {
         new(0.08f, 0.16f), new(0.16f, 0.44f), new(0.36f, 0.50f), new(0.58f, 0.14f),
@@ -38,22 +37,6 @@ public partial class UniverseMap : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
-        var rng = new RandomNumberGenerator { Seed = 20261113 };
-        for (int i = 0; i < 170; i++)
-        {
-            _stars.Add(new Vector2(rng.Randf(), rng.Randf()));
-            _starA.Add(rng.RandfRange(0.25f, 0.9f));
-        }
-        var nebCols = new[]
-        {
-            new Color(0.10f, 0.70f, 0.55f), new Color(0.42f, 0.30f, 0.85f),
-            new Color(0.90f, 0.45f, 0.15f), new Color(0.20f, 0.45f, 0.95f)
-        };
-        for (int i = 0; i < 9; i++)
-        {
-            _nebula.Add((new Vector2(rng.Randf(), rng.Randf()),
-                rng.RandfRange(0.16f, 0.34f), nebCols[i % nebCols.Length]));
-        }
     }
 
     private Vector2 NodePos(int planet) =>
@@ -94,9 +77,10 @@ public partial class UniverseMap : Control
 
     public override void _Draw()
     {
-        var rect = new Rect2(Vector2.Zero, Size);
-        DrawRect(rect, new Color(0.010f, 0.018f, 0.042f, 1f));
-        // Faint chart grid.
+        // No backdrop of its own (owner, 2026-11-25): the
+        // screen's universe photograph shows through; the
+        // chart draws only its grid and nodes over it.
+        // Faint chart grid (kept at the owner's word).
         var gridC = new Color(0.38f, 0.52f, 0.75f, 0.055f);
         for (int i = 1; i < 12; i++)
         {
@@ -105,18 +89,6 @@ public partial class UniverseMap : Control
             float y = Size.Y * i / 12f;
             DrawLine(new Vector2(0f, y), new Vector2(Size.X, y), gridC, 1f);
         }
-        // Nebula wash: layered soft discs.
-        foreach (var (p, r, c) in _nebula)
-        {
-            var ctr = p * Size;
-            float rad = r * Size.X;
-            DrawCircle(ctr, rad, new Color(c, 0.045f));
-            DrawCircle(ctr, rad * 0.62f, new Color(c, 0.06f));
-            DrawCircle(ctr, rad * 0.36f, new Color(c, 0.075f));
-        }
-        // Stars.
-        for (int i = 0; i < _stars.Count; i++)
-            DrawCircle(_stars[i] * Size, 1.3f, new Color(0.85f, 0.90f, 1f, _starA[i]));
         // Decorative systems + their lanes.
         var laneC = new Color(0.45f, 0.60f, 0.85f, 0.28f);
         foreach (var (a, b) in DecoLinks)
@@ -154,6 +126,16 @@ public partial class UniverseMap : Control
             DrawCircle(ctr, 12f, body);
             DrawCircle(ctr + new Vector2(-4f, -4f), 5f, new Color(p.PolarColor, 0.5f));
             DrawArc(ctr, 14f, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Steel, sel ? 2.5f : 1.5f, true);
+            // Text shadow under the name lines (owner,
+            // 2026-11-25): over the photograph's bright
+            // nebulae the bare labels washed out - a soft
+            // dark copy offset down-right keeps them legible.
+            var shadowC = new Color(0f, 0f, 0f, 0.55f);
+            var shadowOff = new Vector2(1.5f, 1.5f);
+            DrawString(font, ctr + new Vector2(-80f, 48f) + shadowOff, FlowUi.NameCase(p.Name),
+                HorizontalAlignment.Center, 160f, 16, shadowC);
+            DrawString(font, ctr + new Vector2(-80f, 64f) + shadowOff, FlowUi.NameCase(p.System),
+                HorizontalAlignment.Center, 160f, 11, shadowC);
             DrawString(font, ctr + new Vector2(-80f, 48f), FlowUi.NameCase(p.Name),
                 HorizontalAlignment.Center, 160f, 16,
                 sel ? FlowUi.Gold : FlowUi.Ink);
