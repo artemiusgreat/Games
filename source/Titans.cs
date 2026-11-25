@@ -1158,6 +1158,20 @@ public partial class Titans : Node3D
             _cam.GlobalPosition = center + viewDir * (14.5f * labK) + Vector3.Up * (3.4f * labK);
             _cam.LookAt(center, Vector3.Up);
             _cam.RotateY(0.46f); // pan in camera space: rider right, centered under its slot panels (owner, adjusted twice at his word)
+            // Deck alignment (owner, 2026-11-25): the lab
+            // stand's plate grid keeps its local X parallel
+            // to the camera's right vector - the transverse
+            // seams are then level with the horizon BY
+            // CONSTRUCTION, on every entry path and rider.
+            // (The camera itself was measured level - right
+            // vector Y = 0.0000; an earlier deck yaw computed
+            // from the rider's facing in OpenLab still read
+            // rotated in the owner's play.)
+            if (_labDeck != null)
+            {
+                var r = _cam.GlobalBasis.X;
+                _labDeck.Rotation = new Vector3(0f, Mathf.Atan2(-r.Z, r.X), 0f);
+            }
             _labLight.GlobalRotation = _cam.GlobalRotation;
             return;
         }

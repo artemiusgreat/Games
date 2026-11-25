@@ -105,23 +105,15 @@ public partial class Titans
         _player.TorsoTwist = 0f;
         _player.Teleport(_player.RootPos, _player.LegsYaw);
         BuildLabStand();
-        // Deck alignment (owner, 2026-11-25): the stand's
-        // plate grid is yawed to the lab camera's view
-        // direction, so one seam family runs parallel to
-        // the horizon and the other converges on the view
-        // axis. An axis-aligned deck read as ROTATED from
-        // the front three-quarter camera - measured in the
-        // lab: the camera itself is level (its right
-        // vector's Y is 0.0000), the grid was simply oblique
-        // to the view. The yaw follows the same viewDir the
-        // lab camera block computes, so it tracks rider
-        // swaps (each rider's facing differs).
-        if (_labDeck != null)
-        {
-            var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
-            var viewDir = fwd.Rotated(Vector3.Up, 2.72f);
-            _labDeck.Rotation = new Vector3(0f, Mathf.Atan2(viewDir.X, viewDir.Z), 0f);
-        }
+        // Deck alignment lives in the lab camera block
+        // (Titans.cs): the deck's local X is kept parallel
+        // to the camera's right vector every frame, so the
+        // transverse seams are level with the horizon by
+        // construction on every entry path. (An OpenLab-time
+        // yaw computed from the rider's facing still read
+        // rotated in the owner's play - his entry path
+        // differs from the harness's, so the deck now
+        // follows the camera itself, not the rider.)
         _cross.Visible = false; // no target cursor in the lab view (owner)
         _uiLayer.AddChild(lab);
     }
