@@ -42,6 +42,17 @@ public partial class Projectile : Node3D
     public Vector3 GuideVel0;   // the solved arc's launch velocity
     public float GuideTime;
     public float GuideDur = 0.55f;
+    // Homing (owner, 2026-11-25): an LRM salvo fired with
+    // the reticle ON an enemy locks that rider. GuideTrack
+    // returns its live chest point (null once it dies), and
+    // the arc re-solves from the rocket's current position
+    // whenever that point has moved - the salvo converges
+    // on the ENEMY, not the spot the reticle rested on at
+    // fire time. SRM never locks.
+    public System.Func<Vector3?> GuideTrack;
+    public Vector3 GuideEnd;    // the point the current solve runs through
+    public float GuideBaseSpeed = 36f;
+    public float GuideTofMax = 2.2f;
 
     public void Step(float dt, HitModel hm)
     {
@@ -55,6 +66,26 @@ public partial class Projectile : Node3D
             // segment test below runs on the blend's step exactly
             // as it does for a ballistic step.
             GuideTime += dt;
+            if (GuideTrack != null)
+            {
+                var tp = GuideTrack();
+                if (tp == null) GuideTrack = null; // target gone: the current arc finishes at the last solved point
+                else if (tp.Value.DistanceSquaredTo(GuideEnd) > 0.0225f) // moved > 0.15u: re-solve from here
+                {
+                    GuideEnd = tp.Value;
+                    float distNow = GlobalPosition.DistanceTo(GuideEnd);
+                    float tofNow = Mathf.Min(distNow / GuideBaseSpeed, GuideTofMax);
+                    if (tofNow < 0.05f) GuideTrack = null; // on top of it: fly out the arc
+                    else
+                    {
+                        GuideStart = GlobalPosition;
+                        GuideOrigin = GlobalPosition;
+                        GuideTime = 0f;
+                        GuideVel0 = (GuideEnd - GlobalPosition) / tofNow + Vector3.Up * (0.5f * Gravity * tofNow);
+                        GuideDur = Mathf.Max(0.3f, tofNow * 0.8f);
+                    }
+                }
+            }
             float u = Mathf.Clamp(GuideTime / GuideDur, 0f, 1f);
             float beta = u * u * (3f - 2f * u);
             float betaDeriv = GuideTime < GuideDur ? 6f * u * (1f - u) / GuideDur : 0f;

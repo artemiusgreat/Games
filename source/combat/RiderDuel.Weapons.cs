@@ -239,7 +239,7 @@ public partial class RiderDuel
     // both pods gone = the LRM is offline.
     // The salvo's staggered launch queue (0.07s between
     // rockets): FireLrmSalvo fills it, the frame step drains it.
-    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, WeaponDef Def)> _lrmQueue = new();
+    private readonly System.Collections.Generic.List<(float Delay, bool Left, Vector3 Aim, WeaponDef Def, RiderWalker Lock)> _lrmQueue = new();
 
     private void ProcessLrmQueue(float dt)
     {
@@ -247,12 +247,12 @@ public partial class RiderDuel
         {
             var q = _lrmQueue[i];
             q.Delay -= dt;
-            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left, q.Def); }
+            if (q.Delay <= 0f) { _lrmQueue.RemoveAt(i); LaunchRocket(q.Aim, q.Left, q.Def, q.Lock); }
             else _lrmQueue[i] = q;
         }
     }
 
-    private void FireLrmSalvo(Vector3 aimPoint)
+    private void FireLrmSalvo(Vector3 aimPoint, RiderWalker lockTarget = null)
     {
         if (_playerDead) return;
         bool podL = _podGunsL.Count > 0 && _partsPlayer.Alive(_podGunsL[0].Slot);
@@ -264,12 +264,14 @@ public partial class RiderDuel
         foreach (var g in _podGunsR) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
         FireSalvoVolley(aimPoint,
             podL ? _podGunsL : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>(),
-            podR ? _podGunsR : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>());
+            podR ? _podGunsR : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>(),
+            lockTarget);
     }
 
     private void FireSalvoVolley(Vector3 aimPoint,
         System.Collections.Generic.List<(string Slot, WeaponDef Def)> podLGuns,
-        System.Collections.Generic.List<(string Slot, WeaponDef Def)> podRGuns)
+        System.Collections.Generic.List<(string Slot, WeaponDef Def)> podRGuns,
+        RiderWalker lockTarget = null)
     {
         // Past the close cast, the salvo solves onto the point
         // the crosshair actually rests on (the far cast's point);
@@ -290,7 +292,7 @@ public partial class RiderDuel
             if (ri < right.Count) ordered.Add((false, right[ri++]));
         }
         for (int i = 0; i < ordered.Count; i++)
-            _lrmQueue.Add((i * 0.07f, ordered[i].Left, aimPoint, ordered[i].Def));
+            _lrmQueue.Add((i * 0.07f, ordered[i].Left, aimPoint, ordered[i].Def, lockTarget));
         PlaySfx(_sfxRocket, PodMuzzle(podL), -1f);
         Dbg.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
     }
@@ -329,7 +331,27 @@ public partial class RiderDuel
     }
 
 
-    private void LaunchRocket(Vector3 aimPoint, bool left, WeaponDef def)
+    // Is this walker still in the fight? (For the LRM
+    // lock's tracking closure.)
+    private bool WalkerAlive(RiderWalker w) =>
+        w == _player ? !_playerDead
+        : w == _enemy ? !_enemyDead
+        : _foe != null && w == _foe.Walker ? !_foe.Dead
+        : AllyOf(w) is { } a ? !a.Dead : false;
+
+    // The rider under the reticle right now, if it is an
+    // ENEMY - the LRM lock candidate (owner, 2026-11-25).
+    // A teammate under the reticle never locks: the aim
+    // rests on him, but the salvo stays a reticle salvo.
+    private RiderWalker AimLockWalker()
+    {
+        RiderWalker w = _aimTarget == Roles.Enemy ? _enemy
+            : _aimTarget == Roles.Foe && _foe != null ? _foe.Walker
+            : AllyByRole(_aimTarget)?.Walker;
+        return w != null && TeamOf(w) > 0 ? w : null;
+    }
+
+    private void LaunchRocket(Vector3 aimPoint, bool left, WeaponDef def, RiderWalker lockTarget = null)
     {
         _rocketsLaunched++;
         var muzzle = PodMuzzle(left);
@@ -383,10 +405,10 @@ public partial class RiderDuel
         }
         var toSolve = (muzzle + toAim) - solveFrom;
         float dist = Mathf.Max(toSolve.Length(), 1f);
-        // Per-pack dispersion (owner, 2026-11-23): the LRM
-        // converges on the reticle - spread 0, every rocket
-        // flies the exact solve - strictly inside its Range
-        // (the clamp above). The SRM keeps its 1.1-degree cone.
+        // Per-pack dispersion (owner, 2026-11-23 + 2026-11-25):
+        // both packs converge on the reticle - spread 0, every
+        // rocket flies the exact solve - strictly inside its
+        // Range (the clamp above).
         var dir = def.RocketSpread > 0f ? ApplyInaccuracy(toSolve.Normalized(), def.RocketSpread) : toSolve.Normalized();
         float tof = Mathf.Min(dist / baseSpeed, tofMax);
         float speed = dist / tof;
@@ -409,6 +431,33 @@ public partial class RiderDuel
             proj.GuideDur = Mathf.Max(0.55f, tof * 0.8f);
             proj.GuideVel0 = vel;
             proj.GuideTime = 0f;
+        }
+        // LRM lock (owner, 2026-11-25): the salvo was fired
+        // with the reticle on an enemy - the rockets home on
+        // THAT rider, re-solving at his live chest (the
+        // Projectile.Step GuideTrack branch), instead of the
+        // fixed point. An unguided launch gets the guidance
+        // frame switched on with the pod's own solve, so the
+        // re-solve has an arc to steer. If the target dies
+        // mid-flight the tracking stops and the salvo
+        // finishes at his last position.
+        if (lockTarget != null && def.Id == "lrm")
+        {
+            if (!guided)
+            {
+                proj.GuideActive = true;
+                proj.GuideOrigin = muzzle;
+                proj.GuideStart = muzzle;
+                proj.GuideVel0 = vel;
+                proj.GuideTime = 0f;
+                proj.GuideDur = Mathf.Max(0.55f, tof * 0.8f);
+            }
+            proj.GuideEnd = muzzle + toAim;
+            proj.GuideBaseSpeed = baseSpeed;
+            proj.GuideTofMax = tofMax;
+            var lt = lockTarget;
+            proj.GuideTrack = () => WalkerAlive(lt) ? lt.RootPos + Vector3.Up * 7.6f : (Vector3?)null;
+            Dbg.Print($"LRM LOCK on rider at {lt.RootPos}");
         }
         SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
     }
@@ -638,7 +687,7 @@ public partial class RiderDuel
         if (firedGuns.Count == 0) return; // alive but all cooling
         if (las.Count > 0) FireLaserVolley(aimPoint, las);
         if (can.Count > 0) FireCannonVolley(aimPoint, can);
-        if (podL.Count > 0 || podR.Count > 0) FireSalvoVolley(aimPoint, podL, podR);
+        if (podL.Count > 0 || podR.Count > 0) FireSalvoVolley(aimPoint, podL, podR, AimLockWalker());
         foreach (var g in firedGuns) g.Cd = g.Def.Cooldown;
     }
 
