@@ -649,12 +649,31 @@ public partial class RiderDuel
             _lrmAim = EnemyAim();
             _cdLrm = 0f;
             GD.Print($"LRMPROBE muzzleL={PodMuzzle(true)} muzzleR={PodMuzzle(false)} root={_player.RootPos}");
-            FireLrmSalvo(_lrmAim);
+            // Homing cases (owner, 2026-11-25): case 4 fires
+            // with a lock on the enemy, case 5 without - in
+            // both the enemy then walks sideways out of the
+            // aim point, so only the locked salvo can hit.
+            FireLrmSalvo(_lrmAim, _lrmCase == 4 ? _enemy : null);
             return;
+        }
+        if ((_lrmCase == 4 || _lrmCase == 5) && _lrmFired)
+        {
+            // 3.5 u/s over the ~2.1 s flight = ~7.4u of drift:
+            // far outside the stale point's capsule + splash
+            // for the control, well inside what tracking must
+            // correct for the locked salvo.
+            var ep = _enemy.RootPos + new Vector3(dt * 3.5f, 0f, 0f);
+            ep.Y = Main.HeightAt(ep.X, ep.Z);
+            _enemy.Teleport(ep, 0f);
         }
         int launched = _rocketsLaunched - _lrmLaunched0;
         int mine = _lrmImpacts.Count - _lrmImpactBase;
-        if ((mine >= launched && launched > 0) || _lrmT > 14f)
+        // The queue must be EMPTY too: an early impact (a
+        // rocket clipping the slope in its first steps) used
+        // to complete the case at launched=1 while 15 rockets
+        // were still queued, and they spilled into the next
+        // case's counts (seen 2026-11-25, case 2 -> 3).
+        if ((mine >= launched && launched > 0 && _lrmQueue.Count == 0) || _lrmT > 14f)
         {
             int onTarget = 0, onTerrain = 0, other = 0;
             float horiz = 0f, vert = 0f;
@@ -673,8 +692,12 @@ public partial class RiderDuel
             GD.Print($"LRMPROBE case={_lrmCase} launched={launched} impacts={mine} enemy={onTarget} terrain={onTerrain} other={other}" +
                 (onTerrain > 0 ? $" terrainHitsMeanShort={horiz / onTerrain:F1}u meanBelowAim={vert / onTerrain:F1}u" : "") +
                 $" aim={_lrmAim} playerPos={_player.RootPos} enemyPos={_enemy.RootPos}");
+            if (_lrmCase == 4 && onTarget < launched / 2)
+            { GD.PrintErr($"LRMPROBE FAIL homing: locked salvo hit the moved enemy only {onTarget}/{launched}"); GetTree().Quit(1); return; }
+            if (_lrmCase == 5 && onTarget > 0)
+            { GD.PrintErr($"LRMPROBE FAIL homing control: UNLOCKED salvo hit the moved enemy {onTarget}x - the aim point was stale, so any hit means the control is broken"); GetTree().Quit(1); return; }
             _lrmCase++;
-            if (_lrmCase > 3) { GD.Print("LRMPROBE DONE"); GetTree().Quit(0); return; }
+            if (_lrmCase > 5) { GD.Print("LRMPROBE DONE"); GetTree().Quit(0); return; }
             LrmStage(_lrmCase);
         }
     }
@@ -683,6 +706,7 @@ public partial class RiderDuel
     {
         _lrmT = 0f;
         _lrmFired = false;
+        _lrmQueue.Clear(); // a staged case never inherits a previous salvo's tail
         _lrmImpacts.Clear();
         _lrmLaunched0 = _rocketsLaunched;
         (Vector3 pp, Vector3 ep) = c switch
@@ -690,12 +714,20 @@ public partial class RiderDuel
             0 => (new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -16f), -16f)),   // flat control, 40u
             1 => (new Vector3(0f, Main.HeightAt(0f, 10f), 10f), new Vector3(0f, Main.HeightAt(0f, -58f), -58f)),      // mesa edge -> foot, 68u
             2 => (new Vector3(0f, Main.HeightAt(0f, 2f), 2f), new Vector3(0f, Main.HeightAt(0f, -46f), -46f)),        // mesa setback -> slope foot, 48u
+            4 => (new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -52f), -52f)),  // homing: locked, target walks off (76u, flat line east of the mesa)
+            5 => (new Vector3(22f, Main.HeightAt(22f, 24f), 24f), new Vector3(22f, Main.HeightAt(22f, -52f), -52f)),  // homing control: unlocked, same walk
             _ => (new Vector3(0f, Main.HeightAt(0f, 10f), 10f), new Vector3(0f, Main.HeightAt(0f, -100f), -100f)),    // long, 110u (past the 75u solve cap)
         };
         _player.Teleport(pp, Mathf.Pi);
         _enemy.Teleport(ep, 0f);
         _hpPlayer = 100000f; // the target shoots back (shared combat step) - keep the shooter whole
         _partsPlayer.RestoreAll(); // and the pods intact, so every case fires a full salvo
+        // The target must be whole too (found 2026-11-25):
+        // cases 0-3 deal ~400 damage, so by the homing cases
+        // he was DEAD - and a lock correctly refuses to track
+        // a corpse, which read as homing not working.
+        _hpEnemy = 100000f; _enemyDead = false;
+        _partsEnemy.RestoreAll();
         GD.Print($"LRMPROBE stage case={c} player={pp} enemy={ep}");
     }
 
