@@ -194,6 +194,16 @@ public partial class Titans
         // accepted beams striking a crest the reticle clears
         // in exchange for deleting that machinery. One cast
         // per gun is the whole model now.
+        // Past the close cast, the converge point is the FAR
+        // point - the same rule shells and rockets apply
+        // (FireCannonVolley / FireSalvoVolley). Converging on
+        // the 220u point instead makes the beams cross there
+        // and diverge beyond it: at 500u+ the volley straddles
+        // the rider under the reticle and can only hit things
+        // behind him (owner's repro, 2026-11-25 - the beam
+        // rewrite dropped this rule; the other volleys kept
+        // it, which is why only energy weapons missed).
+        if (_aimParallel) aimPoint = _cam.GlobalPosition + _aimDir * _farConverge;
         bool anyPpc = false;
         foreach (var g in fired) if (g.Def.Beam == BeamKind.Ppc) { anyPpc = true; break; }
         var fxPoints = new System.Collections.Generic.List<Vector3>();

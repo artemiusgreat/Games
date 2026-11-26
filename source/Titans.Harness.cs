@@ -5169,6 +5169,69 @@ public partial class Titans
         else if (_bsPhase == 3 && _bsT > 0.05)
         {
             GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_laser.png");
+            // Long-range stage (owner's repro, 2026-11-25):
+            // the enemy 500u out, past the 220u convergence
+            // cast - the state where the physical beams used
+            // to cross at 220u and straddle him.
+            // Run with --mission-test --beam-shot: the
+            // mission world (bound 915) is the only one with
+            // room for a 500u sightline - the arena's 115u
+            // bound clamp drags a staged rider back inside.
+            // Babylon's hills block most bearings, so scan
+            // for a bearing whose chest-to-chest line clears
+            // the terrain along its whole length.
+            var stageDir = Vector3.Zero;
+            var far = Vector3.Zero;
+            var origin = _player.RootPos + Vector3.Up * (_player.Height * LockTrackHeightFraction);
+            for (int k = 0; k < 24 && stageDir == Vector3.Zero; k++)
+            {
+                var d = RiderWalker.HeadingVec(k / 24f * Mathf.Tau);
+                var fp = _player.RootPos + d * 500f;
+                var dest = new Vector3(fp.X, Main.HeightAt(fp.X, fp.Z) + _enemy.Height * LockTrackHeightFraction, fp.Z);
+                bool clear = true;
+                for (int s = 1; s < 20 && clear; s++)
+                {
+                    var p = origin.Lerp(dest, s / 20f);
+                    if (p.Y < Main.HeightAt(p.X, p.Z) + 1f) clear = false;
+                }
+                if (clear) { stageDir = d; far = fp; }
+            }
+            if (stageDir == Vector3.Zero)
+            {
+                GD.Print("BEAMSHOT LONG no clear 500u sightline from spawn");
+                _bsPhase = 5; _bsT = 0;
+                return;
+            }
+            _player.Teleport(_player.RootPos, RiderWalker.YawOf(stageDir));
+            far.Y = Main.HeightAt(far.X, far.Z);
+            _enemy.Teleport(far, RiderWalker.YawOf(-stageDir));
+            _bsPhase = 4; _bsT = 0;
+        }
+        else if (_bsPhase == 4 && _bsT > 0.5)
+        {
+            // Reproduce TorsoAimPoint's parallel state
+            // exactly as the input loop hands it to the
+            // volley: aim point = the 220u point on the axis,
+            // _farConverge = where the crosshair really rests.
+            var chest = _enemy.RootPos + Vector3.Up * (_enemy.Height * LockTrackHeightFraction);
+            var camPos = _cam.GlobalPosition;
+            _aimDir = (chest - camPos).Normalized();
+            _farConverge = camPos.DistanceTo(chest);
+            _aimParallel = true;
+            float hpBefore = _hpEnemy;
+            // ARM guns only: their muzzles sit ~4.5u off the
+            // axis, so the pre-fix volley straddles the target
+            // at this range (the owner's repro exactly) while
+            // a torso gun rides the axis and hits either way.
+            var arm = _gunsEnergy.FindAll(g => g.Slot == SlotIds.ArmL || g.Slot == SlotIds.ArmR);
+            FireLaserVolley(camPos + _aimDir * Aim.ConvergenceRange, arm);
+            GD.Print($"BEAMSHOT LONG range={_farConverge:F0} rootDist={_player.RootPos.DistanceTo(_enemy.RootPos):F0} armGuns={arm.Count} hp {hpBefore:F0} -> {_hpEnemy:F0} {(_hpEnemy < hpBefore ? "HIT" : "MISS")}");
+            _aimParallel = false;
+            _bsPhase = 5; _bsT = 0;
+        }
+        else if (_bsPhase == 5 && _bsT > 0.05)
+        {
+            GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_long.png");
             GD.Print("BEAMSHOT DONE");
             GetTree().Quit(0);
         }
