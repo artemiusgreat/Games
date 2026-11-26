@@ -16,7 +16,7 @@ public partial class Titans
     private Vector3 ElbowMuzzle(RiderWalker w, bool left)
     {
         var bone = w.BoneWorldPos(left ? Bones.ElbowL : Bones.ElbowR);
-        return bone + RiderWalker.HeadingVec(w.TorsoYawWorld) * 2.8f;
+        return bone + RiderWalker.HeadingVec(w.TorsoYawWorld) * ElbowMuzzleForward;
     }
 
     private Vector3 PlayerMuzzle(bool left) => ElbowMuzzle(_player, left);
@@ -30,7 +30,7 @@ public partial class Titans
         if (slot == SlotIds.Torso)
         {
             var t = w.BoneWorldPos(Bones.Torso);
-            return t + Vector3.Up * 2.0f + RiderWalker.HeadingVec(w.TorsoYawWorld) * 1.6f;
+            return t + Vector3.Up * TorsoMuzzleUp + RiderWalker.HeadingVec(w.TorsoYawWorld) * TorsoMuzzleForward;
         }
         return ElbowMuzzle(w, slot != SlotIds.ArmR);
     }
@@ -44,7 +44,7 @@ public partial class Titans
         var torso = w.BoneWorldPos(Bones.Torso);
         var fwd = RiderWalker.HeadingVec(w.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
-        return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
+        return torso + right * GunMuzzleRight + fwd * GunMuzzleForward + Vector3.Up * GunMuzzleUp;
     }
 
     private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? SlotIds.ArmR);
@@ -56,13 +56,111 @@ public partial class Titans
     // Rocket-splash impact light intensity.
     private const float SplashLightIntensity = 3f;
 
+    // Muzzle hardpoint offsets (owner, 2026-11-25: named and
+    // rounded like everything else). Elbow guns sit this far
+    // ahead of the elbow bone; the chest mount rides above
+    // and ahead of the torso bone; the waist gun sits right /
+    // forward / up in the torso frame; a pod with no volumes
+    // of its own falls back to a shoulder spot beside the
+    // torso (a volume-backed pod fires from its real centre,
+    // lifted a touch).
+    private const float ElbowMuzzleForward = 3f;
+    private const float TorsoMuzzleUp = 2f;
+    private const float TorsoMuzzleForward = 1.5f;
+    private const float GunMuzzleRight = 1.5f;
+    private const float GunMuzzleForward = 1.5f;
+    private const float GunMuzzleUp = 2.5f;
+    private const float PodMuzzleLift = 0.3f;
+    private const float PodFallbackSide = 2.5f;
+    private const float PodFallbackUp = 3.5f;
+    private const float PodFallbackForward = 0.5f;
+
+    // Beam and muzzle-flash recipe.
+    private const float BeamWidth = 0.15f;
+    private const float BeamLife = 0.1f;
+    private const float BeamGlowAlpha = 0.3f;
+    private const float MuzzleFlashSize = 0.3f;
+    private const float CannonMuzzleFlashSize = 0.4f;
+    private const float MuzzleFlashLife = 0.1f;
+    // A laser's hit thickness: the cast inflate and the
+    // prop-damage attribution reach are the same number.
+    private const float LaserHitThickness = 1f;
+    // Volley guns converge: impact FX spawn once per point
+    // cluster this wide, damage stays per gun.
+    private const float ImpactFxMergeRadius = 1f;
+    // Below this aim distance the direction is meaningless;
+    // the torso heading takes over.
+    private const float MinAimDirLength = 0.5f;
+
+    // Rocket guidance and lock (LaunchRocket): the axis
+    // solve engages past this off-axis distance and this
+    // much target lead; the blend onto the solved arc runs
+    // at least this long and over this fraction of the
+    // flight; a locked salvo tracks this fraction up the
+    // target's height (his chest, from his own Height).
+    private const float GuidanceOffAxisMin = 1.5f;
+    private const float GuidanceMinRange = 15f;
+    private const float GuideBlendMin = 0.55f;
+    private const float GuideBlendFraction = 0.8f;
+    private const float LockTrackHeightFraction = 0.6f;
+    private const float LockCastInflate = 2.5f;
+    private const float MinAxisLengthSq = 0.5f;
+    private const float SalvoStagger = 0.05f;
+
+    // Projectile dressing: ONE visual scale for rockets and
+    // tracers alike (owner, 2026-11-25: a 1.5 vs 1.6 split
+    // is not a distinction anyone can see - it is just more
+    // code), and the speed below which a spawn does not
+    // bother orienting to its velocity.
+    private const float ProjectileScale = 1.5f;
+    private const float MinOrientSpeedSq = 0.01f;
+    // Trail puffs: spawn spacing (squared) and life.
+    private const float PuffSpacingSq = 0.3f;
+    private const float PuffLife = 0.4f;
+    // At or above this weapon weight a shell hit reports
+    // the heavy "cannon" feedback kind, below it "mg".
+    private const float HeavyKindWeight = 10f;
+
+    // Part consequences (owner's rules): one wrecked leg
+    // limps at this speed factor with this lean; the head
+    // hit flickers the HUD this long; the death explosion
+    // sounds from this height at this pitch.
+    private const float LimpSpeedFactor = 0.55f;
+    private const float CrawlSpeedFactor = 0.25f;
+    private const float LimpRollAngle = 0.1f;
+    private const float HeadHitFlickerSeconds = 1.2f;
+    private const float ExplosionSoundHeight = 4f;
+    private const float ExplosionSoundPitch = 0.8f;
+
+    // Weapon FX colours, created once and named for what
+    // they paint (owner, 2026-11-25: a named colour reads
+    // better than a bare Color at every Spawn call, whether
+    // or not it allocates).
+    private static readonly Color LaserBeamColor = new(1f, 0.82f, 0.18f);
+    private static readonly Color PpcBeamColor = new(1f, 1f, 1f);
+    private static readonly Color LaserMuzzleColor = new(1f, 0.8f, 0.25f);
+    private static readonly Color LaserImpactColor = new(1f, 0.88f, 0.35f);
+    private static readonly Color PpcImpactColor = new(0.7f, 0.95f, 1f);
+    private static readonly Color LaserSparkColor = new(1f, 0.82f, 0.3f);
+    private static readonly Color PpcSparkColor = new(0.65f, 0.95f, 1f);
+    private static readonly Color LaserLightColor = new(1f, 0.78f, 0.3f);
+    private static readonly Color PpcLightColor = new(0.55f, 0.9f, 1f);
+    private static readonly Color CannonMuzzleColor = new(1f, 0.6f, 0.2f);
+    private static readonly Color RocketColor = new(1f, 0.55f, 0.2f);
+    private static readonly Color SplashFlashColor = new(1f, 0.62f, 0.25f);
+    private static readonly Color CannonImpactColor = new(1f, 0.72f, 0.35f);
+    private static readonly Color CannonSparkColor = new(1f, 0.8f, 0.5f);
+    private static readonly Color CannonLightColor = new(1f, 0.75f, 0.4f);
+    private static readonly Color BreakFlashColor = new(1f, 0.62f, 0.22f);
+    private static readonly Color BreakFlashHotColor = new(1f, 0.88f, 0.55f);
+
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
         _beamsSpawned++;
         var beam = WeaponFx.MakeBeam(a, b, col, width);
         AddChild(beam);
         _fx.Add((beam, life, 0));
-        var glow = WeaponFx.MakeBeam(a, b, new Color(col.R, col.G, col.B, 0.32f), width * BeamGlowWidthScale);
+        var glow = WeaponFx.MakeBeam(a, b, new Color(col.R, col.G, col.B, BeamGlowAlpha), width * BeamGlowWidthScale);
         AddChild(glow);
         _fx.Add((glow, life, 0));
     }
@@ -105,16 +203,16 @@ public partial class Titans
             var mz = MuzzleForSlot(fired[i].Slot, false);
             bool ppc = fired[i].Def.Beam == BeamKind.Ppc;
             var toAim = aimPoint - mz;
-            var dir = toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
-            var hit = AimRay(mz, dir, fired[i].Def.Range, 0.9f);
+            var dir = toAim.Length() > MinAimDirLength ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
+            var hit = AimRay(mz, dir, fired[i].Def.Range, LaserHitThickness);
             var beamEnd = hit.Hit ? hit.Point : mz + dir * fired[i].Def.Range;
             // Beam colours (owner, 2026-11-24; PPC reworked
             // 2026-11-25): ALL lasers are yellow; the PPC is
             // the same beam in white.
-            if (ppc) SpawnBeam(mz, beamEnd, new Color(1f, 1f, 1f), 0.15f, 0.12f);
-            else SpawnBeam(mz, beamEnd, new Color(1f, 0.82f, 0.18f), 0.15f, 0.12f);
+            if (ppc) SpawnBeam(mz, beamEnd, PpcBeamColor, BeamWidth, BeamLife);
+            else SpawnBeam(mz, beamEnd, LaserBeamColor, BeamWidth, BeamLife);
             if (i == 0) PlaySfx(ppc ? _sfxPpc : _sfxLaser, mz, 0f, 1f); // the owner's recordings play at natural pitch; PPC has its own (2026-11-22)
-            SpawnFlash(mz, ppc ? new Color(1f, 1f, 1f) : new Color(1f, 0.8f, 0.25f), 0.3f, 0.07f);
+            SpawnFlash(mz, ppc ? PpcBeamColor : LaserMuzzleColor, MuzzleFlashSize, MuzzleFlashLife);
             if (!hit.Hit) continue;
             anyHit = true;
             // Impact FX once per distinct hit point (a
@@ -124,20 +222,20 @@ public partial class Titans
             // electric blue-white when a PPC is in it, warm
             // yellow for a pure laser volley.
             bool fresh = true;
-            foreach (var pt in fxPoints) if (pt.DistanceTo(hit.Point) < 1.0f) { fresh = false; break; }
+            foreach (var pt in fxPoints) if (pt.DistanceTo(hit.Point) < ImpactFxMergeRadius) { fresh = false; break; }
             if (fresh)
             {
                 fxPoints.Add(hit.Point);
-                SpawnFlash(hit.Point, anyPpc ? new Color(0.7f, 0.95f, 1f) : new Color(1f, 0.88f, 0.35f), 0.55f, 0.16f);
-                SpawnSparks(hit.Point, anyPpc ? new Color(0.65f, 0.95f, 1f) : new Color(1f, 0.82f, 0.3f), 16, 6.0f); // electric breaker spray
-                SpawnImpactLight(hit.Point, anyPpc ? new Color(0.55f, 0.9f, 1f) : new Color(1f, 0.78f, 0.3f), 2.4f, 10f, 0.3f);
-                SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
+                SpawnFlash(hit.Point, anyPpc ? PpcImpactColor : LaserImpactColor, 0.5f, 0.15f);
+                SpawnSparks(hit.Point, anyPpc ? PpcSparkColor : LaserSparkColor, 16, 6.0f); // electric breaker spray
+                SpawnImpactLight(hit.Point, anyPpc ? PpcLightColor : LaserLightColor, 2.5f, 10f, 0.3f);
+                SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 1f);
             }
             Dbg.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
             else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
             else if (AllyByRole(hit.Target) is { } la) ApplyDamage(la.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
-            else if (hit.Target == Roles.Prop) DamageProp(hit.Point, fired[i].Def.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
+            else if (hit.Target == Roles.Prop) DamageProp(hit.Point, fired[i].Def.Damage, LaserHitThickness); // laser attribution reaches as far as its hit thickness
         }
         if (!anyHit) Dbg.Print("WPN LASER hit=none");
     }
@@ -183,7 +281,7 @@ public partial class Titans
             // over far targets.
             var dir = _aimParallel
                 ? (_cam.GlobalPosition + _aimDir * _farConverge - muzzle).Normalized()
-                : toAim.Length() > 0.5f ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
+                : toAim.Length() > MinAimDirLength ? toAim.Normalized() : RiderWalker.HeadingVec(_player.TorsoYawWorld);
             // Shell speed lives on the weapon def (WeaponDef.cs:
             // MuzzleSpeed) - one place to tune it for every
             // cannon, player and AI alike. Ballistic shells fly
@@ -194,12 +292,12 @@ public partial class Titans
             var shell = SpawnProjectile(muzzle, dir * spd, grav, def.Damage, 0f, Roles.Player, rocket: false, weaponWeight: def.Weight);
             shell.Life = def.Range / spd; // burns out at the weapon's range (owner)
             PlaySfx(_sfxCannon, muzzle, def.SfxPitch, def.SfxRate);
-            SpawnFlash(muzzle, new Color(1f, 0.6f, 0.2f), 0.42f, 0.08f);
+            SpawnFlash(muzzle, CannonMuzzleColor, CannonMuzzleFlashSize, MuzzleFlashLife);
             Dbg.Print($"WPN AC fired {def.Id} dir={dir}");
         }
     }
 
-    // LRM salvo: 8 rockets staggered 0.07s apart, alternating ear pods.
+    // LRM salvo: rockets staggered SalvoStagger apart, alternating ear pods.
     // Each rocket is dumb ballistics: velocity solved to land on the aim
     // point (up-compensated for gravity), seeded spread, 7 damage with
     // 3.0u splash falloff on impact. A lost pod removes its 4 rockets;
@@ -259,7 +357,7 @@ public partial class Titans
             if (ri < right.Count) ordered.Add((false, right[ri++]));
         }
         for (int i = 0; i < ordered.Count; i++)
-            _lrmQueue.Add((i * 0.07f, ordered[i].Left, aimPoint, ordered[i].Def, lockTarget));
+            _lrmQueue.Add((i * SalvoStagger, ordered[i].Left, aimPoint, ordered[i].Def, lockTarget));
         PlaySfx(_sfxRocket, PodMuzzle(podL), -1f);
         Dbg.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
     }
@@ -277,11 +375,11 @@ public partial class Titans
         // into the slope at its own feet). The torso-bone
         // fallback below is the sane shoulder spot for such pods.
         if (_partsPlayer != null && _partsPlayer.PartHasVolumes(id))
-            return _partsPlayer.PartCenterWorld(id) + Vector3.Up * 0.3f;
+            return _partsPlayer.PartCenterWorld(id) + Vector3.Up * PodMuzzleLift;
         var torso = _player.BoneWorldPos(Bones.Torso);
         var fwd = RiderWalker.HeadingVec(_player.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
-        return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
+        return torso + right * (left ? -PodFallbackSide : PodFallbackSide) + Vector3.Up * PodFallbackUp + fwd * PodFallbackForward;
     }
 
     // Shared shot spread (player rockets and foe gunnery):
@@ -327,7 +425,7 @@ public partial class Titans
         // achievable by hand at 1000u+. First hit wins:
         // terrain or a teammate in the line blocks the lock
         // exactly as it blocks the shot (AimRay's team rule).
-        var hit = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, 2.5f);
+        var hit = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange, LockCastInflate);
         return LockWalkerForRole(hit.Hit ? hit.Target : "");
     }
 
@@ -380,12 +478,12 @@ public partial class Titans
         var axisDir = _aimDir;
         Vector3 solveFrom = muzzle;
         bool guided = false;
-        if (axisDir.LengthSquared() > 0.5f)
+        if (axisDir.LengthSquared() > MinAxisLengthSq)
         {
             float tPod = (muzzle - axisOrigin).Dot(axisDir);
             float tAim = (muzzle + toAim - axisOrigin).Dot(axisDir);
             var onAxis = axisOrigin + axisDir * tPod;
-            if ((muzzle - onAxis).Length() > 1.5f && tAim > tPod + 15f)
+            if ((muzzle - onAxis).Length() > GuidanceOffAxisMin && tAim > tPod + GuidanceMinRange)
             {
                 solveFrom = onAxis;
                 guided = true;
@@ -416,7 +514,7 @@ public partial class Titans
             // paths and curve together only near the target,
             // still passing exactly through the aim point
             // (the blend completes before arrival).
-            proj.GuideDur = Mathf.Max(0.55f, tof * 0.8f);
+            proj.GuideDur = Mathf.Max(GuideBlendMin, tof * GuideBlendFraction);
             proj.GuideVel0 = vel;
             proj.GuideTime = 0f;
         }
@@ -438,25 +536,25 @@ public partial class Titans
                 proj.GuideStart = muzzle;
                 proj.GuideVel0 = vel;
                 proj.GuideTime = 0f;
-                proj.GuideDur = Mathf.Max(0.55f, tof * 0.8f);
+                proj.GuideDur = Mathf.Max(GuideBlendMin, tof * GuideBlendFraction);
             }
             proj.GuideEnd = muzzle + toAim;
             proj.GuideBaseSpeed = baseSpeed;
             proj.GuideTofMax = tofMax;
             var lt = lockTarget;
-            proj.GuideTrack = () => WalkerAlive(lt) ? lt.RootPos + Vector3.Up * 7.6f : (Vector3?)null;
+            proj.GuideTrack = () => WalkerAlive(lt) ? lt.RootPos + Vector3.Up * (lt.Height * LockTrackHeightFraction) : (Vector3?)null;
             Dbg.Print($"LRM LOCK on rider at {lt.RootPos}");
         }
-        SpawnFlash(muzzle, new Color(1f, 0.55f, 0.2f), 0.3f, 0.09f);
+        SpawnFlash(muzzle, RocketColor, MuzzleFlashSize, MuzzleFlashLife);
     }
 
     private void OnRocketStep(Projectile p)
     {
-        if (_lastPuff.TryGetValue(p, out var last) && last.DistanceSquaredTo(p.GlobalPosition) < 0.3f) return;
+        if (_lastPuff.TryGetValue(p, out var last) && last.DistanceSquaredTo(p.GlobalPosition) < PuffSpacingSq) return;
         _lastPuff[p] = p.GlobalPosition;
         var puff = WeaponFx.MakeTrailPuff(p.GlobalPosition);
         AddChild(puff);
-        _puffs.Add((puff, 0.4f));
+        _puffs.Add((puff, PuffLife));
     }
 
     private void ExplodeSplash(HitModel.Result hit, Projectile p)
@@ -477,7 +575,7 @@ public partial class Titans
             {
                 var splashHit = hit;
                 splashHit.Target = id;
-                splashHit.Zone = "splash";
+                splashHit.Zone = Zones.Splash;
                 ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight, HitKinds.Rocket);
             }
         }
@@ -496,11 +594,11 @@ public partial class Titans
             WeaponWeight = weaponWeight
         };
         var vis = rocket ? WeaponFx.MakeRocket() : (Node3D)WeaponFx.MakeTracer();
-        vis.Scale = Vector3.One * (rocket ? 1.5f : 1.6f); // owner: projectiles slightly larger
+        vis.Scale = Vector3.One * ProjectileScale; // owner: projectiles slightly larger, one scale for both kinds (2026-11-25)
         p.AddChild(vis);
         AddChild(p);
         p.GlobalPosition = pos;
-        if (vel.LengthSquared() > 0.01f) p.LookAt(pos + vel, Vector3.Up);
+        if (vel.LengthSquared() > MinOrientSpeedSq) p.LookAt(pos + vel, Vector3.Up);
         p.OnHit = OnProjectileHit;
         if (rocket) p.OnStep = OnRocketStep;
         _shots.Add(p);
@@ -514,20 +612,20 @@ public partial class Titans
         if (p.SplashRadius > 0f)
         {
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
-            SpawnFlash(hit.Point, new Color(1f, 0.62f, 0.25f), 1.7f, 0.3f);
-            SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), SplashLightIntensity, 14f, 0.5f);
-            SpawnBurst(hit.Point, FireParticleMat, 54, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
+            SpawnFlash(hit.Point, SplashFlashColor, 1.5f, 0.3f);
+            SpawnImpactLight(hit.Point, RocketColor, SplashLightIntensity, 14f, 0.5f);
+            SpawnBurst(hit.Point, FireParticleMat, 54, 1f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.15f, 0.8f, 1.5f);
             ExplodeSplash(hit, p);
             if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
             return;
         }
-        SpawnFlash(hit.Point, new Color(1f, 0.72f, 0.35f), 0.62f, 0.18f);
-        SpawnSparks(hit.Point, new Color(1f, 0.8f, 0.5f), 10, 5.2f);
+        SpawnFlash(hit.Point, CannonImpactColor, 0.6f, 0.2f);
+        SpawnSparks(hit.Point, CannonSparkColor, 10, 5f);
         _fxSparkBursts--; // cannon impact sparks are not a laser burst
-        SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.13f, 0.6f, 1.1f);
-        SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
+        SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.15f, 0.6f, 1f);
+        SpawnImpactLight(hit.Point, CannonLightColor, 2.5f, 11f, 0.35f);
         if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
-        string kind = p.WeaponWeight >= 10f ? HitKinds.Cannon : HitKinds.Mg;
+        string kind = p.WeaponWeight >= HeavyKindWeight ? HitKinds.Cannon : HitKinds.Mg;
         if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
@@ -603,8 +701,8 @@ public partial class Titans
         // During a death explosion every part breaks at once: no feed
         // spam, no per-part consequences (leg loss would re-enter Die).
         if (_exploding) return;
-        SpawnFlash(center, new Color(1f, 0.62f, 0.22f), 0.95f, 0.16f);
-        SpawnFlash(center, new Color(1f, 0.88f, 0.55f), 0.45f, 0.1f);
+        SpawnFlash(center, BreakFlashColor, 1f, 0.15f);
+        SpawnFlash(center, BreakFlashHotColor, 0.5f, 0.1f);
         var part = parts.GetPart(partId);
         ApplyPartConsequences(parts, partId);
     }
@@ -621,7 +719,7 @@ public partial class Titans
         if (partId == PartIds.LegL || partId == PartIds.LegR)
             SyncLegConsequences(WalkerOf(parts), parts);
         else if (partId == PartIds.Head && parts == _partsPlayer)
-            _hudFlickerT = 1.2f;
+            _hudFlickerT = HeadHitFlickerSeconds;
         if (parts == _partsPlayer) AutoSwitchWeapon();
     }
 
@@ -707,14 +805,14 @@ public partial class Titans
         w.SetLegDisabled(false, rDead);
         if (lDead && rDead)
         {
-            w.SpeedFactor = 0.25f;
+            w.SpeedFactor = CrawlSpeedFactor;
             w.LimpRoll = 0f;
             Dbg.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} both legs wrecked -> CRAWL (speedFactor 0.25)");
         }
         else if (lDead || rDead)
         {
-            w.SpeedFactor = 0.55f;
-            w.LimpRoll = lDead ? 0.10f : -0.10f;
+            w.SpeedFactor = LimpSpeedFactor;
+            w.LimpRoll = lDead ? LimpRollAngle : -LimpRollAngle;
             Dbg.Print($"BRK {(w == _player ? Roles.Player : Roles.Enemy)} leg wrecked -> LIMP (speedFactor 0.55)");
         }
         else
@@ -726,7 +824,7 @@ public partial class Titans
 
     private void Die(RiderWalker w)
     {
-        PlaySfx(_sfxExplosion, w.RootPos + Vector3.Up * 4f, 3f, 0.8f);
+        PlaySfx(_sfxExplosion, w.RootPos + Vector3.Up * ExplosionSoundHeight, 3f, ExplosionSoundPitch);
         w.Halted = true;
         w.SetDrive(w.LegsYaw, 0f);
         if (w == _player) { _playerDead = true; Dbg.Print("WPN DEATH PLAYER"); }

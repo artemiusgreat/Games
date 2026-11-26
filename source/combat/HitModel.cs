@@ -115,7 +115,7 @@ public sealed class HitModel
                 best.Hit = true; best.T = t; best.Target = m.Id;
                 float y = from.Y + dir.Y * t;
                 best.ZoneFrac = Mathf.Clamp((y - baseY) / m.Height, 0f, 1f);
-                best.Zone = best.ZoneFrac < LegsZoneTop ? "legs" : best.ZoneFrac < TorsoZoneTop ? "torso" : "head";
+                best.Zone = best.ZoneFrac < LegsZoneTop ? Zones.Legs : best.ZoneFrac < TorsoZoneTop ? Zones.Torso : Zones.Head;
                 best.Part = boxPart ?? (PartResolver != null
                     ? PartResolver(m.Id, from + dir * t) : "");
             }

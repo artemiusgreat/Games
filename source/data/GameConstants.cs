@@ -141,6 +141,16 @@ public static class WeaponIds
     public const string Lrm = "lrm";
 }
 
+/// <summary>Hit zones on a rider capsule (HitModel classifies,
+/// splash damage stamps its own).</summary>
+public static class Zones
+{
+    public const string Legs = "legs";
+    public const string Torso = "torso";
+    public const string Head = "head";
+    public const string Splash = "splash";
+}
+
 /// <summary>
 /// Damage-feedback kinds: the loose vocabulary ApplyDamage
 /// passes to OnDamaged (body jolt and hit-sound selection).
