@@ -111,6 +111,11 @@ public static class Bones
     public const string HipR = "hip_R";
     public const string KneeR = "knee_R";
     public const string AnkleR = "ankle_R";
+    // Classification hints for RiderParts' bone-to-part
+    // mapping only (never a BoneWorldPos reference, so the
+    // census above does not require them).
+    public const string Head = "head";
+    public const string Pelvis = "pelvis";
 
     public static readonly string[] All = { Torso, ElbowL, ElbowR, HipL, KneeL, AnkleL, HipR, KneeR, AnkleR };
 }

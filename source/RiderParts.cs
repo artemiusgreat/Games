@@ -458,8 +458,8 @@ public sealed class RiderParts
                 Part best = null;
                 DominantBone(kv.Value, out string bn, out int _);
                 string want = null;
-                if (bn == "head") want = "head";
-                else if (bn == "torso" || bn == "pelvis") want = "torso";
+                if (bn == Bones.Head) want = PartIds.Head;
+                else if (bn == Bones.Torso || bn == Bones.Pelvis) want = SlotIds.Torso;
                 else if (bn != null && (bn.StartsWith("shoulder_") || bn.StartsWith("elbow_")))
                     want = "arm_" + bn.Substring(bn.Length - 1);
                 else if (bn != null && (bn.StartsWith("hip_") || bn.StartsWith("knee_") || bn.StartsWith("ankle_")))
@@ -1196,7 +1196,7 @@ public sealed class RiderParts
         var poseInv = new Dictionary<int, Transform3D>();
         foreach (var part in _parts.Values)
         {
-            if (part.Destroyed || part.Id == "torso") continue;
+            if (part.Destroyed || part.Id == SlotIds.Torso) continue;
             foreach (var vol in part.Volumes)
             {
                 if (!poseInv.TryGetValue(vol.Bone, out var inv))
@@ -1297,7 +1297,7 @@ public sealed class RiderParts
         Dbg.Print($"BRK DMG {_riderId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
-        if (partId == PartIds.LegL || partId == "leg_R" || partId == "head")
+        if (partId == PartIds.LegL || partId == PartIds.LegR || partId == PartIds.Head)
         {
             // Owner's rule: legs NEVER fall off. A destroyed leg stays
             // attached - darkened and deformed - and the rider limps.

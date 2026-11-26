@@ -3027,7 +3027,7 @@ public partial class Titans
         var parts = target == _player ? _partsPlayer : _partsEnemy;
         var aim = parts.PartAimPoint(partId);
         Vector3 from;
-        if (partId == "head")
+        if (partId == PartIds.Head)
         {
             var fwd = RiderWalker.HeadingVec(target.TorsoYawWorld);
             from = aim + Vector3.Up * 5f + fwd * 7f;
