@@ -9,6 +9,10 @@ using Godot;
 // mouth, towers and stacked platforms at the citadel.
 public partial class Titans
 {
+    // Bridge pillar cross-section (the deck pillars are
+    // square posts; owner, 2026-11-25: named constant).
+    private const float BridgePillarWidth = 3f;
+
     private void BuildAscentWorld()
     {
         // ---- Villages: a ring of buildings around each site's
@@ -132,7 +136,7 @@ public partial class Titans
             {
                 var pillar = new MeshInstance3D
                 {
-                    Mesh = new BoxMesh { Size = new Vector3(3.2f, 8f, 3.2f) },
+                    Mesh = new BoxMesh { Size = new Vector3(BridgePillarWidth, 8f, BridgePillarWidth) },
                     MaterialOverride = DeckMat(),
                     Position = new Vector3(cx, top - 4.8f, rz + pz)
                 };

@@ -49,13 +49,20 @@ public partial class Titans
 
     private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? SlotIds.ArmR);
 
+    // Beam glow pass: the soft halo beam is this many times
+    // wider than the core beam (owner, 2026-11-25: named
+    // constants for the bare values).
+    private const float BeamGlowWidthScale = 3f;
+    // Rocket-splash impact light intensity.
+    private const float SplashLightIntensity = 3f;
+
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
         _beamsSpawned++;
         var beam = WeaponFx.MakeBeam(a, b, col, width);
         AddChild(beam);
         _fx.Add((beam, life, 0));
-        var glow = WeaponFx.MakeBeam(a, b, new Color(col.R, col.G, col.B, 0.32f), width * 3.2f);
+        var glow = WeaponFx.MakeBeam(a, b, new Color(col.R, col.G, col.B, 0.32f), width * BeamGlowWidthScale);
         AddChild(glow);
         _fx.Add((glow, life, 0));
     }
@@ -508,7 +515,7 @@ public partial class Titans
         {
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
             SpawnFlash(hit.Point, new Color(1f, 0.62f, 0.25f), 1.7f, 0.3f);
-            SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), 3.2f, 14f, 0.5f);
+            SpawnImpactLight(hit.Point, new Color(1f, 0.55f, 0.2f), SplashLightIntensity, 14f, 0.5f);
             SpawnBurst(hit.Point, FireParticleMat, 54, 1.15f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.16f, 0.8f, 1.7f);
             ExplodeSplash(hit, p);
             if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);

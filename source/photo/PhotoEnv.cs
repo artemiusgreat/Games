@@ -16,6 +16,11 @@ public static class PhotoEnv
     private static readonly Dictionary<string, Texture2D> _tex = new();
     private static readonly Dictionary<string, PackedScene> _scenes = new();
 
+    // The ground apron plane sits this far below the origin,
+    // under every heightfield, so its edge never z-fights the
+    // terrain it extends.
+    private const float ApronDrop = 3f;
+
     private static Texture2D Tex(string set, string kind)
     {
         string key = set + "/" + kind;
@@ -648,7 +653,7 @@ void fragment() {
         {
             Mesh = new PlaneMesh { Size = new Vector2(1700f * bs, 1700f * bs) },
             MaterialOverride = apronMat,
-            Position = new Vector3(0f, -3.2f, 0f),
+            Position = new Vector3(0f, -ApronDrop, 0f),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         parent.AddChild(apron);

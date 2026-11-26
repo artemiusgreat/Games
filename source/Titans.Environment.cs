@@ -271,6 +271,12 @@ public partial class Titans
         };
     }
 
+    // World-build sizes and event light intensities (owner,
+    // 2026-11-25: named constants for the bare values).
+    private const float TrunkHeight = 3f;
+    private const float LadderUprightHeight = 3f;
+    private const float CollapseLightIntensity = 3f;
+
     private void AddTreeV(Vector3 pos, int variety, float scale, float tint)
     {
         pos.Y = Main.HeightAt(pos.X, pos.Z);
@@ -298,7 +304,7 @@ public partial class Titans
         else
         {
         // Tapered trunk, common to all varieties.
-        float trunkH = variety == 1 ? 3.2f : 2.8f;
+        float trunkH = TrunkHeight;
         var trunk = new MeshInstance3D
         {
             Mesh = new CylinderMesh { TopRadius = 0.16f, BottomRadius = 0.32f, Height = trunkH, RadialSegments = 8 },
@@ -1002,8 +1008,8 @@ public partial class Titans
                 if (first)
                 {
                     // The drop ladder to the ground.
-                    AddBox(verts, norms, metalI, new Vector3(px - 0.35f, g + 1.6f, fd / 2f + 0.5f), new Vector3(0.05f, 3.2f, 0.05f), I);
-                    AddBox(verts, norms, metalI, new Vector3(px + 0.35f, g + 1.6f, fd / 2f + 0.5f), new Vector3(0.05f, 3.2f, 0.05f), I);
+                    AddBox(verts, norms, metalI, new Vector3(px - 0.35f, g + LadderUprightHeight / 2f, fd / 2f + 0.5f), new Vector3(0.05f, LadderUprightHeight, 0.05f), I);
+                    AddBox(verts, norms, metalI, new Vector3(px + 0.35f, g + LadderUprightHeight / 2f, fd / 2f + 0.5f), new Vector3(0.05f, LadderUprightHeight, 0.05f), I);
                     for (int r2 = 0; r2 < 4; r2++)
                         AddBox(verts, norms, metalI, new Vector3(px, g + 0.5f + r2 * 0.75f, fd / 2f + 0.5f), new Vector3(0.7f, 0.05f, 0.05f), I);
                 }
@@ -1849,7 +1855,7 @@ public partial class Titans
         SpawnExplosionFx(mid);
         SpawnFlash(mid, new Color(1f, 0.8f, 0.5f), 2.6f, 0.5f);
         SpawnFlash(d.Center + Vector3.Up * 1.5f, new Color(0.75f, 0.72f, 0.66f), 1.9f, 0.35f);
-        SpawnImpactLight(mid, new Color(1f, 0.6f, 0.25f), 3.2f, 16f, 0.8f);
+        SpawnImpactLight(mid, new Color(1f, 0.6f, 0.25f), CollapseLightIntensity, 16f, 0.8f);
         // Round 21 (owner, supersedes round 20's no-blocks rule):
         // the building explodes into PIECES (its own facade
         // material), the pieces settle, then each dissolves into

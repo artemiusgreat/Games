@@ -409,6 +409,10 @@ public partial class Titans
     // (check), 3 target (reticle).
     private sealed partial class IconMark : Control
     {
+        // Glyph metrics (owner, 2026-11-25: named constants).
+        private const float GlyphLineSpacing = 3f; // the weapons glyph's three lines
+        private const float CheckTipRise = 3f;     // the status check's rising tip
+
         public int Kind;
         public Color Accent = new(0.30f, 0.80f, 0.95f);
 
@@ -429,7 +433,7 @@ public partial class Titans
                 case 0: // weapons: three plain lines
                     for (int i = 0; i < 3; i++)
                     {
-                        float y = c.Y - 3.2f + i * 3.2f;
+                        float y = c.Y + (i - 1) * GlyphLineSpacing;
                         DrawLine(new Vector2(c.X - 4.2f, y), new Vector2(c.X + 4.2f, y), col, 1.7f, true);
                     }
                     break;
@@ -441,7 +445,7 @@ public partial class Titans
                     break;
                 case 2: // status: a check (the shield is retired)
                     DrawLine(c + new Vector2(-4f, 0.2f), c + new Vector2(-1.3f, 3f), col, 1.9f, true);
-                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(4.2f, -3.2f), col, 1.9f, true);
+                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(4.2f, -CheckTipRise), col, 1.9f, true);
                     break;
                 default: // target: inner ring, dot, four ticks
                     DrawArc(c, 2.8f, 0, Mathf.Tau, 20, col, 1.6f, true);

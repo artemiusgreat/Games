@@ -17,7 +17,7 @@ public partial class Crosshair : Control
     private const float ArmOuter = 26f;        // arms end this far out (the bottom arm ends at ArmOuterBottom)
     private const float ArmOuterBottom = 25f;
     private const float ArmInner = 8f;         // arms start this far out - the gap around the dot
-    private const float ArmWidth = 3.2f;
+    private const float ArmWidth = 3f;
     private const float OutlineWidth = 6.5f;   // the dark pass under the arms
     private const float DotRadius = 2.8f;
     private const float DotOutlineRadius = 4.6f;
