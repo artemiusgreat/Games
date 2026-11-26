@@ -57,6 +57,17 @@ public sealed class RiderSpec
 
 public static class RiderSpecs
 {
+    // Acceleration tiers for the table below (owner,
+    // 2026-11-25: no bare numbers - every Accel in the specs
+    // is one of these named constants of this class. The two
+    // 3.2 entries round to AccelStandard per the rounding
+    // rule.)
+    private const float AccelLow = 2.4f;
+    private const float AccelStandard = 3f;
+    private const float AccelBrisk = 3.4f;
+    private const float AccelFast = 4f;
+    private const float AccelNimble = 4.2f;
+
     // Weapon capacity rule (owner, 2026-10-31, MW4 RiderLab
     // model): the chassis tonnage IS the weapon budget - the
     // slot caps sum to exactly the tonnage (75t rider -> 75t of
@@ -67,7 +78,7 @@ public static class RiderSpecs
     {
         Id = "enyo", Name = "ENYO", Tonnage = 75f, House = "Shadows", JumpCapable = true,
         ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
-        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 50f / 9f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelNimble, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         // Three types on every rider (owner, 2026-11-12):
         // Energy, Cannons, Rockets. Enyo's cannons ride a
@@ -105,7 +116,7 @@ public static class RiderSpecs
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, House = "Ravens", JumpCapable = false,
         ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
-        Height = 14f, Radius = 1.90f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = 2.4f, BaseSpeed = 50f / 9f,
+        Height = 14f, Radius = 1.90f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = AccelLow, BaseSpeed = 50f / 9f,
         // Radius 1.90 for the Hector-Front sculpt (2026-11-15):
         // the model is AABB-centred on its own axis and the
         // skull's face sits 2.03 from it; 1.90 lets the face
@@ -146,7 +157,7 @@ public static class RiderSpecs
     {
         Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, House = "Hounds", JumpCapable = true,
         ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
-        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 3.2f, BaseSpeed = 50f / 9f,
+        Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -167,7 +178,7 @@ public static class RiderSpecs
     {
         Id = "medea", Name = "MEDEA", Tonnage = 85f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 290f,
-        Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
+        Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -191,7 +202,7 @@ public static class RiderSpecs
     {
         Id = "demeter", Name = "DEMETER", Tonnage = 100f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/demeter.fbx", PartsId = "demeter", MaxHp = 340f,
-        Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
+        Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -211,7 +222,7 @@ public static class RiderSpecs
     {
         Id = "theseus", Name = "THESEUS", Tonnage = 95f, House = "Hounds", JumpCapable = false,
         ModelPath = "res://assets/theseus.fbx", PartsId = "theseus", MaxHp = 320f,
-        Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
+        Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -240,7 +251,7 @@ public static class RiderSpecs
     {
         Id = "hermes", Name = "HERMES", Tonnage = 75f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/hermes.fbx", PartsId = "hermes", MaxHp = 260f,
-        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 50f / 9f,
+        Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelNimble, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -274,7 +285,7 @@ public static class RiderSpecs
     {
         Id = "apollo", Name = "APOLLO", Tonnage = 70f, House = "Shadows", JumpCapable = true,
         ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
-        Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.0f, BaseSpeed = 50f / 9f,
+        Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelFast, BaseSpeed = 50f / 9f,
         FlipKneePole = false, SagittalKneePole = true,
         Slots = new[]
         {
@@ -298,7 +309,7 @@ public static class RiderSpecs
     {
         Id = "hades", Name = "HADES", Tonnage = 75f, House = "Dragons", JumpCapable = false,
         ModelPath = "res://assets/hades.fbx", PartsId = "hades", MaxHp = 265f,
-        Height = 13.5f, Radius = 2.0f, StepTime = 0.52f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.4f, BaseSpeed = 50f / 9f,
+        Height = 13.5f, Radius = 2.0f, StepTime = 0.52f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelBrisk, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -318,7 +329,7 @@ public static class RiderSpecs
     {
         Id = "ares", Name = "ARES", Tonnage = 85f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/ares.fbx", PartsId = "ares", MaxHp = 295f,
-        Height = 13.0f, Radius = 2.3f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.2f, BaseSpeed = 50f / 9f,
+        Height = 13.0f, Radius = 2.3f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {
@@ -343,7 +354,7 @@ public static class RiderSpecs
     {
         Id = "amadeus", Name = "AMADEUS", Tonnage = 90f, House = "Scorpions", JumpCapable = false,
         ModelPath = "res://assets/amadeus.fbx", PartsId = "amadeus", MaxHp = 310f,
-        Height = 13.5f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = 3.0f, BaseSpeed = 50f / 9f,
+        Height = 13.5f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
         {

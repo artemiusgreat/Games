@@ -8,6 +8,13 @@ public partial class Titans
 {
     // ---------- test choreography ----------
 
+    // Staging values shared by the probes (owner, 2026-11-25:
+    // named constants, rounded per the rounding rule): the
+    // speed staged walkers drive at, and the limp phase's
+    // measurement window in seconds.
+    private const float StagingDriveSpeed = 3f;
+    private const float LimpMeasureSeconds = 3f;
+
     // ---------- stand separation test (--stand-test) ----------
     // The owner's leak (2026-11-15): cycle riders in the open
     // lab (each cycle re-enters OpenLab), then deploy and
@@ -297,13 +304,13 @@ public partial class Titans
                 else if (_pLimpStep == 1)
                 {
                     ApplyPlayerInput(delta, true, false, false, false, false);
-                    if (_phaseT - _pLimpT0 > 3.2f)
+                    if (_phaseT - _pLimpT0 > LimpMeasureSeconds)
                     {
                         float fwd = _pLimpStart.Z - _player.RootPos.Z;
                         float spdNow = _player.Speed;
                         if (fwd < 3.5f || spdNow < 1.5f || spdNow > 3.1f)
                         { GD.PrintErr($"DUEL FAIL: limping player barely moved fwd={fwd:F2} spd={spdNow:F2}"); GetTree().Quit(1); break; }
-                        GD.Print($"DUEL PLAYERLIMP FWD fwd={fwd:F2} over 3.2s at spd={spdNow:F2} (limp 0.55x)");
+                        GD.Print($"DUEL PLAYERLIMP FWD fwd={fwd:F2} over {LimpMeasureSeconds:F0}s at spd={spdNow:F2} (limp 0.55x)");
                         _pLimpStart = _player.RootPos;
                         _pLimpT0 = _phaseT;
                         _pLimpStep = 2;
@@ -3976,7 +3983,7 @@ public partial class Titans
                 GD.Print($"TERRACE P1 pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
             var target = TestRampFoot + TestRampDir * (TestRampRun + 12f);
             var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
-            _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
+            _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), StagingDriveSpeed);
             if (_player.SoleLevel >= TestRampHi - 1f)
             {
                 GD.Print($"TERRACE RAMP PASS sole={_player.SoleLevel:F1} (target {TestRampHi:F0})");
@@ -4259,7 +4266,7 @@ public partial class Titans
     private float _rsMinPerp; private Vector2 _rsPerp, _rsCentre;
     private void UpdateRampSideTest(float dt) // phase 13: drive at a ramp's side - the wedge must be solid (owner, 2026-11-11)
     {
-        _player.SetDrive(RiderWalker.YawOf(new Vector3(-_rsPerp.X, 0f, -_rsPerp.Y)), 3.2f);
+        _player.SetDrive(RiderWalker.YawOf(new Vector3(-_rsPerp.X, 0f, -_rsPerp.Y)), StagingDriveSpeed);
         var rel = new Vector2(_player.RootPos.X, _player.RootPos.Z) - _rsCentre;
         float perpDist = Mathf.Abs(rel.Dot(_rsPerp));
         _rsMinPerp = Mathf.Min(_rsMinPerp, perpDist);
@@ -4377,7 +4384,7 @@ public partial class Titans
     private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block - root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
     {
         if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
-        _player.SetDrive(RiderWalker.YawOf(Vector3.Right), 3.2f);
+        _player.SetDrive(RiderWalker.YawOf(Vector3.Right), StagingDriveSpeed);
         _bwMaxX = Mathf.Max(_bwMaxX, _player.RootPos.X);
         // Foot clamp (owner round 7, option 1): a PLANTED
         // foot's centre must never sit inside a blocking
@@ -4456,7 +4463,7 @@ public partial class Titans
         var perp = new Vector2(-TestRampDir.Y, TestRampDir.X);
         var target = TestRampFoot + TestRampDir * (TestRampRun + 10f) + perp * 5f;
         var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
-        _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), 3.2f);
+        _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), StagingDriveSpeed);
         float exp = Main.RampHeightAt(TestRampRect, _player.RootPos.X, _player.RootPos.Z, out bool inside);
         if (inside) _dwMin = Mathf.Max(_dwMin, exp - _player.SoleLevel);
         if (_player.SoleLevel >= TestRampHi - 1f)
