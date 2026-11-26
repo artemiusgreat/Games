@@ -30,7 +30,7 @@ public partial class RiderLab : Control
     private Label _jetsLine;
     private Label _speed;
     private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
-    private string _selectedWeapon; // click-to-assign path
+    private WeaponId? _selectedWeapon; // click-to-assign path
     // Live slot anchors (owner): viewport position of each
     // hardpoint's part on the rider, projected from the 3D view
     // every frame - the paperdoll dots track the real parts at
@@ -54,11 +54,11 @@ public partial class RiderLab : Control
     // handle and the click target - the row's text is inert.
     private sealed partial class DragTile : Control
     {
-        public string WeaponId;
+        public WeaponId Weapon;
         public RiderLab Lab;
         public override Variant _GetDragData(Vector2 atPosition)
         {
-            var w = WeaponCatalog.ById(WeaponId);
+            var w = WeaponCatalog.ById(Weapon);
             var preview = new PanelContainer();
             var sb = new StyleBoxFlat { BgColor = new Color(0.1f, 0.13f, 0.17f, 0.95f), ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 6, ContentMarginBottom = 6 };
             sb.SetCornerRadiusAll(4);
@@ -68,16 +68,16 @@ public partial class RiderLab : Control
             pl.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
             preview.AddChild(pl);
             SetDragPreview(preview);
-            return WeaponId;
+            return Weapon.ToString();
         }
         public override void _GuiInput(InputEvent e)
         {
             if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-            { UiSfx.Play(); Lab?.SelectWeapon(WeaponId); }
+            { UiSfx.Play(); Lab?.SelectWeapon(Weapon); }
         }
     }
 
-    public void SelectWeapon(string id)
+    public void SelectWeapon(WeaponId id)
     {
         _selectedWeapon = id;
         var w = WeaponCatalog.ById(id);
@@ -87,19 +87,19 @@ public partial class RiderLab : Control
     // Short tile text per weapon.
     public static string Abbrev(WeaponDef w) => w.Id switch
     {
-        WeaponIds.SmallLaser => "SL",
-        WeaponIds.MediumLaser => "ML",
-        WeaponIds.LargeLaser => "LL",
-        WeaponIds.Ppc => "PPC",
-        WeaponIds.MachineGun => "MG",
-        WeaponIds.Autocannon => "AC",
-        WeaponIds.HeavyCannon => "HC",
-        WeaponIds.Srm => "SRM",
-        WeaponIds.Lrm => "LRM",
+        WeaponId.SmallLaser => "SL",
+        WeaponId.MediumLaser => "ML",
+        WeaponId.LargeLaser => "LL",
+        WeaponId.Ppc => "PPC",
+        WeaponId.MachineGun => "MG",
+        WeaponId.Autocannon => "AC",
+        WeaponId.HeavyCannon => "HC",
+        WeaponId.Srm => "SRM",
+        WeaponId.Lrm => "LRM",
         _ => w.Name.Length >= 2 ? w.Name.Substring(0, 2).ToUpperInvariant() : w.Name,
     };
 
-    private static readonly System.Collections.Generic.Dictionary<string, ImageTexture> _icons = new();
+    private static readonly System.Collections.Generic.Dictionary<WeaponId, ImageTexture> _icons = new();
 
     // Procedural 48x48 weapon icons: a type silhouette (bolt /
     // shell / rocket) in an accent color on a dark tile.
@@ -547,17 +547,22 @@ public partial class RiderLab : Control
         public ScrollContainer Scroll;
         public Control Tile;
         public float NeedW; // content width the fitted rows need at full length (set by Refresh; the inner scroll hides it from GetCombinedMinimumSize)
+        // The drag payload is the weapon id's enum name (a
+        // Godot Variant string) - parsed back at this boundary,
+        // the one place the string form survives.
+        private static WeaponDef DropWeapon(Variant data) =>
+            System.Enum.TryParse<WeaponId>(data.AsString(), out var id) ? WeaponCatalog.ById(id) : null;
+
         public override bool _CanDropData(Vector2 atPosition, Variant data)
         {
-            var wid = data.AsString();
-            var w = WeaponCatalog.ById(wid);
+            var w = DropWeapon(data);
             var err = Lab.Loadout.Check(Lab.Spec, SlotId, w);
             Lab.SetHint(err ?? $"{w.Name} fits the {Lab.Spec.Slot(SlotId).Display}.");
             return err == null;
         }
         public override void _DropData(Vector2 atPosition, Variant data)
         {
-            var w = WeaponCatalog.ById(data.AsString());
+            var w = DropWeapon(data);
             var err = Lab.Loadout.TryAssign(Lab.Spec, SlotId, w);
             Lab.SetHint(err ?? $"{w.Name} installed in the {Lab.Spec.Slot(SlotId).Display}.");
             Lab.Refresh();
@@ -707,7 +712,7 @@ public partial class RiderLab : Control
             // carry no boxes and no separators (owner, 2026-11-14).
             var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
             hb.AddThemeConstantOverride("separation", 12); // clear gap between tile and name (owner); rows compacted (owner, 2026-11-23)
-            var drag = new DragTile { WeaponId = w.Id, Lab = this };
+            var drag = new DragTile { Weapon = w.Id, Lab = this };
             drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
             drag.MouseExited += () => drag.Modulate = Colors.White;
             var tileCtl = TileVisual(w, 34, drag);
@@ -830,7 +835,7 @@ public partial class RiderLab : Control
                 if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left && _selectedWeapon != null)
                 {
                     UiSfx.Play();
-                    var w = WeaponCatalog.ById(_selectedWeapon);
+                    var w = WeaponCatalog.ById(_selectedWeapon.Value);
                     var err = Loadout.TryAssign(Spec, capturedSlot.Id, w);
                     SetHint(err ?? $"{w.Name} installed in the {capturedSlot.Display}.");
                     Refresh();
@@ -843,7 +848,7 @@ public partial class RiderLab : Control
                     // last one fitted (right-click empties the slot).
                     UiSfx.Play();
                     if (Loadout.RemoveLast(capturedSlot.Id, out var rid))
-                        SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {capturedSlot.Display}.");
+                        SetHint($"{WeaponCatalog.ById(rid.Value)?.Name} removed from the {capturedSlot.Display}.");
                     Refresh();
                 }
                 else if (e is InputEventMouseButton mb2 && mb2.Pressed && mb2.ButtonIndex == MouseButton.Right)
@@ -1193,7 +1198,7 @@ public partial class RiderLab : Control
                         if (grpBtn.GetGlobalRect().HasPoint(mb.GlobalPosition)) return; // the G-button's click is not a removal
                         UiSfx.Play();
                         if (Loadout.RemoveAt(sid, idx, out var rid))
-                            SetHint($"{WeaponCatalog.ById(rid)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
+                            SetHint($"{WeaponCatalog.ById(rid.Value)?.Name} removed from the {Spec.Slot(sid)?.Display}.");
                         Refresh();
                     }
                 };

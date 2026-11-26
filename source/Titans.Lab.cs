@@ -361,8 +361,8 @@ public partial class Titans
         _foe.PrevRoot = _foe.Walker.RootPos;
         string eb = SlotOf(spec, WeaponSlotType.Ballistic);
         _foe.BallisticSlot = eb;
-        _foe.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe.Loadout.WeaponIn(eb));
-        GD.Print($"FFA foe built: {spec.Id} at pad 2, ballistic={_foe.DefBallistic?.Id ?? "none"}");
+        _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb);
+        GD.Print($"FFA foe built: {spec.Id} at pad 2, ballistic={_foe.DefBallistic?.Id}");
     }
 
     private void RebuildFoe()
@@ -383,7 +383,7 @@ public partial class Titans
         _foe.PrevRoot = _foe.Walker.RootPos;
         string eb = SlotOf(spec, WeaponSlotType.Ballistic);
         _foe.BallisticSlot = eb;
-        _foe.DefBallistic = eb == null ? null : WeaponCatalog.ById(_foe.Loadout.WeaponIn(eb));
+        _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb);
         RefreshHitCaps();
     }
 
@@ -521,8 +521,8 @@ public partial class Titans
         _defPodR = Slowest(_podGunsR);
         string eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
         _enemyBallisticSlot = eb;
-        _defEnemyBallistic = eb == null ? null : WeaponCatalog.ById(_enemyLoadout.WeaponIn(eb));
-        GD.Print($"LAB loadout energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"} total={_loadout.TotalWeaponWeight:F0}t");
+        _defEnemyBallistic = eb == null ? null : _enemyLoadout.FirstDef(eb);
+        GD.Print($"LAB loadout energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id} total={_loadout.TotalWeaponWeight:F0}t");
     }
 
     private static WeaponDef Slowest(System.Collections.Generic.List<(string Slot, WeaponDef Def)> guns)

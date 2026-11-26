@@ -136,19 +136,17 @@ public static class PartIds
     public const string LegR = "leg_R";
 }
 
-/// <summary>Weapon definition ids (the WeaponDef catalog keys).</summary>
-public static class WeaponIds
-{
-    public const string SmallLaser = "small_laser";
-    public const string MediumLaser = "medium_laser";
-    public const string LargeLaser = "large_laser";
-    public const string Ppc = "ppc";
-    public const string MachineGun = "machine_gun";
-    public const string Autocannon = "autocannon";
-    public const string HeavyCannon = "heavy_cannon";
-    public const string Srm = "srm";
-    public const string Lrm = "lrm";
-}
+/// <summary>Weapon definition ids (owner, 2026-11-25: an enum,
+/// not strings - the WeaponDef catalog keys). No string form is
+/// kept: nothing outside the process names a weapon (unlike
+/// bone names, which must match the FBX skeletons).</summary>
+public enum WeaponId { SmallLaser, MediumLaser, LargeLaser, Ppc, MachineGun, Autocannon, HeavyCannon, Srm, Lrm }
+
+/// <summary>Which fire path a denied shot belonged to (the
+/// HUD cooldown-bar flash vocabulary of DenyWeapon). Laser is
+/// the energy group as a whole, so this is its own enum, not
+/// a WeaponId.</summary>
+public enum DenyKind { None, Laser, Autocannon, Lrm }
 
 /// <summary>Hit zones on a rider capsule (owner, 2026-11-25:
 /// an enum, not strings - HitModel classifies, splash damage

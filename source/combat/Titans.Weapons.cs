@@ -174,7 +174,7 @@ public partial class Titans
     {
         if (_playerDead) return;
         var fired = _gunsEnergy.FindAll(g => _partsPlayer.Alive(g.Slot));
-        if (fired.Count == 0) { DenyWeapon(HitKinds.Laser); return; }
+        if (fired.Count == 0) { DenyWeapon(DenyKind.Laser); return; }
         if (_cdLaser > 0f) return;
         _cdLaser = 0f; foreach (var g in fired) _cdLaser = Mathf.Max(_cdLaser, g.Def.Cooldown);
         FireLaserVolley(aimPoint, fired);
@@ -264,7 +264,7 @@ public partial class Titans
     {
         if (_playerDead) return;
         var fired = _gunsBallistic.FindAll(g => _partsPlayer.Alive(g.Slot));
-        if (fired.Count == 0) { DenyWeapon(WeaponIds.Autocannon); return; }
+        if (fired.Count == 0) { DenyWeapon(DenyKind.Autocannon); return; }
         if (_cdAc > 0f) return;
         _cdAc = 0f; foreach (var g in fired) _cdAc = Mathf.Max(_cdAc, g.Def.Cooldown);
         FireCannonVolley(aimPoint, fired);
@@ -332,7 +332,7 @@ public partial class Titans
         if (_playerDead) return;
         bool podL = _podGunsL.Count > 0 && _partsPlayer.Alive(_podGunsL[0].Slot);
         bool podR = _podGunsR.Count > 0 && _partsPlayer.Alive(_podGunsR[0].Slot);
-        if (!podL && !podR) { DenyWeapon(WeaponIds.Lrm); return; }
+        if (!podL && !podR) { DenyWeapon(DenyKind.Lrm); return; }
         if (_cdLrm > 0f) return;
         _cdLrm = 0f;
         foreach (var g in _podGunsL) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
@@ -537,7 +537,7 @@ public partial class Titans
         // re-solve has an arc to steer. If the target dies
         // mid-flight the tracking stops and the salvo
         // finishes at his last position.
-        if (lockTarget != null && def.Id == WeaponIds.Lrm)
+        if (lockTarget != null && def.Id == WeaponId.Lrm)
         {
             if (!guided)
             {

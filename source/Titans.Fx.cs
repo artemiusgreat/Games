@@ -290,13 +290,13 @@ public partial class Titans
 
     // A fire attempt on a weapon whose mounting part is destroyed:
     // logged and flashed on its cooldown bar (HUD step), no cooldown spent.
-    private void DenyWeapon(string weapon)
+    private void DenyWeapon(DenyKind kind)
     {
-        _lastDenied = weapon;
-        Dbg.Print($"WPN DENIED {weapon} (mounting part destroyed)");
-        if (weapon == HitKinds.Laser) _denyLaserT = 0.5f;
-        else if (weapon == WeaponIds.Autocannon) _denyAcT = 0.5f;
-        else if (weapon == WeaponIds.Lrm) _denyLrmT = 0.5f;
+        _lastDenied = kind;
+        Dbg.Print($"WPN DENIED {kind} (mounting part destroyed)");
+        if (kind == DenyKind.Laser) _denyLaserT = 0.5f;
+        else if (kind == DenyKind.Autocannon) _denyAcT = 0.5f;
+        else if (kind == DenyKind.Lrm) _denyLrmT = 0.5f;
     }
 
     // Creates (or recreates, after a rider-selection change) the

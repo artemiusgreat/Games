@@ -259,7 +259,7 @@ public partial class Titans
         a.PrevRoot = a.Walker.RootPos;
         string eb = SlotOf(spec, WeaponSlotType.Ballistic);
         a.BallisticSlot = eb;
-        a.DefBallistic = eb == null ? null : WeaponCatalog.ById(a.Loadout.WeaponIn(eb));
+        a.DefBallistic = eb == null ? null : a.Loadout.FirstDef(eb);
         return a;
     }
 
@@ -288,7 +288,7 @@ public partial class Titans
             var a = MakeAlly(member, RoleForSlot(slot), slot, 0, pos, SpawnYaw(pad), $"Ally{slot}");
             _allies.Add(a);
             k++;
-            Dbg.Print($"TEAM ally built: slot {slot} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
+            Dbg.Print($"TEAM ally built: slot {slot} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id}");
         }
         if (_allies.Count > 0) Dbg.Print($"TEAM {_allies.Count + 1} riders take the field; leader slot {_leaderSlot}");
     }
@@ -399,7 +399,7 @@ public partial class Titans
                 float yaw = AnchorYaw(anchor);
                 var a = MakeAlly(member, $"{Roles.AllyPrefix}{t * 10 + s}", s, t, pos, yaw, $"Npc{t}_{s}");
                 _allies.Add(a);
-                Dbg.Print($"BRACKET npc built: team {t + 1} slot {s} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id ?? "none"}");
+                Dbg.Print($"BRACKET npc built: team {t + 1} slot {s} {a.Spec.Id} role={a.Role} ballistic={a.DefBallistic?.Id}");
             }
         }
     }
@@ -426,7 +426,7 @@ public partial class Titans
             DroopT = _playerDroopT,
             SpawnPos = PadPos(Main.SpawnPads[0]), SpawnYaw = SpawnYaw(Main.SpawnPads[0]),
             BallisticSlot = eb,
-            DefBallistic = eb == null ? null : WeaponCatalog.ById(_loadout.WeaponIn(eb))
+            DefBallistic = eb == null ? null : _loadout.FirstDef(eb)
         };
         // The packed rider's parts were bound to the _partsPlayer
         // FIELD in their OnBreak closure (the lab rebuild idiom);

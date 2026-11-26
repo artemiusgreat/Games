@@ -145,7 +145,7 @@ public partial class Titans
                     if (multi.TryAssign(spec, SlotIds.PodL, WeaponCatalog.Lrm) != null
                         || multi.TryAssign(spec, SlotIds.PodL, WeaponCatalog.Srm) != null)
                     { GD.PrintErr("DUEL FAIL: multi-fit pod refused (LRM 10t + SRM 4t = 14t <= 21t cap)"); GetTree().Quit(1); return; }
-                    if (!multi.RemoveLast(SlotIds.PodL, out var peeled) || peeled != WeaponIds.Srm || multi.WeaponIn(SlotIds.PodL) != WeaponIds.Lrm)
+                    if (!multi.RemoveLast(SlotIds.PodL, out var peeled) || peeled != WeaponId.Srm || multi.WeaponIn(SlotIds.PodL) != WeaponId.Lrm)
                     { GD.PrintErr("DUEL FAIL: multi-fit peel wrong"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST MULTIFIT PASS hardpoints fit multiple weapons up to their tonnage cap; peel removes the last one");
                     // Distribution (owner): heavier riders carry MORE
@@ -160,7 +160,7 @@ public partial class Titans
                     SetRiderSelection("hector", "enyo");
                     if (_playerSpec.Id != "hector" || _enemySpec.Id != "enyo"
                         || _hpPlayer != 340f || _hpEnemy != 260f
-                        || _defBallistic?.Id != WeaponIds.HeavyCannon
+                        || _defBallistic?.Id != WeaponId.HeavyCannon
                         || !_partsEnemy.Alive(SlotIds.PodL))
                     { GD.PrintErr($"DUEL FAIL: rider selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
                     _selStage = 1; _selHoldT = 0f;
@@ -181,7 +181,7 @@ public partial class Titans
                     {
                         SetRiderSelection("enyo", "hector");
                         if (_playerSpec.Id != "enyo" || _enemySpec.Id != "hector"
-                            || _hpPlayer != 260f || _hpEnemy != 340f || _defEnergy?.Id != "large_laser")
+                            || _hpPlayer != 260f || _hpEnemy != 340f || _defEnergy?.Id != WeaponId.LargeLaser)
                         { GD.PrintErr("DUEL FAIL: rider selection restore wrong"); GetTree().Quit(1); return; }
                         _selStage = 2;
                         GD.Print("LABTEST SELECTION PASS chassis swap rebuilds walkers, parts, pools and defs; Hector player survived 1.2s of live HUD frames; defaults restored");
@@ -3132,9 +3132,9 @@ public partial class Titans
                     if (_partsPlayer.Alive(SlotIds.PodR)) BFail("pod_R alive after 52 damage");
                     BStep(2);
                     _bCount1 = _rocketsLaunched;
-                    _lastDenied = "";
+                    _lastDenied = DenyKind.None;
                     FireLrmSalvo(EnemyAim());
-                    if (_lastDenied != WeaponIds.Lrm) BFail("LRM not denied with both pods gone");
+                    if (_lastDenied != DenyKind.Lrm) BFail("LRM not denied with both pods gone");
                 }
                 else if (_bStep == 2 && BStepT > 0.8)
                 {
@@ -3214,9 +3214,9 @@ public partial class Titans
                     if (_partsPlayer.DebrisOf(SlotIds.ArmL) == null) BFail("arm_L debris missing after gated break");
                     GD.Print("BRKTEST ARMGATE-OPEN PASS arm breaks once the pool is critical");
                     _bCount1 = _beamsSpawned;
-                    _lastDenied = "";
+                    _lastDenied = DenyKind.None;
                     FireLaser(EnemyAim());
-                    if (_lastDenied != "laser") BFail("laser not denied after arm_L loss");
+                    if (_lastDenied != DenyKind.Laser) BFail("laser not denied after arm_L loss");
                     if (_beamsSpawned != _bCount1) BFail("denied laser still spawned a beam");
                     GD.Print("BRKTEST LASERDENIED PASS arm_L lost -> laser denied, 0 beams");
                     QueueCapture("res://proof/break_hud_destroyed.png", "bhud", "wpnHud");

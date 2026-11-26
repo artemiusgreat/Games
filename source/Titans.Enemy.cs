@@ -91,7 +91,7 @@ public partial class Titans
             string s = SlotOf(spec, WeaponSlotType.Ballistic, n);
             if (s == null) break;
             var id = load.WeaponIn(s);
-            var w = id == null ? null : WeaponCatalog.ById(id);
+            var w = id == null ? null : WeaponCatalog.ById(id.Value);
             if (w != null && parts.Alive(s)) { slot = s; def = w; return true; }
         }
         return false;

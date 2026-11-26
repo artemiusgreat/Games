@@ -385,86 +385,86 @@ public static class RiderSpecs
     // order. LoadoutState.DefaultFor builds any rider's factory
     // loadout from its row; there are no per-rider builder
     // methods and no id dispatch in the engine.
-    public static readonly System.Collections.Generic.Dictionary<string, (string Slot, string[] Weapons)[]> DefaultFits = new()
+    public static readonly System.Collections.Generic.Dictionary<string, (string Slot, WeaponId[] Weapons)[]> DefaultFits = new()
     {
         ["enyo"] = new[]
         {
-            ("arm_L", new[] { "large_laser", "large_laser" }),                      // 10/10t
-            ("arm_R", new[] { "large_laser", "large_laser" }),                      // 10/10t
-            ("torso", new[] { "autocannon" }),                                      // 12/13t
-            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
-            ("pod_R", new[] { "lrm", "lrm" }),                                     // 20/21t
+            ("arm_L", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser }),                      // 10/10t
+            ("arm_R", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser }),                      // 10/10t
+            ("torso", new[] { WeaponId.Autocannon }),                                      // 12/13t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
+            ("pod_R", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
         },
         ["hector"] = new[]
         {
-            ("arm_L", new[] { "ppc", "large_laser", "medium_laser" }),             // 17/18t
-            ("gun", new[] { "heavy_cannon", "autocannon" }),                               // 28/30t
-            ("arm_R", new[] { "large_laser", "large_laser", "medium_laser" }),     // 13/14t
-            ("torso", new[] { "ppc" }),                                            // 9/10t
-            ("pod_L", new[] { "lrm", "lrm", "srm", "srm" }),                       // 28/28t
+            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.MediumLaser }),             // 17/18t
+            ("gun", new[] { WeaponId.HeavyCannon, WeaponId.Autocannon }),                               // 28/30t
+            ("arm_R", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser }),     // 13/14t
+            ("torso", new[] { WeaponId.Ppc }),                                            // 9/10t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm, WeaponId.Srm, WeaponId.Srm }),                       // 28/28t
         },
         ["prometheus"] = new[]
         {
-            ("arm_L", new[] { "ppc", "large_laser", "large_laser", "small_laser" }), // 20/20t
-            ("arm_R", new[] { "ppc", "ppc", "medium_laser" }),                        // 21/21t
-            ("torso", new[] { "autocannon", "machine_gun" }),                         // 14/14t
-            ("pod_L", new[] { "lrm" }),                                               // 10/10t
+            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.SmallLaser }), // 20/20t
+            ("arm_R", new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.MediumLaser }),                        // 21/21t
+            ("torso", new[] { WeaponId.Autocannon, WeaponId.MachineGun }),                         // 14/14t
+            ("pod_L", new[] { WeaponId.Lrm }),                                               // 10/10t
         },
         ["medea"] = new[]
         {
-            ("torso", new[] { "autocannon", "autocannon", "machine_gun" }),       // 26/26t
-            ("arm_R", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }),                       // 24/24t
-            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),              // 15/15t
-            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/20t
+            ("torso", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun }),       // 26/26t
+            ("arm_R", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }),                       // 24/24t
+            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),              // 15/15t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/20t
         },
         ["demeter"] = new[]
         {
-            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
-            ("arm_L", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
-            ("torso", new[] { "ppc", "large_laser", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 24/24t
-            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/20t
+            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
+            ("arm_L", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
+            ("torso", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 24/24t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/20t
         },
         ["theseus"] = new[]
         {
-            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun", "machine_gun" }), // 28/28t
-            ("arm_L", new[] { "autocannon", "autocannon" }), // 24/24t
-            ("torso", new[] { "ppc", "large_laser", "medium_laser", "small_laser", "small_laser" }), // 19/19t
-            ("pod_R", new[] { "lrm", "lrm", "srm" }),                              // 24/24t
+            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
+            ("arm_L", new[] { WeaponId.Autocannon, WeaponId.Autocannon }), // 24/24t
+            ("torso", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 19/19t
+            ("pod_R", new[] { WeaponId.Lrm, WeaponId.Lrm, WeaponId.Srm }),                              // 24/24t
         },
         ["amadeus"] = new[]
         {
-            ("arm_L", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),   // 20/22t
-            ("arm_R", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),   // 20/22t
-            ("torso", new[] { "ppc", "ppc", "large_laser", "small_laser" }),     // 24/24t
-            ("pod_R", new[] { "lrm", "lrm" }),                                   // 20/22t
+            ("arm_L", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),   // 20/22t
+            ("arm_R", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),   // 20/22t
+            ("torso", new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),     // 24/24t
+            ("pod_R", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/22t
         },
         ["hades"] = new[]
         {
-            ("arm_R", new[] { "heavy_cannon", "autocannon" }),                           // 28/28t
-            ("arm_L", new[] { "ppc", "large_laser" }),                           // 14/14t
-            ("torso", new[] { "large_laser", "large_laser", "small_laser", "small_laser" }), // 12/12t
-            ("pod_L", new[] { "lrm", "lrm" }),                                   // 20/21t
+            ("arm_R", new[] { WeaponId.HeavyCannon, WeaponId.Autocannon }),                           // 28/28t
+            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser }),                           // 14/14t
+            ("torso", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 12/12t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/21t
         },
         ["ares"] = new[]
         {
-            ("arm_R", new[] { "autocannon", "autocannon" }),                     // 24/24t
-            ("arm_L", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),    // 20/20t
-            ("torso", new[] { "ppc", "ppc", "medium_laser" }),                    // 21/21t
-            ("pod_L", new[] { "lrm", "lrm" }),                                   // 20/20t
+            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon }),                     // 24/24t
+            ("arm_L", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),    // 20/20t
+            ("torso", new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.MediumLaser }),                    // 21/21t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/20t
         },
         ["apollo"] = new[]
         {
-            ("arm_R", new[] { "autocannon", "autocannon", "machine_gun" }),      // 26/26t
-            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),            // 15/16t
-            ("torso", new[] { "large_laser", "large_laser", "medium_laser" }),   // 13/13t
-            ("pod_L", new[] { "lrm", "srm" }),                                   // 14/15t
+            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun }),      // 26/26t
+            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),            // 15/16t
+            ("torso", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser }),   // 13/13t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Srm }),                                   // 14/15t
         },
         ["hermes"] = new[]
         {
-            ("arm_R", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),             // 20/24t
-            ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),              // 15/16t
-            ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
-            ("torso", new[] { "large_laser", "large_laser", "medium_laser", "small_laser" }), // 14/14t
+            ("arm_R", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),             // 20/24t
+            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),              // 15/16t
+            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
+            ("torso", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser }), // 14/14t
         },
     };
 }
@@ -478,7 +478,7 @@ public sealed class LoadoutState
     // 3-slot Hector fielded less than the 4-slot Enyo despite
     // the bigger budget - slot count beat tonnage). The tonnage is
     // the real limit now, exactly like the MW4 lab.
-    public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> Equipped = new();
+    public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<WeaponId>> Equipped = new();
 
     // Firing groups (owner): every fitted weapon belongs to a
     // group the PLAYER picks in the lab (the G-button on each
@@ -521,10 +521,13 @@ public sealed class LoadoutState
     // chassis; the duel's effective rule is spec.JumpCapable && JumpJets.
     public bool JumpJets;
 
-    public System.Collections.Generic.IReadOnlyList<string> WeaponsIn(string slotId) =>
-        Equipped.TryGetValue(slotId, out var l) ? l : System.Array.Empty<string>();
+    public System.Collections.Generic.IReadOnlyList<WeaponId> WeaponsIn(string slotId) =>
+        Equipped.TryGetValue(slotId, out var l) ? l : System.Array.Empty<WeaponId>();
 
-    public string WeaponIn(string slotId) =>
+    public WeaponDef FirstDef(string slotId) =>
+        WeaponIn(slotId) is WeaponId id ? WeaponCatalog.ById(id) : null;
+
+    public WeaponId? WeaponIn(string slotId) =>
         Equipped.TryGetValue(slotId, out var l) && l.Count > 0 ? l[0] : null;
 
     public float SlotWeight(string slotId)
@@ -560,7 +563,7 @@ public sealed class LoadoutState
         var err = Check(spec, slotId, weapon);
         if (err != null) return err;
         if (!Equipped.TryGetValue(slotId, out var l))
-            Equipped[slotId] = l = new System.Collections.Generic.List<string>();
+            Equipped[slotId] = l = new System.Collections.Generic.List<WeaponId>();
         l.Add(weapon.Id);
         if (!GroupMap.TryGetValue(slotId, out var g))
             GroupMap[slotId] = g = new System.Collections.Generic.List<int>();
@@ -569,7 +572,7 @@ public sealed class LoadoutState
     }
 
     // Removes the most recently added weapon from the hardpoint.
-    public bool RemoveLast(string slotId, out string removedId)
+    public bool RemoveLast(string slotId, out WeaponId? removedId)
     {
         removedId = null;
         if (!Equipped.TryGetValue(slotId, out var l) || l.Count == 0) return false;
@@ -581,7 +584,7 @@ public sealed class LoadoutState
     }
 
     // Removes one specific fitted weapon (the lab's list rows).
-    public bool RemoveAt(string slotId, int index, out string removedId)
+    public bool RemoveAt(string slotId, int index, out WeaponId? removedId)
     {
         removedId = null;
         if (!Equipped.TryGetValue(slotId, out var l) || index < 0 || index >= l.Count) return false;

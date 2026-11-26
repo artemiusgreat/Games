@@ -338,7 +338,7 @@ public partial class Titans : Node3D
     private float _playerDroopT, _enemyDroopT;
     // breakable consequences, transient timers
     private float _denyLaserT, _denyAcT, _denyLrmT, _hudFlickerT;
-    private string _lastDenied = "";
+    private DenyKind _lastDenied = DenyKind.None;
     private int _rocketsLaunched, _beamsSpawned;
 
     private bool _built; // staged build finished (loading fix, owner 2026-11-14)
@@ -777,7 +777,7 @@ public partial class Titans : Node3D
         _bracketDecided = false;
         _pendingLeaderPass = false;
         _denyLaserT = _denyAcT = _denyLrmT = _hudFlickerT = 0f;
-        _lastDenied = "";
+        _lastDenied = DenyKind.None;
         _cdLaser = _cdAc = _cdLrm = _cdEnemy = 0f;
         _weaponSel = 0;
         foreach (var grp in _groups)
@@ -1005,7 +1005,7 @@ public partial class Titans : Node3D
             if (!_hectorCamFired && _hectorCamT > 1.2f)
             {
                 _hectorCamFired = true;
-                GD.Print($"HECTORCAM defs energy={_defEnergy?.Id ?? "none"} ballistic={_defBallistic?.Id ?? "none"} podL={_defPodL?.Id ?? "none"} podR={_defPodR?.Id ?? "none"}");
+                GD.Print($"HECTORCAM defs energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id}");
                 FireLaser(_enemy.RootPos + Vector3.Up * 6f);
                 FireLrmSalvo(_enemy.RootPos);
             }
