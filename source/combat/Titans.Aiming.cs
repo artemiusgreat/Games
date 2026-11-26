@@ -89,7 +89,7 @@ public partial class Titans
     private Vector3 TorsoAimPoint()
     {
         var dir = AimDirWorld();
-        var from = _player.BoneWorldPos("torso") + dir * 3.2f;
+        var from = _player.BoneWorldPos("torso") + dir * (_player.CollisionRadius + AimOriginClearance);
         _aimFrom = from;
         _aimDir = dir;
         _aimParallel = false;
@@ -122,10 +122,10 @@ public partial class Titans
             return _reticlePoint;
         }
         // Fallback (round 11): the chest ray's RIDER/PROP hit within
-        // weapon reach, else the free 40u point.
-        var hit = AimRay(from, dir, 200f);
+        // ChestHitAcceptRange, else the free AimDepth point.
+        var hit = AimRay(from, dir, ChestRayRange);
         _aimTarget = hit.Hit ? hit.Target : "";
-        if (hit.Hit && hit.T <= 140f && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
+        if (hit.Hit && hit.T <= ChestHitAcceptRange && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
             return hit.Point;
         return _reticlePoint;
     }
@@ -148,6 +148,17 @@ public partial class Titans
     private string _aimTarget = "";
     private Vector3 _reticlePoint;
     private const float AimDepth = 40f;
+    // The aim origin sits this far ahead of the rider's own
+    // collision cylinder (owner, 2026-11-25: anchor-relative,
+    // not a bare magic offset - the torso bone is the rider's
+    // centre and CollisionRadius is its reference size, so the
+    // origin clears the chest on every chassis by construction).
+    private const float AimOriginClearance = 1.0f;
+    // Fallback chest ray (harness poses only; live play aims
+    // from the camera): its reach, and how near a rider/prop
+    // hit must be to count as the aim point.
+    private const float ChestRayRange = 200f;
+    private const float ChestHitAcceptRange = 140f;
     private void UpdateReticle()
     {
         // Center crosshair (round 27): the reticle is the viewport
