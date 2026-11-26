@@ -13,18 +13,20 @@ using Godot;
 // below (owner, 2026-11-25): every value that shapes the
 // scope is named once, here, instead of being hardcoded
 // inside the draw calls. The colours are static readonly -
-// built once at type load, never per draw. The corner-fan
-// shape is likewise precomputed once as unit offsets and
-// only rotated / scaled / translated into a reusable buffer
-// per draw, so _Draw allocates nothing.
+// built once at type load, never per draw. The backdrop is
+// ONE keyhole polygon (the screen rect with the reticle
+// disc cut out, traced along a slit), refilled into a
+// reusable buffer per draw, so _Draw allocates nothing -
+// and a single fill cannot seam: the earlier slabs-plus-
+// corner-fans build double-drew the backdrop along the
+// bounding square's bottom edge, which showed as a dark
+// line under the reticle (owner, 2026-11-25).
 public partial class SniperScope : Control
 {
     // Reticle geometry.
     private const float ReticleRadius = 150f;        // 300 px across, the radar plot's size
-    private const int ReticleQuadrants = 4;          // corner fans + cardinal ticks, one per quadrant
-    private const int FanArcSegments = 10;           // arc steps per corner fan
-    private const int ArcSegments = 128;             // circle smoothness for both rings
-    private const float FanCornerScale = 1.4143f;    // sqrt(2): the bounding square's corner distance
+    private const int ReticleQuadrants = 4;          // cardinal ticks + cross arms, one per quadrant
+    private const int ArcSegments = 128;             // circle smoothness for both rings and the backdrop cutout
     private const float InnerRingScale = 0.70f;      // red ring radius, as a fraction of the reticle's
     private const float TickInnerScale = 0.84f;      // ring ticks start this far out
     private const float CrossArmOuterScale = 0.66f;  // cross arms end this far out
@@ -44,23 +46,10 @@ public partial class SniperScope : Control
     private static readonly Color CrossArmColour = new(0.92f, 0.96f, 1f, 0.38f);
     private static readonly Color CentreDotColour = new(1f, 0.85f, 0.3f, 0.80f);
 
-    // One quadrant's fan as unit offsets from the centre:
-    // the bounding square's corner first, then the arc from
-    // the quadrant's start to its end. Built once.
-    private static readonly Vector2[] FanUnit = BuildFanUnit();
-    private readonly Vector2[] _fan = new Vector2[FanUnit.Length];
-
-    private static Vector2[] BuildFanUnit()
-    {
-        var pts = new Vector2[FanArcSegments + 2];
-        pts[0] = new Vector2(Mathf.Cos(Mathf.Pi / 4f), Mathf.Sin(Mathf.Pi / 4f)) * FanCornerScale;
-        for (int i = 0; i <= FanArcSegments; i++)
-        {
-            float a = (Mathf.Pi / 2f) * (i / (float)FanArcSegments);
-            pts[i + 1] = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-        }
-        return pts;
-    }
+    // The keyhole backdrop's point buffer: screen corners,
+    // the slit entry, the disc traced once, the slit entry
+    // again. Refilled per draw; never reallocated.
+    private readonly Vector2[] _backdrop = new Vector2[4 + 1 + (ArcSegments + 1) + 1];
 
     public override void _Process(double delta)
     {
@@ -79,25 +68,34 @@ public partial class SniperScope : Control
         var c = size * 0.5f;
         float r = ReticleRadius;
         // Backdrop everywhere EXCEPT inside the reticle
-        // (owner, 2026-11-23): four slabs around the reticle's
-        // bounding square, plus a fan in each corner of the
-        // square covering the part outside the circle.
-        DrawRect(new Rect2(0f, 0f, Mathf.Max(0f, c.X - r), size.Y), Backdrop);
-        DrawRect(new Rect2(c.X + r, 0f, Mathf.Max(0f, size.X - (c.X + r)), size.Y), Backdrop);
-        DrawRect(new Rect2(c.X - r, 0f, 2f * r, Mathf.Max(0f, c.Y - r)), Backdrop);
-        DrawRect(new Rect2(c.X - r, c.Y + r, 2f * r, Mathf.Max(0f, size.Y - (c.Y + r))), Backdrop);
+        // (owner, 2026-11-23): one keyhole polygon - the
+        // screen rect traced clockwise, a slit in from the
+        // left edge, the disc traced back the other way, and
+        // the slit retraced on the way out. A single fill has
+        // no internal edges, so no seam can form (the slab +
+        // fan build double-drew its bottom edge).
         if (size.X >= 2f * r && size.Y >= 2f * r)
-            for (int q = 0; q < ReticleQuadrants; q++)
+        {
+            int n = 0;
+            _backdrop[n++] = new Vector2(0f, 0f);
+            _backdrop[n++] = new Vector2(size.X, 0f);
+            _backdrop[n++] = new Vector2(size.X, size.Y);
+            _backdrop[n++] = new Vector2(0f, size.Y);
+            _backdrop[n++] = new Vector2(0f, c.Y);
+            for (int i = 0; i <= ArcSegments; i++)
             {
-                float rot = q * Mathf.Pi / 2f;
-                float cos = Mathf.Cos(rot), sin = Mathf.Sin(rot);
-                for (int i = 0; i < FanUnit.Length; i++)
-                {
-                    var u = FanUnit[i];
-                    _fan[i] = c + new Vector2(u.X * cos - u.Y * sin, u.X * sin + u.Y * cos) * r;
-                }
-                DrawColoredPolygon(_fan, Backdrop);
+                float a = Mathf.Pi - Mathf.Tau * (i / (float)ArcSegments);
+                _backdrop[n++] = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
             }
+            _backdrop[n++] = new Vector2(0f, c.Y);
+            DrawColoredPolygon(_backdrop, Backdrop);
+        }
+        else
+        {
+            // Degenerate window (smaller than the reticle):
+            // dim everything; the scope is unusable anyway.
+            DrawRect(new Rect2(Vector2.Zero, size), Backdrop);
+        }
         // Round reticle, the radar's size: 300 px across.
         DrawArc(c, r, 0f, Mathf.Tau, ArcSegments, ReticleCyan, RingWidth, true);
         DrawArc(c, r * InnerRingScale, 0f, Mathf.Tau, ArcSegments, InnerRingRed, InnerRingWidth, true);
