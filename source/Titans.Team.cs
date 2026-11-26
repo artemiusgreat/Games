@@ -32,7 +32,7 @@ public partial class Titans
         public int Slot;      // roster index within its team
         public int Team;      // Story: 0 (the player's team). Tournament: the bracket team index
         public WeaponDef DefBallistic;
-        public string BallisticSlot;
+        public PartId? BallisticSlot;
         public float Cd;
         public float Yaw = Mathf.Pi;
         public float OrbitDir = 1f;
@@ -257,9 +257,9 @@ public partial class Titans
         a.Walker.RefreshMaterials();
         a.Hp = spec.MaxHp;
         a.PrevRoot = a.Walker.RootPos;
-        string eb = SlotOf(spec, WeaponSlotType.Ballistic);
+        var eb = SlotOf(spec, WeaponSlotType.Ballistic);
         a.BallisticSlot = eb;
-        a.DefBallistic = eb == null ? null : a.Loadout.FirstDef(eb);
+        a.DefBallistic = eb == null ? null : a.Loadout.FirstDef(eb.Value);
         return a;
     }
 
@@ -417,7 +417,7 @@ public partial class Titans
         var ally = AllyBySlot(slot);
         if (ally == null || ally.Dead) return false;
         // Pack the current driven rider into the freed seat.
-        string eb = SlotOf(_playerSpec, WeaponSlotType.Ballistic);
+        var eb = SlotOf(_playerSpec, WeaponSlotType.Ballistic);
         var old = new Ally
         {
             Walker = _player, Parts = _partsPlayer, Spec = _playerSpec, Loadout = _loadout,
@@ -426,7 +426,7 @@ public partial class Titans
             DroopT = _playerDroopT,
             SpawnPos = PadPos(Main.SpawnPads[0]), SpawnYaw = SpawnYaw(Main.SpawnPads[0]),
             BallisticSlot = eb,
-            DefBallistic = eb == null ? null : _loadout.FirstDef(eb)
+            DefBallistic = eb == null ? null : _loadout.FirstDef(eb.Value)
         };
         // The packed rider's parts were bound to the _partsPlayer
         // FIELD in their OnBreak closure (the lab rebuild idiom);

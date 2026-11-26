@@ -11,7 +11,7 @@ public partial class Titans
     // survives any window size or aspect (owner). Null when the
     // chassis lacks the part or it is off-screen: the lab falls
     // back to its fractional anchors then.
-    private Vector2? ProjectSlotAnchor(string slotId)
+    private Vector2? ProjectSlotAnchor(PartId slotId)
     {
         if (_partsPlayer == null || _cam == null || !_partsPlayer.Has(slotId)) return null;
         var w = _partsPlayer.PartCenterWorld(slotId);
@@ -359,9 +359,9 @@ public partial class Titans
         _foe.Walker.RefreshMaterials();
         _foe.Hp = spec.MaxHp;
         _foe.PrevRoot = _foe.Walker.RootPos;
-        string eb = SlotOf(spec, WeaponSlotType.Ballistic);
+        var eb = SlotOf(spec, WeaponSlotType.Ballistic);
         _foe.BallisticSlot = eb;
-        _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb);
+        _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb.Value);
         GD.Print($"FFA foe built: {spec.Id} at pad 2, ballistic={_foe.DefBallistic?.Id}");
     }
 
@@ -381,9 +381,9 @@ public partial class Titans
         _foe.Walker.RefreshMaterials();
         _foe.Hp = spec.MaxHp;
         _foe.PrevRoot = _foe.Walker.RootPos;
-        string eb = SlotOf(spec, WeaponSlotType.Ballistic);
+        var eb = SlotOf(spec, WeaponSlotType.Ballistic);
         _foe.BallisticSlot = eb;
-        _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb);
+        _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb.Value);
         RefreshHitCaps();
     }
 
@@ -473,7 +473,7 @@ public partial class Titans
         TeamRoster.Story.Add(TeamRoster.Make(spec));
     }
 
-    private static string SlotOf(RiderSpec spec, WeaponSlotType type, int n = 0)
+    private static PartId? SlotOf(RiderSpec spec, WeaponSlotType type, int n = 0)
     {
         foreach (var s in spec.Slots) if (s.Type == type && n-- == 0) return s.Id;
         return null;
@@ -519,13 +519,13 @@ public partial class Titans
         _defBallistic = Slowest(_gunsBallistic);
         _defPodL = Slowest(_podGunsL);
         _defPodR = Slowest(_podGunsR);
-        string eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
+        var eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
         _enemyBallisticSlot = eb;
-        _defEnemyBallistic = eb == null ? null : _enemyLoadout.FirstDef(eb);
+        _defEnemyBallistic = eb == null ? null : _enemyLoadout.FirstDef(eb.Value);
         GD.Print($"LAB loadout energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id} total={_loadout.TotalWeaponWeight:F0}t");
     }
 
-    private static WeaponDef Slowest(System.Collections.Generic.List<(string Slot, WeaponDef Def)> guns)
+    private static WeaponDef Slowest(System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> guns)
     {
         WeaponDef best = null;
         foreach (var g in guns) if (best == null || g.Def.Cooldown > best.Cooldown) best = g.Def;

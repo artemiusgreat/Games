@@ -142,7 +142,7 @@ public partial class Titans : Node3D
         public float Hp;
         public bool Dead;
         public WeaponDef DefBallistic;
-        public string BallisticSlot;
+        public PartId? BallisticSlot;
         public float Cd;
         public float Yaw = Mathf.Pi;
         public float OrbitDir = 1f;
@@ -204,8 +204,8 @@ public partial class Titans : Node3D
     private RiderSpec _playerSpec = RiderSpecs.Enyo;
     private RiderSpec _enemySpec = RiderSpecs.Hector;
     private WeaponDef _defEnergy, _defBallistic, _defPodL, _defPodR, _defEnemyBallistic;
-    private string _enemyBallisticSlot;
-    private readonly System.Collections.Generic.List<(string Slot, WeaponDef Def)> _gunsEnergy = new(), _gunsBallistic = new(), _podGunsL = new(), _podGunsR = new();
+    private PartId? _enemyBallisticSlot;
+    private readonly System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> _gunsEnergy = new(), _gunsBallistic = new(), _podGunsL = new(), _podGunsR = new();
     // Firing groups (owner): the player assigns every fitted
     // weapon to a group in the lab; the duel fires the selected
     // group as one volley (each weapon through its own firing
@@ -219,7 +219,7 @@ public partial class Titans : Node3D
     // old group-cools-by-its-slowest rule is gone.
     private sealed class WpnGun
     {
-        public string Slot;
+        public PartId Slot;
         public WeaponDef Def;
         public FirePath Path;
         public float Cd;
@@ -333,7 +333,7 @@ public partial class Titans : Node3D
     private RadarView _radar;
     private TargetFrame _targetFrame; // screen-space frame on the active target (owner, 2026-11-11)
     private Label _lblRange, _lblReticle, _lblSpeed;
-    private readonly System.Collections.Generic.Dictionary<string, (Label Lab, ProgressBar Bar)> _partCells = new();
+    private readonly System.Collections.Generic.Dictionary<PartId, (Label Lab, ProgressBar Bar)> _partCells = new();
     private float _shake;
     private float _playerDroopT, _enemyDroopT;
     // breakable consequences, transient timers
@@ -1037,12 +1037,12 @@ public partial class Titans : Node3D
         if (_multiShot && _labOpen && _lab != null)
         {
             _multiShot = false;
-            _loadout.TryAssign(_playerSpec, "arm_L", WeaponCatalog.MediumLaser); // LL 5 + ML 3 = 8t = arm cap exactly
-            _loadout.TryAssign(_playerSpec, "pod_L", WeaponCatalog.Srm);          // LRM 10 + SRM 4 in one pod
-            _loadout.TryAssign(_playerSpec, "arm_R", WeaponCatalog.HeavyCannon);  // AC 12 + HC 16 = 28 > 25 cap: must refuse
-            var err = _loadout.Check(_playerSpec, "arm_R", WeaponCatalog.HeavyCannon);
+            _loadout.TryAssign(_playerSpec, PartId.ArmL, WeaponCatalog.MediumLaser); // LL 5 + ML 3 = 8t = arm cap exactly
+            _loadout.TryAssign(_playerSpec, PartId.PodL, WeaponCatalog.Srm);          // LRM 10 + SRM 4 in one pod
+            _loadout.TryAssign(_playerSpec, PartId.ArmR, WeaponCatalog.HeavyCannon);  // AC 12 + HC 16 = 28 > 25 cap: must refuse
+            var err = _loadout.Check(_playerSpec, PartId.ArmR, WeaponCatalog.HeavyCannon);
             _lab.Refresh();
-            GD.Print($"MULTISHOT fitted arm_L={string.Join(",", _loadout.WeaponsIn("arm_L"))} pod_L={string.Join(",", _loadout.WeaponsIn("pod_L"))} arm_R refused: {err}");
+            GD.Print($"MULTISHOT fitted arm_L={string.Join(",", _loadout.WeaponsIn(PartId.ArmL))} pod_L={string.Join(",", _loadout.WeaponsIn(PartId.PodL))} arm_R refused: {err}");
         }
 
         // The capture waits for BOTH wall time and a frame

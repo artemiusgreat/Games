@@ -46,19 +46,19 @@ public sealed class HitModel
         public string Target;   // rider id (Roles.Player/Roles.Enemy), Roles.Prop, Roles.Terrain, "" = nothing
         public HitZone Zone;    // rider hits only: Legs / Torso / Head (Splash stamped by damage)
         public float ZoneFrac;  // rider hits only: 0 at the sole, 1 at the top
-        public string Part;     // rider hits only: breakable part id (via PartResolver), "" if unset
+        public PartId Part;     // rider hits only: breakable part id (via PartResolver), None if unset
     }
 
     // Optional breakable-parts hook: (rider id, world hit point) -> part id.
     // Set by the duel once the part registries exist; null in other scenes.
-    public System.Func<string, Vector3, string> PartResolver;
+    public System.Func<string, Vector3, PartId> PartResolver;
 
     // Optional breakable-parts ray hook: (rider id, origin, unit dir,
     // maxDist) -> (t, partId) of the nearest part-volume box hit along
     // the ray, t < 0 when none. Parts protrude outside the rider capsule
     // (arms, LRM pods), so aimed fire at them can only register through
     // the boxes; the capsule alone would sail past. Null in other scenes.
-    public System.Func<string, Vector3, Vector3, float, (float T, string Part)> PartRayCast;
+    public System.Func<string, Vector3, Vector3, float, (float T, PartId Part)> PartRayCast;
 
     public sealed class PropCyl
     {
@@ -85,7 +85,7 @@ public sealed class HitModel
         System.Collections.Generic.HashSet<string> ignoreIds = null)
     {
         dir = dir.Normalized();
-        var best = new Result { Hit = false, T = maxDist, Target = "", Zone = HitZone.None, ZoneFrac = 0f, Part = "" };
+        var best = new Result { Hit = false, T = maxDist, Target = "", Zone = HitZone.None, ZoneFrac = 0f, Part = PartId.None };
         float tt = RayTerrain(from, dir, maxDist);
         if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = Roles.Terrain; }
         foreach (var p in Props)
@@ -104,7 +104,7 @@ public sealed class HitModel
             // and shots at the visible rider sailed over it.
             float baseY = root.Y;
             float t = RayCylinder(from, dir, new Vector2(root.X, root.Z), m.Radius, baseY, m.Height, best.T);
-            string boxPart = null;
+            PartId boxPart = PartId.None;
             if (PartRayCast != null)
             {
                 var (tb, pb) = PartRayCast(m.Id, from, dir, best.T);
@@ -116,8 +116,8 @@ public sealed class HitModel
                 float y = from.Y + dir.Y * t;
                 best.ZoneFrac = Mathf.Clamp((y - baseY) / m.Height, 0f, 1f);
                 best.Zone = best.ZoneFrac < LegsZoneTop ? HitZone.Legs : best.ZoneFrac < TorsoZoneTop ? HitZone.Torso : HitZone.Head;
-                best.Part = boxPart ?? (PartResolver != null
-                    ? PartResolver(m.Id, from + dir * t) : "");
+                best.Part = boxPart != PartId.None ? boxPart : (PartResolver != null
+                    ? PartResolver(m.Id, from + dir * t) : PartId.None);
             }
         }
         if (best.Hit) best.Point = from + dir * best.T;

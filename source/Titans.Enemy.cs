@@ -83,16 +83,16 @@ public partial class Titans
     // at point blank (owner, 2026-11-22). Re-pick any other
     // fitted cannon on a living part; only a rider with no live
     // cannon mount at all is truly disarmed.
-    private bool PickBallistic(RiderSpec spec, LoadoutState load, RiderParts parts, out string slot, out WeaponDef def)
+    private bool PickBallistic(RiderSpec spec, LoadoutState load, RiderParts parts, out PartId? slot, out WeaponDef def)
     {
         slot = null; def = null;
         for (int n = 0; ; n++)
         {
-            string s = SlotOf(spec, WeaponSlotType.Ballistic, n);
+            var s = SlotOf(spec, WeaponSlotType.Ballistic, n);
             if (s == null) break;
-            var id = load.WeaponIn(s);
+            var id = load.WeaponIn(s.Value);
             var w = id == null ? null : WeaponCatalog.ById(id.Value);
-            if (w != null && parts.Alive(s)) { slot = s; def = w; return true; }
+            if (w != null && parts.Alive(s.Value)) { slot = s; def = w; return true; }
         }
         return false;
     }
@@ -300,7 +300,7 @@ public partial class Titans
     private void TrackTorso(RiderWalker w, RiderParts parts, float yaw, float yawTo, float dt)
     {
         float desiredTwist = RiderWalker.WrapAngle(yawTo - yaw);
-        if (parts.Alive(PartIds.Head))
+        if (parts.Alive(PartId.Head))
         {
             w.TorsoTwist = desiredTwist;
         }
@@ -374,12 +374,12 @@ public partial class Titans
     // cone (1.2° with sensors, 3.6° once the head is gone). Shell
     // speed follows the weapon def (MuzzleSpeed), as the
     // player's does.
-    private void UpdateFoeGunnery(RiderWalker w, RiderParts parts, WeaponDef def, string slot,
+    private void UpdateFoeGunnery(RiderWalker w, RiderParts parts, WeaponDef def, PartId? slot,
         string tag, string targetTag, RiderWalker target, Vector3 targetVel,
         System.Action onFired)
     {
-        if (parts == null || !parts.Alive(slot ?? "arm_R")) return; // the mount is gone with its part
-        var muzzle = MuzzleFor(w, slot ?? "arm_R");
+        if (parts == null || !parts.Alive(slot ?? PartId.ArmR)) return; // the mount is gone with its part
+        var muzzle = MuzzleFor(w, slot ?? PartId.ArmR);
         var tp = target.RootPos + Vector3.Up * 7.6f;
         float dist = muzzle.DistanceTo(tp);
         if (dist > 75f) return;
@@ -389,7 +389,7 @@ public partial class Titans
         float tof = dist / speed;
         var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
-            parts.Alive(PartIds.Head) ? 1.2f : 3.6f);
+            parts.Alive(PartId.Head) ? 1.2f : 3.6f);
         var shell = SpawnProjectile(muzzle, dir * speed, 0f, def?.Damage ?? 18f, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? 16f); // shells fly straight (owner)
         if (def != null && speed > 0f) shell.Life = def.Range / speed; // and burn out at the weapon's range
         PlaySfx(_sfxCannon, muzzle, 0f, 0.78f);

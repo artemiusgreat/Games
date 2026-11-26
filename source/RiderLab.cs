@@ -29,14 +29,14 @@ public partial class RiderLab : Control
     private Button _jetsTileBtn;
     private Label _jetsLine;
     private Label _speed;
-    private readonly System.Collections.Generic.Dictionary<string, SlotPanel> _slots = new();
+    private readonly System.Collections.Generic.Dictionary<PartId, SlotPanel> _slots = new();
     private WeaponId? _selectedWeapon; // click-to-assign path
     // Live slot anchors (owner): viewport position of each
     // hardpoint's part on the rider, projected from the 3D view
     // every frame - the paperdoll dots track the real parts at
     // any window size, instead of fixed fractions that drifted
     // when the screen was resized.
-    public System.Func<string, Vector2?> AnchorProjector;
+    public System.Func<PartId, Vector2?> AnchorProjector;
     public System.Func<Vector2?> CenterProjector;
     private PaperdollArea _paperdoll;
 
@@ -219,8 +219,8 @@ public partial class RiderLab : Control
     // positioned by slot id whenever the area resizes.
     private sealed partial class PaperdollArea : Control
     {
-        private readonly System.Collections.Generic.Dictionary<string, Control> _panels = new();
-        private readonly System.Collections.Generic.Dictionary<string, Vector2> _live = new();
+        private readonly System.Collections.Generic.Dictionary<PartId, Control> _panels = new();
+        private readonly System.Collections.Generic.Dictionary<PartId, Vector2> _live = new();
         // Each live panel's side and stacking order come from its
         // DOT (anchor vs the body center, and the dot's height) -
         // never from the placed panel's own center (owner, round
@@ -229,29 +229,29 @@ public partial class RiderLab : Control
         // overlap sweep then grouped it with the WRONG side's
         // stack and dragged it down it - Enyo's right missile
         // panel ended up flipped under the energy panel).
-        private readonly System.Collections.Generic.Dictionary<string, int> _side = new();
-        private readonly System.Collections.Generic.Dictionary<string, float> _anchorY = new();
+        private readonly System.Collections.Generic.Dictionary<PartId, int> _side = new();
+        private readonly System.Collections.Generic.Dictionary<PartId, float> _anchorY = new();
         // Viewport position of a slot's part on the rider (owner):
         // set by the duel; null entries fall back to the fractions.
-        public System.Func<string, Vector2?> Projector;
+        public System.Func<PartId, Vector2?> Projector;
         public System.Func<Vector2?> CenterProj;
 
-        public Vector2? LiveAnchor(string id) =>
+        public Vector2? LiveAnchor(PartId id) =>
             _live.TryGetValue(id, out var v) ? v + GetGlobalPosition() : null;
 
         public int LiveCount => _live.Count;
-        public void AddPanel(string slotId, Control panel) { _panels[slotId] = panel; AddChild(panel); }
+        public void AddPanel(PartId slotId, Control panel) { _panels[slotId] = panel; AddChild(panel); }
         public override void _Ready() { Resized += Layout; }
         // Fractional dot positions, used only when a slot has
         // no live projected anchor (off-screen / missing part).
-        private static readonly System.Collections.Generic.Dictionary<string, Vector2> Anchors = new()
+        private static readonly System.Collections.Generic.Dictionary<PartId, Vector2> Anchors = new()
         {
-            ["pod_L"] = new Vector2(0.30f, 0.27f),
-            ["pod_R"] = new Vector2(0.64f, 0.27f),
-            ["arm_L"] = new Vector2(0.16f, 0.47f),
-            ["arm_R"] = new Vector2(0.76f, 0.45f),
-            ["torso"] = new Vector2(0.47f, 0.38f),
-            ["gun"] = new Vector2(0.44f, 0.55f),
+            [PartId.PodL] = new Vector2(0.30f, 0.27f),
+            [PartId.PodR] = new Vector2(0.64f, 0.27f),
+            [PartId.ArmL] = new Vector2(0.16f, 0.47f),
+            [PartId.ArmR] = new Vector2(0.76f, 0.45f),
+            [PartId.Torso] = new Vector2(0.47f, 0.38f),
+            [PartId.Gun] = new Vector2(0.44f, 0.55f),
         };
 
         public void Layout()
@@ -269,14 +269,14 @@ public partial class RiderLab : Control
 
             // Panels WITHOUT a live anchor keep the fractional
             // layout (fallback for off-screen or missing parts).
-            var centers = new System.Collections.Generic.Dictionary<string, Vector2>
+            var centers = new System.Collections.Generic.Dictionary<PartId, Vector2>
             {
-                ["pod_L"] = new Vector2(0.24f, 0.11f),
-                ["pod_R"] = new Vector2(0.76f, 0.11f),
-                ["arm_L"] = new Vector2(0.15f, 0.60f),
-                ["arm_R"] = new Vector2(0.85f, 0.60f),
-                ["torso"] = new Vector2(0.5f, 0.30f),
-                ["gun"] = new Vector2(0.5f, 0.88f),
+                [PartId.PodL] = new Vector2(0.24f, 0.11f),
+                [PartId.PodR] = new Vector2(0.76f, 0.11f),
+                [PartId.ArmL] = new Vector2(0.15f, 0.60f),
+                [PartId.ArmR] = new Vector2(0.85f, 0.60f),
+                [PartId.Torso] = new Vector2(0.5f, 0.30f),
+                [PartId.Gun] = new Vector2(0.5f, 0.88f),
             };
             foreach (var (id, panel) in _panels)
             {
@@ -309,7 +309,7 @@ public partial class RiderLab : Control
                 Vector2 center;
                 var bc = CenterProj?.Invoke();
                 if (bc.HasValue) center = bc.Value - GetGlobalPosition();
-                else if (_live.TryGetValue("torso", out var tc)) center = tc;
+                else if (_live.TryGetValue(PartId.Torso, out var tc)) center = tc;
                 else
                 {
                     center = Vector2.Zero;
@@ -395,16 +395,16 @@ public partial class RiderLab : Control
                 // the radial placement put it: panels keep
                 // hugging their own side of the silhouette;
                 // this step owns only Y.
-                var placed = new System.Collections.Generic.List<(string Id, Control Panel)>();
+                var placed = new System.Collections.Generic.List<(PartId Id, Control Panel)>();
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id)) placed.Add((id, panel));
                 var yOf = new System.Collections.Generic.Dictionary<Control, float>();
                 foreach (var (pid, p) in placed)
                     yOf[p] = _anchorY.TryGetValue(pid, out var ay) ? ay : p.Position.Y + p.Size.Y * 0.5f;
-                var groups = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(string Id, Control Panel)>>();
+                var groups = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<(PartId Id, Control Panel)>>();
                 foreach (var side in new[] { 0, 1 })
                 {
-                    var group = new System.Collections.Generic.List<(string Id, Control Panel)>();
+                    var group = new System.Collections.Generic.List<(PartId Id, Control Panel)>();
                     foreach (var (pid, p) in placed)
                         if ((_side.TryGetValue(pid, out var sd) ? sd : (p.Position.X + p.Size.X * 0.5f < Size.X * 0.5f ? 0 : 1)) == side)
                             group.Add((pid, p));
@@ -540,7 +540,7 @@ public partial class RiderLab : Control
 
     private sealed partial class SlotPanel : PanelContainer
     {
-        public string SlotId;
+        public PartId SlotId;
         public RiderLab Lab;
         public Label HeadLabel;
         public VBoxContainer ListBox;
@@ -1140,7 +1140,7 @@ public partial class RiderLab : Control
             {
                 var def = WeaponCatalog.ById(ids[i]);
                 if (def == null) continue;
-                int idx = i; string sid = id;
+                int idx = i; PartId sid = id;
                 var rowPanel = new PanelContainer();
                 var rsb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.15f, 0.55f) };
                 rsb.SetCornerRadiusAll(4);

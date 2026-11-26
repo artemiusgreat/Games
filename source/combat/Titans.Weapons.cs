@@ -24,15 +24,15 @@ public partial class Titans
     // Where a fitted weapon fires from, by hardpoint: the waist
     // gun slot shoots from the waist gun, a chest mount from the
     // upper torso, arm slots from their elbows.
-    private Vector3 MuzzleFor(RiderWalker w, string slot)
+    private Vector3 MuzzleFor(RiderWalker w, PartId slot)
     {
-        if (slot == SlotIds.Gun) return TorsoGunMuzzle(w);
-        if (slot == SlotIds.Torso)
+        if (slot == PartId.Gun) return TorsoGunMuzzle(w);
+        if (slot == PartId.Torso)
         {
             var t = w.BoneWorldPos(Bones.Torso);
             return t + Vector3.Up * TorsoMuzzleUp + RiderWalker.HeadingVec(w.TorsoYawWorld) * TorsoMuzzleForward;
         }
-        return ElbowMuzzle(w, slot != SlotIds.ArmR);
+        return ElbowMuzzle(w, slot != PartId.ArmR);
     }
 
     // Torso gun (the Hector's waist gun): torso bone origin plus a
@@ -47,7 +47,7 @@ public partial class Titans
         return torso + right * GunMuzzleRight + fwd * GunMuzzleForward + Vector3.Up * GunMuzzleUp;
     }
 
-    private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? SlotIds.ArmR);
+    private Vector3 EnemyMuzzle() => MuzzleFor(_enemy, _enemyBallisticSlot ?? PartId.ArmR);
 
     // Beam glow pass: the soft halo beam is this many times
     // wider than the core beam (owner, 2026-11-25: named
@@ -180,7 +180,7 @@ public partial class Titans
         FireLaserVolley(aimPoint, fired);
     }
 
-    private void FireLaserVolley(Vector3 aimPoint, System.Collections.Generic.List<(string Slot, WeaponDef Def)> fired)
+    private void FireLaserVolley(Vector3 aimPoint, System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> fired)
     {
         // Physical beams (owner, 2026-11-25): every gun casts
         // from its OWN muzzle along its line through the aim
@@ -270,7 +270,7 @@ public partial class Titans
         FireCannonVolley(aimPoint, fired);
     }
 
-    private void FireCannonVolley(Vector3 aimPoint, System.Collections.Generic.List<(string Slot, WeaponDef Def)> fired)
+    private void FireCannonVolley(Vector3 aimPoint, System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> fired)
     {
         // Every fitted cannon fires (multi-fit volley), each from
         // its own hardpoint on the pointer line. No clamp needed:
@@ -338,14 +338,14 @@ public partial class Titans
         foreach (var g in _podGunsL) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
         foreach (var g in _podGunsR) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
         FireSalvoVolley(aimPoint,
-            podL ? _podGunsL : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>(),
-            podR ? _podGunsR : new System.Collections.Generic.List<(string Slot, WeaponDef Def)>(),
+            podL ? _podGunsL : new System.Collections.Generic.List<(PartId Slot, WeaponDef Def)>(),
+            podR ? _podGunsR : new System.Collections.Generic.List<(PartId Slot, WeaponDef Def)>(),
             lockTarget);
     }
 
     private void FireSalvoVolley(Vector3 aimPoint,
-        System.Collections.Generic.List<(string Slot, WeaponDef Def)> podLGuns,
-        System.Collections.Generic.List<(string Slot, WeaponDef Def)> podRGuns,
+        System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> podLGuns,
+        System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> podRGuns,
         RiderWalker lockTarget = null)
     {
         // Past the close cast, the salvo solves onto the point
@@ -376,7 +376,7 @@ public partial class Titans
     {
         // Rig-true: rockets leave from the pod part's actual center -
         // a chassis may carry a single rack, on either shoulder.
-        string id = left ? SlotIds.PodL : SlotIds.PodR;
+        PartId id = left ? PartId.PodL : PartId.PodR;
         // A part with no volumes has no centre of its own:
         // PartCenterWorld falls back to the rider's ROOT - the
         // ground at its feet - and rockets spawned there die on
@@ -659,7 +659,7 @@ public partial class Titans
         // resolve can name a neighbor whose AABB overlaps the spot);
         // capsule points, splash and crafted hits resolve by nearest
         // part volume at the point.
-        string partId = !string.IsNullOrEmpty(hit.Part)
+        PartId partId = hit.Part != PartId.None
             ? hit.Part
             : parts.AttributePoint(hit.Point);
         if (isPlayer) { _playerDmgEvents++; _playerDmgTotal += dmg; }
@@ -673,7 +673,7 @@ public partial class Titans
         // critical the cap lifts and the arm can come off.
         // The pool itself burns exactly as before.
         float partDmg = dmg;
-        if ((partId == SlotIds.ArmL || partId == SlotIds.ArmR)
+        if ((partId == PartId.ArmL || partId == PartId.ArmR)
             && poolNow - dmg > poolMax * PartRules.ArmBreakPoolFraction)
             partDmg = Mathf.Min(dmg, Mathf.Max(parts.HpOf(partId) - 1f, 0f));
         float poolDmg = dmg;
@@ -706,7 +706,7 @@ public partial class Titans
     // A part just broke off (fired from RiderParts.DamagePart): spark burst
     // at the separation point, HUD feed message, then the functional
     // consequences.
-    private void OnPartBroken(RiderParts parts, string partId, Vector3 center)
+    private void OnPartBroken(RiderParts parts, PartId partId, Vector3 center)
     {
         // During a death explosion every part breaks at once: no feed
         // spam, no per-part consequences (leg loss would re-enter Die).
@@ -724,16 +724,16 @@ public partial class Titans
     // the stateful consequences latched here are the legs and the player's
     // head (HUD disturbance timer; the sway itself is applied in the HUD
     // step from part state).
-    private void ApplyPartConsequences(RiderParts parts, string partId)
+    private void ApplyPartConsequences(RiderParts parts, PartId partId)
     {
-        if (partId == PartIds.LegL || partId == PartIds.LegR)
+        if (partId == PartId.LegL || partId == PartId.LegR)
             SyncLegConsequences(WalkerOf(parts), parts);
-        else if (partId == PartIds.Head && parts == _partsPlayer)
+        else if (partId == PartId.Head && parts == _partsPlayer)
             _hudFlickerT = HeadHitFlickerSeconds;
         if (parts == _partsPlayer) AutoSwitchWeapon();
     }
 
-    private bool AnyGunAlive(System.Collections.Generic.List<(string Slot, WeaponDef Def)> guns)
+    private bool AnyGunAlive(System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> guns)
     {
         foreach (var g in guns) if (_partsPlayer.Alive(g.Slot)) return true;
         return false;
@@ -756,10 +756,10 @@ public partial class Titans
     {
         if (_playerDead || _groups.Count == 0) return;
         var grp = _groups[Mathf.Clamp(_weaponSel, 0, _groups.Count - 1)];
-        var las = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
-        var can = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
-        var podL = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
-        var podR = new System.Collections.Generic.List<(string Slot, WeaponDef Def)>();
+        var las = new System.Collections.Generic.List<(PartId Slot, WeaponDef Def)>();
+        var can = new System.Collections.Generic.List<(PartId Slot, WeaponDef Def)>();
+        var podL = new System.Collections.Generic.List<(PartId Slot, WeaponDef Def)>();
+        var podR = new System.Collections.Generic.List<(PartId Slot, WeaponDef Def)>();
         var firedGuns = new System.Collections.Generic.List<WpnGun>();
         bool anyAlive = false;
         foreach (var g in grp.Guns)
@@ -787,7 +787,7 @@ public partial class Titans
         foreach (var g in firedGuns) g.Cd = g.Def.Cooldown;
     }
 
-    private Vector3 MuzzleForSlot(string slot, bool ballistic) => MuzzleFor(_player, slot);
+    private Vector3 MuzzleForSlot(PartId slot, bool ballistic) => MuzzleFor(_player, slot);
 
     // When the selected weapon is destroyed, fall to the next live one.
     private void AutoSwitchWeapon()
@@ -809,8 +809,8 @@ public partial class Titans
     // Death comes only from the HP pool reaching zero.
     private void SyncLegConsequences(RiderWalker w, RiderParts parts)
     {
-        bool lDead = !parts.Alive(PartIds.LegL);
-        bool rDead = !parts.Alive(PartIds.LegR);
+        bool lDead = !parts.Alive(PartId.LegL);
+        bool rDead = !parts.Alive(PartId.LegR);
         w.SetLegDisabled(true, lDead);
         w.SetLegDisabled(false, rDead);
         if (lDead && rDead)

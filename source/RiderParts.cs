@@ -66,7 +66,7 @@ public sealed class RiderParts
 
     public sealed class Part
     {
-        public string Id;
+        public PartId Id;
         public string Display;
         public float MaxHp;
         public float Hp;
@@ -81,10 +81,10 @@ public sealed class RiderParts
     private readonly RiderWalker _walker;
     private readonly Skeleton3D _skel;
     private readonly string _riderId;
-    private readonly Dictionary<string, Part> _parts = new();
+    private readonly Dictionary<PartId, Part> _parts = new();
 
     public string RiderId => _riderId;
-    public System.Action<string, Vector3> OnBreak; // (partId, worldCenter)
+    public System.Action<PartId, Vector3> OnBreak; // (partId, worldCenter)
 
     public RiderParts(RiderWalker walker, string riderId)
     {
@@ -116,17 +116,17 @@ public sealed class RiderParts
                 ("Pod_R", p => p.X <= -1.7f && p.Y >= 9.9f && p.Z <= -1.01f),
                 ("Head", p => Mathf.Abs(p.X) <= 1.4f && p.Y >= 10.1f && p.Z >= 1.09f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(SlotIds.PodL, "LEFT LRM POD", 45f, byName, "TorsoPod_L");
-            AddPart(SlotIds.PodR, "RIGHT LRM POD", 45f, byName, "TorsoPod_R");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead", "Antenna");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName,
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(PartId.PodL, "LEFT LRM POD", 45f, byName, "TorsoPod_L");
+            AddPart(PartId.PodR, "RIGHT LRM POD", 45f, byName, "TorsoPod_R");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead", "Antenna");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName,
                 "UpperArm_L", "ShoulderPad_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName,
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName,
                 "UpperArm_R", "ShoulderPad_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName,
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName,
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
         else if (riderId == "hector")
@@ -161,14 +161,14 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 0.15f && p.Y >= 0.84f && p.Z >= -0.14f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart(SlotIds.Gun, "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
-            AddPart(SlotIds.PodL, "SRM POD", 45f, byName);
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Hand", "Left_Shoulder");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Hand", "Right_Shoulder");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart(PartId.Gun, "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
+            AddPart(PartId.PodL, "SRM POD", 45f, byName);
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Hand", "Left_Shoulder");
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Hand", "Right_Shoulder");
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "hermes")
@@ -190,13 +190,13 @@ public sealed class RiderParts
             // the rack is the honeycomb cells and housing over
             // the left shoulder, the head is the cockpit cap and
             // antennae on top of the torso.
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart(SlotIds.PodL, "LRM RACK", 45f, byName, "tripo_part_34");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "tripo_part_4");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart(PartId.PodL, "LRM RACK", 45f, byName, "tripo_part_34");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "tripo_part_4");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "apollo")
@@ -224,13 +224,13 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Pelvis__torso", "TorsoCore");
-            AddPart(SlotIds.PodL, "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Elbow__shoulder_L", "Left_Hand", "Left_Shoulder");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__hip_L");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__hip_R");
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Pelvis__torso", "TorsoCore");
+            AddPart(PartId.PodL, "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Elbow__shoulder_L", "Left_Hand", "Left_Shoulder");
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__hip_L");
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__hip_R");
             AttachDebris(byName);
         }
         else if (riderId == "ares")
@@ -262,13 +262,13 @@ public sealed class RiderParts
             {
                 ("Head", p => p.Y >= 0.845f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart(SlotIds.PodL, "LEFT SHOULDER", 45f, byName, "Left_Shoulder");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead", "tripo_part_132", "tripo_part_136", "tripo_part_143", "tripo_part_153", "tripo_part_154", "tripo_part_181");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart(PartId.PodL, "LEFT SHOULDER", 45f, byName, "Left_Shoulder");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead", "tripo_part_132", "tripo_part_136", "tripo_part_143", "tripo_part_153", "tripo_part_154", "tripo_part_181");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon");
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "hades")
@@ -292,13 +292,13 @@ public sealed class RiderParts
             // left shoulder's top cap cluster (142 + the small
             // plates above the pauldron) serves as pod_L - it
             // binds shoulder_L and rides the arm.
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart(SlotIds.PodL, "LEFT SHOULDER", 45f, byName, "tripo_part_142", "tripo_part_4_001");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "Torso_head", "tripo_part_145", "tripo_part_148", "tripo_part_16", "tripo_part_179");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart(PartId.PodL, "LEFT SHOULDER", 45f, byName, "tripo_part_142", "tripo_part_4_001");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "Torso_head", "tripo_part_145", "tripo_part_148", "tripo_part_16", "tripo_part_179");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "amadeus")
@@ -314,13 +314,13 @@ public sealed class RiderParts
             // + 118/159/202/202 fittings) stay separate meshes so
             // both parts still break and move as before. His right
             // leg groups now carry proper Right_* names.
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart(SlotIds.PodR, "RIGHT SHOULDER", 45f, byName, "Pod_R");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "Head");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart(PartId.PodR, "RIGHT SHOULDER", 45f, byName, "Pod_R");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "Head");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "prometheus")
@@ -346,16 +346,16 @@ public sealed class RiderParts
                 // sign one would guess from the other riders.
                 ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 11.0f && p.Z >= -0.72f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(SlotIds.PodL, "LEFT POD", 45f, byName, "TorsoPod_L");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName,
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(PartId.PodL, "LEFT POD", 45f, byName, "TorsoPod_L");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName,
                 "ShoulderAct_L", "UpperArm_L", "UpperArm2_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName,
+            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName,
                 "ShoulderAct_R", "UpperArm_R", "UpperArm2_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
-            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName,
+            AddPart(PartId.LegL, "LEFT LEG", 90f, byName,
                 "Thigh_L", "Knee_L", "Shin_L", "Foot_L");
-            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName,
+            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
         }
         else if (riderId == "medea")
@@ -366,15 +366,15 @@ public sealed class RiderParts
             // block is the missile pod, the shield and its pin
             // ride the left arm, the twin-barrel Cannon is the
             // right arm, and the legs are Enyo's (hub + toes).
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart(PartIds.Head, "HEAD", 45f, byName, "Tower");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 85f, byName, "Shield", "Cylinder");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 85f, byName, "Cannon");
-            AddPart(PartIds.LegL, "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "FootHub_L",
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart(PartId.Head, "HEAD", 45f, byName, "Tower");
+            AddPart(PartId.ArmL, "LEFT ARM", 85f, byName, "Shield", "Cylinder");
+            AddPart(PartId.ArmR, "RIGHT ARM", 85f, byName, "Cannon");
+            AddPart(PartId.LegL, "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "FootHub_L",
                 "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartIds.LegR, "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "FootHub_R",
+            AddPart(PartId.LegR, "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "FootHub_R",
                 "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
-            AddPart(SlotIds.PodL, "LEFT SHOULDER", 40f, byName, "Cabin");
+            AddPart(PartId.PodL, "LEFT SHOULDER", 40f, byName, "Cabin");
         }
         else if (riderId == "demeter")
         {
@@ -386,14 +386,14 @@ public sealed class RiderParts
                 ("Head", p => Mathf.Abs(p.X) <= 1.1f && p.Z <= -2.4f && p.Y >= 9.2f && p.Y <= 11.6f),
                 ("Pod_L", p => p.X >= 1.6f && p.Y >= 12.0f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(SlotIds.PodL, "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 95f, byName, "GunArm_L", "Elbow_L");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 95f, byName, "GunArm_R", "Elbow_R");
-            AddPart(PartIds.LegL, "LEFT LEG", 95f, byName,
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(PartId.PodL, "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
+            AddPart(PartId.ArmL, "LEFT ARM", 95f, byName, "GunArm_L", "Elbow_L");
+            AddPart(PartId.ArmR, "RIGHT ARM", 95f, byName, "GunArm_R", "Elbow_R");
+            AddPart(PartId.LegL, "LEFT LEG", 95f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartIds.LegR, "RIGHT LEG", 95f, byName,
+            AddPart(PartId.LegR, "RIGHT LEG", 95f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
         else if (riderId == "theseus")
@@ -406,14 +406,14 @@ public sealed class RiderParts
                 ("Head", p => Mathf.Abs(p.X) <= 1.0f && p.Z <= -0.5f && p.Y >= 11.2f && p.Y <= 12.7f),
                 ("Pod_R", p => p.X <= -1.7f && p.Y >= 10.8f),
             });
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(SlotIds.PodR, "RIGHT SHOULDER", 45f, byName, "TorsoPod_R");
-            AddPart(SlotIds.ArmL, "LEFT ARM", 95f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
-            AddPart(SlotIds.ArmR, "RIGHT ARM", 95f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
-            AddPart(PartIds.LegL, "LEFT LEG", 95f, byName,
+            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(PartId.PodR, "RIGHT SHOULDER", 45f, byName, "TorsoPod_R");
+            AddPart(PartId.ArmL, "LEFT ARM", 95f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
+            AddPart(PartId.ArmR, "RIGHT ARM", 95f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
+            AddPart(PartId.LegL, "LEFT LEG", 95f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartIds.LegR, "RIGHT LEG", 95f, byName,
+            AddPart(PartId.LegR, "RIGHT LEG", 95f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
 
@@ -427,7 +427,7 @@ public sealed class RiderParts
             GD.PrintErr($"PARTS: no layout for '{riderId}' - torso-only fallback; author a layout in RiderParts.cs");
             var all = new string[byName.Count];
             byName.Keys.CopyTo(all, 0);
-            AddPart(SlotIds.Torso, "TORSO", 0f, byName, all);
+            AddPart(PartId.Torso, "TORSO", 0f, byName, all);
         }
         // Safety net: EVERY mesh must belong to a part. A mesh
         // no layout claimed never detaches - it stays skinned to
@@ -437,7 +437,7 @@ public sealed class RiderParts
         // part whose claimed meshes sit nearest to it.
         {
             var claimed = new System.Collections.Generic.HashSet<MeshInstance3D>();
-            var partCenters = new System.Collections.Generic.Dictionary<string, Vector3>();
+            var partCenters = new System.Collections.Generic.Dictionary<PartId, Vector3>();
             foreach (var part in _parts.Values)
             {
                 var acc = Vector3.Zero; int n = 0;
@@ -457,14 +457,14 @@ public sealed class RiderParts
                 // centre is the fallback.
                 Part best = null;
                 DominantBone(kv.Value, out string bn, out int _);
-                string want = null;
-                if (bn == Bones.Head) want = PartIds.Head;
-                else if (bn == Bones.Torso || bn == Bones.Pelvis) want = SlotIds.Torso;
+                PartId? want = null;
+                if (bn == Bones.Head) want = PartId.Head;
+                else if (bn == Bones.Torso || bn == Bones.Pelvis) want = PartId.Torso;
                 else if (bn != null && (bn.StartsWith("shoulder_") || bn.StartsWith("elbow_")))
-                    want = "arm_" + bn.Substring(bn.Length - 1);
+                    want = bn.EndsWith("_L") ? PartId.ArmL : PartId.ArmR;
                 else if (bn != null && (bn.StartsWith("hip_") || bn.StartsWith("knee_") || bn.StartsWith("ankle_")))
-                    want = "leg_" + bn.Substring(bn.Length - 1);
-                if (want != null) _parts.TryGetValue(want, out best);
+                    want = bn.EndsWith("_L") ? PartId.LegL : PartId.LegR;
+                if (want != null) _parts.TryGetValue(want.Value, out best);
                 if (best == null)
                 {
                     var c = kv.Value.GetAabb().GetCenter();
@@ -561,7 +561,7 @@ public sealed class RiderParts
         foreach (var c in n.GetChildren()) CollectMeshes(c, byName);
     }
 
-    private void AddPart(string id, string display, float hp,
+    private void AddPart(PartId id, string display, float hp,
         Dictionary<string, MeshInstance3D> byName, params string[] meshNames)
     {
         var part = new Part { Id = id, Display = display, MaxHp = hp, Hp = hp };
@@ -597,6 +597,16 @@ public sealed class RiderParts
     // meshes named Debris_<partId>_N: sweep them into the named
     // part so each fragment breaks and flies on its own. (Only
     // the segmented Hector build uses the convention today.)
+    // Debris mesh names embed the part's string name
+    // (Debris_arm_L_37_small) - model-file data, resolved
+    // through this map, the same exception bone names get.
+    private static readonly System.Collections.Generic.Dictionary<string, PartId> PartNameMap = new()
+    {
+        ["arm_L"] = PartId.ArmL, ["arm_R"] = PartId.ArmR, ["gun"] = PartId.Gun,
+        ["torso"] = PartId.Torso, ["pod_L"] = PartId.PodL, ["pod_R"] = PartId.PodR,
+        ["head"] = PartId.Head, ["leg_L"] = PartId.LegL, ["leg_R"] = PartId.LegR,
+    };
+
     private void AttachDebris(Dictionary<string, MeshInstance3D> byName)
     {
         foreach (var kv in byName)
@@ -611,13 +621,15 @@ public sealed class RiderParts
             // detaches it hung in the air at the death position
             // after its rider was destroyed (owner, 2026-11-17).
             string cand = rest;
-            while (cand.Length > 0 && !_parts.ContainsKey(cand))
+            PartId hit = PartId.None;
+            while (cand.Length > 0)
             {
+                if (PartNameMap.TryGetValue(cand, out var pid) && _parts.ContainsKey(pid)) { hit = pid; break; }
                 int cut = cand.LastIndexOf('_');
-                if (cut <= 0) { cand = ""; break; }
+                if (cut <= 0) break;
                 cand = cand.Substring(0, cut);
             }
-            if (cand.Length > 0) AttachMesh(_parts[cand], kv.Value);
+            if (hit != PartId.None) AttachMesh(_parts[hit], kv.Value);
         }
     }
 
@@ -1133,16 +1145,16 @@ public sealed class RiderParts
 
     // ---------- queries ----------
 
-    public bool Has(string id) => _parts.ContainsKey(id);
-    public bool PartHasVolumes(string id) => _parts.TryGetValue(id, out var p) && p.Volumes.Count > 0;
+    public bool Has(PartId id) => _parts.ContainsKey(id);
+    public bool PartHasVolumes(PartId id) => _parts.TryGetValue(id, out var p) && p.Volumes.Count > 0;
     // Tolerant lookups: a chassis may simply not HAVE a part (the
     // Hector has no missile pods). Absent reads as destroyed / 0 HP /
     // null rather than throwing - a hard dictionary lookup here
     // crashed every frame for an Hector player and froze the camera
     // mid-duel (owner's report, 2026-10-30).
-    public Part GetPart(string id) => _parts.TryGetValue(id, out var p) ? p : null;
-    public bool Alive(string id) => _parts.TryGetValue(id, out var p) && !p.Destroyed;
-    public float HpOf(string id) => _parts.TryGetValue(id, out var p) ? p.Hp : 0f;
+    public Part GetPart(PartId id) => _parts.TryGetValue(id, out var p) ? p : null;
+    public bool Alive(PartId id) => _parts.TryGetValue(id, out var p) && !p.Destroyed;
+    public float HpOf(PartId id) => _parts.TryGetValue(id, out var p) ? p.Hp : 0f;
     public IEnumerable<Part> AllParts => _parts.Values;
 
     private static float BoxSdf(Vector3 p, Volume v)
@@ -1156,9 +1168,9 @@ public sealed class RiderParts
 
     // Nearest part (by per-mesh bone-space box SDF) to a world point.
     // Destroyed parts no longer exist on the rider and are skipped.
-    public string AttributePoint(Vector3 world)
+    public PartId AttributePoint(Vector3 world)
     {
-        string best = "torso";
+        PartId best = PartId.Torso;
         float bestSd = float.MaxValue;
         var skelInv = _skel.GlobalTransform.AffineInverse();
         var pSk = skelInv * world;
@@ -1186,17 +1198,17 @@ public sealed class RiderParts
     // The TORSO is excluded on purpose: the rider capsule is its hit
     // volume, and its core AABB is a wide slab that would otherwise
     // shadow the shoulder/arm boxes behind its corners.
-    public (float T, string Part) RaycastParts(Vector3 origin, Vector3 dir, float maxDist)
+    public (float T, PartId Part) RaycastParts(Vector3 origin, Vector3 dir, float maxDist)
     {
         float bestT = -1f;
-        string bestPart = "";
+        PartId bestPart = PartId.None;
         var skelInv = _skel.GlobalTransform.AffineInverse();
         var oSk = skelInv * origin;
         var dSk = skelInv.Basis * dir;
         var poseInv = new Dictionary<int, Transform3D>();
         foreach (var part in _parts.Values)
         {
-            if (part.Destroyed || part.Id == SlotIds.Torso) continue;
+            if (part.Destroyed || part.Id == PartId.Torso) continue;
             foreach (var vol in part.Volumes)
             {
                 if (!poseInv.TryGetValue(vol.Bone, out var inv))
@@ -1243,7 +1255,7 @@ public sealed class RiderParts
     // LARGEST volume. The mean of all volume centers can land in empty
     // space for multi-piece parts (head + a thin antenna spike), where
     // attribution would rightly name a different part.
-    public Vector3 PartAimPoint(string partId)
+    public Vector3 PartAimPoint(PartId partId)
     {
         var part = _parts[partId];
         Volume best = null;
@@ -1262,7 +1274,7 @@ public sealed class RiderParts
     }
 
     // World-space center of a part (mean of its volume centers).
-    public Vector3 PartCenterWorld(string partId)
+    public Vector3 PartCenterWorld(PartId partId)
     {
         var part = _parts[partId];
         if (part.Volumes.Count == 0) return _walker.RootPos;
@@ -1289,7 +1301,7 @@ public sealed class RiderParts
 
     // Apply damage to a part's own HP. Returns true when this hit broke
     // the part off. Torso is pool-owned (MaxHp 0) and never breaks here.
-    public bool DamagePart(string partId, float dmg)
+    public bool DamagePart(PartId partId, float dmg)
     {
         var part = _parts[partId];
         if (part.Destroyed || part.MaxHp <= 0f) return false;
@@ -1297,7 +1309,7 @@ public sealed class RiderParts
         Dbg.Print($"BRK DMG {_riderId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
-        if (partId == PartIds.LegL || partId == PartIds.LegR || partId == PartIds.Head)
+        if (partId == PartId.LegL || partId == PartId.LegR || partId == PartId.Head)
         {
             // Owner's rule: legs NEVER fall off. A destroyed leg stays
             // attached - darkened and deformed - and the rider limps.
@@ -1339,7 +1351,7 @@ public sealed class RiderParts
     {
         part.Destroyed = true;
         part.Wrecked = true;
-        float tilt = part.Id == "leg_L" ? 0.085f : -0.085f;
+        float tilt = part.Id == PartId.LegL ? 0.085f : -0.085f;
         var rs = Basis.FromEuler(new Vector3(0.045f, 0f, tilt))
             .Scaled(new Vector3(1.07f, 0.92f, 1.07f));
         foreach (var rec in part.Meshes)
@@ -1517,10 +1529,10 @@ public sealed class RiderParts
     // projection; this measures what is actually rendered, so a
     // bind/geometry mismatch shows up here even when the sole
     // solver itself is exact.
-    public float FootVisualGap(string partId)
+    public float FootVisualGap(PartId partId)
     {
         var part = _parts[partId];
-        string ankle = partId == PartIds.LegL ? Bones.AnkleL : Bones.AnkleR;
+        string ankle = partId == PartId.LegL ? Bones.AnkleL : Bones.AnkleR;
         float best = float.MaxValue;
         foreach (var rec in part.Meshes)
         {
@@ -1548,10 +1560,10 @@ public sealed class RiderParts
     // vs the lowest heel-side vertex. A foot can touch at the toe
     // (gap 0) while standing pitched on its toes with the heel
     // high; the split reads that pitch as two numbers.
-    public (float Toe, float Heel) FootPitchGaps(string partId, Vector3 ankleW, Vector3 fwdW)
+    public (float Toe, float Heel) FootPitchGaps(PartId partId, Vector3 ankleW, Vector3 fwdW)
     {
         var part = _parts[partId];
-        string ankle = partId == PartIds.LegL ? Bones.AnkleL : Bones.AnkleR;
+        string ankle = partId == PartId.LegL ? Bones.AnkleL : Bones.AnkleR;
         float toe = float.MaxValue, heel = float.MaxValue;
         foreach (var rec in part.Meshes)
         {
@@ -1577,7 +1589,7 @@ public sealed class RiderParts
         return (toe, heel);
     }
 
-    public Debris DebrisOf(string partId)
+    public Debris DebrisOf(PartId partId)
     {
         foreach (var d in _debris) if (d.Part.Id == partId) return d;
         return null;
@@ -1586,7 +1598,7 @@ public sealed class RiderParts
     // Resting check for the harness: the part's debris is settled and its
     // world AABB's lowest corner sits on the terrain sampled at that
     // corner (the physically meaningful contact on a slope).
-    public bool DebrisRestOk(string partId, float tol, out float minY, out float groundY)
+    public bool DebrisRestOk(PartId partId, float tol, out float minY, out float groundY)
     {
         minY = 0f; groundY = 0f;
         var d = DebrisOf(partId);

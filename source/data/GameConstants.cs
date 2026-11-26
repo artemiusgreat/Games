@@ -87,15 +87,13 @@ public static class RiderBody
 // 0/1/2/3 the group builder used to stamp on each gun).
 public enum FirePath { Energy, Cannon, PodL, PodR }
 
-public static class SlotIds
-{
-    public const string ArmL = "arm_L";
-    public const string ArmR = "arm_R";
-    public const string Gun = "gun";
-    public const string Torso = "torso";
-    public const string PodL = "pod_L";
-    public const string PodR = "pod_R";
-}
+/// <summary>Breakable part ids - the weapon slots and the
+/// non-slot parts in ONE vocabulary (owner, 2026-11-25: an
+/// enum, not strings; SlotIds and PartIds both named the
+/// torso, so they merge). None is a hit that took no part.
+/// Mesh and bone names stay strings - they are external
+/// data that must match the model files.</summary>
+public enum PartId { None, ArmL, ArmR, Gun, Torso, PodL, PodR, Head, LegL, LegR }
 
 /// <summary>
 /// Skeleton bone names. Every rider rig carries the same
@@ -123,17 +121,6 @@ public static class Bones
     public const string Pelvis = "pelvis";
 
     public static readonly string[] All = { Torso, ElbowL, ElbowR, HipL, KneeL, AnkleL, HipR, KneeR, AnkleR };
-}
-
-/// <summary>
-/// Breakable part ids that are not weapon slots (the slot
-/// parts - arms, gun, torso, pods - live in SlotIds).
-/// </summary>
-public static class PartIds
-{
-    public const string Head = "head";
-    public const string LegL = "leg_L";
-    public const string LegR = "leg_R";
 }
 
 /// <summary>Weapon definition ids (owner, 2026-11-25: an enum,

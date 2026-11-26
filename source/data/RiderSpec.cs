@@ -4,7 +4,7 @@
 
 public sealed class SlotDef
 {
-    public string Id;           // matches the breakable-parts id
+    public PartId Id;           // matches the breakable-parts id
     public string Display;
     public WeaponSlotType Type;
     public float MaxWeight;     // tons
@@ -48,7 +48,7 @@ public sealed class RiderSpec
     public bool FlipKneePole;   // plantigrade: knees bend forward
     public bool SagittalKneePole; // legs track in the sagittal plane only: the rest pole's lateral part is dropped, its side kept
 
-    public SlotDef Slot(string id)
+    public SlotDef Slot(PartId id)
     {
         foreach (var s in Slots) if (s.Id == id) return s;
         return null;
@@ -90,11 +90,11 @@ public static class RiderSpecs
         // caps still sum to the 75t budget.
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 10f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 10f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Ballistic, MaxWeight = 13f },
-            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
-            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 10f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 10f },
+            new SlotDef { Id = PartId.Torso, Display = "CHEST", Type = WeaponSlotType.Ballistic, MaxWeight = 13f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = PartId.PodR, Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
     };
 
@@ -136,11 +136,11 @@ public static class RiderSpecs
         // mount, and the SRM rack. Caps sum to the 100t budget.
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 18f },
-            new SlotDef { Id = "gun", Display = "WAIST GUN", Type = WeaponSlotType.Ballistic, MaxWeight = 30f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 10f },
-            new SlotDef { Id = "pod_L", Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 28f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 18f },
+            new SlotDef { Id = PartId.Gun, Display = "WAIST GUN", Type = WeaponSlotType.Ballistic, MaxWeight = 30f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = PartId.Torso, Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 10f },
+            new SlotDef { Id = PartId.PodL, Display = "SRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 28f },
         }
     };
 
@@ -161,10 +161,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 20f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
-            new SlotDef { Id = "torso", Display = "TORSO RACK", Type = WeaponSlotType.Ballistic, MaxWeight = 14f },
-            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 10f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 20f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+            new SlotDef { Id = PartId.Torso, Display = "TORSO RACK", Type = WeaponSlotType.Ballistic, MaxWeight = 14f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 10f },
         }
     };
 
@@ -182,10 +182,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "torso", Display = "TURRET", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 24f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 15f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+            new SlotDef { Id = PartId.Torso, Display = "TURRET", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 15f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
         }
     };
 
@@ -206,10 +206,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = PartId.Torso, Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
         }
     };
 
@@ -226,10 +226,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 19f },
-            new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 24f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = PartId.Torso, Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 19f },
+            new SlotDef { Id = PartId.PodR, Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 24f },
         }
     };
 
@@ -255,10 +255,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
-            new SlotDef { Id = "pod_L", Display = "LRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 21f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
+            new SlotDef { Id = PartId.PodL, Display = "LRM RACK", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = PartId.Torso, Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 14f },
         }
     };
 
@@ -289,10 +289,10 @@ public static class RiderSpecs
         FlipKneePole = false, SagittalKneePole = true,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 13f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 15f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 26f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 16f },
+            new SlotDef { Id = PartId.Torso, Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 13f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 15f },
         }
     };
 
@@ -313,10 +313,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
-            new SlotDef { Id = "torso", Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 12f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 28f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 14f },
+            new SlotDef { Id = PartId.Torso, Display = "CHEST", Type = WeaponSlotType.Energy, MaxWeight = 12f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
     };
 
@@ -333,10 +333,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 20f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 21f },
-            new SlotDef { Id = "pod_L", Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 24f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 20f },
+            new SlotDef { Id = PartId.Torso, Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 21f },
+            new SlotDef { Id = PartId.PodL, Display = "LEFT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 20f },
         }
     };
 
@@ -358,10 +358,10 @@ public static class RiderSpecs
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
-            new SlotDef { Id = "torso", Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
-            new SlotDef { Id = "pod_R", Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 22f },
+            new SlotDef { Id = PartId.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
+            new SlotDef { Id = PartId.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 22f },
+            new SlotDef { Id = PartId.Torso, Display = "TORSO", Type = WeaponSlotType.Energy, MaxWeight = 24f },
+            new SlotDef { Id = PartId.PodR, Display = "RIGHT SHOULDER", Type = WeaponSlotType.Missile, MaxWeight = 22f },
         }
     };
 
@@ -385,86 +385,86 @@ public static class RiderSpecs
     // order. LoadoutState.DefaultFor builds any rider's factory
     // loadout from its row; there are no per-rider builder
     // methods and no id dispatch in the engine.
-    public static readonly System.Collections.Generic.Dictionary<string, (string Slot, WeaponId[] Weapons)[]> DefaultFits = new()
+    public static readonly System.Collections.Generic.Dictionary<string, (PartId Slot, WeaponId[] Weapons)[]> DefaultFits = new()
     {
         ["enyo"] = new[]
         {
-            ("arm_L", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser }),                      // 10/10t
-            ("arm_R", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser }),                      // 10/10t
-            ("torso", new[] { WeaponId.Autocannon }),                                      // 12/13t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
-            ("pod_R", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
+            (PartId.ArmL, new[] { WeaponId.LargeLaser, WeaponId.LargeLaser }),                      // 10/10t
+            (PartId.ArmR, new[] { WeaponId.LargeLaser, WeaponId.LargeLaser }),                      // 10/10t
+            (PartId.Torso, new[] { WeaponId.Autocannon }),                                      // 12/13t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
+            (PartId.PodR, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
         },
         ["hector"] = new[]
         {
-            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.MediumLaser }),             // 17/18t
-            ("gun", new[] { WeaponId.HeavyCannon, WeaponId.Autocannon }),                               // 28/30t
-            ("arm_R", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser }),     // 13/14t
-            ("torso", new[] { WeaponId.Ppc }),                                            // 9/10t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm, WeaponId.Srm, WeaponId.Srm }),                       // 28/28t
+            (PartId.ArmL, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.MediumLaser }),             // 17/18t
+            (PartId.Gun, new[] { WeaponId.HeavyCannon, WeaponId.Autocannon }),                               // 28/30t
+            (PartId.ArmR, new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser }),     // 13/14t
+            (PartId.Torso, new[] { WeaponId.Ppc }),                                            // 9/10t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm, WeaponId.Srm, WeaponId.Srm }),                       // 28/28t
         },
         ["prometheus"] = new[]
         {
-            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.SmallLaser }), // 20/20t
-            ("arm_R", new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.MediumLaser }),                        // 21/21t
-            ("torso", new[] { WeaponId.Autocannon, WeaponId.MachineGun }),                         // 14/14t
-            ("pod_L", new[] { WeaponId.Lrm }),                                               // 10/10t
+            (PartId.ArmL, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.SmallLaser }), // 20/20t
+            (PartId.ArmR, new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.MediumLaser }),                        // 21/21t
+            (PartId.Torso, new[] { WeaponId.Autocannon, WeaponId.MachineGun }),                         // 14/14t
+            (PartId.PodL, new[] { WeaponId.Lrm }),                                               // 10/10t
         },
         ["medea"] = new[]
         {
-            ("torso", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun }),       // 26/26t
-            ("arm_R", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }),                       // 24/24t
-            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),              // 15/15t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/20t
+            (PartId.Torso, new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun }),       // 26/26t
+            (PartId.ArmR, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }),                       // 24/24t
+            (PartId.ArmL, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),              // 15/15t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/20t
         },
         ["demeter"] = new[]
         {
-            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
-            ("arm_L", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
-            ("torso", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 24/24t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/20t
+            (PartId.ArmR, new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
+            (PartId.ArmL, new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
+            (PartId.Torso, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 24/24t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/20t
         },
         ["theseus"] = new[]
         {
-            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
-            ("arm_L", new[] { WeaponId.Autocannon, WeaponId.Autocannon }), // 24/24t
-            ("torso", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 19/19t
-            ("pod_R", new[] { WeaponId.Lrm, WeaponId.Lrm, WeaponId.Srm }),                              // 24/24t
+            (PartId.ArmR, new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun, WeaponId.MachineGun }), // 28/28t
+            (PartId.ArmL, new[] { WeaponId.Autocannon, WeaponId.Autocannon }), // 24/24t
+            (PartId.Torso, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 19/19t
+            (PartId.PodR, new[] { WeaponId.Lrm, WeaponId.Lrm, WeaponId.Srm }),                              // 24/24t
         },
         ["amadeus"] = new[]
         {
-            ("arm_L", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),   // 20/22t
-            ("arm_R", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),   // 20/22t
-            ("torso", new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),     // 24/24t
-            ("pod_R", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/22t
+            (PartId.ArmL, new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),   // 20/22t
+            (PartId.ArmR, new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),   // 20/22t
+            (PartId.Torso, new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),     // 24/24t
+            (PartId.PodR, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/22t
         },
         ["hades"] = new[]
         {
-            ("arm_R", new[] { WeaponId.HeavyCannon, WeaponId.Autocannon }),                           // 28/28t
-            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser }),                           // 14/14t
-            ("torso", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 12/12t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/21t
+            (PartId.ArmR, new[] { WeaponId.HeavyCannon, WeaponId.Autocannon }),                           // 28/28t
+            (PartId.ArmL, new[] { WeaponId.Ppc, WeaponId.LargeLaser }),                           // 14/14t
+            (PartId.Torso, new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.SmallLaser, WeaponId.SmallLaser }), // 12/12t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/21t
         },
         ["ares"] = new[]
         {
-            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon }),                     // 24/24t
-            ("arm_L", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),    // 20/20t
-            ("torso", new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.MediumLaser }),                    // 21/21t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/20t
+            (PartId.ArmR, new[] { WeaponId.Autocannon, WeaponId.Autocannon }),                     // 24/24t
+            (PartId.ArmL, new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),    // 20/20t
+            (PartId.Torso, new[] { WeaponId.Ppc, WeaponId.Ppc, WeaponId.MediumLaser }),                    // 21/21t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                   // 20/20t
         },
         ["apollo"] = new[]
         {
-            ("arm_R", new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun }),      // 26/26t
-            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),            // 15/16t
-            ("torso", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser }),   // 13/13t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Srm }),                                   // 14/15t
+            (PartId.ArmR, new[] { WeaponId.Autocannon, WeaponId.Autocannon, WeaponId.MachineGun }),      // 26/26t
+            (PartId.ArmL, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),            // 15/16t
+            (PartId.Torso, new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser }),   // 13/13t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Srm }),                                   // 14/15t
         },
         ["hermes"] = new[]
         {
-            ("arm_R", new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),             // 20/24t
-            ("arm_L", new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),              // 15/16t
-            ("pod_L", new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
-            ("torso", new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser }), // 14/14t
+            (PartId.ArmR, new[] { WeaponId.HeavyCannon, WeaponId.MachineGun, WeaponId.MachineGun }),             // 20/24t
+            (PartId.ArmL, new[] { WeaponId.Ppc, WeaponId.LargeLaser, WeaponId.SmallLaser }),              // 15/16t
+            (PartId.PodL, new[] { WeaponId.Lrm, WeaponId.Lrm }),                                     // 20/21t
+            (PartId.Torso, new[] { WeaponId.LargeLaser, WeaponId.LargeLaser, WeaponId.MediumLaser, WeaponId.SmallLaser }), // 14/14t
         },
     };
 }
@@ -478,7 +478,7 @@ public sealed class LoadoutState
     // 3-slot Hector fielded less than the 4-slot Enyo despite
     // the bigger budget - slot count beat tonnage). The tonnage is
     // the real limit now, exactly like the MW4 lab.
-    public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<WeaponId>> Equipped = new();
+    public readonly System.Collections.Generic.Dictionary<PartId, System.Collections.Generic.List<WeaponId>> Equipped = new();
 
     // Firing groups (owner): every fitted weapon belongs to a
     // group the PLAYER picks in the lab (the G-button on each
@@ -487,7 +487,7 @@ public sealed class LoadoutState
     // Equipped (same slot, same index). A weapon fitted without
     // an explicit pick takes the type default, which reproduces
     // the old type grouping (energy 1, ballistic 2, missile 3).
-    public readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>> GroupMap = new();
+    public readonly System.Collections.Generic.Dictionary<PartId, System.Collections.Generic.List<int>> GroupMap = new();
     public const int MaxGroup = 6;
 
     public static int DefaultGroupFor(WeaponDef def) =>
@@ -495,7 +495,7 @@ public sealed class LoadoutState
         : def.Type == WeaponSlotType.Energy ? 1
         : def.Type == WeaponSlotType.Ballistic ? 2 : 3;
 
-    public int GroupAt(string slotId, int index)
+    public int GroupAt(PartId slotId, int index)
     {
         if (GroupMap.TryGetValue(slotId, out var g) && index >= 0 && index < g.Count)
             return g[index];
@@ -504,7 +504,7 @@ public sealed class LoadoutState
             ? DefaultGroupFor(WeaponCatalog.ById(ids[index])) : 1;
     }
 
-    public void SetGroup(string slotId, int index, int group)
+    public void SetGroup(PartId slotId, int index, int group)
     {
         var ids = WeaponsIn(slotId);
         if (index < 0 || index >= ids.Count) return;
@@ -521,16 +521,16 @@ public sealed class LoadoutState
     // chassis; the duel's effective rule is spec.JumpCapable && JumpJets.
     public bool JumpJets;
 
-    public System.Collections.Generic.IReadOnlyList<WeaponId> WeaponsIn(string slotId) =>
+    public System.Collections.Generic.IReadOnlyList<WeaponId> WeaponsIn(PartId slotId) =>
         Equipped.TryGetValue(slotId, out var l) ? l : System.Array.Empty<WeaponId>();
 
-    public WeaponDef FirstDef(string slotId) =>
+    public WeaponDef FirstDef(PartId slotId) =>
         WeaponIn(slotId) is WeaponId id ? WeaponCatalog.ById(id) : null;
 
-    public WeaponId? WeaponIn(string slotId) =>
+    public WeaponId? WeaponIn(PartId slotId) =>
         Equipped.TryGetValue(slotId, out var l) && l.Count > 0 ? l[0] : null;
 
-    public float SlotWeight(string slotId)
+    public float SlotWeight(PartId slotId)
     {
         float t = 0f;
         foreach (var id in WeaponsIn(slotId))
@@ -543,7 +543,7 @@ public sealed class LoadoutState
 
     // Pure rule check (used live during drag hover): null = the weapon
     // fits, else the reason it does not.
-    public string Check(RiderSpec spec, string slotId, WeaponDef weapon)
+    public string Check(RiderSpec spec, PartId slotId, WeaponDef weapon)
     {
         var slot = spec.Slot(slotId);
         if (slot == null) return "no such slot";
@@ -558,7 +558,7 @@ public sealed class LoadoutState
 
     // Adds the weapon to the hardpoint (multi-fit). Returns null on
     // success, else the reason the drop is refused.
-    public string TryAssign(RiderSpec spec, string slotId, WeaponDef weapon)
+    public string TryAssign(RiderSpec spec, PartId slotId, WeaponDef weapon)
     {
         var err = Check(spec, slotId, weapon);
         if (err != null) return err;
@@ -572,7 +572,7 @@ public sealed class LoadoutState
     }
 
     // Removes the most recently added weapon from the hardpoint.
-    public bool RemoveLast(string slotId, out WeaponId? removedId)
+    public bool RemoveLast(PartId slotId, out WeaponId? removedId)
     {
         removedId = null;
         if (!Equipped.TryGetValue(slotId, out var l) || l.Count == 0) return false;
@@ -584,7 +584,7 @@ public sealed class LoadoutState
     }
 
     // Removes one specific fitted weapon (the lab's list rows).
-    public bool RemoveAt(string slotId, int index, out WeaponId? removedId)
+    public bool RemoveAt(PartId slotId, int index, out WeaponId? removedId)
     {
         removedId = null;
         if (!Equipped.TryGetValue(slotId, out var l) || index < 0 || index >= l.Count) return false;
@@ -595,7 +595,7 @@ public sealed class LoadoutState
         return true;
     }
 
-    public void Clear(string slotId) { Equipped.Remove(slotId); GroupMap.Remove(slotId); }
+    public void Clear(PartId slotId) { Equipped.Remove(slotId); GroupMap.Remove(slotId); }
 
     public void Strip()
     {

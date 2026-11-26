@@ -160,8 +160,8 @@ public partial class Titans
         leftBox.AddChild(grid);
         foreach (var (id, name) in new[]
         {
-            (PartIds.Head, "HEAD"), (SlotIds.ArmL, "ARM L"), (SlotIds.ArmR, "ARM R"), (SlotIds.Gun, "GUN"), (SlotIds.PodL, "POD L"),
-            (SlotIds.PodR, "POD R"), (PartIds.LegL, "LEG L"), (PartIds.LegR, "LEG R"),
+            (PartId.Head, "HEAD"), (PartId.ArmL, "ARM L"), (PartId.ArmR, "ARM R"), (PartId.Gun, "GUN"), (PartId.PodL, "POD L"),
+            (PartId.PodR, "POD R"), (PartId.LegL, "LEG L"), (PartId.LegR, "LEG R"),
         })
         {
             var cell = new VBoxContainer();
@@ -1347,13 +1347,13 @@ public partial class Titans
         // Hector carries a single rack - an absent right pod is not
         // a "lost" one). Wording follows the equipped pod weapon.
         string podName = (_defPodL ?? _defPodR)?.Short ?? "LRM";
-        bool hasPodL = _partsPlayer.Has("pod_L"), hasPodR = _partsPlayer.Has("pod_R");
+        bool hasPodL = _partsPlayer.Has(PartId.PodL), hasPodR = _partsPlayer.Has(PartId.PodR);
         int podRocketsL = 0, podRocketsR = 0;
         foreach (var g in _podGunsL) podRocketsL += g.Def.Rockets;
         foreach (var g in _podGunsR) podRocketsR += g.Def.Rockets;
-        if (_defPodL != null && hasPodL && !_partsPlayer.Alive("pod_L") && (podRocketsR > 0 || !hasPodR)) status.Add($"{podName} DEGRADED - LEFT POD LOST ({podRocketsL} ROCKETS)");
-        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive("pod_R") && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED - RIGHT POD LOST ({podRocketsR} ROCKETS)");
-        if (!_partsPlayer.Alive("head")) status.Add("SENSORS DESTROYED");
+        if (_defPodL != null && hasPodL && !_partsPlayer.Alive(PartId.PodL) && (podRocketsR > 0 || !hasPodR)) status.Add($"{podName} DEGRADED - LEFT POD LOST ({podRocketsL} ROCKETS)");
+        else if (_defPodR != null && hasPodR && !_partsPlayer.Alive(PartId.PodR) && (podRocketsL > 0 || !hasPodL)) status.Add($"{podName} DEGRADED - RIGHT POD LOST ({podRocketsR} ROCKETS)");
+        if (!_partsPlayer.Alive(PartId.Head)) status.Add("SENSORS DESTROYED");
         _lblWeaponStatus.Text = string.Join("\n", status);
         if (_feedLabel != null)
             _feedLabel.Text = string.Join("\n",
