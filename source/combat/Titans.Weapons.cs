@@ -769,9 +769,9 @@ public partial class Titans
             if (g.Cd > 0f) continue; // still cooling: sits this volley out
             firedGuns.Add(g);
             var t = (g.Slot, g.Def);
-            if (g.Path == 0) las.Add(t);
-            else if (g.Path == 1) can.Add(t);
-            else if (g.Path == 2) podL.Add(t);
+            if (g.Path == FirePath.Energy) las.Add(t);
+            else if (g.Path == FirePath.Cannon) can.Add(t);
+            else if (g.Path == FirePath.PodL) podL.Add(t);
             else podR.Add(t);
         }
         if (!anyAlive)

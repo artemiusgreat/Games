@@ -221,7 +221,7 @@ public partial class Titans : Node3D
     {
         public string Slot;
         public WeaponDef Def;
-        public int Path;
+        public FirePath Path;
         public float Cd;
     }
     private sealed class WpnGroup

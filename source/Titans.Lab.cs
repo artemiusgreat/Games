@@ -494,11 +494,11 @@ public partial class Titans
         int missileIdx = 0;
         foreach (var slot in _playerSpec.Slots)
         {
-            int path = slot.Type == WeaponSlotType.Energy ? 0
-                : slot.Type == WeaponSlotType.Ballistic ? 1
-                : missileIdx++ == 0 ? 2 : 3; // missile slots in order: left pod, right pod
-            var bucket = path == 0 ? _gunsEnergy : path == 1 ? _gunsBallistic
-                : path == 2 ? _podGunsL : _podGunsR;
+            var path = slot.Type == WeaponSlotType.Energy ? FirePath.Energy
+                : slot.Type == WeaponSlotType.Ballistic ? FirePath.Cannon
+                : missileIdx++ == 0 ? FirePath.PodL : FirePath.PodR; // missile slots in order: left pod, right pod
+            var bucket = path == FirePath.Energy ? _gunsEnergy : path == FirePath.Cannon ? _gunsBallistic
+                : path == FirePath.PodL ? _podGunsL : _podGunsR;
             var fitted = _loadout.WeaponsIn(slot.Id);
             for (int fi = 0; fi < fitted.Count; fi++)
             {

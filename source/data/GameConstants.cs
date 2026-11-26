@@ -82,6 +82,11 @@ public static class RiderBody
     public const float Gap = 3f;
 }
 
+// The fire path a fitted gun dispatches through when its
+// group fires (owner, 2026-11-25: an enum, not the bare
+// 0/1/2/3 the group builder used to stamp on each gun).
+public enum FirePath { Energy, Cannon, PodL, PodR }
+
 public static class SlotIds
 {
     public const string ArmL = "arm_L";
