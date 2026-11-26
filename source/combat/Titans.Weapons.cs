@@ -15,7 +15,7 @@ public partial class Titans
     // the torso facing so the shot clears the arm.
     private Vector3 ElbowMuzzle(RiderWalker w, bool left)
     {
-        var bone = w.BoneWorldPos(left ? "elbow_L" : "elbow_R");
+        var bone = w.BoneWorldPos(left ? Bones.ElbowL : Bones.ElbowR);
         return bone + RiderWalker.HeadingVec(w.TorsoYawWorld) * 2.8f;
     }
 
@@ -29,10 +29,10 @@ public partial class Titans
         if (slot == SlotIds.Gun) return TorsoGunMuzzle(w);
         if (slot == SlotIds.Torso)
         {
-            var t = w.BoneWorldPos("torso");
+            var t = w.BoneWorldPos(Bones.Torso);
             return t + Vector3.Up * 2.0f + RiderWalker.HeadingVec(w.TorsoYawWorld) * 1.6f;
         }
-        return ElbowMuzzle(w, slot != "arm_R");
+        return ElbowMuzzle(w, slot != SlotIds.ArmR);
     }
 
     // Torso gun (the Hector's waist AC/20): torso bone origin plus a
@@ -41,7 +41,7 @@ public partial class Titans
     // not the fist.
     private Vector3 TorsoGunMuzzle(RiderWalker w)
     {
-        var torso = w.BoneWorldPos("torso");
+        var torso = w.BoneWorldPos(Bones.Torso);
         var fwd = RiderWalker.HeadingVec(w.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
         return torso + right * 1.7f + fwd * 1.4f + Vector3.Up * 2.6f;
@@ -76,7 +76,7 @@ public partial class Titans
     {
         if (_playerDead) return;
         var fired = _gunsEnergy.FindAll(g => _partsPlayer.Alive(g.Slot));
-        if (fired.Count == 0) { DenyWeapon("laser"); return; }
+        if (fired.Count == 0) { DenyWeapon(HitKinds.Laser); return; }
         if (_cdLaser > 0f) return;
         _cdLaser = 0f; foreach (var g in fired) _cdLaser = Mathf.Max(_cdLaser, g.Def.Cooldown);
         FireLaserVolley(aimPoint, fired);
@@ -134,9 +134,9 @@ public partial class Titans
                 SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 0.95f);
             }
             Dbg.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
-            if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, "laser");
-            else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, "laser");
-            else if (AllyByRole(hit.Target) is { } la) ApplyDamage(la.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, "laser");
+            if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
+            else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
+            else if (AllyByRole(hit.Target) is { } la) ApplyDamage(la.Walker, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
             else if (hit.Target == Roles.Prop) DamageProp(hit.Point, fired[i].Def.Damage, 0.9f); // laser attribution reaches as far as its hit thickness
         }
         if (!anyHit) Dbg.Print("WPN LASER hit=none");
@@ -156,7 +156,7 @@ public partial class Titans
     {
         if (_playerDead) return;
         var fired = _gunsBallistic.FindAll(g => _partsPlayer.Alive(g.Slot));
-        if (fired.Count == 0) { DenyWeapon("ac"); return; }
+        if (fired.Count == 0) { DenyWeapon(WeaponIds.Autocannon); return; }
         if (_cdAc > 0f) return;
         _cdAc = 0f; foreach (var g in fired) _cdAc = Mathf.Max(_cdAc, g.Def.Cooldown);
         FireCannonVolley(aimPoint, fired);
@@ -224,7 +224,7 @@ public partial class Titans
         if (_playerDead) return;
         bool podL = _podGunsL.Count > 0 && _partsPlayer.Alive(_podGunsL[0].Slot);
         bool podR = _podGunsR.Count > 0 && _partsPlayer.Alive(_podGunsR[0].Slot);
-        if (!podL && !podR) { DenyWeapon("lrm"); return; }
+        if (!podL && !podR) { DenyWeapon(WeaponIds.Lrm); return; }
         if (_cdLrm > 0f) return;
         _cdLrm = 0f;
         foreach (var g in _podGunsL) _cdLrm = Mathf.Max(_cdLrm, g.Def.Cooldown);
@@ -278,7 +278,7 @@ public partial class Titans
         // fallback below is the sane shoulder spot for such pods.
         if (_partsPlayer != null && _partsPlayer.PartHasVolumes(id))
             return _partsPlayer.PartCenterWorld(id) + Vector3.Up * 0.3f;
-        var torso = _player.BoneWorldPos("torso");
+        var torso = _player.BoneWorldPos(Bones.Torso);
         var fwd = RiderWalker.HeadingVec(_player.TorsoYawWorld);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
         return torso + right * (left ? -2.3f : 2.3f) + Vector3.Up * 3.6f + fwd * 0.4f;
@@ -429,7 +429,7 @@ public partial class Titans
         // re-solve has an arc to steer. If the target dies
         // mid-flight the tracking stops and the salvo
         // finishes at his last position.
-        if (lockTarget != null && def.Id == "lrm")
+        if (lockTarget != null && def.Id == WeaponIds.Lrm)
         {
             if (!guided)
             {
@@ -465,7 +465,7 @@ public partial class Titans
             : hit.Target == Roles.Foe && _foe != null ? _foe.Walker
             : hit.Target == Roles.Enemy ? _enemy
             : AllyByRole(hit.Target)?.Walker;
-        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, "rocket");
+        if (direct != null) ApplyDamage(direct, p.Damage, hit, p.OwnerId, p.WeaponWeight, HitKinds.Rocket);
         var roster = new System.Collections.Generic.List<(RiderWalker, string)> { (_player, Roles.Player), (_enemy, Roles.Enemy) };
         if (_foe != null) roster.Add((_foe.Walker, Roles.Foe));
         foreach (var a in _allies) roster.Add((a.Walker, a.Role));
@@ -478,7 +478,7 @@ public partial class Titans
                 var splashHit = hit;
                 splashHit.Target = id;
                 splashHit.Zone = "splash";
-                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight, "rocket");
+                ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight, HitKinds.Rocket);
             }
         }
     }
@@ -527,7 +527,7 @@ public partial class Titans
         SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.13f, 0.6f, 1.1f);
         SpawnImpactLight(hit.Point, new Color(1f, 0.75f, 0.4f), 2.6f, 11f, 0.35f);
         if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
-        string kind = p.WeaponWeight >= 10f ? "cannon" : "mg";
+        string kind = p.WeaponWeight >= 10f ? HitKinds.Cannon : HitKinds.Mg;
         if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
         else if (hit.Target == Roles.Foe && _foe != null) ApplyDamage(_foe.Walker, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
@@ -618,9 +618,9 @@ public partial class Titans
     // step from part state).
     private void ApplyPartConsequences(RiderParts parts, string partId)
     {
-        if (partId == "leg_L" || partId == "leg_R")
+        if (partId == PartIds.LegL || partId == PartIds.LegR)
             SyncLegConsequences(WalkerOf(parts), parts);
-        else if (partId == "head" && parts == _partsPlayer)
+        else if (partId == PartIds.Head && parts == _partsPlayer)
             _hudFlickerT = 1.2f;
         if (parts == _partsPlayer) AutoSwitchWeapon();
     }
@@ -701,8 +701,8 @@ public partial class Titans
     // Death comes only from the HP pool reaching zero.
     private void SyncLegConsequences(RiderWalker w, RiderParts parts)
     {
-        bool lDead = !parts.Alive("leg_L");
-        bool rDead = !parts.Alive("leg_R");
+        bool lDead = !parts.Alive(PartIds.LegL);
+        bool rDead = !parts.Alive(PartIds.LegR);
         w.SetLegDisabled(true, lDead);
         w.SetLegDisabled(false, rDead);
         if (lDead && rDead)

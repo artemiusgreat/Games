@@ -89,7 +89,7 @@ public partial class Titans
     private Vector3 TorsoAimPoint()
     {
         var dir = AimDirWorld();
-        var from = _player.BoneWorldPos("torso") + dir * (_player.CollisionRadius + AimOriginClearance);
+        var from = _player.BoneWorldPos(Bones.Torso) + dir * (_player.CollisionRadius + AimOriginClearance);
         _aimFrom = from;
         _aimDir = dir;
         _aimParallel = false;

@@ -300,7 +300,7 @@ public partial class Titans
     private void TrackTorso(RiderWalker w, RiderParts parts, float yaw, float yawTo, float dt)
     {
         float desiredTwist = RiderWalker.WrapAngle(yawTo - yaw);
-        if (parts.Alive("head"))
+        if (parts.Alive(PartIds.Head))
         {
             w.TorsoTwist = desiredTwist;
         }
@@ -389,7 +389,7 @@ public partial class Titans
         float tof = dist / speed;
         var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
-            parts.Alive("head") ? 1.2f : 3.6f);
+            parts.Alive(PartIds.Head) ? 1.2f : 3.6f);
         var shell = SpawnProjectile(muzzle, dir * speed, 0f, def?.Damage ?? 18f, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? 16f); // shells fly straight (owner)
         if (def != null && speed > 0f) shell.Life = def.Range / speed; // and burn out at the weapon's range
         PlaySfx(_sfxCannon, muzzle, 0f, 0.78f);

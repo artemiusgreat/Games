@@ -116,10 +116,10 @@ public partial class Titans
                     var cap = lab.Check(spec, "torso", WeaponCatalog.HeavyCannon);
                     if (cap == null || !cap.Contains("weighs"))
                     { GD.PrintErr($"DUEL FAIL: lab weight cap not enforced ({cap})"); GetTree().Quit(1); return; }
-                    if (lab.Check(spec, "arm_R", WeaponCatalog.Autocannon) == null)
+                    if (lab.Check(spec, SlotIds.ArmR, WeaponCatalog.Autocannon) == null)
                     { GD.PrintErr("DUEL FAIL: lab slot type not enforced"); GetTree().Quit(1); return; }
-                    if (lab.TryAssign(spec, "arm_R", WeaponCatalog.LargeLaser) != null
-                        || lab.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null)
+                    if (lab.TryAssign(spec, SlotIds.ArmR, WeaponCatalog.LargeLaser) != null
+                        || lab.TryAssign(spec, SlotIds.PodL, WeaponCatalog.Lrm) != null)
                     { GD.PrintErr("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
                     if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - 72f) > 0.01f)
                     { GD.PrintErr("DUEL FAIL: default fit tonnage != 72t"); GetTree().Quit(1); return; }
@@ -137,15 +137,15 @@ public partial class Titans
                     // weapons up to its cap - cumulative tonnage is
                     // the limit, not one weapon per slot.
                     var multi = new LoadoutState();
-                    if (multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
-                        || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
-                        || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) != null
-                        || multi.TryAssign(spec, "arm_L", WeaponCatalog.MediumLaser) == null)
+                    if (multi.TryAssign(spec, SlotIds.ArmL, WeaponCatalog.MediumLaser) != null
+                        || multi.TryAssign(spec, SlotIds.ArmL, WeaponCatalog.MediumLaser) != null
+                        || multi.TryAssign(spec, SlotIds.ArmL, WeaponCatalog.MediumLaser) != null
+                        || multi.TryAssign(spec, SlotIds.ArmL, WeaponCatalog.MediumLaser) == null)
                     { GD.PrintErr("DUEL FAIL: multi-fit cumulative arm cap wrong (3x ML = 9t fits the 10t arm, 4x = 12t must refuse)"); GetTree().Quit(1); return; }
-                    if (multi.TryAssign(spec, "pod_L", WeaponCatalog.Lrm) != null
-                        || multi.TryAssign(spec, "pod_L", WeaponCatalog.Srm) != null)
+                    if (multi.TryAssign(spec, SlotIds.PodL, WeaponCatalog.Lrm) != null
+                        || multi.TryAssign(spec, SlotIds.PodL, WeaponCatalog.Srm) != null)
                     { GD.PrintErr("DUEL FAIL: multi-fit pod refused (LRM 10t + SRM 4t = 14t <= 21t cap)"); GetTree().Quit(1); return; }
-                    if (!multi.RemoveLast("pod_L", out var peeled) || peeled != "srm" || multi.WeaponIn("pod_L") != "lrm")
+                    if (!multi.RemoveLast(SlotIds.PodL, out var peeled) || peeled != WeaponIds.Srm || multi.WeaponIn(SlotIds.PodL) != WeaponIds.Lrm)
                     { GD.PrintErr("DUEL FAIL: multi-fit peel wrong"); GetTree().Quit(1); return; }
                     GD.Print("LABTEST MULTIFIT PASS hardpoints fit multiple weapons up to their tonnage cap; peel removes the last one");
                     // Distribution (owner): heavier riders carry MORE
@@ -160,8 +160,8 @@ public partial class Titans
                     SetRiderSelection("hector", "enyo");
                     if (_playerSpec.Id != "hector" || _enemySpec.Id != "enyo"
                         || _hpPlayer != 340f || _hpEnemy != 260f
-                        || _defBallistic?.Id != "ac20"
-                        || !_partsEnemy.Alive("pod_L"))
+                        || _defBallistic?.Id != WeaponIds.Ac20
+                        || !_partsEnemy.Alive(SlotIds.PodL))
                     { GD.PrintErr($"DUEL FAIL: rider selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
                     _selStage = 1; _selHoldT = 0f;
                     GD.Print("LABTEST SELECTION swapped to Hector player; holding across live frames (HUD must survive a pod-less chassis)");
@@ -291,8 +291,8 @@ public partial class Titans
                 if (_pLimpStep == 0 && _phaseT > 0.15f)
                 {
                     ResetDuel();
-                    _partsPlayer.DamagePart("leg_L", 999f);
-                    if (_partsPlayer.Alive("leg_L")) { GD.PrintErr("DUEL FAIL: player leg_L not wrecked"); GetTree().Quit(1); break; }
+                    _partsPlayer.DamagePart(PartIds.LegL, 999f);
+                    if (_partsPlayer.Alive(PartIds.LegL)) { GD.PrintErr("DUEL FAIL: player leg_L not wrecked"); GetTree().Quit(1); break; }
                     if (Mathf.Abs(_player.SpeedFactor - 0.55f) > 0.01f) { GD.PrintErr($"DUEL FAIL: limp factor {_player.SpeedFactor:F2} != 0.55"); GetTree().Quit(1); break; }
                     _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f), 0f);
                     _enemy.Teleport(new Vector3(30f, Main.HeightAt(30f, -30f), -30f), Mathf.Pi);
@@ -997,10 +997,17 @@ public partial class Titans
         }
         var spec = RiderSpecs.All[_boneIdx];
         SetRiderSelection(spec.Id, "enyo");
+        // Bone census (owner, 2026-11-25): logic names bones
+        // generically (Bones constants) - EVERY rider must
+        // define every one of them, or the generic code is
+        // silently rider-specific. A missing bone fails here.
+        foreach (var bn in Bones.All)
+            if (!_player.HasBone(bn))
+            { GD.PrintErr($"BONEPROBE FAIL: {spec.Id} is missing bone {bn} - the shared-armature contract is broken"); GetTree().Quit(1); return; }
         var root = _player.RootPos;
         var h = RiderWalker.HeadingVec(_player.LegsYaw);
         var right = new Vector3(-h.Z, 0f, h.X);
-        var off = _player.BoneWorldPos("torso") - root;
+        var off = _player.BoneWorldPos(Bones.Torso) - root;
         string muzzles = "";
         foreach (var g in _gunsEnergy)
         {
@@ -1360,9 +1367,9 @@ public partial class Titans
         }
         else if (_dbPhase == 1 && _dbT > 0.5f)
         {
-            _partsPlayer.DamagePart("arm_L", 100000f);
+            _partsPlayer.DamagePart(SlotIds.ArmL, 100000f);
             if (_partsPlayer.Has("gun")) _partsPlayer.DamagePart("gun", 100000f);
-            _partsPlayer.DamagePart("leg_L", 100000f);
+            _partsPlayer.DamagePart(PartIds.LegL, 100000f);
             _partsPlayer.DumpDebris("t0");
             _dbPhase = 2; _dbT = 0f;
         }
@@ -2443,7 +2450,7 @@ public partial class Titans
 
     private static bool AnyPartDamaged(RiderParts parts)
     {
-        foreach (var id in new[] { "head", "torso", "arm_L", "arm_R", "gun", "pod_L", "pod_R", "leg_L", "leg_R" })
+        foreach (var id in new[] { "head", "torso", SlotIds.ArmL, SlotIds.ArmR, "gun", SlotIds.PodL, SlotIds.PodR, PartIds.LegL, PartIds.LegR })
             if (parts.Has(id) && parts.HpOf(id) < parts.GetPart(id).MaxHp - 0.01f) return true;
         return false;
     }
@@ -2476,10 +2483,10 @@ public partial class Titans
         FlipKneePole = false,
         Slots = new[]
         {
-            new SlotDef { Id = "arm_L", Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
-            new SlotDef { Id = "arm_R", Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 25f },
-            new SlotDef { Id = "pod_L", Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
-            new SlotDef { Id = "pod_R", Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = SlotIds.ArmL, Display = "LEFT ARM", Type = WeaponSlotType.Energy, MaxWeight = 8f },
+            new SlotDef { Id = SlotIds.ArmR, Display = "RIGHT ARM", Type = WeaponSlotType.Ballistic, MaxWeight = 25f },
+            new SlotDef { Id = SlotIds.PodL, Display = "LEFT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
+            new SlotDef { Id = SlotIds.PodR, Display = "RIGHT POD", Type = WeaponSlotType.Missile, MaxWeight = 21f },
         }
     };
 
@@ -2487,10 +2494,10 @@ public partial class Titans
     {
         _playerSpec = RangeMannequin;
         _loadout = new LoadoutState { JumpJets = true };
-        _loadout.TryAssign(_playerSpec, "arm_L", WeaponCatalog.LargeLaser);
-        _loadout.TryAssign(_playerSpec, "arm_R", WeaponCatalog.Autocannon);
-        _loadout.TryAssign(_playerSpec, "pod_L", WeaponCatalog.Lrm);
-        _loadout.TryAssign(_playerSpec, "pod_R", WeaponCatalog.Lrm);
+        _loadout.TryAssign(_playerSpec, SlotIds.ArmL, WeaponCatalog.LargeLaser);
+        _loadout.TryAssign(_playerSpec, SlotIds.ArmR, WeaponCatalog.Autocannon);
+        _loadout.TryAssign(_playerSpec, SlotIds.PodL, WeaponCatalog.Lrm);
+        _loadout.TryAssign(_playerSpec, SlotIds.PodR, WeaponCatalog.Lrm);
         ApplyLoadout();
     }
 
@@ -2573,10 +2580,10 @@ public partial class Titans
                     if (_enemyDmgEvents != 2 || Mathf.Abs(_enemyDmgTotal - 52f) > 0.01f)
                         WFail($"ac events={_enemyDmgEvents} dmg={_enemyDmgTotal:F1} (want 2 / 52)");
                     if (Mathf.Abs(_hpEnemy - 252f) > 0.01f) WFail($"ac hectorHp={_hpEnemy:F1} (want 252 pool under terrain-step routing)");
-                    if (Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f)
-                        WFail($"ac legL partHp={_partsEnemy.HpOf("leg_L"):F1} (want 90 = untouched, shells routed to torso)");
+                    if (Mathf.Abs(_partsEnemy.HpOf(PartIds.LegL) - 90f) > 0.01f)
+                        WFail($"ac legL partHp={_partsEnemy.HpOf(PartIds.LegL):F1} (want 90 = untouched, shells routed to torso)");
                     if (_wJoltSeen < 0.3f) { WFail($"cannon hits barely rocked the Hector (jolt env peak {_wJoltSeen:F2})"); return; }
-                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 hectorHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf("leg_L"):F0} (shells routed to torso; reaction: jolt {_wJoltSeen:F2})");
+                    GD.Print($"WPNTEST AC PASS events=2 dmg=52 hectorHp={_hpEnemy:F0} legL partHp={_partsEnemy.HpOf(PartIds.LegL):F0} (shells routed to torso; reaction: jolt {_wJoltSeen:F2})");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     SetWPhase(3);
                 }
@@ -3055,17 +3062,17 @@ public partial class Titans
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0 && _bPhaseT > 0.2)
                 {
-                    CraftHit(_player, "pod_L", 26f);
-                    if (Mathf.Abs(_partsPlayer.HpOf("pod_L") - 19f) > 0.01f)
-                        BFail($"pod hp after 26 dmg = {_partsPlayer.HpOf("pod_L"):F1} (want 19)");
+                    CraftHit(_player, SlotIds.PodL, 26f);
+                    if (Mathf.Abs(_partsPlayer.HpOf(SlotIds.PodL) - 19f) > 0.01f)
+                        BFail($"pod hp after 26 dmg = {_partsPlayer.HpOf(SlotIds.PodL):F1} (want 19)");
                     GD.Print("BRKTEST PODHP PASS part HP 45 -> 19 after one 26 hit");
                     BStep(1);
                 }
                 else if (_bStep == 1 && BStepT > 0.3)
                 {
-                    CraftHit(_player, "pod_L", 26f);
-                    if (_partsPlayer.Alive("pod_L")) BFail("pod_L alive after 52 total damage");
-                    if (_partsPlayer.DebrisOf("pod_L") == null) BFail("pod_L debris missing");
+                    CraftHit(_player, SlotIds.PodL, 26f);
+                    if (_partsPlayer.Alive(SlotIds.PodL)) BFail("pod_L alive after 52 total damage");
+                    if (_partsPlayer.DebrisOf(SlotIds.PodL) == null) BFail("pod_L debris missing");
                     GD.Print("BRKTEST PODBREAK PASS pod_L broke at <= 0 HP, debris spawned");
                     BStep(2);
                 }
@@ -3079,10 +3086,10 @@ public partial class Titans
                         _bFlag1 = true;
                         QueueCapture("res://proof/break_pod_fall.png", "bpodfall", "brkPlayer");
                     }
-                    var d = _partsPlayer.DebrisOf("pod_L");
+                    var d = _partsPlayer.DebrisOf(SlotIds.PodL);
                     if (d != null && d.Settled)
                     {
-                        if (!_partsPlayer.DebrisRestOk("pod_L", 0.15f, out float minY, out float gY))
+                        if (!_partsPlayer.DebrisRestOk(SlotIds.PodL, 0.15f, out float minY, out float gY))
                             BFail($"pod debris rest off: lowestCornerY={minY:F3} terrainThere={gY:F3}");
                         GD.Print($"BRKTEST DEBRISREST PASS pod_L lowest corner on terrain (y={minY:F3} vs {gY:F3})");
                         _bVec1 = d.Node.GlobalPosition;
@@ -3095,7 +3102,7 @@ public partial class Titans
                 else if (_bStep == 3 && BStepT > 3.0)
                 {
                     _player.SetDrive(0f, 0f);
-                    var d = _partsPlayer.DebrisOf("pod_L");
+                    var d = _partsPlayer.DebrisOf(SlotIds.PodL);
                     float drift = d.Node.GlobalPosition.DistanceTo(_bVec1);
                     float away = _player.RootPos.DistanceTo(d.Node.GlobalPosition) - _bV1;
                     if (drift > 0.05f) BFail($"debris moved with the rider: drift={drift:F3}");
@@ -3120,14 +3127,14 @@ public partial class Titans
                     int n = _rocketsLaunched - _bCount1;
                     if (n != 4) BFail($"salvo with pod_L gone = {n} rockets (want 4)");
                     GD.Print("BRKTEST SALVO4 PASS one pod lost -> 4 rockets");
-                    CraftHit(_player, "pod_R", 26f);
-                    CraftHit(_player, "pod_R", 26f);
-                    if (_partsPlayer.Alive("pod_R")) BFail("pod_R alive after 52 damage");
+                    CraftHit(_player, SlotIds.PodR, 26f);
+                    CraftHit(_player, SlotIds.PodR, 26f);
+                    if (_partsPlayer.Alive(SlotIds.PodR)) BFail("pod_R alive after 52 damage");
                     BStep(2);
                     _bCount1 = _rocketsLaunched;
                     _lastDenied = "";
                     FireLrmSalvo(EnemyAim());
-                    if (_lastDenied != "lrm") BFail("LRM not denied with both pods gone");
+                    if (_lastDenied != WeaponIds.Lrm) BFail("LRM not denied with both pods gone");
                 }
                 else if (_bStep == 2 && BStepT > 0.8)
                 {
@@ -3190,10 +3197,10 @@ public partial class Titans
                     // FULL pool, four 26-dmg arm hits must NOT
                     // break the arm - damage caps at 1 HP left.
                     _hpPlayer = _playerSpec.MaxHp;
-                    for (int i = 0; i < 4; i++) CraftHit(_player, "arm_L", 26f);
-                    if (!_partsPlayer.Alive("arm_L")) BFail("arm_L broke at full pool - gate not holding");
-                    if (Mathf.Abs(_partsPlayer.HpOf("arm_L") - 1f) > 0.01f)
-                        BFail($"arm_L hp after gated hits = {_partsPlayer.HpOf("arm_L"):F1} (want exactly 1)");
+                    for (int i = 0; i < 4; i++) CraftHit(_player, SlotIds.ArmL, 26f);
+                    if (!_partsPlayer.Alive(SlotIds.ArmL)) BFail("arm_L broke at full pool - gate not holding");
+                    if (Mathf.Abs(_partsPlayer.HpOf(SlotIds.ArmL) - 1f) > 0.01f)
+                        BFail($"arm_L hp after gated hits = {_partsPlayer.HpOf(SlotIds.ArmL):F1} (want exactly 1)");
                     GD.Print($"BRKTEST ARMGATE PASS arm capped at 1 HP while pool healthy (pool {_hpPlayer:F0}/{_playerSpec.MaxHp:F0})");
                     BStep(1);
                 }
@@ -3202,9 +3209,9 @@ public partial class Titans
                     // Pool critical (19%): the gate lifts and
                     // one more hit takes the arm off.
                     _hpPlayer = _playerSpec.MaxHp * 0.19f;
-                    CraftHit(_player, "arm_L", 26f);
-                    if (_partsPlayer.Alive("arm_L")) BFail("arm_L survived at 19% pool - gate did not lift");
-                    if (_partsPlayer.DebrisOf("arm_L") == null) BFail("arm_L debris missing after gated break");
+                    CraftHit(_player, SlotIds.ArmL, 26f);
+                    if (_partsPlayer.Alive(SlotIds.ArmL)) BFail("arm_L survived at 19% pool - gate did not lift");
+                    if (_partsPlayer.DebrisOf(SlotIds.ArmL) == null) BFail("arm_L debris missing after gated break");
                     GD.Print("BRKTEST ARMGATE-OPEN PASS arm breaks once the pool is critical");
                     _bCount1 = _beamsSpawned;
                     _lastDenied = "";
@@ -3256,12 +3263,12 @@ public partial class Titans
                     _enemy.SetDrive(Mathf.Pi, 0f);
                     if (BStepT > 1.2)
                     {
-                        CraftHit(_enemy, "leg_L", 30f);
-                        CraftHit(_enemy, "leg_L", 30f);
-                        CraftHit(_enemy, "leg_L", 30f);
-                        if (_partsEnemy.Alive("leg_L")) BFail("hector leg_L alive after 90 damage");
+                        CraftHit(_enemy, PartIds.LegL, 30f);
+                        CraftHit(_enemy, PartIds.LegL, 30f);
+                        CraftHit(_enemy, PartIds.LegL, 30f);
+                        if (_partsEnemy.Alive(PartIds.LegL)) BFail("hector leg_L alive after 90 damage");
                         if (!_enemy.LegDisabled(true)) BFail("walker leg_L not disabled");
-                        var legPart = _partsEnemy.GetPart("leg_L");
+                        var legPart = _partsEnemy.GetPart(PartIds.LegL);
                         if (!legPart.Wrecked) BFail("leg_L not in wrecked state");
                         foreach (var rec in legPart.Meshes)
                             if (rec.Detached) BFail("leg_L mesh DETACHED - legs must never fall off");
@@ -3309,14 +3316,14 @@ public partial class Titans
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == 0)
                 {
-                    CraftHit(_enemy, "leg_R", 30f);
-                    CraftHit(_enemy, "leg_R", 30f);
-                    CraftHit(_enemy, "leg_R", 30f);
+                    CraftHit(_enemy, PartIds.LegR, 30f);
+                    CraftHit(_enemy, PartIds.LegR, 30f);
+                    CraftHit(_enemy, PartIds.LegR, 30f);
                     if (_enemyDead) BFail("hector DIED from leg damage - legs never kill (owner)");
                     if (_enemy.Halted) BFail("hector walker halted by leg damage");
                     if (_banner.Visible) BFail($"banner shown for a leg-wrecked rider: '{_banner.Text}'");
                     if (_enemy.IsKnockedDown) BFail("both-legs wreck felled the rider");
-                    var lr = _partsEnemy.GetPart("leg_R");
+                    var lr = _partsEnemy.GetPart(PartIds.LegR);
                     if (!lr.Wrecked) BFail("leg_R not wrecked");
                     foreach (var rec in lr.Meshes)
                         if (rec.Detached) BFail("leg_R mesh DETACHED");
@@ -3430,14 +3437,14 @@ public partial class Titans
                         if (p.Destroyed) BFail($"hector part {p.Id} still destroyed after reset");
                     if (_partsPlayer.DebrisList.Count != 0 || _partsEnemy.DebrisList.Count != 0)
                         BFail("debris remains after reset");
-                    if (Mathf.Abs(_partsPlayer.HpOf("pod_L") - 45f) > 0.01f ||
-                        Mathf.Abs(_partsEnemy.HpOf("leg_L") - 90f) > 0.01f ||
+                    if (Mathf.Abs(_partsPlayer.HpOf(SlotIds.PodL) - 45f) > 0.01f ||
+                        Mathf.Abs(_partsEnemy.HpOf(PartIds.LegL) - 90f) > 0.01f ||
                         Mathf.Abs(_partsEnemy.HpOf("head") - 50f) > 0.01f)
                         BFail("part HP not refilled after reset");
                     if (_enemy.LegDisabled(true) || _player.LegDisabled(false) ||
                         Mathf.Abs(_enemy.SpeedFactor - 1f) > 0.01f)
                         BFail("walker leg state not cleared after reset");
-                    var rec = _partsPlayer.GetPart("pod_L").Meshes[0];
+                    var rec = _partsPlayer.GetPart(SlotIds.PodL).Meshes[0];
                     if (rec.Detached || rec.Mi.Skin == null || !(rec.Mi.GetParent() is Skeleton3D))
                         BFail("pod_L mesh not rebound to the skeleton after reset");
                     GD.Print("BRKTEST RESTORE PASS parts alive, HP full, debris freed, meshes rebound, walker state cleared");
@@ -3469,14 +3476,14 @@ public partial class Titans
                 {
                     if (_enemy.IsKnockedDown) BFail("weapon impacts toppled a rider (retired knockdown)");
                     GD.Print("KNOCKTEST NO-TOPPLE PASS 36t of impacts - the Hector stands (no knockdown rule remains)");
-                    _partsEnemy.DamagePart("leg_R", 999f);
+                    _partsEnemy.DamagePart(PartIds.LegR, 999f);
                     BStep(2);
                 }
                 else if (_bStep == 2 && BStepT > 0.8f)
                 {
                     if (_enemy.IsKnockedDown || _enemy.FallAmount > 0.01f)
                     { BFail("leg wreck felled the rider (retired fall rule)"); return; }
-                    var lr = _partsEnemy.GetPart("leg_R");
+                    var lr = _partsEnemy.GetPart(PartIds.LegR);
                     if (!lr.Wrecked) { BFail("leg_R not wrecked"); return; }
                     foreach (var rec in lr.Meshes)
                         if (rec.Detached) { BFail("leg_R mesh DETACHED - legs never fall off"); return; }
@@ -3485,7 +3492,7 @@ public partial class Titans
                     GD.Print("LEGRULE PASS leg wrecked: attached + darkened, rider upright, limping at 0.55x");
                     QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkHector");
                     ResetDuel();
-                    if (_partsEnemy.GetPart("leg_R").Wrecked || !_partsEnemy.Alive("leg_R"))
+                    if (_partsEnemy.GetPart(PartIds.LegR).Wrecked || !_partsEnemy.Alive(PartIds.LegR))
                     { BFail("reset did not un-wreck leg_R"); return; }
                     if (Mathf.Abs(_enemy.SpeedFactor - 1f) > 0.01f)
                     { BFail("reset did not restore full speed"); return; }
@@ -4581,7 +4588,7 @@ public partial class Titans
         var fwdW = RiderWalker.HeadingVec(w.LegsYaw);
         for (int i = 0; i < 2; i++)
         {
-            string partId = i == 0 ? "leg_L" : "leg_R";
+            string partId = i == 0 ? PartIds.LegL : PartIds.LegR;
             string side = i == 0 ? "L" : "R";
             if (joints[i].Item5)
             {
@@ -4892,13 +4899,13 @@ public partial class Titans
             // under it), so a solver error and a bind/geometry
             // mismatch read as different numbers.
             GD.Print($"GAITDBG t={_gaitT:F2} CONTACT soleDiffMax={_enemy.MaxPlantedDiff():F3} " +
-                $"footGapL={_partsEnemy.FootVisualGap("leg_L"):F3} footGapR={_partsEnemy.FootVisualGap("leg_R"):F3}");
+                $"footGapL={_partsEnemy.FootVisualGap(PartIds.LegL):F3} footGapR={_partsEnemy.FootVisualGap(PartIds.LegR):F3}");
             var joints = _enemy.DebugLegJoints();
             var fwdW = RiderWalker.HeadingVec(_enemy.LegsYaw);
             for (int i = 0; i < 2; i++)
             {
                 if (!joints[i].Item5) continue; // planted legs only
-                var pg = _partsEnemy.FootPitchGaps(i == 0 ? "leg_L" : "leg_R", joints[i].Item4, fwdW);
+                var pg = _partsEnemy.FootPitchGaps(i == 0 ? PartIds.LegL : PartIds.LegR, joints[i].Item4, fwdW);
                 GD.Print($"GAITDBG t={_gaitT:F2} PITCH {(i == 0 ? "L" : "R")}: toeGap={pg.Toe:F3} heelGap={pg.Heel:F3}");
             }
         }

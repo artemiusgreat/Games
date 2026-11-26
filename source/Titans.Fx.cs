@@ -294,9 +294,9 @@ public partial class Titans
     {
         _lastDenied = weapon;
         Dbg.Print($"WPN DENIED {weapon} (mounting part destroyed)");
-        if (weapon == "laser") _denyLaserT = 0.5f;
-        else if (weapon == "ac") _denyAcT = 0.5f;
-        else if (weapon == "lrm") _denyLrmT = 0.5f;
+        if (weapon == HitKinds.Laser) _denyLaserT = 0.5f;
+        else if (weapon == WeaponIds.Autocannon) _denyAcT = 0.5f;
+        else if (weapon == WeaponIds.Lrm) _denyLrmT = 0.5f;
     }
 
     // Creates (or recreates, after a rider-selection change) the
@@ -311,10 +311,10 @@ public partial class Titans
         // at the hit point, no blinking or shining of the rider.)
         float jolt = kind switch
         {
-            "laser" => 0.12f,
-            "rocket" => 0.85f,
-            "cannon" => 1.0f,
-            "mg" => 0.3f,
+            HitKinds.Laser => 0.12f,
+            HitKinds.Rocket => 0.85f,
+            HitKinds.Cannon => 1.0f,
+            HitKinds.Mg => 0.3f,
             _ => 0.4f,
         };
         // Hit-sound throttle: 60ms for ordinary fire, but a

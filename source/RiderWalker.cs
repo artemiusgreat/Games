@@ -286,6 +286,10 @@ public partial class RiderWalker : Node3D
         return _skel.GlobalTransform * _skel.GetBoneGlobalPose(idx).Origin;
     }
 
+    // Does this rig carry the named bone? The harness bone
+    // census guards the shared-armature contract (see Bones).
+    public bool HasBone(string name) => _skel != null && _skel.FindBone(name) >= 0;
+
     public static Vector3 HeadingVec(float yaw) => new Vector3(-Mathf.Sin(yaw), 0f, -Mathf.Cos(yaw));
     public static float YawOf(Vector3 dir) => Mathf.Atan2(-dir.X, -dir.Z);
     public static float WrapAngle(float a)
@@ -337,7 +341,7 @@ public partial class RiderWalker : Node3D
         for (int i = 0; i < names.Length; i++) names[i] = _skel.GetBoneName(i);
         Dbg.Print($"{cfg.Label} skeleton bones={names.Length}: {string.Join(",", names)}");
 
-        _torsoBone = _skel.FindBone("torso");
+        _torsoBone = _skel.FindBone(Bones.Torso);
         InitLegs(spawnPos);
         if (_legL.Hip < 0 || _legR.Hip < 0) { GD.PrintErr($"{cfg.Label} FAIL: leg bones not found"); return; }
 
@@ -372,8 +376,8 @@ public partial class RiderWalker : Node3D
             _torsoFwdBoneLocal = w0.Transposed() * new Vector3(0f, 0f, -1f);
         }
 
-        SetupLeg(_legL, "hip_L", "knee_L", "ankle_L", skelG, holderG, groundY);
-        SetupLeg(_legR, "hip_R", "knee_R", "ankle_R", skelG, holderG, groundY);
+        SetupLeg(_legL, Bones.HipL, Bones.KneeL, Bones.AnkleL, skelG, holderG, groundY);
+        SetupLeg(_legR, Bones.HipR, Bones.KneeR, Bones.AnkleR, skelG, holderG, groundY);
 
         if (_cfg.FlipKneePole)
         {

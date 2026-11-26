@@ -92,6 +92,67 @@ public static class SlotIds
     public const string PodR = "pod_R";
 }
 
+/// <summary>
+/// Skeleton bone names. Every rider rig carries the same
+/// shared armature (the rigging workflow transfers it whole),
+/// so logic names bones only through these constants - never
+/// bare literals - and the harness bone probe censuses every
+/// name on every chassis. A rider missing one is a rigging
+/// bug, not a case for rider-specific logic.
+/// </summary>
+public static class Bones
+{
+    public const string Torso = "torso";
+    public const string ElbowL = "elbow_L";
+    public const string ElbowR = "elbow_R";
+    public const string HipL = "hip_L";
+    public const string KneeL = "knee_L";
+    public const string AnkleL = "ankle_L";
+    public const string HipR = "hip_R";
+    public const string KneeR = "knee_R";
+    public const string AnkleR = "ankle_R";
+
+    public static readonly string[] All = { Torso, ElbowL, ElbowR, HipL, KneeL, AnkleL, HipR, KneeR, AnkleR };
+}
+
+/// <summary>
+/// Breakable part ids that are not weapon slots (the slot
+/// parts - arms, gun, torso, pods - live in SlotIds).
+/// </summary>
+public static class PartIds
+{
+    public const string Head = "head";
+    public const string LegL = "leg_L";
+    public const string LegR = "leg_R";
+}
+
+/// <summary>Weapon definition ids (the WeaponDef catalog keys).</summary>
+public static class WeaponIds
+{
+    public const string SmallLaser = "small_laser";
+    public const string MediumLaser = "medium_laser";
+    public const string LargeLaser = "large_laser";
+    public const string Ppc = "ppc";
+    public const string MachineGun = "machine_gun";
+    public const string Autocannon = "autocannon";
+    public const string HeavyCannon = "heavy_cannon";
+    public const string Ac20 = "ac20";
+    public const string Srm = "srm";
+    public const string Lrm = "lrm";
+}
+
+/// <summary>
+/// Damage-feedback kinds: the loose vocabulary ApplyDamage
+/// passes to OnDamaged (body jolt and hit-sound selection).
+/// </summary>
+public static class HitKinds
+{
+    public const string Laser = "laser";
+    public const string Rocket = "rocket";
+    public const string Cannon = "cannon";
+    public const string Mg = "mg";
+}
+
 // The city district built at the center of a kit contract's
 // mission map (Harbor Stacks, Gate City): a street grid of
 // building plots on a level plateau. Shared by the heightfield

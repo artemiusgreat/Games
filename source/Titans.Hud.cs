@@ -160,8 +160,8 @@ public partial class Titans
         leftBox.AddChild(grid);
         foreach (var (id, name) in new[]
         {
-            ("head", "HEAD"), ("arm_L", "ARM L"), ("arm_R", "ARM R"), ("gun", "GUN"), ("pod_L", "POD L"),
-            ("pod_R", "POD R"), ("leg_L", "LEG L"), ("leg_R", "LEG R"),
+            (PartIds.Head, "HEAD"), (SlotIds.ArmL, "ARM L"), (SlotIds.ArmR, "ARM R"), (SlotIds.Gun, "GUN"), (SlotIds.PodL, "POD L"),
+            (SlotIds.PodR, "POD R"), (PartIds.LegL, "LEG L"), (PartIds.LegR, "LEG R"),
         })
         {
             var cell = new VBoxContainer();

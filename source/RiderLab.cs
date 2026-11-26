@@ -87,16 +87,16 @@ public partial class RiderLab : Control
     // Short tile text per weapon.
     public static string Abbrev(WeaponDef w) => w.Id switch
     {
-        "small_laser" => "SL",
-        "medium_laser" => "ML",
-        "large_laser" => "LL",
-        "ppc" => "PPC",
-        "machine_gun" => "MG",
-        "autocannon" => "AC",
-        "heavy_cannon" => "HC",
-        "srm" => "SRM",
-        "lrm" => "LRM",
-        "hector_ac20" => "AC20",
+        WeaponIds.SmallLaser => "SL",
+        WeaponIds.MediumLaser => "ML",
+        WeaponIds.LargeLaser => "LL",
+        WeaponIds.Ppc => "PPC",
+        WeaponIds.MachineGun => "MG",
+        WeaponIds.Autocannon => "AC",
+        WeaponIds.HeavyCannon => "HC",
+        WeaponIds.Srm => "SRM",
+        WeaponIds.Lrm => "LRM",
+        WeaponIds.Ac20 => "AC20",
         _ => w.Name.Length >= 2 ? w.Name.Substring(0, 2).ToUpperInvariant() : w.Name,
     };
 

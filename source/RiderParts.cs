@@ -116,17 +116,17 @@ public sealed class RiderParts
                 ("Pod_R", p => p.X <= -1.7f && p.Y >= 9.9f && p.Z <= -1.01f),
                 ("Head", p => Mathf.Abs(p.X) <= 1.4f && p.Y >= 10.1f && p.Z >= 1.09f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart("pod_L", "LEFT LRM POD", 45f, byName, "TorsoPod_L");
-            AddPart("pod_R", "RIGHT LRM POD", 45f, byName, "TorsoPod_R");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "Antenna");
-            AddPart("arm_L", "LEFT ARM", 90f, byName,
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(SlotIds.PodL, "LEFT LRM POD", 45f, byName, "TorsoPod_L");
+            AddPart(SlotIds.PodR, "RIGHT LRM POD", 45f, byName, "TorsoPod_R");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead", "Antenna");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName,
                 "UpperArm_L", "ShoulderPad_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName,
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName,
                 "UpperArm_R", "ShoulderPad_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName,
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName,
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
         else if (riderId == "hector")
@@ -161,14 +161,14 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 0.15f && p.Y >= 0.84f && p.Z >= -0.14f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart("gun", "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
-            AddPart("pod_L", "SRM POD", 45f, byName);
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Hand", "Left_Shoulder");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Hand", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart(SlotIds.Gun, "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
+            AddPart(SlotIds.PodL, "SRM POD", 45f, byName);
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Hand", "Left_Shoulder");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Hand", "Right_Shoulder");
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "hermes")
@@ -190,13 +190,13 @@ public sealed class RiderParts
             // the rack is the honeycomb cells and housing over
             // the left shoulder, the head is the cockpit cap and
             // antennae on top of the torso.
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart("pod_L", "LRM RACK", 45f, byName, "tripo_part_34");
-            AddPart("head", "HEAD", 50f, byName, "tripo_part_4");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart(SlotIds.PodL, "LRM RACK", 45f, byName, "tripo_part_34");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "tripo_part_4");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "apollo")
@@ -224,13 +224,13 @@ public sealed class RiderParts
             {
                 ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Pelvis__torso", "TorsoCore");
-            AddPart("pod_L", "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Elbow__shoulder_L", "Left_Hand", "Left_Shoulder");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__hip_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__hip_R");
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Pelvis__torso", "TorsoCore");
+            AddPart(SlotIds.PodL, "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Elbow__shoulder_L", "Left_Hand", "Left_Shoulder");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__hip_L");
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__hip_R");
             AttachDebris(byName);
         }
         else if (riderId == "ares")
@@ -262,13 +262,13 @@ public sealed class RiderParts
             {
                 ("Head", p => p.Y >= 0.845f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "Left_Shoulder");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead", "tripo_part_132", "tripo_part_136", "tripo_part_143", "tripo_part_153", "tripo_part_154", "tripo_part_181");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
+            AddPart(SlotIds.PodL, "LEFT SHOULDER", 45f, byName, "Left_Shoulder");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead", "tripo_part_132", "tripo_part_136", "tripo_part_143", "tripo_part_153", "tripo_part_154", "tripo_part_181");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "hades")
@@ -292,13 +292,13 @@ public sealed class RiderParts
             // left shoulder's top cap cluster (142 + the small
             // plates above the pauldron) serves as pod_L - it
             // binds shoulder_L and rides the arm.
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "tripo_part_142", "tripo_part_4_001");
-            AddPart("head", "HEAD", 50f, byName, "Torso_head", "tripo_part_145", "tripo_part_148", "tripo_part_16", "tripo_part_179");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart(SlotIds.PodL, "LEFT SHOULDER", 45f, byName, "tripo_part_142", "tripo_part_4_001");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "Torso_head", "tripo_part_145", "tripo_part_148", "tripo_part_16", "tripo_part_179");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "amadeus")
@@ -314,13 +314,13 @@ public sealed class RiderParts
             // + 118/159/202/202 fittings) stay separate meshes so
             // both parts still break and move as before. His right
             // leg groups now carry proper Right_* names.
-            AddPart("torso", "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart("pod_R", "RIGHT SHOULDER", 45f, byName, "Pod_R");
-            AddPart("head", "HEAD", 50f, byName, "Head");
-            AddPart("arm_L", "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart("leg_L", "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
+            AddPart(SlotIds.PodR, "RIGHT SHOULDER", 45f, byName, "Pod_R");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "Head");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
             AttachDebris(byName);
         }
         else if (riderId == "prometheus")
@@ -346,16 +346,16 @@ public sealed class RiderParts
                 // sign one would guess from the other riders.
                 ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 11.0f && p.Z >= -0.72f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart("pod_L", "LEFT POD", 45f, byName, "TorsoPod_L");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("arm_L", "LEFT ARM", 90f, byName,
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(SlotIds.PodL, "LEFT POD", 45f, byName, "TorsoPod_L");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 90f, byName,
                 "ShoulderAct_L", "UpperArm_L", "UpperArm2_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart("arm_R", "RIGHT ARM", 90f, byName,
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 90f, byName,
                 "ShoulderAct_R", "UpperArm_R", "UpperArm2_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
-            AddPart("leg_L", "LEFT LEG", 90f, byName,
+            AddPart(PartIds.LegL, "LEFT LEG", 90f, byName,
                 "Thigh_L", "Knee_L", "Shin_L", "Foot_L");
-            AddPart("leg_R", "RIGHT LEG", 90f, byName,
+            AddPart(PartIds.LegR, "RIGHT LEG", 90f, byName,
                 "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
         }
         else if (riderId == "medea")
@@ -366,15 +366,15 @@ public sealed class RiderParts
             // block is the missile pod, the shield and its pin
             // ride the left arm, the twin-barrel Cannon is the
             // right arm, and the legs are Enyo's (hub + toes).
-            AddPart("torso", "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart("head", "HEAD", 45f, byName, "Tower");
-            AddPart("arm_L", "LEFT ARM", 85f, byName, "Shield", "Cylinder");
-            AddPart("arm_R", "RIGHT ARM", 85f, byName, "Cannon");
-            AddPart("leg_L", "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "FootHub_L",
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "Torso", "Pelvis");
+            AddPart(PartIds.Head, "HEAD", 45f, byName, "Tower");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 85f, byName, "Shield", "Cylinder");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 85f, byName, "Cannon");
+            AddPart(PartIds.LegL, "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "FootHub_L",
                 "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart("leg_R", "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "FootHub_R",
+            AddPart(PartIds.LegR, "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "FootHub_R",
                 "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
-            AddPart("pod_L", "LEFT SHOULDER", 40f, byName, "Cabin");
+            AddPart(SlotIds.PodL, "LEFT SHOULDER", 40f, byName, "Cabin");
         }
         else if (riderId == "demeter")
         {
@@ -386,14 +386,14 @@ public sealed class RiderParts
                 ("Head", p => Mathf.Abs(p.X) <= 1.1f && p.Z <= -2.4f && p.Y >= 9.2f && p.Y <= 11.6f),
                 ("Pod_L", p => p.X >= 1.6f && p.Y >= 12.0f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("pod_L", "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
-            AddPart("arm_L", "LEFT ARM", 95f, byName, "GunArm_L", "Elbow_L");
-            AddPart("arm_R", "RIGHT ARM", 95f, byName, "GunArm_R", "Elbow_R");
-            AddPart("leg_L", "LEFT LEG", 95f, byName,
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(SlotIds.PodL, "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 95f, byName, "GunArm_L", "Elbow_L");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 95f, byName, "GunArm_R", "Elbow_R");
+            AddPart(PartIds.LegL, "LEFT LEG", 95f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart("leg_R", "RIGHT LEG", 95f, byName,
+            AddPart(PartIds.LegR, "RIGHT LEG", 95f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
         else if (riderId == "theseus")
@@ -406,14 +406,14 @@ public sealed class RiderParts
                 ("Head", p => Mathf.Abs(p.X) <= 1.0f && p.Z <= -0.5f && p.Y >= 11.2f && p.Y <= 12.7f),
                 ("Pod_R", p => p.X <= -1.7f && p.Y >= 10.8f),
             });
-            AddPart("torso", "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart("head", "HEAD", 50f, byName, "TorsoHead");
-            AddPart("pod_R", "RIGHT SHOULDER", 45f, byName, "TorsoPod_R");
-            AddPart("arm_L", "LEFT ARM", 95f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
-            AddPart("arm_R", "RIGHT ARM", 95f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
-            AddPart("leg_L", "LEFT LEG", 95f, byName,
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
+            AddPart(PartIds.Head, "HEAD", 50f, byName, "TorsoHead");
+            AddPart(SlotIds.PodR, "RIGHT SHOULDER", 45f, byName, "TorsoPod_R");
+            AddPart(SlotIds.ArmL, "LEFT ARM", 95f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
+            AddPart(SlotIds.ArmR, "RIGHT ARM", 95f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
+            AddPart(PartIds.LegL, "LEFT LEG", 95f, byName,
                 "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart("leg_R", "RIGHT LEG", 95f, byName,
+            AddPart(PartIds.LegR, "RIGHT LEG", 95f, byName,
                 "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
         }
 
@@ -427,7 +427,7 @@ public sealed class RiderParts
             GD.PrintErr($"PARTS: no layout for '{riderId}' - torso-only fallback; author a layout in RiderParts.cs");
             var all = new string[byName.Count];
             byName.Keys.CopyTo(all, 0);
-            AddPart("torso", "TORSO", 0f, byName, all);
+            AddPart(SlotIds.Torso, "TORSO", 0f, byName, all);
         }
         // Safety net: EVERY mesh must belong to a part. A mesh
         // no layout claimed never detaches - it stays skinned to
@@ -1297,7 +1297,7 @@ public sealed class RiderParts
         Dbg.Print($"BRK DMG {_riderId} part={partId} dmg={dmg:F1} partHp={part.Hp:F1}/{part.MaxHp:F0}");
         if (part.Hp > 0f) return false;
         var center = PartCenterWorld(partId);
-        if (partId == "leg_L" || partId == "leg_R" || partId == "head")
+        if (partId == PartIds.LegL || partId == "leg_R" || partId == "head")
         {
             // Owner's rule: legs NEVER fall off. A destroyed leg stays
             // attached - darkened and deformed - and the rider limps.
@@ -1520,7 +1520,7 @@ public sealed class RiderParts
     public float FootVisualGap(string partId)
     {
         var part = _parts[partId];
-        string ankle = partId == "leg_L" ? "ankle_L" : "ankle_R";
+        string ankle = partId == PartIds.LegL ? Bones.AnkleL : Bones.AnkleR;
         float best = float.MaxValue;
         foreach (var rec in part.Meshes)
         {
@@ -1551,7 +1551,7 @@ public sealed class RiderParts
     public (float Toe, float Heel) FootPitchGaps(string partId, Vector3 ankleW, Vector3 fwdW)
     {
         var part = _parts[partId];
-        string ankle = partId == "leg_L" ? "ankle_L" : "ankle_R";
+        string ankle = partId == PartIds.LegL ? Bones.AnkleL : Bones.AnkleR;
         float toe = float.MaxValue, heel = float.MaxValue;
         foreach (var rec in part.Meshes)
         {
