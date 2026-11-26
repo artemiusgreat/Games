@@ -1467,6 +1467,6 @@ public partial class Titans
         }
     }
 
-    // Hector AC/20 gunnery: range + line-of-sight gated, leads the player's
+    // Hector waist-gun gunnery: range + line-of-sight gated, leads the player's
     // velocity at time-of-flight, seeded ±1.2° inaccuracy cone.
 }

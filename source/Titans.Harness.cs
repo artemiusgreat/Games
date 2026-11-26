@@ -160,7 +160,7 @@ public partial class Titans
                     SetRiderSelection("hector", "enyo");
                     if (_playerSpec.Id != "hector" || _enemySpec.Id != "enyo"
                         || _hpPlayer != 340f || _hpEnemy != 260f
-                        || _defBallistic?.Id != WeaponIds.Ac20
+                        || _defBallistic?.Id != WeaponIds.HeavyCannon
                         || !_partsEnemy.Alive(SlotIds.PodL))
                     { GD.PrintErr($"DUEL FAIL: rider selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
                     _selStage = 1; _selHoldT = 0f;
@@ -2639,7 +2639,7 @@ public partial class Titans
                     // The player reverses every 0.9s at full speed. At the
                     // original 50 u/s shell the 0.9s flight let a reversal
                     // land inside the lead window - strafing genuinely
-                    // dodged. Since 2026-10-29 the AC/20 flies at 150
+                    // dodged. Since 2026-10-29 enemy shells fly at the unified cannon speed
                     // (owner: Hector matches the player's cannon changes,
                     // symmetric rules), flight is ~0.3s, the strafe
                     // displaces ~1.2u - inside the target's own radius -
@@ -3146,7 +3146,7 @@ public partial class Titans
                 }
                 break;
 
-            case 3: // GUN (Hector): real AC fire breaks the waist gun; its AC/20 stops
+            case 3: // GUN (Hector): real AC fire breaks the waist gun; its cannons stop
                 _player.SetDrive(0f, 0f);
                 if (_bStep == 0)
                 {
@@ -3178,8 +3178,8 @@ public partial class Titans
                     if (BStepT > 5.5)
                     {
                         if (_enemyShots != _bCount1)
-                            BFail($"hector AC/20 fired after waist-gun loss: {_bCount1} -> {_enemyShots}");
-                        GD.Print($"BRKTEST GUNPASS PASS hector AC/20 silent for 5.5s after waist-gun loss (shots flat at {_enemyShots})");
+                            BFail($"hector waist gun fired after its loss: {_bCount1} -> {_enemyShots}");
+                        GD.Print($"BRKTEST GUNPASS PASS hector waist gun silent for 5.5s after its loss (shots flat at {_enemyShots})");
                         _enemyMayFire = false;
                         ResetDuel();
                         BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));

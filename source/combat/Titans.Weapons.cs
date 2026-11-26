@@ -35,7 +35,7 @@ public partial class Titans
         return ElbowMuzzle(w, slot != SlotIds.ArmR);
     }
 
-    // Torso gun (the Hector's waist AC/20): torso bone origin plus a
+    // Torso gun (the Hector's waist gun): torso bone origin plus a
     // right/up/forward offset in the torso frame. Used by whichever
     // seat pilots an Hector - its shells leave from the waist gun,
     // not the fist.
@@ -719,7 +719,7 @@ public partial class Titans
 
     // Functional fallout of losing a part. Weapon mounts are gated live at
     // the fire/gunnery checks - every mount answers to its own part
-    // (arm_L -> lasers, the waist gun -> the Hector's AC/20, pods -> salvo
+    // (arm_L -> lasers, the waist gun -> its cannons, pods -> salvo
     // size, Hector head -> spread + tracking lag), so
     // the stateful consequences latched here are the legs and the player's
     // head (HUD disturbance timer; the sway itself is applied in the HUD

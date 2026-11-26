@@ -15,7 +15,7 @@ using System.Collections.Generic;
 //         arm_L/R = UpperArm + ShoulderPad + Elbow + Forearm + HandGun
 //           (+ WeaponERPPC), all shoulder/elbow-bound
 //         leg_L/R = Thigh + Shin + FootHub + all Toe meshes
-//   HECTOR torso = Torso core + Pelvis + AC20 + SRM6 (per spec the guns
+//   HECTOR torso = Torso core + Pelvis + waist gun + SRM6 (per spec the guns
 //           ride with the torso part)
 //         head  = skull cap region split out of Torso
 //         arm_L/R = Shoulder + UpperArm + Elbow + Forearm

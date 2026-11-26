@@ -34,7 +34,7 @@ public sealed class WeaponDef
     // aim point clamped to theirs. The figures sit on the
     // owner's round-kilometre ladder (2026-11-14, superseding
     // the Sarna MW4 table): 0.25 / 0.5 / 0.75 / 1 / 1.25 / 1.5
-    // km - SL, MG and SRM at 0.25; ML and AC/20 at 0.5; LL,
+    // km - SL, MG and SRM at 0.25; ML at 0.5; LL,
     // Autocannon and Heavy Cannon at 0.75; PPC at 1; LRM at
     // 1.5. In world units (1 unit = 0.001 km): 250 / 500 /
     // 750 / 1000 / 1250 / 1500.
@@ -81,18 +81,10 @@ public static class WeaponCatalog
     public static readonly WeaponDef Lrm = new()
     { Id = WeaponIds.Lrm, Name = "LRM Pack", Short = "LRM", Type = WeaponSlotType.Missile, Weight = 10f, Damage = 7f, Cooldown = 3.5f, Rockets = 4, Splash = 3.0f, Range = 1500f, RocketBaseSpeed = 36f, RocketGravity = 11f, RocketTofMax = 2.2f, RocketSpread = 0f };
 
-    // The AC/20 is a catalog weapon like any other - it ships
-    // fitted in the default fits that carry it (Hector's waist
-    // gun, Prometheus's arm). It is excluded only from the
-    // lab's mount list (CatalogListed = false), never from
-    // resolution: no per-rider special cases in the engine.
-    public static readonly WeaponDef Ac20 = new()
-    { Id = WeaponIds.Ac20, Name = "AC/20", Short = "AC20", Type = WeaponSlotType.Ballistic, Weight = 16f, Damage = 18f, Cooldown = 2.4f, Range = 500f, MuzzleSpeed = 4000f, CatalogListed = false };
-
     public static readonly WeaponDef[] All =
     {
         SmallLaser, MediumLaser, LargeLaser, Ppc,
-        MachineGun, Autocannon, HeavyCannon, Ac20,
+        MachineGun, Autocannon, HeavyCannon,
         Srm, Lrm
     };
 

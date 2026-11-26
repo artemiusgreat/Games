@@ -96,7 +96,6 @@ public partial class RiderLab : Control
         WeaponIds.HeavyCannon => "HC",
         WeaponIds.Srm => "SRM",
         WeaponIds.Lrm => "LRM",
-        WeaponIds.Ac20 => "AC20",
         _ => w.Name.Length >= 2 ? w.Name.Substring(0, 2).ToUpperInvariant() : w.Name,
     };
 

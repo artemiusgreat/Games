@@ -398,7 +398,7 @@ public static class RiderSpecs
         ["hector"] = new[]
         {
             ("arm_L", new[] { "ppc", "large_laser", "medium_laser" }),             // 17/18t
-            ("gun", new[] { "ac20", "autocannon" }),                               // 28/30t
+            ("gun", new[] { "heavy_cannon", "autocannon" }),                               // 28/30t
             ("arm_R", new[] { "large_laser", "large_laser", "medium_laser" }),     // 13/14t
             ("torso", new[] { "ppc" }),                                            // 9/10t
             ("pod_L", new[] { "lrm", "lrm", "srm", "srm" }),                       // 28/28t
@@ -440,7 +440,7 @@ public static class RiderSpecs
         },
         ["hades"] = new[]
         {
-            ("arm_R", new[] { "ac20", "autocannon" }),                           // 28/28t
+            ("arm_R", new[] { "heavy_cannon", "autocannon" }),                           // 28/28t
             ("arm_L", new[] { "ppc", "large_laser" }),                           // 14/14t
             ("torso", new[] { "large_laser", "large_laser", "small_laser", "small_laser" }), // 12/12t
             ("pod_L", new[] { "lrm", "lrm" }),                                   // 20/21t
@@ -461,7 +461,7 @@ public static class RiderSpecs
         },
         ["hermes"] = new[]
         {
-            ("arm_R", new[] { "ac20", "machine_gun", "machine_gun" }),             // 20/24t
+            ("arm_R", new[] { "heavy_cannon", "machine_gun", "machine_gun" }),             // 20/24t
             ("arm_L", new[] { "ppc", "large_laser", "small_laser" }),              // 15/16t
             ("pod_L", new[] { "lrm", "lrm" }),                                     // 20/21t
             ("torso", new[] { "large_laser", "large_laser", "medium_laser", "small_laser" }), // 14/14t

@@ -146,7 +146,6 @@ public static class WeaponIds
     public const string MachineGun = "machine_gun";
     public const string Autocannon = "autocannon";
     public const string HeavyCannon = "heavy_cannon";
-    public const string Ac20 = "ac20";
     public const string Srm = "srm";
     public const string Lrm = "lrm";
 }
