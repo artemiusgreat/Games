@@ -44,7 +44,7 @@ public sealed class HitModel
         public float T;
         public Vector3 Point;
         public string Target;   // rider id (Roles.Player/Roles.Enemy), Roles.Prop, Roles.Terrain, "" = nothing
-        public string Zone;     // rider hits only: "legs" / "torso" / "head"
+        public HitZone Zone;    // rider hits only: Legs / Torso / Head (Splash stamped by damage)
         public float ZoneFrac;  // rider hits only: 0 at the sole, 1 at the top
         public string Part;     // rider hits only: breakable part id (via PartResolver), "" if unset
     }
@@ -85,7 +85,7 @@ public sealed class HitModel
         System.Collections.Generic.HashSet<string> ignoreIds = null)
     {
         dir = dir.Normalized();
-        var best = new Result { Hit = false, T = maxDist, Target = "", Zone = "", ZoneFrac = 0f, Part = "" };
+        var best = new Result { Hit = false, T = maxDist, Target = "", Zone = HitZone.None, ZoneFrac = 0f, Part = "" };
         float tt = RayTerrain(from, dir, maxDist);
         if (tt >= 0f) { best.Hit = true; best.T = tt; best.Target = Roles.Terrain; }
         foreach (var p in Props)
@@ -115,7 +115,7 @@ public sealed class HitModel
                 best.Hit = true; best.T = t; best.Target = m.Id;
                 float y = from.Y + dir.Y * t;
                 best.ZoneFrac = Mathf.Clamp((y - baseY) / m.Height, 0f, 1f);
-                best.Zone = best.ZoneFrac < LegsZoneTop ? Zones.Legs : best.ZoneFrac < TorsoZoneTop ? Zones.Torso : Zones.Head;
+                best.Zone = best.ZoneFrac < LegsZoneTop ? HitZone.Legs : best.ZoneFrac < TorsoZoneTop ? HitZone.Torso : HitZone.Head;
                 best.Part = boxPart ?? (PartResolver != null
                     ? PartResolver(m.Id, from + dir * t) : "");
             }

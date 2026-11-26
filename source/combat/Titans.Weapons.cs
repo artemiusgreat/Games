@@ -585,7 +585,7 @@ public partial class Titans
             {
                 var splashHit = hit;
                 splashHit.Target = id;
-                splashHit.Zone = Zones.Splash;
+                splashHit.Zone = HitZone.Splash;
                 ApplyDamage(w, p.Damage * (1f - d / p.SplashRadius), splashHit, p.OwnerId, p.WeaponWeight, HitKinds.Rocket);
             }
         }

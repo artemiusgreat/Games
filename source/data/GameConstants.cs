@@ -151,15 +151,10 @@ public static class WeaponIds
     public const string Lrm = "lrm";
 }
 
-/// <summary>Hit zones on a rider capsule (HitModel classifies,
-/// splash damage stamps its own).</summary>
-public static class Zones
-{
-    public const string Legs = "legs";
-    public const string Torso = "torso";
-    public const string Head = "head";
-    public const string Splash = "splash";
-}
+/// <summary>Hit zones on a rider capsule (owner, 2026-11-25:
+/// an enum, not strings - HitModel classifies, splash damage
+/// stamps its own, None is a hit that took no zone).</summary>
+public enum HitZone { None, Legs, Torso, Head, Splash }
 
 /// <summary>
 /// Damage-feedback kinds: the loose vocabulary ApplyDamage

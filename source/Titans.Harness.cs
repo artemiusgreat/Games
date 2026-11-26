@@ -1318,7 +1318,7 @@ public partial class Titans
         else if (_gpPhase == 3 && _gpT > 3.5f)
         {
             GD.Print($"GUARDPROBE los-blocked engaged={_gpGuard2.Engaged} target={(_gpGuard2.TargetW != null ? TagOf(_gpGuard2.TargetW) : "none")} (expect False/none)");
-            var hit = new HitModel.Result { Hit = true, T = 1f, Point = _gpGuard2.Walker.RootPos + Vector3.Up * 8f, Target = _gpGuard2.Role, Zone = "torso", ZoneFrac = 0.6f, Part = "" };
+            var hit = new HitModel.Result { Hit = true, T = 1f, Point = _gpGuard2.Walker.RootPos + Vector3.Up * 8f, Target = _gpGuard2.Role, Zone = HitZone.Torso, ZoneFrac = 0.6f, Part = "" };
             ApplyDamage(_gpGuard2.Walker, 5f, hit, Roles.Player, 10f, "cannon");
             GD.Print($"GUARDPROBE alert-applied alerted={_gpGuard2.Alerted} (expect True)");
             _gpPhase = 4; _gpT = 0f;
@@ -2143,7 +2143,7 @@ public partial class Titans
 
     private static HitModel.Result DummyHit(RiderWalker w, string role) => new()
     {
-        Hit = true, Target = role, Zone = "torso", Point = w.RootPos + Vector3.Up * 8f
+        Hit = true, Target = role, Zone = HitZone.Torso, Point = w.RootPos + Vector3.Up * 8f
     };
 
     private void TeamFail(string why)
@@ -2729,7 +2729,7 @@ public partial class Titans
                     {
                         Hit = true,
                         Target = Roles.Player,
-                        Zone = "torso",
+                        Zone = HitZone.Torso,
                         Point = _player.RootPos + Vector3.Up * 8f
                     };
                     ApplyDamage(_player, 9999f, dummy, Roles.Enemy);
@@ -3008,7 +3008,7 @@ public partial class Titans
         {
             Hit = true,
             Target = target == _player ? Roles.Player : Roles.Enemy,
-            Zone = "torso",
+            Zone = HitZone.Torso,
             Point = parts.PartAimPoint(partId)
         };
         ApplyDamage(target, dmg, hit, target == _player ? Roles.Enemy : Roles.Player, weaponWeight);
