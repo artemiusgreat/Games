@@ -273,7 +273,8 @@ public partial class Titans
 
     // World-build sizes and event light intensities (owner,
     // 2026-11-25: named constants for the bare values).
-    private const float TrunkHeight = 3f;
+    private const float TrunkHeightLow = 3f;    // most varieties
+    private const float TrunkHeightTall = 3.5f; // variety 1 (the pair is a range: round the range, not each number - owner)
     private const float LadderUprightHeight = 3f;
     private const float CollapseLightIntensity = 3f;
 
@@ -304,7 +305,7 @@ public partial class Titans
         else
         {
         // Tapered trunk, common to all varieties.
-        float trunkH = TrunkHeight;
+        float trunkH = variety == 1 ? TrunkHeightTall : TrunkHeightLow;
         var trunk = new MeshInstance3D
         {
             Mesh = new CylinderMesh { TopRadius = 0.16f, BottomRadius = 0.32f, Height = trunkH, RadialSegments = 8 },
