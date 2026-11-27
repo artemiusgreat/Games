@@ -39,10 +39,12 @@ public static class Aim
     public const float FarRange = 1500f;
 }
 
-/// <summary>Camera modes (the duel camera's state vocabulary).</summary>
-public static class CamModes
+/// <summary>Camera modes (owner, 2026-11-27: an enum, not
+/// strings - the duel camera's state vocabulary; everything
+/// past Chase is a staged capture framing).</summary>
+public enum CamMode
 {
-    public const string Chase = "chase";
+    Chase, MissionBase, MissionVista, SlopeVista, Stone, SlopeClose, CanyonVista, BlockedCam, Homecam, Passcam, Gatesky, EnemyFront, EnemySide, Wide, Twist, Prop, WpnSide, WpnRockets, WpnBlocked, WpnDead, WpnHud, RiderSide, BrkPlayer, BrkHector, BrkDebris, DetailBuilding, DetailTree, Vista, PhotoOver, PhotoTuft, GrassClose, GrassTop, GrassField, PhotoGround, SlopeSide, GroundDuel, Underdeck, Decktop
 }
 
 /// <summary>
@@ -95,6 +97,12 @@ public enum FirePath { Energy, Cannon, PodL, PodR }
 /// data that must match the model files.</summary>
 public enum PartId { None, ArmL, ArmR, Gun, Torso, PodL, PodR, Head, LegL, LegR }
 
+// Rider identities (owner, 2026-11-27: an enum, not name
+// strings - specs, part layouts and rider selections key on
+// this; the string form survives only where a name is parsed
+// at a boundary, e.g. the --player-rider harness flag).
+public enum RiderId { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes, Apollo, Hades, Ares, Amadeus }
+
 /// <summary>
 /// Skeleton bone names. Every rider rig carries the same
 /// shared armature (the rigging workflow transfers it whole),
@@ -119,6 +127,21 @@ public static class Bones
     // census above does not require them).
     public const string Head = "head";
     public const string Pelvis = "pelvis";
+    // Arm-chain roots, full names (owner, 2026-11-27: no
+    // prefix matching - a name either is one of these or is
+    // not in the chain). The clavicle is the collarbone bone
+    // a Mixamo-style rig hangs the shoulder from; kit rigs
+    // start the chain at the shoulder instead. Classification
+    // only, like Head/Pelvis above.
+    public const string ClavicleL = "clavicle_L";
+    public const string ClavicleR = "clavicle_R";
+    public const string ShoulderL = "shoulder_L";
+    public const string ShoulderR = "shoulder_R";
+
+    // The roots of both arm chains: a bone belongs to an arm
+    // chain when it or any ancestor is one of these.
+    public static readonly System.Collections.Generic.HashSet<string> ArmChainRoots =
+        new() { ClavicleL, ClavicleR, ShoulderL, ShoulderR, ElbowL, ElbowR };
 
     public static readonly string[] All = { Torso, ElbowL, ElbowR, HipL, KneeL, AnkleL, HipR, KneeR, AnkleR };
 }
@@ -153,10 +176,9 @@ public static class HitKinds
 }
 
 // The city district built at the center of a kit contract's
-// mission map (Harbor Stacks, Gate City): a street grid of
-// building plots on a level plateau. Shared by the heightfield
-// (Main), both ground colorings (Main.TerrainColor, PhotoEnv)
-// and the terraced-city builder (Titans.Terraces).
+// mission map (Gate City): a street grid of building plots on
+// a level plateau. Shared by the heightfield (Main) and both
+// ground colorings (Main.TerrainColor, PhotoEnv).
 /// <summary>
 /// Display scale (owner, 2026-11-14): every label in the
 /// game measures in kilometres and kilometres per hour.

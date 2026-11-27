@@ -102,7 +102,7 @@ public partial class Titans
         // shot converges on the far point of the axis itself.
         // Live play always runs the chase camera; harness proof
         // poses keep the chest logic below.
-        if (_camMode == CamModes.Chase)
+        if (_camMode == CamMode.Chase)
         {
             var camPos = _cam.GlobalPosition;
             var viewHit = AimRay(camPos, dir, Aim.ConvergenceRange);

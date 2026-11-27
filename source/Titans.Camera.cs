@@ -89,8 +89,24 @@ public partial class Titans
     private const float PhotoGroundEyeHeight = 2.1f, PhotoGroundLookHeight = 5.5f;
     private const float SlopeSideDistance = 15f, SlopeSideCamHeight = 4.2f, SlopeSideLookHeight = 5.5f;
     private const float GroundDuelDistance = 11f, GroundDuelCamHeight = 3.4f, GroundDuelLookHeight = 6.5f;
+    // Fixed world positions of the staged vista framings.
+    private const float MissionVistaLookX = 0f, MissionVistaLookZ = 240f;
+    private const float SlopeVistaCamX = 120f, SlopeVistaCamZ = -120f, SlopeVistaLookX = -40f, SlopeVistaLookZ = 40f;
+    private const float SlopeCloseCamX = 58f, SlopeCloseCamZ = -14f, SlopeCloseLookX = 0f, SlopeCloseLookZ = 0f;
+    private static readonly Vector3 CanyonVistaLookPos = new(-268f, 26f, 155f);
+    private static readonly Vector3 WpnBlockedCamPos = new(43f, 9.5f, 17f), WpnBlockedLookPos = new(22f, 5.5f, 3f);
+    private const float DetailBuildingX = 22f, DetailBuildingZ = 8f;   // the (22,8) building
+    private const float DetailTreeX = -12f, DetailTreeZ = -8f;          // the hand-placed tree
+    private static readonly Vector3 VistaCamPos = new(-88f, 44f, 90f), VistaLookPos = new(12f, 0f, -12f);
+    private static readonly Vector3 PhotoOverCamPos = new(58f, 34f, 64f), PhotoOverLookPos = new(-6f, 0f, -6f);
+    private const float PhotoTuftCamX = -18.6f, PhotoTuftCamZ = 2.2f, PhotoTuftLookX = -21.5f, PhotoTuftLookZ = -1.5f;
+    private const float PhotoGroundX = -21f, PhotoGroundZ = -1f, PhotoGroundSampleZ = 0f; // the eye stands at Z, its ground is sampled at SampleZ
 
-    private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
+    // The tag of the closing chase capture (a capture name,
+    // not a camera mode - the two only shared a spelling).
+    private const string ChaseCaptureTag = "chase";
+
+    private void QueueCapture(string path, string tag, CamMode camMode, System.Action after = null)
     {
         if (_pendingPath != null || _capturing) return;
         _pendingPath = path; _pendingTag = tag; _camMode = camMode;
@@ -116,20 +132,20 @@ public partial class Titans
         var img = GetViewport().GetTexture().GetImage();
         EnsureSaveDir(path);
         var err = img.SavePng(path);
-        GD.Print($"DUEL captured {path} ({tag}) size={img.GetSize()} err={err}");
+        Dbg.Print($"DUEL captured {path} ({tag}) size={img.GetSize()} err={err}");
         _frozen = false;
         _capturing = false;
         var after = _afterCapture;
         _afterCapture = null;
         after?.Invoke();
-        if (_phase == 7 && tag == "rider")
+        if (_phase == DuelPhase.Captures && tag == "rider")
         {
-            GD.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
+            Dbg.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
             // actual view) before quitting - framing proof for cam changes.
-            QueueCapture(DuelChaseCapture, CamModes.Chase, CamModes.Chase);
+            QueueCapture(DuelChaseCapture, ChaseCaptureTag, CamMode.Chase);
         }
-        else if (tag == CamModes.Chase)
+        else if (tag == ChaseCaptureTag)
         {
             GetTree().Quit();
         }
@@ -141,29 +157,29 @@ public partial class Titans
         // reads in any shadow (owner, 2026-11-11).
         if (_heroLight != null && _player != null)
             _heroLight.GlobalPosition = _player.RootPos + new Vector3(0f, HeroLightHeight, 0f);
-        if (_camMode == "missionBase")
+        if (_camMode == CamMode.MissionBase)
         {
             var pad = Main.SpawnPads[0];
             var c = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y), pad.Y);
             _cam.GlobalPosition = c + MissionBaseCamOffset;
             _cam.LookAt(c + MissionBaseLookOffset, Vector3.Up);
         }
-        else if (_camMode == "missionVista")
+        else if (_camMode == CamMode.MissionVista)
         {
             var pad = Main.SpawnPads[0];
             float gy = Main.HeightAt(pad.X, pad.Y);
             _cam.GlobalPosition = new Vector3(pad.X + MissionVistaOffsetX, gy + MissionVistaHeight, pad.Y + MissionVistaOffsetZ);
-            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 240f) + MissionVistaLookHeight, 240f), Vector3.Up);
+            _cam.LookAt(new Vector3(MissionVistaLookX, Main.HeightAt(MissionVistaLookX, MissionVistaLookZ) + MissionVistaLookHeight, MissionVistaLookZ), Vector3.Up);
         }
-        else if (_camMode == "slopeVista")
+        else if (_camMode == CamMode.SlopeVista)
         {
             // Grazing view across the center relief (dome flank
             // + ridge line): the owner's streaked-mountains
             // screenshot staged head-on (--slope-shot).
-            _cam.GlobalPosition = new Vector3(120f, Main.HeightAt(120f, -120f) + SlopeVistaCamHeight, -120f);
-            _cam.LookAt(new Vector3(-40f, Main.HeightAt(-40f, 40f) + SlopeVistaLookHeight, 40f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(SlopeVistaCamX, Main.HeightAt(SlopeVistaCamX, SlopeVistaCamZ) + SlopeVistaCamHeight, SlopeVistaCamZ);
+            _cam.LookAt(new Vector3(SlopeVistaLookX, Main.HeightAt(SlopeVistaLookX, SlopeVistaLookZ) + SlopeVistaLookHeight, SlopeVistaLookZ), Vector3.Up);
         }
-        else if (_camMode == "stone")
+        else if (_camMode == CamMode.Stone)
         {
             // The mountain-stone check (--stone-shot): the
             // probe picks a broad steep face and parks the
@@ -171,14 +187,14 @@ public partial class Titans
             _cam.GlobalPosition = _stoneCamPos;
             _cam.LookAt(_stoneCamTarget, Vector3.Up);
         }
-        else if (_camMode == "slopeClose")
+        else if (_camMode == CamMode.SlopeClose)
         {
             // Low on the dome flank, looking up it: planar-UV
             // stretch and normal streaks show here if anywhere.
-            _cam.GlobalPosition = new Vector3(58f, Main.HeightAt(58f, -14f) + SlopeCloseCamHeight, -14f);
-            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 0f) + SlopeCloseLookHeight, 0f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(SlopeCloseCamX, Main.HeightAt(SlopeCloseCamX, SlopeCloseCamZ) + SlopeCloseCamHeight, SlopeCloseCamZ);
+            _cam.LookAt(new Vector3(SlopeCloseLookX, Main.HeightAt(SlopeCloseLookX, SlopeCloseLookZ) + SlopeCloseLookHeight, SlopeCloseLookZ), Vector3.Up);
         }
-        else if (_camMode == "canyonVista")
+        else if (_camMode == CamMode.CanyonVista)
         {
             // From above the home valley's east side, looking
             // northwest across the bowl to the pad-1 pass: the
@@ -186,9 +202,9 @@ public partial class Titans
             // fill the middle distance (AOT_TERRATEST=10).
             var pad = Main.SpawnPads[0];
             _cam.GlobalPosition = new Vector3(pad.X + CanyonVistaOffsetX, CanyonVistaCamHeight, pad.Y + CanyonVistaOffsetZ);
-            _cam.LookAt(new Vector3(-268f, 26f, 155f), Vector3.Up);
+            _cam.LookAt(CanyonVistaLookPos, Vector3.Up);
         }
-        else if (_camMode == "blockedcam")
+        else if (_camMode == CamMode.BlockedCam)
         {
             // Beside the blocked-walk test rider, at hip
             // height: the marching pose reads here - feet
@@ -197,7 +213,7 @@ public partial class Titans
             _cam.GlobalPosition = p + BlockedCamOffset;
             _cam.LookAt(p + BlockedCamLookOffset, Vector3.Up);
         }
-        else if (_camMode == "underdeck")
+        else if (_camMode == CamMode.Underdeck)
         {
             // Under the test deck, rider height, looking across
             // the under-deck ground at the rider: the ceiling
@@ -207,7 +223,7 @@ public partial class Titans
             _cam.GlobalPosition = new Vector3(dp.X + UnderdeckCamOffsetX, UnderdeckCamHeight, dp.Y + UnderdeckCamOffsetZ);
             _cam.LookAt(new Vector3(dp.X + UnderdeckLookOffsetX, UnderdeckLookHeight, dp.Y), Vector3.Up);
         }
-        else if (_camMode == "decktop")
+        else if (_camMode == CamMode.Decktop)
         {
             // High south-west of the test deck cluster,
             // looking down at it: the curvy blob outline, the
@@ -217,7 +233,7 @@ public partial class Titans
             _cam.GlobalPosition = new Vector3(dp.X + DecktopCamOffsetX, DecktopCamHeight, dp.Y + DecktopCamOffsetZ);
             _cam.LookAt(new Vector3(dp.X + DecktopLookOffsetX, DecktopLookHeight, dp.Y + DecktopLookOffsetZ), Vector3.Up);
         }
-        else if (_camMode == "homecam")
+        else if (_camMode == CamMode.Homecam)
         {
             // High south-west of the HOME pad, looking across
             // its valley: since round 3 the home valley must
@@ -227,7 +243,7 @@ public partial class Titans
             _cam.GlobalPosition = new Vector3(hp.X + HomecamOffsetX, HomecamHeight, hp.Y + HomecamOffsetZ);
             _cam.LookAt(new Vector3(hp.X + HomecamLookOffsetX, HomecamLookHeight, hp.Y + HomecamLookOffsetZ), Vector3.Up);
         }
-        else if (_camMode == "passcam")
+        else if (_camMode == CamMode.Passcam)
         {
             // On the road at the home->pad2 saddle, rider
             // height, looking along the road through the arch
@@ -241,7 +257,7 @@ public partial class Titans
             _cam.GlobalPosition = eye;
             _cam.LookAt(eye + dirv * PasscamLookDistance + Vector3.Up * PasscamLookHeight, Vector3.Up);
         }
-        else if (_camMode == "gatesky")
+        else if (_camMode == CamMode.Gatesky)
         {
             // Gate City sky check (owner: 'Saturn ring still
             // broken'): from the home base, pitched up at the
@@ -256,7 +272,7 @@ public partial class Titans
             _cam.GlobalPosition = eye;
             _cam.LookAt(eye + dirv * GateskyLookDistance + Vector3.Up * GateskyLookHeight, Vector3.Up);
         }
-        else if (_camMode == "enemyFront")
+        else if (_camMode == CamMode.EnemyFront)
         {
             // In front of the enemy, on its line of advance: the
             // frontal view (knee stance reads here, not from the side).
@@ -265,50 +281,50 @@ public partial class Titans
             _cam.GlobalPosition = p + toPlayer * EnemyFrontDistance + EnemyFrontCamOffset;
             _cam.LookAt(p + EnemyFrontLookOffset, Vector3.Up);
         }
-        else if (_camMode == "enemySide")
+        else if (_camMode == CamMode.EnemySide)
         {
             var p = _enemy.RootPos;
             _cam.GlobalPosition = p + EnemySideCamOffset;
             _cam.LookAt(p + EnemySideLookOffset, Vector3.Up);
         }
-        else if (_camMode == "wide")
+        else if (_camMode == CamMode.Wide)
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
             _cam.GlobalPosition = mid + WideCamOffset;
             _cam.LookAt(mid + WideLookOffset, Vector3.Up);
         }
-        else if (_camMode == "twist")
+        else if (_camMode == CamMode.Twist)
         {
             var p = _player.RootPos;
             _cam.GlobalPosition = p + TwistCamOffset;
             _cam.LookAt(p + TwistLookOffset, Vector3.Up);
         }
-        else if (_camMode == "prop")
+        else if (_camMode == CamMode.Prop)
         {
             var mid = (_player.RootPos + PropSpotOffset) / 2f;
             _cam.GlobalPosition = mid + PropCamOffset;
             _cam.LookAt(mid + PropLookOffset, Vector3.Up);
         }
-        else if (_camMode == "wpnSide" || _camMode == "wpnRockets")
+        else if (_camMode == CamMode.WpnSide || _camMode == CamMode.WpnRockets)
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
-            float h = _camMode == "wpnRockets" ? WpnRocketsCamHeight : WpnSideCamHeight;
+            float h = _camMode == CamMode.WpnRockets ? WpnRocketsCamHeight : WpnSideCamHeight;
             _cam.GlobalPosition = mid + new Vector3(WpnSideCamOffsetX, h, WpnSideCamOffsetZ);
             _cam.LookAt(mid + WpnSideLookOffset, Vector3.Up);
         }
-        else if (_camMode == "wpnBlocked")
+        else if (_camMode == CamMode.WpnBlocked)
         {
-            _cam.GlobalPosition = new Vector3(43f, 9.5f, 17f);
-            _cam.LookAt(new Vector3(22f, 5.5f, 3f), Vector3.Up);
+            _cam.GlobalPosition = WpnBlockedCamPos;
+            _cam.LookAt(WpnBlockedLookPos, Vector3.Up);
         }
-        else if (_camMode == "wpnDead")
+        else if (_camMode == CamMode.WpnDead)
         {
             // From the player's side (sunlit front), pulled well back.
             var p = _enemy.RootPos;
             _cam.GlobalPosition = p + WpnDeadCamOffset;
             _cam.LookAt(p + WpnDeadLookOffset, Vector3.Up);
         }
-        else if (_camMode == "wpnHud")
+        else if (_camMode == CamMode.WpnHud)
         {
             // Rear three-quarter: player rider in frame, Hector visible past it.
             var torsoYaw = _player.TorsoYawWorld;
@@ -317,85 +333,85 @@ public partial class Titans
             _cam.GlobalPosition = _player.RootPos - fwd * WpnHudBackDistance + right * WpnHudSideOffset + Vector3.Up * WpnHudCamHeight;
             _cam.LookAt(_player.RootPos + Vector3.Up * WpnHudLookHeight + fwd * WpnHudLookForward, Vector3.Up);
         }
-        else if (_camMode == "riderSide")
+        else if (_camMode == CamMode.RiderSide)
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
             _cam.GlobalPosition = mid + RiderSideCamOffset;
             _cam.LookAt(mid + RiderSideLookOffset, Vector3.Up);
         }
-        else if (_camMode == "brkPlayer")
+        else if (_camMode == CamMode.BrkPlayer)
         {
             var p = _player.RootPos;
             _cam.GlobalPosition = p + BrkPlayerCamOffset;
             _cam.LookAt(p + BrkPlayerLookOffset, Vector3.Up);
         }
-        else if (_camMode == "brkHector")
+        else if (_camMode == CamMode.BrkHector)
         {
             var p = _enemy.RootPos;
             _cam.GlobalPosition = p + BrkHectorCamOffset;
             _cam.LookAt(p + BrkHectorLookOffset, Vector3.Up);
         }
-        else if (_camMode == "brkDebris")
+        else if (_camMode == CamMode.BrkDebris)
         {
             _cam.GlobalPosition = _camFocus + BrkDebrisCamOffset;
             _cam.LookAt(_camFocus + Vector3.Up * BrkDebrisLookHeight, Vector3.Up);
         }
-        else if (_camMode == "detailBuilding")
+        else if (_camMode == CamMode.DetailBuilding)
         {
             // Close on the (22,8) building: brick courses + glass panes.
-            var bp = new Vector3(22f, Main.HeightAt(22f, 8f), 8f);
+            var bp = new Vector3(DetailBuildingX, Main.HeightAt(DetailBuildingX, DetailBuildingZ), DetailBuildingZ);
             _cam.GlobalPosition = bp + DetailBuildingCamOffset;
             _cam.LookAt(bp + DetailBuildingLookOffset, Vector3.Up);
         }
-        else if (_camMode == "detailTree")
+        else if (_camMode == CamMode.DetailTree)
         {
             // Close on the hand-placed tree at (-12,-8): branches + leaves.
-            var tp = new Vector3(-12f, Main.HeightAt(-12f, -8f), -8f);
+            var tp = new Vector3(DetailTreeX, Main.HeightAt(DetailTreeX, DetailTreeZ), DetailTreeZ);
             _cam.GlobalPosition = tp + DetailTreeCamOffset;
             _cam.LookAt(tp + DetailTreeLookOffset, Vector3.Up);
         }
-        else if (_camMode == "vista")
+        else if (_camMode == CamMode.Vista)
         {
-            _cam.GlobalPosition = new Vector3(-88f, 44f, 90f);
-            _cam.LookAt(new Vector3(12f, 0f, -12f), Vector3.Up);
+            _cam.GlobalPosition = VistaCamPos;
+            _cam.LookAt(VistaLookPos, Vector3.Up);
         }
-        else if (_camMode == "photoOver")
+        else if (_camMode == CamMode.PhotoOver)
         {
             // Photoreal probe money shot: elevated over the arena,
             // both riders in frame, mountains behind.
-            _cam.GlobalPosition = new Vector3(58f, 34f, 64f);
-            _cam.LookAt(new Vector3(-6f, 0f, -6f), Vector3.Up);
+            _cam.GlobalPosition = PhotoOverCamPos;
+            _cam.LookAt(PhotoOverLookPos, Vector3.Up);
         }
-        else if (_camMode == "photoTuft")
+        else if (_camMode == CamMode.PhotoTuft)
         {
             // Debug: one tuft cluster at arm's length.
-            _cam.GlobalPosition = new Vector3(-18.6f, Main.HeightAt(-18.6f, 2.2f) + PhotoTuftCamHeight, 2.2f);
-            _cam.LookAt(new Vector3(-21.5f, Main.HeightAt(-21.5f, -1.5f) + PhotoTuftLookHeight, -1.5f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(PhotoTuftCamX, Main.HeightAt(PhotoTuftCamX, PhotoTuftCamZ) + PhotoTuftCamHeight, PhotoTuftCamZ);
+            _cam.LookAt(new Vector3(PhotoTuftLookX, Main.HeightAt(PhotoTuftLookX, PhotoTuftLookZ) + PhotoTuftLookHeight, PhotoTuftLookZ), Vector3.Up);
         }
-        else if (_camMode == "grassClose")
+        else if (_camMode == CamMode.GrassClose)
         {
             _cam.GlobalPosition = _grassPos + GrassCloseCamOffset;
             _cam.LookAt(_grassPos + Vector3.Up * GrassCloseLookHeight, Vector3.Up);
         }
-        else if (_camMode == "grassTop")
+        else if (_camMode == CamMode.GrassTop)
         {
             _cam.GlobalPosition = _grassPos + GrassTopCamOffset;
             _cam.LookAt(_grassPos, Vector3.Up);
         }
-        else if (_camMode == "grassField")
+        else if (_camMode == CamMode.GrassField)
         {
             _cam.GlobalPosition = _grassPos + GrassFieldCamOffset;
             _cam.LookAt(_grassPos, Vector3.Up);
         }
-        else if (_camMode == "photoGround")
+        else if (_camMode == CamMode.PhotoGround)
         {
             // Ground level by the hand-placed trees, looking across
             // the road at the Enyo.
-            var tp = new Vector3(-21f, Main.HeightAt(-21f, 0f) + PhotoGroundEyeHeight, -1f);
+            var tp = new Vector3(PhotoGroundX, Main.HeightAt(PhotoGroundX, PhotoGroundSampleZ) + PhotoGroundEyeHeight, PhotoGroundZ);
             _cam.GlobalPosition = tp;
             _cam.LookAt(_player.RootPos + Vector3.Up * PhotoGroundLookHeight, Vector3.Up);
         }
-        else if (_camMode == "slopeSide")
+        else if (_camMode == CamMode.SlopeSide)
         {
             var p = _player.RootPos;
             var fwd = RiderWalker.HeadingVec(_player.LegsYaw);
@@ -403,7 +419,7 @@ public partial class Titans
             _cam.GlobalPosition = p - right * SlopeSideDistance + Vector3.Up * SlopeSideCamHeight;
             _cam.LookAt(p + Vector3.Up * SlopeSideLookHeight, Vector3.Up);
         }
-        else if (_camMode == "groundDuel")
+        else if (_camMode == CamMode.GroundDuel)
         {
             var p = _player.RootPos;
             var fwd = RiderWalker.HeadingVec(_player.LegsYaw);

@@ -260,7 +260,7 @@ public partial class Titans
             SpawnYaw = yaw
         };
         a.Walker = BuildRider(spec, nodeName, pos, yaw);
-        a.Parts = new RiderParts(a.Walker, spec.PartsId);
+        a.Parts = new RiderParts(a.Walker, spec.Id);
         a.Parts.OnBreak = (id, c) => OnPartBroken(a.Parts, id, c);
         a.Walker.RefreshMaterials();
         a.Hp = spec.MaxHp;

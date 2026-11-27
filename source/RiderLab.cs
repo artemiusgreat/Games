@@ -17,8 +17,8 @@ public partial class RiderLab : Control
     // Changing one reports through OnSelectionChanged; the duel
     // rebuilds that side and recreates this lab against the new
     // player spec (slots, tonnage, jump capability all follow).
-    public string PlayerSpecId = "enyo";
-    public string EnemySpecId = "hector";
+    public RiderId PlayerSpecId = RiderId.Enyo;
+    public RiderId EnemySpecId = RiderId.Hector;
     public Action OnSelectionChanged;
 
     private Label _hint;

@@ -380,7 +380,7 @@ public partial class Titans
         var pad = Main.SpawnPads[2];
         _foe.Walker = BuildRider(spec, "Enemy2", PadPos(pad), SpawnYaw(pad));
         _foe.Yaw = SpawnYaw(pad);
-        _foe.Parts = new RiderParts(_foe.Walker, spec.PartsId);
+        _foe.Parts = new RiderParts(_foe.Walker, spec.Id);
         _foe.Parts.OnBreak = (id, c) => OnPartBroken(_foe.Parts, id, c);
         _foe.Walker.RefreshMaterials();
         _foe.Hp = spec.MaxHp;
@@ -402,7 +402,7 @@ public partial class Titans
         _foe = new Foe { Spec = spec, Loadout = _foeMember?.Loadout ?? LoadoutState.DefaultFor(spec) };
         _foe.Walker = BuildRider(spec, "Enemy2", pos, yaw);
         _foe.Yaw = yaw;
-        _foe.Parts = new RiderParts(_foe.Walker, spec.PartsId);
+        _foe.Parts = new RiderParts(_foe.Walker, spec.Id);
         _foe.Parts.OnBreak = (id, c) => OnPartBroken(_foe.Parts, id, c);
         _foe.Walker.RefreshMaterials();
         _foe.Hp = spec.MaxHp;
@@ -420,7 +420,7 @@ public partial class Titans
             var pos = _player.RootPos; float yaw = _player.LegsYaw;
             _player.QueueFree();
             _player = BuildRider(_playerSpec, "Player", pos, yaw);
-            _partsPlayer = new RiderParts(_player, _playerSpec.PartsId);
+            _partsPlayer = new RiderParts(_player, _playerSpec.Id);
             _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
             _player.RefreshMaterials();
             _hpPlayer = _playerSpec.MaxHp; _playerDead = false;
@@ -431,7 +431,7 @@ public partial class Titans
             var pos = _enemy.RootPos; float yaw = _enemy.LegsYaw;
             _enemy.QueueFree();
             _enemy = BuildRider(_enemySpec, "Enemy", pos, yaw);
-            _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
+            _partsEnemy = new RiderParts(_enemy, _enemySpec.Id);
             _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
             _enemy.RefreshMaterials();
             _hpEnemy = _enemySpec.MaxHp; _enemyDead = false;
@@ -443,7 +443,7 @@ public partial class Titans
     // Lab rider selection (round 22): swap either side's chassis.
     // The loadout resets to the new chassis's default fit; the lab
     // UI is recreated against the new spec.
-    public void SetRiderSelection(string playerSpecId, string enemySpecId)
+    public void SetRiderSelection(RiderId playerSpecId, RiderId enemySpecId)
     {
         bool pChanged = playerSpecId != _playerSpec.Id;
         bool eChanged = enemySpecId != _enemySpec.Id;

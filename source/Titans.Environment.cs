@@ -9,9 +9,12 @@ public partial class Titans
     private struct Circle { public Vector2 P; public float R; public float RoofTop; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on - a rider entirely below it (under the deck it stands on) is NOT blocked.
 
     // Destructible environment (owner): buildings take weapon damage
-    // and collapse into rubble; trees ignite, burn for 3s, then smoke
-    // away over 1-3s. State: 0 intact, 1 burning, 2 collapsing,
-    // 3 evaporating, 4 gone/rubble (colliders removed).
+    // and collapse into rubble; trees burn and smoke away.
+    // (owner, 2026-11-27: the state is an enum, not magic
+    // numbers. Value 1 was a retired separate burn phase -
+    // a felled tree now goes straight to SmokingOut.)
+    private enum DestrState { Intact = 0, Collapsing = 2, SmokingOut = 3, Gone = 4 }
+
     private sealed class Destructible
     {
         public string Kind;
@@ -20,7 +23,7 @@ public partial class Titans
         public float Radius;        // hit-attribution radius (XZ)
         public float Height;
         public float Hp;
-        public int State;
+        public DestrState State;
         public float Timer;
         public float PhaseLen;
         public float PuffAcc;
@@ -209,12 +212,20 @@ public partial class Titans
     // Mission scatter: groves and rock fields cluster around the
     // bases (cover where fights happen) with sparse wild growth
     // across the front, so the open country still reads empty.
+    // Mission grove zones (owner, 2026-11-27: constants, not
+    // literals at the Add call): a grove around each spawn
+    // pad, plus the sparse wild growth across the front.
+    private const float PadGroveRadius = 250f;
+    private const int PadGroveTrees = 12;
+    private const float WildGroveRadius = 700f;
+    private const int WildGroveTrees = 26;
+
     private void ScatterNatureMission()
     {
         var rng = new System.Random(0x5EED);
         var zones = new System.Collections.Generic.List<(Vector2 C, float R, int Trees)>();
-        foreach (var pad in Main.SpawnPads) zones.Add((pad, 250f, 12));
-        zones.Add((Vector2.Zero, 700f, 26)); // wild, centered
+        foreach (var pad in Main.SpawnPads) zones.Add((pad, PadGroveRadius, PadGroveTrees));
+        zones.Add((Vector2.Zero, WildGroveRadius, WildGroveTrees)); // wild, centered
         var ztMul = WorldConfig.Biome switch
         {
             WorldConfig.BiomeKind.Desert => DesertTreeMul,
@@ -397,8 +408,7 @@ public partial class Titans
                 tree.AddChild(Branch(from,
                     from + new Vector3(Mathf.Cos(a) * PineBranchReach, PineBranchRise, Mathf.Sin(a) * PineBranchReach), trunkMat));
             }
-            var tiers = new (float Y, float R, float H)[] { (3.1f, 1.8f, 3.0f), (4.6f, 1.35f, 2.6f), (5.9f, 0.9f, 2.2f) };
-            foreach (var (ty, tr, th) in tiers)
+            foreach (var (ty, tr, th) in PineTiers)
             {
                 var cone = new MeshInstance3D
                 {
@@ -492,7 +502,7 @@ public partial class Titans
 
     private bool ScatterFree(Vector2 p, float clearR)
     {
-        // The lanes and pads below are TOURNAMENT test
+        // The lanes and pads (maps/Arena.cs) are TOURNAMENT test
         // choreography around the arena origin. In Mission mode
         // they are meaningless - the riders spawn 620u out - and
         // they sat exactly on the city district, silently eating
@@ -500,18 +510,11 @@ public partial class Titans
         // slots rejected). Mission keeps only the prop spacing.
         if (!WorldConfig.IsMission)
         {
-            // lanes (x0, x1, z0, z1)
-            if (p.X > -5.5f && p.X < 5.5f && p.Y > -23f && p.Y < 37f) return false;
-            if (p.X > 16f && p.X < 28f && p.Y > -23f && p.Y < 31f) return false;
-            if (p.X > 2f && p.X < 10.5f && p.Y > 9f && p.Y < 33f) return false;
-            var pads = new (float X, float Z, float R)[]
-            {
-                (0f, 30f, 7f), (0f, -16f, 7f), (0f, 18f, 7f), (0f, -12f, 7f),
-                (0f, 20f, 7f), (0f, -10f, 7f), (22f, 24f, 7f), (22f, -16f, 7f),
-                (-38f, 38f, 7.5f), (0f, 24f, 7f), (20f, 2f, 6f), (6f, 27f, 5.5f),
-                (0f, 10f, 6f), (0f, -2f, 6f)
-            };
-            foreach (var pad in pads)
+            // The lanes and pads are the arena map's own data
+            // (maps/Arena.cs, owner, 2026-11-27).
+            foreach (var lane in Arena.ScatterLanes)
+                if (p.X > lane.X0 && p.X < lane.X1 && p.Y > lane.Z0 && p.Y < lane.Z1) return false;
+            foreach (var pad in Arena.ScatterPads)
                 if (p.DistanceTo(new Vector2(pad.X, pad.Z)) < pad.R + clearR) return false;
         }
         foreach (var c in _props)
@@ -882,7 +885,7 @@ public partial class Titans
             var wp = new Vector2(w.RootPos.X, w.RootPos.Z);
             foreach (var d in _destructibles)
             {
-                if (d.Kind != "tree" || d.State != 0) continue;
+                if (d.Kind != "tree" || d.State != DestrState.Intact) continue;
                 var tp = new Vector2(d.Center.X, d.Center.Z);
                 // Reach is the CROWN's width, not the trunk's
                 // (owner, 2026-11-14): the visible canopy spans
@@ -1052,7 +1055,7 @@ public partial class Titans
         float bestD = float.MaxValue;
         foreach (var d in _destructibles)
         {
-            if (d.State != 0) continue;
+            if (d.State != DestrState.Intact) continue;
             foreach (var c in d.Cyls)
             {
                 float dxz = new Vector2(point.X - c.P.X, point.Z - c.P.Y).Length();
@@ -1133,6 +1136,11 @@ public partial class Titans
     private const float TreeSmokePuffInterval = 0.2f;
     private const float TreeSmokePuffBase = 1f, TreeSmokePuffHeightFraction = 0.4f;
     private const float TreeSmokePuffSizeMin = 6f, TreeSmokePuffSizeMax = 9f, TreeSmokePuffLife = 1.3f;
+    // The pine's cone tiers (base height, radius, height) -
+    // the tree builder's own recipe, shared by every map
+    // that scatters pines (owner, 2026-11-27: named table).
+    private static readonly (float Y, float R, float H)[] PineTiers = { (3.1f, 1.8f, 3.0f), (4.6f, 1.35f, 2.6f), (5.9f, 0.9f, 2.2f) };
+
     private const float TreeSmokeFlashInterval = 0.34f;
     private const float TreeSmokeFlashBase = 0.8f, TreeSmokeFlashHeightFraction = 0.3f;
     private static readonly Color TreeSmokeFlashColor = new(1f, 0.5f, 0.15f);
@@ -1140,7 +1148,7 @@ public partial class Titans
 
     private void StartCollapse(Destructible d)
     {
-        d.State = 2;
+        d.State = DestrState.Collapsing;
         d.Timer = CollapseSeconds; // pieces fly, settle, then dissolve (~3s lives)
         d.PhaseLen = CollapseSeconds;
         RemovePropColliders(d); // falling masonry no longer blocks or stops riders
@@ -1185,8 +1193,8 @@ public partial class Titans
     // standing and blocking shots for up to ~6 seconds.
     private void DestroyTree(Destructible d, float smokeLen)
     {
-        if (d.State != 0) return;
-        d.State = 3;
+        if (d.State != DestrState.Intact) return;
+        d.State = DestrState.SmokingOut;
         d.PhaseLen = smokeLen;
         d.Timer = smokeLen;
         RemovePropColliders(d);
@@ -1216,7 +1224,7 @@ public partial class Titans
     {
         foreach (var d in _destructibles)
         {
-            if (d.State == 3) // tree destroyed: smoking out
+            if (d.State == DestrState.SmokingOut) // tree destroyed: smoking out
             {
                 d.Timer -= dt;
                 float u = Mathf.Clamp(d.Timer / d.PhaseLen, 0f, 1f);
@@ -1239,13 +1247,13 @@ public partial class Titans
                 }
                 if (d.Timer <= 0f)
                 {
-                    d.State = 4;
+                    d.State = DestrState.Gone;
                     RemovePropColliders(d);
                     d.Node.QueueFree();
                     Dbg.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) GONE");
                 }
             }
-            else if (d.State == 2) // building gone: pieces + dust animate (round 21)
+            else if (d.State == DestrState.Collapsing) // building gone: pieces + dust animate (round 21)
             {
                 // The building node is hidden (StartCollapse); the
                 // pieces fly and dissolve into dust under
@@ -1253,7 +1261,7 @@ public partial class Titans
                 d.Timer -= dt;
                 if (d.Timer <= 0f)
                 {
-                    d.State = 4;
+                    d.State = DestrState.Gone;
                     Dbg.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) CLEARED (pieces turned to dust)");
                 }
             }

@@ -1518,7 +1518,7 @@ public partial class Titans
         // names the target). The old rangefinder survives only
         // as the no-target fallback (harness cameras, no foes).
         bool liveTgt = tgt.W != null && !tgt.Dead;
-        if (_camMode == CamModes.Chase && _cam != null && !liveTgt && tgt.W == null)
+        if (_camMode == CamMode.Chase && _cam != null && !liveTgt && tgt.W == null)
         {
             var rHit = AimRay(_cam.GlobalPosition, AimDirWorld(), Aim.FarRange);
             _lblRange.Text = rHit.Hit
@@ -1605,7 +1605,7 @@ public partial class Titans
             bool show = _sniper && !_labOpen;
             _scope.Visible = show;
             if (show) _cross.Visible = false;
-            else if (!_labOpen && _camMode == CamModes.Chase) _cross.Visible = true;
+            else if (!_labOpen && _camMode == CamMode.Chase) _cross.Visible = true;
         }
 
         foreach (var c in new Control[] { _panelHealth, _panelWeapons, _panelTarget, _feedLabel, _cross })

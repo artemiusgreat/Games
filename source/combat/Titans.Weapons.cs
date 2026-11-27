@@ -517,7 +517,7 @@ public partial class Titans
         // meaningfully off the axis and the target is well past
         // the rider; close shots and on-axis pods keep the plain
         // pod solve (solveFrom == muzzle, identical numbers).
-        var axisOrigin = (_camMode == CamModes.Chase && _cam != null) ? _cam.GlobalPosition : _aimFrom;
+        var axisOrigin = (_camMode == CamMode.Chase && _cam != null) ? _cam.GlobalPosition : _aimFrom;
         var axisDir = _aimDir;
         Vector3 solveFrom = muzzle;
         bool guided = false;

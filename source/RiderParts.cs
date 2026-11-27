@@ -5,21 +5,11 @@ using System.Collections.Generic;
 // model (which meshes belong to which part, per-part HP), per-mesh hit
 // volumes anchored to skeleton bones, and hit attribution.
 //
-// Part mapping (from the imported node names + per-vertex skin weights -
-// every mesh in both FBXs is rigidly bound 100% to a single bone):
-//   TW    torso = Torso core + TorsoPin + Waist (the main HP pool)
-//         pod_L/pod_R = the LRM ear boxes, SPLIT out of the single Torso
-//           mesh at runtime (the kit's torso STL merges ears+torso into
-//           one mesh, so the ears are separated here by triangle region)
-//         head  = canopy region split out of Torso + Antenna
-//         arm_L/R = UpperArm + ShoulderPad + Elbow + Forearm + HandGun
-//           (+ WeaponERPPC), all shoulder/elbow-bound
-//         leg_L/R = Thigh + Shin + FootHub + all Toe meshes
-//   HECTOR torso = Torso core + Pelvis + waist gun + SRM6 (per spec the guns
-//           ride with the torso part)
-//         head  = skull cap region split out of Torso
-//         arm_L/R = Shoulder + UpperArm + Elbow + Forearm
-//         leg_L/R = Thigh + Shin + Foot
+// The per-rider part mapping itself (which meshes form which
+// part, the torso carve regions, per-part HP) lives one file
+// per rider under source/riders/, reached through the
+// RiderLayouts factory - this class is the shared machinery
+// the layouts drive.
 //
 // Volumes: each mesh contributes one box in its bone's frame, derived from
 // the mesh AABB at bind pose. A world point is transformed into each
@@ -78,15 +68,22 @@ public sealed class RiderParts
         public readonly List<Volume> Volumes = new();
     }
 
+    // Set by a rider's layout: the fused-miniature builds are
+    // cut from one shell, so their parts have open seams; with
+    // backface culling on, a seam reads as a see-through hole
+    // (owner report, 2026-11-01). Those riders' materials
+    // render double-sided so a seam shows the part's dark
+    // interior instead of the sky.
+    internal bool DoubleSidedMaterials;
     private readonly RiderWalker _walker;
     private readonly Skeleton3D _skel;
-    private readonly string _riderId;
+    private readonly RiderId _riderId;
     private readonly Dictionary<PartId, Part> _parts = new();
 
-    public string RiderId => _riderId;
+    public RiderId RiderId => _riderId;
     public System.Action<PartId, Vector3> OnBreak; // (partId, worldCenter)
 
-    public RiderParts(RiderWalker walker, string riderId)
+    public RiderParts(RiderWalker walker, RiderId riderId)
     {
         _walker = walker;
         _riderId = riderId;
@@ -104,327 +101,17 @@ public sealed class RiderParts
         // rider material before the torso carve copies materials.
         StripVertexColorAlbedo(byName);
 
-        if (riderId == "enyo")
-        {
-            // Z thresholds carry a +0.09 frame shift (2026-11-15):
-            // SplitTorso now classifies in the model's own frame;
-            // these regions were measured in the old walker-relative
-            // frame, whose origin sat 0.09 lower in Z for this model.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Pod_L", p => p.X >= 1.7f && p.Y >= 9.9f && p.Z <= -1.01f),
-                ("Pod_R", p => p.X <= -1.7f && p.Y >= 9.9f && p.Z <= -1.01f),
-                ("Head", p => Mathf.Abs(p.X) <= 1.4f && p.Y >= 10.1f && p.Z >= 1.09f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(PartId.PodL, "LEFT LRM POD", 45f, byName, "TorsoPod_L");
-            AddPart(PartId.PodR, "RIGHT LRM POD", 45f, byName, "TorsoPod_R");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead", "Antenna");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName,
-                "UpperArm_L", "ShoulderPad_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName,
-                "UpperArm_R", "ShoulderPad_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName,
-                "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName,
-                "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
-        }
-        else if (riderId == "hector")
-        {
-            // Merged re-import (owner's part-merged FBX, 2026-11-21): 33 meshes instead of
-            // 208, rig transferred from the previous build by vertex-position match (his
-            // re-export is re-decimated, -3,584 tris, positions within 0.13u in file
-            // units). The two cannons stay whole as the waist gun; the head is still
-            // carved from Torso by SplitTorso below. (2026-11-21 evening: the owner's
-            // own re-export from the reverted history - 16 objects with the clean part
-            // names, his rig and UVs, textures as Hector.fbm sidecars like Apollo's.
-            // Used AS IS. His merge folded the SRM pod into Left_Shoulder, so pod_L
-            // claims no mesh until the pod is its own object again.)
-            // Owner's clean split (2026-11-17): his 16 named
-            // objects plus the Tripo fragments, rigged as-is -
-            // nothing moved or regrouped. Head = the skull
-            // band of his Torso object (re-measured on his
-            // 2026-11-21 re-export: his head-group verts span
-            // |X| <= 0.146, Y >= 0.848, Z >= -0.108 in file
-            // units; the band below covers them - the shipped
-            // band caught only 341 of his 614 head verts and
-            // the brk rays attributed the skull to torso). Gun = his cannon group under
-            // Torso (Left/Right_Cannon.001 housings + the
-            // Cannon barrels), torso-bound per his grouping
-            // (2026-11-18 restructure: Ares legs + pelvis
-            // replaced the native bottom half; the old
-            // tripo_part_33 island name is gone). Pod = the connected armour cluster
-            // over the left shoulder, contact-chained from
-            // tripo_part_53 - the same pieces the previous
-            // build joined as SRM6.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 0.15f && p.Y >= 0.84f && p.Z >= -0.14f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart(PartId.Gun, "WAIST GUN", 65f, byName, "Left_Cannon", "Right_Cannon");
-            AddPart(PartId.PodL, "SRM POD", 45f, byName);
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Hand", "Left_Shoulder");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Hand", "Right_Shoulder");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
-            AttachDebris(byName);
-        }
-        else if (riderId == "hermes")
-        {
-            // Merged re-import (owner's part-merged FBX, 2026-11-21): 14 meshes instead of
-            // 210, vertex-exact against the previous build. His export was only partly
-            // merged (~115 tripo fragments still separate, some skinned to his own
-            // armature, which was discarded); the transfer folded them into the named
-            // parts by bone and part. Layout claims the merged names.
-            // Owner's own grouping (Hermes-Clean.fbx, 2026-11-18,
-            // replacing the Tripo island build): 12 named part
-            // objects with the fragments parented under them; the
-            // build binds every fragment rigidly to its root
-            // object's bone on the file's own Mixamo skeleton
-            // (renamed to the game bones), so the safety net below
-            // files each unclaimed fragment into the part its bone
-            // belongs to. Head and the LRM rack bind torso like
-            // the rest of the chest, so they are claimed by name:
-            // the rack is the honeycomb cells and housing over
-            // the left shoulder, the head is the cockpit cap and
-            // antennae on top of the torso.
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart(PartId.PodL, "LRM RACK", 45f, byName, "tripo_part_34");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "tripo_part_4");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
-            AttachDebris(byName);
-        }
-        else if (riderId == "apollo")
-        {
-            // Merged re-import (owner's part-merged FBX, 2026-11-21): 20 meshes instead of
-            // 221. Binding and UVs transferred PER FACE from the previous build (each of
-            // his faces takes the bone and UVs of the nearest previous-build triangle),
-            // after his export arrived with its UV maps missing (the rider rendered
-            // black) and a shell-level bind left joint-spanning geometry on one bone.
-            // Layout claims the merged names; the head is still carved from Torso by
-            // SplitTorso below.
-            // Owner's own split (Apollo-Clean.fbx, 2026-11-17),
-            // used AS IS at his instruction: no object moved,
-            // renamed, joined or regrouped - the build only adds
-            // the armature and a rigid bind per object, so the
-            // meshes carry HIS object names and the parts claim
-            // them by those names. The 216 ungrouped fragments
-            // keep their own objects too; the safety net below
-            // sweeps them into their nearest part at load. The
-            // helmet is fused into his Torso object, so the head
-            // is carved here (band = the build's head vertex
-            // group: |x| <= 1.45, top of the torso). The
-            // Shoulder_Cannon he split out is the missile pod.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.45f && p.Y >= 11.30f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Pelvis__torso", "TorsoCore");
-            AddPart(PartId.PodL, "SHOULDER CANNON", 45f, byName, "Shoulder_Cannon");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Elbow", "Left_Elbow__shoulder_L", "Left_Hand", "Left_Shoulder");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Elbow", "Right_Shoulder");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Hip__pelvis", "Left_Shin", "Left_Shin__hip_L");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Hip__pelvis", "Right_Shin", "Right_Shin__hip_R");
-            AttachDebris(byName);
-        }
-        else if (riderId == "ares")
-        {
-            // Merged re-import (owner's part-merged FBX, 2026-11-21): 18 meshes instead of
-            // 265, vertex-exact against the previous build. Layout claims the merged
-            // names; the head is still carved from Torso by SplitTorso below.
-            // Owner's own split (Ares.fbx, 2026-11-18), replacing
-            // the Tripo island build: 12 named part objects with
-            // every fragment parented under them; the build binds
-            // each mesh rigidly to its root object's bone on the
-            // file's own Mixamo skeleton, so the safety net files
-            // unclaimed fragments by bone. No arm adjustment: the
-            // sculpt's arms are modelled bent at 90 degrees, guns
-            // forward (owner's rule for replaced models). Two
-            // name claims: his "Torso" object IS the head assembly
-            // (dome, face guard, chin) riding on a small sternum
-            // tab - SplitTorso carves the head off the tab (clean
-            // triangle gap at file z 0.834-0.855; SplitTorso
-            // classifies in the file's own frame, and this file is
-            // 1.0 tall, so the band is 0.845), and the face
-            // plates plus the two back-pylon panels the previous
-            // build counted as head are claimed by name. The pod
-            // is the left shoulder drum group (the previous
-            // build's pod was the left shoulder cap assembly):
-            // the drum and its cradle children bind shoulder_L
-            // but are claimed here by name.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => p.Y >= 0.845f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "TorsoCore");
-            AddPart(PartId.PodL, "LEFT SHOULDER", 45f, byName, "Left_Shoulder");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead", "tripo_part_132", "tripo_part_136", "tripo_part_143", "tripo_part_153", "tripo_part_154", "tripo_part_181");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
-            AttachDebris(byName);
-        }
-        else if (riderId == "hades")
-        {
-            // Merged re-import (owner's part-merged FBX, 2026-11-21): 19 meshes instead of
-            // 215, rig transferred from the previous build by vertex-position match (max
-            // deviation 0.08u). Layout claims the merged names; the left-shoulder pod
-            // cluster stays separate, as before.
-            // Owner's own split (Hades.fbx, 2026-11-19), replacing
-            // the Tripo island build: 12 named part groups with
-            // every fragment parented under them; the build binds
-            // each mesh rigidly to its group root's bone (no
-            // skeleton in his file - the rig is authored at his
-            // groups' measured joints). No arm adjustment: his
-            // arm positioning ships as modelled. Two name calls:
-            // the head is the cockpit assembly grouped under
-            // Torso (its own mesh is the fin cap, tripo_part_16
-            // the canopy block, 145/148 the cheek guards, 179
-            // the top cap - isolation-verified), bound to the
-            // head bone; the sculpt has no missile pod, so the
-            // left shoulder's top cap cluster (142 + the small
-            // plates above the pauldron) serves as pod_L - it
-            // binds shoulder_L and rides the arm.
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart(PartId.PodL, "LEFT SHOULDER", 45f, byName, "tripo_part_142", "tripo_part_4_001");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "Torso_head", "tripo_part_145", "tripo_part_148", "tripo_part_16", "tripo_part_179");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
-            AttachDebris(byName);
-        }
-        else if (riderId == "amadeus")
-        {
-            // Owner's merged re-split (Amadeus_0_dz4x, 2026-11-21):
-            // the same geometry as the 2026-11-19 split (vertex-exact,
-            // 39,444 tris) with each part group's fragments merged
-            // into a single mesh per body part - 14 meshes instead of
-            // 244. The rig is the shipped build's armature, weights
-            // transferred by exact vertex position; the head cluster
-            // (ex tripo_part_10/11/124/169) and the right-shoulder
-            // launcher cluster (ex tripo_part_88 + the 33-38 tube row
-            // + 118/159/202/202 fittings) stay separate meshes so
-            // both parts still break and move as before. His right
-            // leg groups now carry proper Right_* names.
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Pelvis", "Torso");
-            AddPart(PartId.PodR, "RIGHT SHOULDER", 45f, byName, "Pod_R");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "Head");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName, "Left_Cannon", "Left_Shoulder");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName, "Right_Cannon", "Right_Shoulder");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName, "Left_Foot", "Left_Hip", "Left_Shin");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName, "Right_Foot", "Right_Hip", "Right_Shin");
-            AttachDebris(byName);
-        }
-        else if (riderId == "prometheus")
-        {
-            // Hellbringer kit: the head is the cockpit hood region
-            // split out of the Torso mesh (measured on the built
-            // model: |x| <= 1.3, top front). The missile pod on
-            // the LEFT shoulder (owner, 2026-11-12: 'obvious pods
-            // for missiles on its left shoulder') is fused into
-            // the same Torso mesh - the census puts it at
-            // X 1.10..2.28, height 10.6..12.1 (610 verts, a
-            // distinct block above the shoulder line; axis
-            // mapping cross-checked against Enyo's pod census),
-            // so SplitTorso carves it as a real pod part.
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Pod_L", p => p.X >= 1.12f && p.Y >= 10.55f),
-                // Classification space note: measured on the
-                // built model - the cockpit is the top of the
-                // torso's dense front slab, which lands at
-                // Z >= -0.72 in this space (region census +
-                // per-mesh AABB checks), not at the gait-front
-                // sign one would guess from the other riders.
-                ("Head", p => Mathf.Abs(p.X) <= 1.3f && p.Y >= 11.0f && p.Z >= -0.72f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(PartId.PodL, "LEFT POD", 45f, byName, "TorsoPod_L");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(PartId.ArmL, "LEFT ARM", 90f, byName,
-                "ShoulderAct_L", "UpperArm_L", "UpperArm2_L", "Elbow_L", "Forearm_L", "HandGun_L", "WeaponERPPC_L");
-            AddPart(PartId.ArmR, "RIGHT ARM", 90f, byName,
-                "ShoulderAct_R", "UpperArm_R", "UpperArm2_R", "Elbow_R", "Forearm_R", "HandGun_R", "WeaponERPPC_R");
-            AddPart(PartId.LegL, "LEFT LEG", 90f, byName,
-                "Thigh_L", "Knee_L", "Shin_L", "Foot_L");
-            AddPart(PartId.LegR, "RIGHT LEG", 90f, byName,
-                "Thigh_R", "Knee_R", "Shin_R", "Foot_R");
-        }
-        else if (riderId == "medea")
-        {
-            // Shield mech, owner's clean split (2026-11-18):
-            // his named objects ARE the parts - the turret is
-            // its own object (the head), the left-shoulder
-            // block is the missile pod, the shield and its pin
-            // ride the left arm, the twin-barrel Cannon is the
-            // right arm, and the legs are Enyo's (hub + toes).
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "Torso", "Pelvis");
-            AddPart(PartId.Head, "HEAD", 45f, byName, "Tower");
-            AddPart(PartId.ArmL, "LEFT ARM", 85f, byName, "Shield", "Cylinder");
-            AddPart(PartId.ArmR, "RIGHT ARM", 85f, byName, "Cannon");
-            AddPart(PartId.LegL, "LEFT LEG", 80f, byName, "Thigh_L", "Shin_L", "FootHub_L",
-                "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartId.LegR, "RIGHT LEG", 80f, byName, "Thigh_R", "Shin_R", "FootHub_R",
-                "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
-            AddPart(PartId.PodL, "LEFT SHOULDER", 40f, byName, "Cabin");
-        }
-        else if (riderId == "demeter")
-        {
-            // Dire Wolf upper body (owner's hand split) on the Enyo
-            // leg rig. Head = cockpit dome split, Pod_L = the left
-            // shoulder rack split (bands measured on the mesh).
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.1f && p.Z <= -2.4f && p.Y >= 9.2f && p.Y <= 11.6f),
-                ("Pod_L", p => p.X >= 1.6f && p.Y >= 12.0f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(PartId.PodL, "LEFT SHOULDER", 45f, byName, "TorsoPod_L");
-            AddPart(PartId.ArmL, "LEFT ARM", 95f, byName, "GunArm_L", "Elbow_L");
-            AddPart(PartId.ArmR, "RIGHT ARM", 95f, byName, "GunArm_R", "Elbow_R");
-            AddPart(PartId.LegL, "LEFT LEG", 95f, byName,
-                "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartId.LegR, "RIGHT LEG", 95f, byName,
-                "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
-        }
-        else if (riderId == "theseus")
-        {
-            // Hauptmann upper body (owner's hand split) on the Enyo
-            // leg rig. Head = cockpit prow split; the sculpt's LRM
-            // rack sits on the RIGHT shoulder (bands measured).
-            SplitTorso(byName, new (string, System.Func<Vector3, bool>)[]
-            {
-                ("Head", p => Mathf.Abs(p.X) <= 1.0f && p.Z <= -0.5f && p.Y >= 11.2f && p.Y <= 12.7f),
-                ("Pod_R", p => p.X <= -1.7f && p.Y >= 10.8f),
-            });
-            AddPart(PartId.Torso, "TORSO", 0f, byName, "TorsoCore", "TorsoPin", "Waist");
-            AddPart(PartId.Head, "HEAD", 50f, byName, "TorsoHead");
-            AddPart(PartId.PodR, "RIGHT SHOULDER", 45f, byName, "TorsoPod_R");
-            AddPart(PartId.ArmL, "LEFT ARM", 95f, byName, "ShoulderPad_L", "GunArm_L", "Elbow_L");
-            AddPart(PartId.ArmR, "RIGHT ARM", 95f, byName, "ShoulderPad_R", "GunArm_R", "Elbow_R");
-            AddPart(PartId.LegL, "LEFT LEG", 95f, byName,
-                "Thigh_L", "Shin_L", "FootHub_L", "ToeFL1_L", "ToeFL2_L", "ToeFR1_L", "ToeFR2_L", "ToeBack1_L", "ToeBack2_L");
-            AddPart(PartId.LegR, "RIGHT LEG", 95f, byName,
-                "Thigh_R", "Shin_R", "FootHub_R", "ToeFL1_R", "ToeFL2_R", "ToeFR1_R", "ToeFR2_R", "ToeBack1_R", "ToeBack2_R");
-        }
-
-
-        else
+        // The per-rider layout comes from the factory (owner,
+        // 2026-11-27: one file per rider under source/riders/,
+        // like the maps) - this class keeps only the shared
+        // machinery.
+        if (!RiderLayouts.TryBuild(riderId, this, byName))
         {
             // Unknown chassis: no hand-authored layout. Fail LOUD
             // and fall back to a single torso part (the whole
             // model) so the duel still runs - author a real
-            // layout here before shipping the rider.
-            GD.PrintErr($"PARTS: no layout for '{riderId}' - torso-only fallback; author a layout in RiderParts.cs");
+            // layout in source/riders/ before shipping the rider.
+            Dbg.Err($"PARTS: no layout for '{riderId}' - torso-only fallback; author a layout in source/riders/");
             var all = new string[byName.Count];
             byName.Keys.CopyTo(all, 0);
             AddPart(PartId.Torso, "TORSO", 0f, byName, all);
@@ -460,10 +147,10 @@ public sealed class RiderParts
                 PartId? want = null;
                 if (bn == Bones.Head) want = PartId.Head;
                 else if (bn == Bones.Torso || bn == Bones.Pelvis) want = PartId.Torso;
-                else if (bn != null && (bn.StartsWith("shoulder_") || bn.StartsWith("elbow_")))
-                    want = bn.EndsWith("_L") ? PartId.ArmL : PartId.ArmR;
-                else if (bn != null && (bn.StartsWith("hip_") || bn.StartsWith("knee_") || bn.StartsWith("ankle_")))
-                    want = bn.EndsWith("_L") ? PartId.LegL : PartId.LegR;
+                else if (bn == Bones.ShoulderL || bn == Bones.ElbowL) want = PartId.ArmL;
+                else if (bn == Bones.ShoulderR || bn == Bones.ElbowR) want = PartId.ArmR;
+                else if (bn == Bones.HipL || bn == Bones.KneeL || bn == Bones.AnkleL) want = PartId.LegL;
+                else if (bn == Bones.HipR || bn == Bones.KneeR || bn == Bones.AnkleR) want = PartId.LegR;
                 if (want != null) _parts.TryGetValue(want.Value, out best);
                 if (best == null)
                 {
@@ -498,13 +185,7 @@ public sealed class RiderParts
             centers += $" {part.Id}={PartCenterWorld(part.Id)}";
         Dbg.Print(centers);
 
-        // The fused-miniature builds (ajax + the batch-2 riders) are cut
-        // from one shell, so their parts have open seams; with
-        // backface culling on, a seam reads as a see-through hole
-        // (owner report, 2026-11-01: visible through a
-        // rider's gun arm). Render those riders' materials double-sided so a
-        // seam shows the part's dark interior instead of the sky.
-        if (_riderId == "medea" || _riderId == "demeter" || _riderId == "theseus" || _riderId == "hector" || _riderId == "hermes" || _riderId == "hades" || _riderId == "ares" || _riderId == "amadeus" || _riderId == "apollo")
+        if (DoubleSidedMaterials)
         {
             var dupCache = new Dictionary<Material, Material>();
             foreach (var part in _parts.Values)
@@ -561,7 +242,7 @@ public sealed class RiderParts
         foreach (var c in n.GetChildren()) CollectMeshes(c, byName);
     }
 
-    private void AddPart(PartId id, string display, float hp,
+    internal void AddPart(PartId id, string display, float hp,
         Dictionary<string, MeshInstance3D> byName, params string[] meshNames)
     {
         var part = new Part { Id = id, Display = display, MaxHp = hp, Hp = hp };
@@ -607,7 +288,7 @@ public sealed class RiderParts
         ["head"] = PartId.Head, ["leg_L"] = PartId.LegL, ["leg_R"] = PartId.LegR,
     };
 
-    private void AttachDebris(Dictionary<string, MeshInstance3D> byName)
+    internal void AttachDebris(Dictionary<string, MeshInstance3D> byName)
     {
         foreach (var kv in byName)
         {
@@ -703,8 +384,20 @@ public sealed class RiderParts
     // Regions are tested in order; unmatched triangles keep the core piece.
     // New pieces share the original skin/skeleton and sit at the same tree
     // spot, so rendering is unchanged until a piece is detached.
-    private void SplitTorso(Dictionary<string, MeshInstance3D> byName,
-        (string Suffix, System.Func<Vector3, bool> Region)[] regions)
+    // The carved piece's mesh name is the torso mesh's name
+    // plus a suffix (TorsoPod_L, TorsoHead) - model-file data,
+    // derived from the part here, the one place that knows it;
+    // the layouts name the part, never the string.
+    private static string CarveSuffix(PartId part) => part switch
+    {
+        PartId.PodL => "Pod_L",
+        PartId.PodR => "Pod_R",
+        PartId.Head => "Head",
+        _ => "Core",
+    };
+
+    internal void SplitTorso(Dictionary<string, MeshInstance3D> byName,
+        (PartId Part, System.Func<Vector3, bool> Region)[] regions)
     {
         if (!byName.TryGetValue("Torso", out var orig) || orig.Mesh == null) return;
         var parent = orig.GetParent();
@@ -796,7 +489,7 @@ public sealed class RiderParts
                     }
                 }
                 if (newIdx.Count == 0) continue;
-                string suffix = r < regions.Length ? regions[r].Suffix : "Core";
+                string suffix = r < regions.Length ? CarveSuffix(regions[r].Part) : "Core";
                 var mi = Piece(suffix);
                 var am = (ArrayMesh)mi.Mesh;
                 var outArrays = SliceSurface(arrays, srcVerts, newIdx, verts.Length);
@@ -815,7 +508,7 @@ public sealed class RiderParts
             // CORE piece with a dark plate (see AddSocketPlug).
             for (int r = 0; r < regions.Length; r++)
             {
-                if (!regions[r].Suffix.StartsWith("Pod")) continue;
+                if (regions[r].Part is not (PartId.PodL or PartId.PodR)) continue;
                 if (!emitted.TryGetValue(r, out var podE)) continue;
                 if (!emitted.TryGetValue(regions.Length, out var coreE)) continue;
                 AddSocketPlug((ArrayMesh)Piece("Core").Mesh, coreE.Arr, coreE.Idx, podE.Arr, podE.Idx);

@@ -116,6 +116,8 @@ public partial class RiderWalker : Node3D
     private const float FallTipAngle = 1.32f;          // rad (~76 deg): the fall's full tip
     private const float FallUpEaseRate = 10f, UpEaseRate = 3.5f;
     private const float MinFootSpan = 0.5f;            // lateral foot-span floor for the roll estimate
+    private const float MaxRootTilt = 0.23f;           // rad: the root's terrain tilt is capped here
+    private const float TiltGradientProbe = 1.5f;      // u: fore/aft probe distance for the pitch gradient
     private const float MinJoltEnvelope = 0.002f;      // jolt envelope below which the rock is dropped
     private const float JoltDecayRate = 2.4f;          // jolt envelope decay per second
     private const float IkMinReachFraction = 0.05f, IkMaxReachFraction = 0.999f; // IK target distance clamp, as reach fractions
@@ -1038,13 +1040,11 @@ public partial class RiderWalker : Node3D
         float span = Mathf.Max(Mathf.Abs(latR - latL), MinFootSpan);
         float dhLat = (sHi.Y - sLo.Y) / span;
         var fwd = HeadingVec(_legsYaw);
-        const float ge = 1.5f;
-        float dhFwd = (Main.HeightAt(_rootPos.X + fwd.X * ge, _rootPos.Z + fwd.Z * ge)
-                     - Main.HeightAt(_rootPos.X - fwd.X * ge, _rootPos.Z - fwd.Z * ge)) / (2f * ge);
+        float dhFwd = (Main.HeightAt(_rootPos.X + fwd.X * TiltGradientProbe, _rootPos.Z + fwd.Z * TiltGradientProbe)
+                     - Main.HeightAt(_rootPos.X - fwd.X * TiltGradientProbe, _rootPos.Z - fwd.Z * TiltGradientProbe)) / (2f * TiltGradientProbe);
         var upT = (Vector3.Up - right * dhLat - fwd * dhFwd).Normalized();
-        const float MaxTilt = 0.23f; // rad: the root's terrain tilt is capped here
         float tilt = Mathf.Acos(Mathf.Clamp(upT.Dot(Vector3.Up), -1f, 1f));
-        if (tilt > MaxTilt) upT = Vector3.Up.Lerp(upT, MaxTilt / tilt).Normalized();
+        if (tilt > MaxRootTilt) upT = Vector3.Up.Lerp(upT, MaxRootTilt / tilt).Normalized();
         // Limp: permanent lean toward a dead leg, on top of terrain tilt.
         // upT - right*sin leans the body's top toward its anatomical left.
         if (LimpRoll != 0f)
@@ -1306,7 +1306,7 @@ public partial class RiderWalker : Node3D
             while (b >= 0)
             {
                 string n = skel.GetBoneName(b);
-                if (n.StartsWith("clavicle_") || n.StartsWith("shoulder_") || n.StartsWith("elbow_"))
+                if (Bones.ArmChainRoots.Contains(n))
                 { set.Add(skel.GetBoneName(i)); break; }
                 b = skel.GetBoneParent(b);
             }

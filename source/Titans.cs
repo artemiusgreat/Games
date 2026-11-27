@@ -94,7 +94,7 @@ public partial class Titans : Node3D
     private bool _hectorCam; // dev flag: swap player to Hector, force-deploy, capture the chase view
     private bool _multiShot; // dev flag: multi-fit the lab loadout before the --lab-shot capture
     private bool _hectorLab; // dev flag: open the lab on the Hector for the --lab-shot capture
-    private string _labRiderId; // dev flag: --lab-rider=<id> opens the lab on that rider for the --lab-shot capture
+    private RiderId? _labRiderId; // dev flag: --lab-rider=<id> opens the lab on that rider for the --lab-shot capture
     private bool _layoutDumped;
     private int _labShotFrames;
     private bool _hectorCamDone; private float _hectorCamT; private bool _hectorCamFired;
@@ -116,10 +116,22 @@ public partial class Titans : Node3D
     private bool _gaitShot; // --gait-shot: dev flag - capture the enemy mid-stride (enemySide), quit
     private float _gaitT;
     private float _gaitDumpT;
-    private int _photoPhase;
+    private PhotoPhase _photoPhase;
     private float _photoT, _fpsSum;
     private ulong _warmStart; // photo-mode shader warmup (lab): wall-clock start, 0 = not begun
-    private int _warmPose;    // warmup camera pose index (4 = done)
+    // Warmup camera poses (owner, 2026-11-27: an enum, not a
+    // bare index - Done ends the sweep).
+    private enum WarmPose { Overhead, Ground, Vista, Lab, Done }
+    private WarmPose _warmPose;
+    // The warmup poses' framing (rider-relative offsets) and
+    // their render-time slices.
+    private static readonly Vector3 WarmOverheadOffset = new(58f, 34f, 64f);
+    private static readonly Vector3 WarmGroundOffset = new(-21f, 0f, -1f);
+    private static readonly Vector3 WarmVistaOffset = new(-88f, 44f, 90f);
+    private static readonly Vector3 WarmLabOffset = new(10f, 3.4f, 10f);
+    private const float WarmLookHeight = 2f, WarmGroundEyeHeight = 2.1f, WarmGroundLookHeight = 5.5f;
+    private const ulong WarmOverheadSliceEndMs = 900, WarmGroundSliceEndMs = 1800, WarmVistaSliceEndMs = 2600, WarmLabSliceEndMs = 3400;
+    private const int WarmMinFramesPerPose = 2;
     private int _warmPoseFrames; // frames rendered at the current pose
     private bool _warmFx;   // warmup FX burst fired
     private int _fpsN;
@@ -134,16 +146,17 @@ public partial class Titans : Node3D
 
     // capture state
     private bool _frozen, _capturing;
-    private string _pendingPath, _pendingTag, _camMode = CamModes.Chase;
+    private string _pendingPath, _pendingTag;
+    private CamMode _camMode = CamMode.Chase;
     private System.Action _afterCapture;
 
     // test choreography
-    private int _phase;
+    private DuelPhase _phase;
     private double _phaseT;
     private int _strideShots;
     private float _minTreeSep, _minRiderSep;
-    private int _pLimpStep;
-    private int _aimStep;
+    private PlayerLimpStep _pLimpStep;
+    private AimStep _aimStep;
     private double _aimT0;
     private int _aimProj0;
     private float _aimWorld0, _aimLegs0;
@@ -279,7 +292,7 @@ public partial class Titans : Node3D
     private RiderLab _lab;
     private CanvasLayer _uiLayer;
     private bool _labChecked;
-    private int _selStage; private float _selHoldT;
+    private SelectionStage _selStage; private float _selHoldT;
     private bool _running; // SHIFT held with W this frame (panel readout)
     private readonly System.Random _rng = new System.Random(20261027);
     private Vector3 _prevPlayerRoot;
@@ -301,7 +314,7 @@ public partial class Titans : Node3D
     // ---------- weapons test ----------
     private bool _weaponsTest;
     private bool _enemyMayFire;
-    private int _wPhase;
+    private WeaponsPhase _wPhase;
     private double _wPhaseT;
     private int _wShotsFired;
     private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
@@ -309,7 +322,7 @@ public partial class Titans : Node3D
     private int _wEnvFx0, _wEnvChunks0, _wEnvParticles0;
     private float _wJoltSeen;
     private bool _wHitCaptured;
-    private int _wEnvStep;
+    private WeaponsEnvStep _wEnvStep;
     private bool _wKnocked;
     private double _wDeathT, _wStrafeT, _wLastShotT;
     private float _wStrafeDir = 1f;
@@ -321,7 +334,7 @@ public partial class Titans : Node3D
 
     // ---------- breakable test ----------
     private bool _breakTest;
-    private int _bPhase, _bStep;
+    private BreakPhase _bPhase; private BreakStep _bStep;
     private double _bPhaseT;
     private Vector3 _bVec1;
     private double _bT0;
@@ -334,7 +347,7 @@ public partial class Titans : Node3D
 
     // ---------- terrain test ----------
     private bool _terrainTest;
-    private int _tPhase;
+    private TerrainPhase _tPhase;
     private double _tPhaseT;
     private float _tSlopeYaw;
     private bool _tStrideLogged;
@@ -343,7 +356,7 @@ public partial class Titans : Node3D
     private float _tRunMaxSplit, _tRunMaxLat;
     private float _tJumpApex, _tJumpGround;
     private bool _tJumpTried;
-    private int _tJumpStage;
+    private FlyStage _tJumpStage;
     private float _tJumpMarkT;
     private Vector2 _tJumpXZ;
     private float _tApex2, _tBurnDist, _tBurnSpeed;
@@ -429,9 +442,9 @@ public partial class Titans : Node3D
             if (arg == "--hector-cam") _hectorCam = true;
             if (arg == "--multifit-shot") _multiShot = true;
             if (arg == "--hector-lab") _hectorLab = true;
-            if (arg.StartsWith("--lab-rider=")) _labRiderId = arg.Substring("--lab-rider=".Length);
-            if (arg.StartsWith("--player-rider=")) _playerSpec = RiderSpecs.ById(arg.Substring("--player-rider=".Length));
-            if (arg.StartsWith("--enemy-rider=")) _enemySpec = RiderSpecs.ById(arg.Substring("--enemy-rider=".Length));
+            if (arg.StartsWith("--lab-rider=") && System.Enum.TryParse<RiderId>(arg.Substring("--lab-rider=".Length), true, out var lr)) _labRiderId = lr;
+            if (arg.StartsWith("--player-rider=") && System.Enum.TryParse<RiderId>(arg.Substring("--player-rider=".Length), true, out var pr)) _playerSpec = RiderSpecs.ById(pr);
+            if (arg.StartsWith("--enemy-rider=") && System.Enum.TryParse<RiderId>(arg.Substring("--enemy-rider=".Length), true, out var er)) _enemySpec = RiderSpecs.ById(er);
             if (arg == "--ffa-test") _ffaTest = true;
             if (arg == "--team-test") { _teamTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--bracket-test") { _bracketTest = true; WorldConfig.Mode = WorldConfig.MapMode.Tournament; }
@@ -690,8 +703,8 @@ public partial class Titans : Node3D
         // Breakable-parts registries (may split the merged Torso meshes);
         // refresh walker materials afterwards so hit flashes cover the
         // replacement pieces too.
-        _partsPlayer = new RiderParts(_player, _playerSpec.PartsId);
-        _partsEnemy = new RiderParts(_enemy, _enemySpec.PartsId);
+        _partsPlayer = new RiderParts(_player, _playerSpec.Id);
+        _partsEnemy = new RiderParts(_enemy, _enemySpec.Id);
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         await BuildFrame(); // staged build: player + enemy in, foe next
@@ -997,7 +1010,7 @@ public partial class Titans : Node3D
             // every frame and freezes the reticle/camera updates
             // downstream of it (found by this probe, 2026-11-01).
             _pointSwapDone = true;
-            SetRiderSelection("hector", "enyo");
+            SetRiderSelection(RiderId.Hector, RiderId.Enyo);
             ApplyLoadout();
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
@@ -1023,21 +1036,21 @@ public partial class Titans : Node3D
             {
                 _leaveShotSaved = true;
                 GetViewport().GetTexture().GetImage().SavePng("/tmp/leave_popup.png");
-                GD.Print("LEAVESHOT saved");
+                Dbg.Print("LEAVESHOT saved");
                 GetTree().Quit();
             }
         }
         if (_hectorCam && !_hectorCamDone && _player != null && _player.IsReady)
         {
             _hectorCamDone = true;
-            SetRiderSelection("hector", "enyo");
+            SetRiderSelection(RiderId.Hector, RiderId.Enyo);
             ApplyLoadout();
             if (_lab != null) { _lab.QueueFree(); _lab = null; }
             _labOpen = false;
             if (_labLight != null) _labLight.Visible = false;
             SetHudPanelsVisible(true); _radar.Visible = true;
             if (_feedLabel != null) _feedLabel.Visible = true;
-            GD.Print("HECTORCAM swapped player to Hector and deployed");
+            Dbg.Print("HECTORCAM swapped player to Hector and deployed");
         }
         if (_hectorCam && _hectorCamDone && !_labOpen)
         {
@@ -1045,16 +1058,16 @@ public partial class Titans : Node3D
             if (!_hectorCamFired && _hectorCamT > 1.2f)
             {
                 _hectorCamFired = true;
-                GD.Print($"HECTORCAM defs energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id}");
+                Dbg.Print($"HECTORCAM defs energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id}");
                 FireLaser(_enemy.RootPos + Vector3.Up * 6f);
                 FireLrmSalvo(_enemy.RootPos);
             }
-            if (_hectorCamT > 2.5f && _camMode == CamModes.Chase)
+            if (_hectorCamT > 2.5f && _camMode == CamMode.Chase)
             {
                 var back = -RiderWalker.HeadingVec(_player.TorsoYawWorld);
                 var camRel = _cam.GlobalPosition - _player.RootPos;
-                GD.Print($"HECTORCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
-                QueueCapture(HectorChaseCapture, "hectorP", CamModes.Chase, () => GetTree().Quit());
+                Dbg.Print($"HECTORCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
+                QueueCapture(HectorChaseCapture, "hectorP", CamMode.Chase, () => GetTree().Quit());
                 _hectorCamT = -999f;
             }
         }
@@ -1062,16 +1075,16 @@ public partial class Titans : Node3D
         if (_hectorLab && _labOpen && _lab != null)
         {
             _hectorLab = false;
-            SetRiderSelection("hector", _enemySpec.Id);
-            GD.Print("HECTORLAB lab reopened on the Hector");
+            SetRiderSelection(RiderId.Hector, _enemySpec.Id);
+            Dbg.Print("HECTORLAB lab reopened on the Hector");
         }
 
         if (_labRiderId != null && _labOpen && _lab != null)
         {
-            var id = _labRiderId;
+            var id = _labRiderId.Value;
             _labRiderId = null;
             SetRiderSelection(id, _enemySpec.Id);
-            GD.Print($"LABRIDER lab reopened on {id}");
+            Dbg.Print($"LABRIDER lab reopened on {id}");
         }
 
         if (_multiShot && _labOpen && _lab != null)
@@ -1118,7 +1131,7 @@ public partial class Titans : Node3D
             // The loading cover stays up until the warmup sweep
             // has run (owner): the lab is revealed only in its
             // settled showroom framing, never mid-sweep.
-            if (_labLoad != null) _labLoad.Visible = _photo && _warmPose < 4;
+            if (_labLoad != null) _labLoad.Visible = _photo && _warmPose < WarmPose.Done;
             if (_labLoad != null && _labLoad.Visible)
             {
                 _labLoadT += delta;
@@ -1131,7 +1144,7 @@ public partial class Titans : Node3D
             // is gone, owner 2026-11-25): the paperdoll mapping
             // only makes sense from the front.
             _labLight.Visible = true;
-            if (_photo && _warmPose < 4)
+            if (_photo && _warmPose < WarmPose.Done)
             {
                 // Shader warmup (#6, photo mode only): while the lab
                 // is up, sweep the camera through the duel's
@@ -1156,37 +1169,37 @@ public partial class Titans : Node3D
                 var pp = _player.RootPos;
                 switch (_warmPose)
                 {
-                    case 0:
-                        _cam.GlobalPosition = pp + new Vector3(58f, 34f, 64f);
-                        _cam.LookAt(pp + Vector3.Up * 2f, Vector3.Up);
+                    case WarmPose.Overhead:
+                        _cam.GlobalPosition = pp + WarmOverheadOffset;
+                        _cam.LookAt(pp + Vector3.Up * WarmLookHeight, Vector3.Up);
                         break;
-                    case 1:
-                        var low = pp + new Vector3(-21f, 0f, -1f);
-                        low.Y = Main.HeightAt(low.X, low.Z) + 2.1f;
+                    case WarmPose.Ground:
+                        var low = pp + WarmGroundOffset;
+                        low.Y = Main.HeightAt(low.X, low.Z) + WarmGroundEyeHeight;
                         _cam.GlobalPosition = low;
-                        _cam.LookAt(pp + Vector3.Up * 5.5f, Vector3.Up);
+                        _cam.LookAt(pp + Vector3.Up * WarmGroundLookHeight, Vector3.Up);
                         break;
-                    case 2:
-                        _cam.GlobalPosition = pp + new Vector3(-88f, 44f, 90f);
-                        _cam.LookAt(pp + Vector3.Up * 2f, Vector3.Up);
+                    case WarmPose.Vista:
+                        _cam.GlobalPosition = pp + WarmVistaOffset;
+                        _cam.LookAt(pp + Vector3.Up * WarmLookHeight, Vector3.Up);
                         break;
                     default:
-                        _cam.GlobalPosition = wc + new Vector3(10f, 3.4f, 10f);
+                        _cam.GlobalPosition = wc + WarmLabOffset;
                         _cam.LookAt(wc, Vector3.Up);
                         break;
                 }
                 _labLight.GlobalRotation = _cam.GlobalRotation;
-                if (!_warmFx && _warmPose >= 1)
+                if (!_warmFx && _warmPose >= WarmPose.Ground)
                 {
                     _warmFx = true;
                     var under = new Vector3(0f, -60f, 0f);
                     SpawnBeam(under, under + new Vector3(6f, 2f, 0f), new Color(1f, 0.2f, 0.15f), 0.15f, 0.4f);
                     SpawnExplosionFx(under + new Vector3(4f, 0f, 4f));
                     SpawnImpactLight(under, new Color(1f, 0.6f, 0.3f), 3f, 12f, 0.4f);
-                    GD.Print("PHOTO warmup: camera sweep + underground FX burst");
+                    Dbg.Print("PHOTO warmup: camera sweep + underground FX burst");
                 }
-                ulong sliceEnd = _warmPose switch { 0 => 900UL, 1 => 1800UL, 2 => 2600UL, _ => 3400UL };
-                if (warmEl > sliceEnd && _warmPoseFrames >= 2) { _warmPose++; _warmPoseFrames = 0; }
+                ulong sliceEnd = _warmPose switch { WarmPose.Overhead => WarmOverheadSliceEndMs, WarmPose.Ground => WarmGroundSliceEndMs, WarmPose.Vista => WarmVistaSliceEndMs, _ => WarmLabSliceEndMs };
+                if (warmEl > sliceEnd && _warmPoseFrames >= WarmMinFramesPerPose) { _warmPose = (WarmPose)((int)_warmPose + 1); _warmPoseFrames = 0; }
                 return;
             }
             float labK = _playerSpec.Height / ReferenceChassisHeight; // showroom framing scales with the chassis, like the chase cam
