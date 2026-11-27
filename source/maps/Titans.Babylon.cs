@@ -27,10 +27,6 @@ public partial class Titans
     private const float RailOffsetX = 16.4f;         // rails sit this far either side of the deck centre
     private const float RailThickness = 0.5f, RailHeight = 1.1f;
     private const float BridgePillarHeight = 8f, PillarOffsetZ = 18f, PillarCenterDrop = 4.8f;
-    private const float SummitDeckUnderClearance = 1.6f; // a summit deck's roof underside below its top
-    private const float ColumnInset = 8f;            // deck columns inset this far from the slab edges
-    private const float MinColumnHeight = 3f;        // shorter columns are skipped
-    private const float ColumnFootprint = 5f;
     private const float RampCorridorSinMax = 0.30f;  // plateau towers skip bearings this close to the south ramp corridor
 
     private void BuildBabylonWorld()
@@ -93,67 +89,10 @@ public partial class Titans
             }
         }
 
-        // ---- The summit city: two stacked platform levels
-        // over the plateau, ramps between them, towers on every
-        // level and the citadel keep on top.
-        var sc = Babylon.Summit;
-        float h0 = Babylon.SummitH;
-        AddSummitDeck(sc + new Vector2(0f, 8f), 104f, 66f, h0 + 15f);
-        AddSummitDeck(sc + new Vector2(0f, -30f), 58f, 40f, h0 + 30f);
-        AddSummitRamp(new Vector2(sc.X, sc.Y + 89f), h0, h0 + 15f, 13f);
-        AddSummitRamp(new Vector2(sc.X, sc.Y + 25f), h0 + 15f, h0 + 30f, 11f);
-        Dbg.Print($"BABYLON world built: {Babylon.Sites.Length} villages, {Babylon.Rivers.Length} bridged rivers, summit city at h={h0:F0}");
+        // The summit camp sits on the bare plateau (owner,
+        // 2026-11-27: the stacked summit decks and their ramps
+        // were removed, like the city decks before them).
+        Dbg.Print($"BABYLON world built: {Babylon.Sites.Length} villages, {Babylon.Rivers.Length} bridged rivers, summit at h={Babylon.SummitH:F0}");
     }
 
-    // One stacked platform: the walkable RoofRect registration,
-    // the slab visual and the columns that hold it up.
-    private void AddSummitDeck(Vector2 c, float hx, float hz, float top)
-    {
-        Main.Roofs.Add(new Main.RoofRect
-        {
-            Cx = c.X, Cz = c.Y, Hx = hx, Hz = hz, Top = top, Under = top - SummitDeckUnderClearance
-        });
-        var slab = new MeshInstance3D
-        {
-            Mesh = new BoxMesh { Size = new Vector3(hx * 2f, DeckThickness, hz * 2f) },
-            MaterialOverride = DeckMat(),
-            Position = new Vector3(c.X, top - DeckThickness / 2f, c.Y)
-        };
-        AddChild(slab);
-        float ground = Main.HeightAt(c.X, c.Y);
-        foreach (float ox in new[] { -hx + ColumnInset, 0f, hx - ColumnInset })
-        foreach (float oz in new[] { -hz + ColumnInset, hz - ColumnInset })
-        {
-            float colH = top - ground;
-            if (colH < MinColumnHeight) continue;
-            var col = new MeshInstance3D
-            {
-                Mesh = new BoxMesh { Size = new Vector3(ColumnFootprint, colH, ColumnFootprint) },
-                MaterialOverride = DeckMat(),
-                Position = new Vector3(c.X + ox, ground + colH / 2f, c.Y + oz)
-            };
-            AddChild(col);
-        }
-    }
-
-    // A ramp up the levels: the RampRect registration plus a
-    // sloped box visual (the Harbor wedge idiom). Dir is
-    // (0, -1): the surface climbs toward the north (-z) end.
-    private void AddSummitRamp(Vector2 c, float hFrom, float hTo, float halfWid)
-    {
-        Main.Ramps.Add(new Main.RampRect
-        {
-            Cx = c.X, Cz = c.Y, DirX = 0f, DirZ = -1f,
-            HalfLen = 15f, HalfWid = halfWid, H0 = hFrom, H1 = hTo
-        });
-        float len = Mathf.Sqrt(30f * 30f + (hTo - hFrom) * (hTo - hFrom));
-        var wedge = new MeshInstance3D
-        {
-            Mesh = new BoxMesh { Size = new Vector3(halfWid * 2f, DeckThickness, len) },
-            MaterialOverride = DeckMat(),
-            Position = new Vector3(c.X, (hFrom + hTo) / 2f - DeckThickness / 2f, c.Y),
-            Rotation = new Vector3(Mathf.Atan2(hTo - hFrom, 30f), 0f, 0f)
-        };
-        AddChild(wedge);
-    }
 }
