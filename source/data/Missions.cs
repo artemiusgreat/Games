@@ -162,29 +162,29 @@ public static class MissionCatalog
             "and ten defenders waiting on top. Take the villages one by one, slip past them, or " +
             "drive straight up the road: the contract pays when the summit falls and your team " +
             "still stands.",
-            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: "res://assets/skies/sky_galaxy.jpg", snow: true, stars: true, photoreal: true, ascent: true, hills: true, tile: "res://assets/skies/sky_tile_stars.png");
+            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: Paths.SkyGalaxy, snow: true, stars: true, photoreal: true, ascent: true, hills: true, tile: Paths.SkyTileStars);
         M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +
             "have started shooting at the lamp house and picking the dark water for stragglers. Walk the " +
             "causeway with the convoy and keep the light burning until the last barge is in.",
-            "Keeper Ana Serra", "Barges steer by my light, rider. Keep it lit - and keep me alive to tend it.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
+            "Keeper Ana Serra", "Barges steer by my light, rider. Keep it lit - and keep me alive to tend it.", WorldConfig.BiomeKind.City, sky: Paths.SkyCoast);
         M(thalassa, "Albany", "Rensselaer", 0.42f, 0.22f,
             "Raid", "House Corvane", 520000, 5,
             "The Albany platforms refine for Asterion now. Corvane wants it dark: cross the flats at low tide, " +
             "drop the platform's defense riders, and be gone before the response fleet clears the horizon.",
-            "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
+            "A Corvane spymaster", "Names are a luxury neither of us can afford. The credits, however, are real.", WorldConfig.BiomeKind.City, sky: Paths.SkyCoast);
         M(thalassa, "Rochester", "Monroe", 0.10f, 0.52f,
             "Duel Challenge", "Rochester Yards", 350000, 3,
             "The Combine settles salvage claims the old way: one rider against theirs, in the yards, at noon. " +
             "Their champion rides a Hector-class frame and has never lost a claim. The purse says that changes today.",
-            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City, sky: "res://assets/skies/sky_coast.jpg");
+            "Fixer known as 'Ledger'", "No armies, no ambush. One machine against one machine. My money is flexible.", WorldConfig.BiomeKind.City, sky: Paths.SkyCoast);
         M(thalassa, "Buffalo", "Erie", 0.58f, -0.42f,
             "Base Assault", "House Asterion", 560000, 5,
             "A machine nest has taken Buffalo, a walled port town on the trade lane, and grows " +
             "bolder every week. Asterion wants the city cleared and the nest burned out, whatever it " +
             "costs in frames. The largest purse on the planet.",
-            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8, sky: "res://assets/skies/sky_ice.jpg", snow: true);
+            "Colonel Mara Voss", "This one is not business, rider. It is a warning we are sending uphill.", WorldConfig.BiomeKind.City, 8, sky: Paths.SkyIce, snow: true);
         var kryos = new PlanetDef
         {
             System = "Teutonia",

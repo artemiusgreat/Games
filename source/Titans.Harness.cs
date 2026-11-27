@@ -13,6 +13,7 @@ public partial class Titans
     // speed staged walkers drive at, and the limp phase's
     // measurement window in seconds.
     private const float StagingDriveSpeed = 3f;
+    private const string ProofDir = "res://proof/"; // every harness capture writes under here
     private const float LimpMeasureSeconds = 3f;
 
     // The calibrated duel marks the precision suites stage
@@ -52,8 +53,8 @@ public partial class Titans
     private void UpdateSplatDump()
     {
         var simg = PhotoEnv.SplatImage();
-        EnsureSaveDir("res://proof/splat.png");
-        simg.SavePng("res://proof/splat.png");
+        EnsureSaveDir(ProofDir + "splat.png");
+        simg.SavePng(ProofDir + "splat.png");
         GD.Print($"SPLATDUMP saved {simg.GetWidth()}x{simg.GetHeight()}");
         GetTree().Quit(0);
     }
@@ -66,8 +67,8 @@ public partial class Titans
         // 40-frame gate outlives any sane timeout.
         if (_slopeShotFrames < 4 || Time.GetTicksMsec() < 20000) return;
         _slopeShotFrames = -100000; // fire once
-        QueueCapture("res://proof/slope_vista.png", "slopeVista", "slopeVista", () =>
-            QueueCapture("res://proof/slope_close.png", CamModes.Chase, "slopeClose"));
+        QueueCapture(ProofDir + "slope_vista.png", "slopeVista", "slopeVista", () =>
+            QueueCapture(ProofDir + "slope_close.png", CamModes.Chase, "slopeClose"));
     }
 
     private void UpdateStandTest()
@@ -214,11 +215,11 @@ public partial class Titans
                     {
                         GD.Print($"DUEL HECTOR CONTACT analytic {_enemy.FootReport(false)}");
                         GD.Print($"DUEL HECTOR CONTACT engine   {_enemy.FootReport(true)}");
-                        QueueCapture("res://proof/duel_hector_stride.png", "stride", "enemySide");
+                        QueueCapture(ProofDir + "duel_hector_stride.png", "stride", "enemySide");
                     }
                     else if (_strideShots == 2)
                     {
-                        QueueCapture("res://proof/duel_main.png", "main", "wide", () =>
+                        QueueCapture(ProofDir + "duel_main.png", "main", "wide", () =>
                         {
                             SetPhase(2);
                             _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 26f), 26f), 0f);
@@ -238,7 +239,7 @@ public partial class Titans
                     float torso = _player.EngineTorsoYaw();
                     float rel = Mathf.RadToDeg(RiderWalker.WrapAngle(torso - legs));
                     GD.Print($"DUEL TWIST legsYaw={Mathf.RadToDeg(legs):F1}deg torsoWorldYaw(engine)={Mathf.RadToDeg(torso):F1}deg relative={rel:F1}deg twistCmd={Mathf.RadToDeg(_player.TorsoTwist):F1}deg");
-                    QueueCapture("res://proof/duel_torso_twist.png", "twist", "twist", () =>
+                    QueueCapture(ProofDir + "duel_torso_twist.png", "twist", "twist", () =>
                     {
                         SetPhase(3);
                         _player.TorsoTwist = 0f;
@@ -261,7 +262,7 @@ public partial class Titans
                     if (treeD != null && treeD.State != 0 && _minTreeSep < 2.6f)
                     {
                         GD.Print($"DUEL STOMP PASS tree crushed underfoot (minSep={_minTreeSep:F2}), rider walks through");
-                        QueueCapture("res://proof/duel_collision_prop.png", "prop", "prop", () =>
+                        QueueCapture(ProofDir + "duel_collision_prop.png", "prop", "prop", () =>
                         {
                             SetPhase(4);
                             _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
@@ -289,7 +290,7 @@ public partial class Titans
                         if (_stallTimer > 0.5f)
                         {
                             GD.Print($"DUEL RIDER minSep={_minRiderSep:F3} finalSep={dist:F3} sumRadii={_player.CollisionRadius + _enemy.CollisionRadius:F2}");
-                            QueueCapture("res://proof/duel_collision_rider.png", "rider", "riderSide");
+                            QueueCapture(ProofDir + "duel_collision_rider.png", "rider", "riderSide");
                             SetPhase(5);
                         }
                     }
@@ -594,9 +595,9 @@ public partial class Titans
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
                         _aimStep = 5;
-                        QueueCapture("res://proof/duel_aim.png", "aim", CamModes.Chase, () =>
+                        QueueCapture(ProofDir + "duel_aim.png", "aim", CamModes.Chase, () =>
                         {
-                            QueueCapture("res://proof/duel_collision_rider.png", "rider", "riderSide");
+                            QueueCapture(ProofDir + "duel_collision_rider.png", "rider", "riderSide");
                             SetPhase(7);
                         });
                     }
@@ -1223,7 +1224,7 @@ public partial class Titans
             _stoneCamPos = camPos;
             _stoneCamTarget = best + up * 10f;
             GD.Print($"STONESHOT point={best} h={bh:F0} weakest-slope={Mathf.RadToDeg(Mathf.Atan(bs)):F1}deg cam={camPos}");
-            QueueCapture("res://proof/stone.png", "stone", "stone", () => GetTree().Quit());
+            QueueCapture(ProofDir + "stone.png", "stone", "stone", () => GetTree().Quit());
             _ssPhase = 1;
         }
     }
@@ -1237,7 +1238,7 @@ public partial class Titans
         if (_csT > 2.6f)
         {
             var img = GetViewport().GetTexture().GetImage();
-            img.SavePng("res://proof/controls.png");
+            img.SavePng(ProofDir + "controls.png");
             GD.Print("CONTROLSSHOT saved");
             GetTree().Quit(0);
         }
@@ -1395,7 +1396,7 @@ public partial class Titans
             {
                 _player.SetDrive(0f, 0f);
                 _partsPlayer.DumpDebris("t5");
-                QueueCapture("res://proof/debris_probe.png", "debris", CamModes.Chase);
+                QueueCapture(ProofDir + "debris_probe.png", "debris", CamModes.Chase);
                 _dbPhase = 3; _dbT = 0f;
             }
         }
@@ -1608,7 +1609,7 @@ public partial class Titans
             if (_boomStage == 0)
             {
                 string cap = Mathf.Abs(_boomPitch + 1.35f) < 0.01f ? "down" : Mathf.Abs(_boomPitch) < 0.01f ? "level" : Mathf.Abs(_boomPitch - 1.35f) < 0.01f ? "up" : null;
-                if (cap != null) QueueCapture($"res://proof/boom_{cap}.png", $"boom{cap}", CamModes.Chase);
+                if (cap != null) QueueCapture($"{ProofDir}boom_{cap}.png", $"boom{cap}", CamModes.Chase);
             }
             _boomPitch += 0.15f;
             if (_boomPitch > 1.36f)
@@ -1657,13 +1658,13 @@ public partial class Titans
         {
             _flipStage = 1;
             UpdateCamera(0f);
-            QueueCapture("res://proof/flipbook_mid.png", "flipmid", CamModes.Chase);
+            QueueCapture(ProofDir + "flipbook_mid.png", "flipmid", CamModes.Chase);
         }
         else if (_flipStage == 1 && _flipT >= 0.75f)
         {
             _flipStage = 2;
             UpdateCamera(0f);
-            QueueCapture("res://proof/flipbook_late.png", "fliplate", CamModes.Chase, () => GetTree().Quit());
+            QueueCapture(ProofDir + "flipbook_late.png", "fliplate", CamModes.Chase, () => GetTree().Quit());
         }
     }
 
@@ -1847,7 +1848,7 @@ public partial class Titans
                 GD.Print($"BOOMDBG cyl P={pc.P} R={pc.R:F1} base={pc.BaseY:F1} top={pc.BaseY + pc.Height:F1}");
             int st = _boomCheckStage;
             _boomCheckStage++;
-            QueueCapture($"res://proof/boom_city{st}.png", $"boomcity{st}", CamModes.Chase);
+            QueueCapture($"{ProofDir}boom_city{st}.png", $"boomcity{st}", CamModes.Chase);
         }
         else if (_boomCheckStage == 2)
         {
@@ -1869,7 +1870,7 @@ public partial class Titans
             var feet2 = _cam.UnprojectPosition(_player.RootPos);
             GD.Print($"BOOMCHECK mesa pitch=0.00 camPos={_cam.GlobalPosition} head=({head2.X:F0},{head2.Y:F0}) feet=({feet2.X:F0},{feet2.Y:F0}) viewport={vp2}");
             BoomAssert("mesa", 0f);
-            QueueCapture("res://proof/boom_mesa.png", "boommesa", CamModes.Chase);
+            QueueCapture(ProofDir + "boom_mesa.png", "boommesa", CamModes.Chase);
         }
         else if (_boomCheckStage == 3)
         {
@@ -1882,7 +1883,7 @@ public partial class Titans
                 _player.AimPitchWide = 0f;
                 _player.TorsoPitch = 0f;
                 UpdateCamera(0f);
-                QueueCapture("res://proof/boom_photo_level.png", "boomphotolevel", CamModes.Chase,
+                QueueCapture(ProofDir + "boom_photo_level.png", "boomphotolevel", CamModes.Chase,
                     () => { GD.Print(_boomCheckFails == 0 ? "BOOMCHECK DONE" : $"BOOMCHECK FAIL x{_boomCheckFails}"); GetTree().Quit(); });
             }
             else { GD.Print(_boomCheckFails == 0 ? "BOOMCHECK DONE" : $"BOOMCHECK FAIL x{_boomCheckFails}"); GetTree().Quit(); }
@@ -1916,7 +1917,7 @@ public partial class Titans
             _viewStage = 1;
             var scr = _cam.UnprojectPosition(chest);
             GD.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) center=({ctr.X:F0},{ctr.Y:F0})");
-            QueueCapture("res://proof/view_hilltop_before.png", "vbefore", CamModes.Chase, () =>
+            QueueCapture(ProofDir + "view_hilltop_before.png", "vbefore", CamModes.Chase, () =>
             {
                 _viewPitch = -1.35f;
                 _viewBest = 1e9f;
@@ -1954,7 +1955,7 @@ public partial class Titans
         else if (_viewStage == 3 && _viewT > 0.4f)
         {
             _viewStage = 4;
-            QueueCapture("res://proof/view_hilltop.png", "vafter", CamModes.Chase, () => GetTree().Quit());
+            QueueCapture(ProofDir + "view_hilltop.png", "vafter", CamModes.Chase, () => GetTree().Quit());
         }
     }
 
@@ -2084,7 +2085,7 @@ public partial class Titans
                     GD.Print($"ROOF WALK walked={walked:F1}u sole={_player.SoleLevel:F2} err={soleErr:F2}");
                     GD.Print(ok ? "ROOF WALK PASS walked across the roof at roof level" : "ROOF WALK FAIL could not walk on the roof");
                     _roofStage = 4;
-                    QueueCapture("res://proof/roof_stand.png", "roof", CamModes.Chase, () => GetTree().Quit());
+                    QueueCapture(ProofDir + "roof_stand.png", "roof", CamModes.Chase, () => GetTree().Quit());
                 }
                 break;
         }
@@ -2487,7 +2488,7 @@ public partial class Titans
     private static readonly RiderSpec RangeMannequin = new()
     {
         Id = "enyo_range", Name = "ENYO (RANGE)", Tonnage = 75f, JumpCapable = true,
-        ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
+        ModelPath = Paths.EnyoModel, PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 4.8f,
         FlipKneePole = false,
         Slots = new[]
@@ -2541,7 +2542,7 @@ public partial class Titans
             // Capture a rocket impact at burst peak (round 9: effects
             // are proven by the frame, not only by counters).
             _wHitCaptured = true;
-            QueueCapture("res://proof/wpn_rocket_hit.png", "wpnHit", "duelChase");
+            QueueCapture(ProofDir + "wpn_rocket_hit.png", "wpnHit", "duelChase");
         }
         switch (_wPhase)
         {
@@ -2556,7 +2557,7 @@ public partial class Titans
                 {
                     FireLaser(EnemyAim());
                     _wShotsFired++;
-                    QueueCapture("res://proof/weapons_laser.png", "wlaser", "wpnSide");
+                    QueueCapture(ProofDir + "weapons_laser.png", "wlaser", "wpnSide");
                 }
                 else if (_wShotsFired == 1 && _wPhaseT > 0.65) { FireLaser(EnemyAim()); _wShotsFired++; }
                 else if (_wShotsFired == 2 && _wPhaseT > 1.2) { FireLaser(EnemyAim()); _wShotsFired++; }
@@ -2603,7 +2604,7 @@ public partial class Titans
                 if (!_wCaptured && _wPhaseT > 0.55)
                 {
                     _wCaptured = true;
-                    QueueCapture("res://proof/weapons_rockets.png", "wrockets", "wpnRockets");
+                    QueueCapture(ProofDir + "weapons_rockets.png", "wrockets", "wpnRockets");
                 }
                 if (_wPhaseT > 3.4)
                 {
@@ -2621,7 +2622,7 @@ public partial class Titans
                 {
                     FireLaser(_enemy.RootPos + Vector3.Up * 6.0f);
                     _wShotsFired++;
-                    QueueCapture("res://proof/weapons_blocked.png", "wblocked", "wpnBlocked");
+                    QueueCapture(ProofDir + "weapons_blocked.png", "wblocked", "wpnBlocked");
                 }
                 if (_wShotsFired == 1 && _wPhaseT > 1.2)
                 {
@@ -2698,7 +2699,7 @@ public partial class Titans
                 if (!_wCaptured && _wPhaseT > 0.9)
                 {
                     _wCaptured = true;
-                    QueueCapture("res://proof/weapons_hud.png", "whud", "wpnHud");
+                    QueueCapture(ProofDir + "weapons_hud.png", "whud", "wpnHud");
                 }
                 if (_enemyDead && !_wDeathLogged)
                 {
@@ -2725,7 +2726,7 @@ public partial class Titans
                     { WFail($"target readout does not carry the kill: '{_lblRange.Text}'"); return; }
                     GD.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, no banner, readout '{_lblRange.Text}'");
                     _wDeadShotQueued = true;
-                    QueueCapture("res://proof/weapons_hector_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
+                    QueueCapture(ProofDir + "weapons_hector_dead.png", "wdead", "wpnDead", () => SetWPhase(7));
                 }
                 if (_wPhaseT > 30) WFail("kill sequence timeout");
                 break;
@@ -2796,7 +2797,7 @@ public partial class Titans
                         int bp = _fxParticles - _wEnvParticles0;
                         if (bp < 4) { WFail($"building collapse spawned only {bp} particle systems (want explosion fire, 2 dust systems, burning wreck)"); return; }
                         GD.Print($"ENVTEST FX PASS building died with an explosion, a light flash, a dust cloud and {bp} particle systems; original hidden, pieces flying");
-                        QueueCapture("res://proof/env_building_collapse.png", "envCollapse", "duelChase");
+                        QueueCapture(ProofDir + "env_building_collapse.png", "envCollapse", "duelChase");
                         _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
                         _wEnvStep = 2;
                     }
@@ -2864,7 +2865,7 @@ public partial class Titans
                 }
                 else if (_wEnvStep == 3)
                 {
-                    if (!_wCaptured) { _wCaptured = true; QueueCapture("res://proof/env_tree_destroyed.png", "envTreeDown", "duelChase"); }
+                    if (!_wCaptured) { _wCaptured = true; QueueCapture(ProofDir + "env_tree_destroyed.png", "envTreeDown", "duelChase"); }
                     if (_wPhaseT > 40) { WFail("destroyed tree never finished smoking out"); return; }
                     if (_wEnvT.State == 4)
                     {
@@ -3093,7 +3094,7 @@ public partial class Titans
                     if (!_bFlag1 && BStepT > 0.30)
                     {
                         _bFlag1 = true;
-                        QueueCapture("res://proof/break_pod_fall.png", "bpodfall", "brkPlayer");
+                        QueueCapture(ProofDir + "break_pod_fall.png", "bpodfall", "brkPlayer");
                     }
                     var d = _partsPlayer.DebrisOf(PartId.PodL);
                     if (d != null && d.Settled)
@@ -3117,7 +3118,7 @@ public partial class Titans
                     if (drift > 0.05f) BFail($"debris moved with the rider: drift={drift:F3}");
                     if (away < 3f) BFail($"rider did not walk away from debris: delta={away:F2}");
                     GD.Print($"BRKTEST DETACH PASS debris static (drift={drift:F3}) while rider walked {away:F1}u away");
-                    QueueCapture("res://proof/break_debris_rest.png", "bdebris", "brkDebris");
+                    QueueCapture(ProofDir + "break_debris_rest.png", "bdebris", "brkDebris");
                     SetBPhase(2);
                 }
                 break;
@@ -3182,7 +3183,7 @@ public partial class Titans
                     if (BStepT > 1.2 && !_bFlag1)
                     {
                         _bFlag1 = true;
-                        QueueCapture("res://proof/break_hector_nogun.png", "bnogun", "brkHector");
+                        QueueCapture(ProofDir + "break_hector_nogun.png", "bnogun", "brkHector");
                     }
                     if (BStepT > 5.5)
                     {
@@ -3228,7 +3229,7 @@ public partial class Titans
                     if (_lastDenied != DenyKind.Laser) BFail("laser not denied after arm_L loss");
                     if (_beamsSpawned != _bCount1) BFail("denied laser still spawned a beam");
                     GD.Print("BRKTEST LASERDENIED PASS arm_L lost -> laser denied, 0 beams");
-                    QueueCapture("res://proof/break_hud_destroyed.png", "bhud", "wpnHud");
+                    QueueCapture(ProofDir + "break_hud_destroyed.png", "bhud", "wpnHud");
                     BStep(2);
                 }
                 else if (_bStep == 2 && BStepT > 0.8)
@@ -3303,7 +3304,7 @@ public partial class Titans
                     }
                     else if (_bCount1 == 1 && BStepT > 2.0)
                     {
-                        QueueCapture("res://proof/break_immobile.png", "blimp", "brkHector");
+                        QueueCapture(ProofDir + "break_immobile.png", "blimp", "brkHector");
                         _bCount1 = 2;
                     }
                     else if (_bCount1 == 2 && BStepT > 3.0)
@@ -3344,7 +3345,7 @@ public partial class Titans
                 }
                 else if (_bStep == 1 && BStepT > 2.0)
                 {
-                    QueueCapture("res://proof/break_hector_disabled.png", "bdisabled", "brkHector");
+                    QueueCapture(ProofDir + "break_hector_disabled.png", "bdisabled", "brkHector");
                     BStep(2);
                 }
                 else if (_bStep == 2 && _pendingPath == null && !_capturing)
@@ -3376,7 +3377,7 @@ public partial class Titans
                     // neck, charred and lolled in place (owner,
                     // 2026-11-15: pieces sank/floated when the wreck
                     // deformation pivoted on the model origin).
-                    QueueCapture("res://proof/break_hector_head.png", "bhead", "brkHector");
+                    QueueCapture(ProofDir + "break_hector_head.png", "bhead", "brkHector");
                     // Move the player to the Hector's flank: desired twist ~1 rad.
                     _player.Teleport(new Vector3(20f, Main.HeightAt(20f, 2f), 2f), 0f);
                     BStep(1);
@@ -3499,7 +3500,7 @@ public partial class Titans
                     if (Mathf.Abs(_enemy.SpeedFactor - 0.55f) > 0.01f)
                     { BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 after leg wreck"); return; }
                     GD.Print("LEGRULE PASS leg wrecked: attached + darkened, rider upright, limping at 0.55x");
-                    QueueCapture("res://proof/break_knockdown.png", "brkKnock", "brkHector");
+                    QueueCapture(ProofDir + "break_knockdown.png", "brkKnock", "brkHector");
                     ResetDuel();
                     if (_partsEnemy.GetPart(PartId.LegR).Wrecked || !_partsEnemy.Alive(PartId.LegR))
                     { BFail("reset did not un-wreck leg_R"); return; }
@@ -3859,8 +3860,8 @@ public partial class Titans
             if (start == "18")
             {
                 var simg = PhotoEnv.SplatImage();
-                EnsureSaveDir("res://proof/splat.png");
-        simg.SavePng("res://proof/splat.png");
+                EnsureSaveDir(ProofDir + "splat.png");
+        simg.SavePng(ProofDir + "splat.png");
                 GD.Print($"SPLAT saved {simg.GetWidth()}x{simg.GetHeight()}");
                 GetTree().Quit(0); return;
             }
@@ -3872,10 +3873,10 @@ public partial class Titans
                 // then capture the island from the water.
                 _xPhase = 95;
                 _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
-                QueueCapture("res://proof/underdeck.png", "under", "underdeck",
-                    () => QueueCapture("res://proof/decktop.png", "decktop", "decktop",
-                        () => QueueCapture("res://proof/homevalley.png", "home", "homecam",
-                            () => QueueCapture("res://proof/passview.png", "pass", "passcam",
+                QueueCapture(ProofDir + "underdeck.png", "under", "underdeck",
+                    () => QueueCapture(ProofDir + "decktop.png", "decktop", "decktop",
+                        () => QueueCapture(ProofDir + "homevalley.png", "home", "homecam",
+                            () => QueueCapture(ProofDir + "passview.png", "pass", "passcam",
                                 () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); }))));
                 return;
             }
@@ -3973,7 +3974,7 @@ public partial class Titans
                 var saddle = (p0 + p1) / 2f;
                 GD.Print($"CANYONPROFILE toward pad1:{prof} saddle={Main.HeightAt(saddle.X, saddle.Y):F0}");
                 SetHudPanelsVisible(false);
-                QueueCapture("res://proof/canyon_vista.png", "canyon", "canyonVista",
+                QueueCapture(ProofDir + "canyon_vista.png", "canyon", "canyonVista",
                     () => { GD.Print("CANYONVISTA saved"); GetTree().Quit(0); });
                 return;
             }
@@ -4424,7 +4425,7 @@ public partial class Titans
         if (_xPhaseT > 10.5f && !_bwShot)
         {
             _bwShot = true;
-            QueueCapture("res://proof/blocked_pose.png", "blockedpose", "blockedcam");
+            QueueCapture(ProofDir + "blocked_pose.png", "blockedpose", "blockedcam");
         }
         if (_xPhaseT > 12f)
         {
@@ -4515,9 +4516,9 @@ public partial class Titans
             _mDistF0 = _foe != null ? _foe.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
             _mEnemyStart = _enemy.RootPos; _mFoeStart = _foe?.Walker.RootPos ?? Vector3.Zero;
             GD.Print($"MISSION PATROL start: enemy distToPlayer={_mDistE0:F0} foe distToPlayer={_mDistF0:F0}");
-            QueueCapture("res://proof/mission_base.png", "mbase", "missionBase", () =>
-            QueueCapture("res://proof/mission_vista.png", "mvista", "missionVista", () =>
-            QueueCapture("res://proof/gate_sky.png", "gsky", "gatesky", () =>
+            QueueCapture(ProofDir + "mission_base.png", "mbase", "missionBase", () =>
+            QueueCapture(ProofDir + "mission_vista.png", "mvista", "missionVista", () =>
+            QueueCapture(ProofDir + "gate_sky.png", "gsky", "gatesky", () =>
             {
                 // AOT_SLOPE=1: two extra staged portraits of the
                 // center relief (the owner's streaked-mountains
@@ -4525,8 +4526,8 @@ public partial class Titans
                 // phases below are not part of a portrait run.
                 if (EnvVars.Flag(EnvVars.Slope))
                 {
-                    QueueCapture("res://proof/slope_vista.png", "slopeVista", "slopeVista", () =>
-                    QueueCapture("res://proof/slope_close.png", "slopeClose", "slopeClose", () =>
+                    QueueCapture(ProofDir + "slope_vista.png", "slopeVista", "slopeVista", () =>
+                    QueueCapture(ProofDir + "slope_close.png", "slopeClose", "slopeClose", () =>
                     { GD.Print("SLOPE SHOTS DONE"); GetTree().Quit(0); }));
                     return;
                 }
@@ -4623,9 +4624,9 @@ public partial class Titans
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_tPhaseT > 0.8)
                 {
-                    QueueCapture("res://proof/env_detail_building.png", "tdetB", "detailBuilding", () =>
-                    QueueCapture("res://proof/env_detail_tree.png", "tdetT", "detailTree", () =>
-                    QueueCapture("res://proof/terrain_vista.png", "tvista", "vista", () =>
+                    QueueCapture(ProofDir + "env_detail_building.png", "tdetB", "detailBuilding", () =>
+                    QueueCapture(ProofDir + "env_detail_tree.png", "tdetT", "detailTree", () =>
+                    QueueCapture(ProofDir + "terrain_vista.png", "tvista", "vista", () =>
                     {
                         if (!FindSlopeSpot(out var spot, out float yaw))
                         {
@@ -4649,7 +4650,7 @@ public partial class Titans
                     _tStrideLogged = true;
                     GD.Print($"TERRAIN STRIDE analytic {_player.FootReport(false)}");
                     GD.Print($"TERRAIN STRIDE engine   {_player.FootReport(true)}");
-                    QueueCapture("res://proof/terrain_stride.png", "tstride", "slopeSide", () =>
+                    QueueCapture(ProofDir + "terrain_stride.png", "tstride", "slopeSide", () =>
                     {
                         float md = _player.MaxPlantedDiff();
                         GD.Print($"TERRAIN STRIDE maxPlantedDiff={md:F3}");
@@ -4671,7 +4672,7 @@ public partial class Titans
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
                 if (_tPhaseT > 1.2)
                 {
-                    QueueCapture("res://proof/terrain_duel.png", "tduel", "groundDuel", () =>
+                    QueueCapture(ProofDir + "terrain_duel.png", "tduel", "groundDuel", () =>
                     {
                         var vp = GetViewport();
                         GD.Print($"TERRAIN RENDER drawCalls={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.DrawCallsInFrame)} prims={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.PrimitivesInFrame)} objects={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.ObjectsInFrame)}");
@@ -4853,9 +4854,9 @@ public partial class Titans
         var t5 = m.GetInstanceTransform(5);
         GD.Print($"GRASSSHOT inst0 pos={t0.Origin} scale={t0.Basis.Scale} inst5 pos={t5.Origin} scale={t5.Basis.Scale}");
         _grassPos = t5.Origin;
-        QueueCapture("res://proof/grass_close.png", "gclose", "grassClose", () =>
-        QueueCapture("res://proof/grass_top.png", "gtop", "grassTop", () =>
-        QueueCapture("res://proof/grass_field.png", "gfield", "grassField", () =>
+        QueueCapture(ProofDir + "grass_close.png", "gclose", "grassClose", () =>
+        QueueCapture(ProofDir + "grass_top.png", "gtop", "grassTop", () =>
+        QueueCapture(ProofDir + "grass_field.png", "gfield", "grassField", () =>
         {
             GD.Print("GRASSSHOT DONE");
             GetTree().Quit(0);
@@ -4869,9 +4870,9 @@ public partial class Titans
         if (_photoPhase == 0 && _photoT > 2.5f)
         {
             _photoPhase = 1;
-            QueueCapture("res://proof/photo_tuft.png", "ptuft", "photoTuft", () =>
-            QueueCapture("res://proof/photo_overview.png", "pover", "photoOver", () =>
-                QueueCapture("res://proof/photo_ground.png", "pground", "photoGround", () =>
+            QueueCapture(ProofDir + "photo_tuft.png", "ptuft", "photoTuft", () =>
+            QueueCapture(ProofDir + "photo_overview.png", "pover", "photoOver", () =>
+                QueueCapture(ProofDir + "photo_ground.png", "pground", "photoGround", () =>
                 {
                     long draws = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame);
                     long prims = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame);
@@ -4919,8 +4920,8 @@ public partial class Titans
             }
         }
         if (_gaitT > 1.9f && _camMode != "enemySide" && _camMode != "enemyFront")
-            QueueCapture("res://proof/gait_hector.png", "gait", "enemySide", () =>
-                QueueCapture("res://proof/gait_hector_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
+            QueueCapture(ProofDir + "gait_hector.png", "gait", "enemySide", () =>
+                QueueCapture(ProofDir + "gait_hector_front.png", "gaitf", "enemyFront", () => GetTree().Quit()));
     }
 
     // ---------- SFX pool probe ----------
@@ -5169,7 +5170,7 @@ public partial class Titans
         }
         else if (_bsPhase == 2 && _bsT > 0.05)
         {
-            GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_ppc.png");
+            GetViewport().GetTexture().GetImage().SavePng(ProofDir + "beam_ppc.png");
             var aim = _enemy.RootPos + Vector3.Up * 8f;
             var las = _gunsEnergy.FindAll(g => g.Def.Beam != BeamKind.Ppc);
             if (las.Count > 0) FireLaserVolley(aim, las);
@@ -5177,7 +5178,7 @@ public partial class Titans
         }
         else if (_bsPhase == 3 && _bsT > 0.05)
         {
-            GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_laser.png");
+            GetViewport().GetTexture().GetImage().SavePng(ProofDir + "beam_laser.png");
             // Long-range stage (owner's repro, 2026-11-25):
             // the enemy 500u out, past the 220u convergence
             // cast - the state where the physical beams used
@@ -5240,7 +5241,7 @@ public partial class Titans
         }
         else if (_bsPhase == 5 && _bsT > 0.05)
         {
-            GetViewport().GetTexture().GetImage().SavePng("res://proof/beam_long.png");
+            GetViewport().GetTexture().GetImage().SavePng(ProofDir + "beam_long.png");
             GD.Print("BEAMSHOT DONE");
             GetTree().Quit(0);
         }

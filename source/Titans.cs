@@ -28,6 +28,7 @@ using System.Collections.Generic;
 public partial class Titans : Node3D
 {
     private const float EnemyMaxSpeed = 2.2f; // AI tactical pace cap; the chassis cap is RiderSpec.MaxSpeed
+    private const string HectorChaseCapture = "res://proof/hector_player_chase.png"; // harness capture output
     private float EnemyPace => Mathf.Min(_enemySpec.MaxSpeed, EnemyMaxSpeed);
     // Mission fronts: beyond engagement range the AI MARCHES at full
     // chassis speed toward its target instead of creeping at the
@@ -1063,7 +1064,7 @@ public partial class Titans : Node3D
                 var back = -RiderWalker.HeadingVec(_player.TorsoYawWorld);
                 var camRel = _cam.GlobalPosition - _player.RootPos;
                 GD.Print($"HECTORCAM legsYaw={_player.LegsYaw:F2} torsoWorld={_player.TorsoYawWorld:F2} engineTorso={_player.EngineTorsoYaw():F2} camBehind={camRel.Dot(back):F2} camSide={camRel.Dot(new Vector3(-back.Z, 0f, back.X)):F2}");
-                QueueCapture("res://proof/hector_player_chase.png", "hectorP", CamModes.Chase, () => GetTree().Quit());
+                QueueCapture(HectorChaseCapture, "hectorP", CamModes.Chase, () => GetTree().Quit());
                 _hectorCamT = -999f;
             }
         }

@@ -50,6 +50,26 @@ public static class Paths
     public const string VoxProtect = "res://assets/sfx/vox_protect.mp3";
     public const string VoxStop = "res://assets/sfx/vox_stop.mp3";
 
+    // Rider models (RiderSpec's ModelPath fields reference
+    // these - the path is a reference, not spec data)
+    public const string EnyoModel = "res://assets/enyo.fbx";
+    public const string HectorModel = "res://assets/hector.fbx";
+    public const string PrometheusModel = "res://assets/prometheus.fbx";
+    public const string MedeaModel = "res://assets/medea.fbx";
+    public const string DemeterModel = "res://assets/demeter.fbx";
+    public const string TheseusModel = "res://assets/theseus.fbx";
+    public const string HermesModel = "res://assets/hermes.fbx";
+    public const string ApolloModel = "res://assets/apollo.fbx";
+    public const string HadesModel = "res://assets/hades.fbx";
+    public const string AresModel = "res://assets/ares.fbx";
+    public const string AmadeusModel = "res://assets/amadeus.fbx";
+
+    // Mission skies (MissionDef's sky/tile fields reference these)
+    public const string SkyGalaxy = SkiesDir + "sky_galaxy.jpg";
+    public const string SkyCoast = SkiesDir + "sky_coast.jpg";
+    public const string SkyIce = SkiesDir + "sky_ice.jpg";
+    public const string SkyTileStars = SkiesDir + "sky_tile_stars.png";
+
     // World assets
     public const string HillsHeightmap = "res://assets/hills/hills_height.bin";
     public const string TerrainNormal = "res://photo/textures/aerial_rocks_02/aerial_rocks_02_nor_gl_2k.jpg";

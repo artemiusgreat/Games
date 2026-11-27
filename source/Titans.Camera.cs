@@ -10,6 +10,7 @@ public partial class Titans
     // UpdateCamera and the mouse-look scaling in Player input).
     private bool _sniper;
     private const float SniperFov = 16f;
+    private const string DuelChaseCapture = "res://proof/duel_chase.png"; // harness capture output
     private const float BaseFov = 70f;               // the chase camera's normal field of view
     private const float HeroLightHeight = 15f;       // hero light offset above the player
     private const float BoomLength = 26f;            // chase boom at chassis scale 1 (x k in code)
@@ -63,7 +64,7 @@ public partial class Titans
             GD.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
             // actual view) before quitting - framing proof for cam changes.
-            QueueCapture("res://proof/duel_chase.png", CamModes.Chase, CamModes.Chase);
+            QueueCapture(DuelChaseCapture, CamModes.Chase, CamModes.Chase);
         }
         else if (tag == CamModes.Chase)
         {

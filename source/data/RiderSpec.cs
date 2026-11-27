@@ -77,7 +77,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Enyo = new()
     {
         Id = "enyo", Name = "ENYO", Tonnage = 75f, House = "Shadows", JumpCapable = true,
-        ModelPath = "res://assets/enyo.fbx", PartsId = "enyo", MaxHp = 260f,
+        ModelPath = Paths.EnyoModel, PartsId = "enyo", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelNimble, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         // Three types on every rider (owner, 2026-11-12):
@@ -115,7 +115,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Hector = new()
     {
         Id = "hector", Name = "HECTOR", Tonnage = 100f, House = "Ravens", JumpCapable = false,
-        ModelPath = "res://assets/hector.fbx", PartsId = "hector", MaxHp = 340f,
+        ModelPath = Paths.HectorModel, PartsId = "hector", MaxHp = 340f,
         Height = 14f, Radius = 1.90f, StepTime = 0.62f, StepThreshold = 1.6f, StepLift = 1.0f, Accel = AccelLow, BaseSpeed = 50f / 9f,
         // Radius 1.90 for the Hector-Front sculpt (2026-11-15):
         // the model is AABB-centred on its own axis and the
@@ -156,7 +156,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Prometheus = new()
     {
         Id = "prometheus", Name = "PROMETHEUS", Tonnage = 65f, House = "Hounds", JumpCapable = true,
-        ModelPath = "res://assets/prometheus.fbx", PartsId = "prometheus", MaxHp = 235f,
+        ModelPath = Paths.PrometheusModel, PartsId = "prometheus", MaxHp = 235f,
         Height = 12.5f, Radius = 2.2f, StepTime = 0.54f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -177,7 +177,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Medea = new()
     {
         Id = "medea", Name = "MEDEA", Tonnage = 85f, House = "Scorpions", JumpCapable = false,
-        ModelPath = "res://assets/medea.fbx", PartsId = "medea", MaxHp = 290f,
+        ModelPath = Paths.MedeaModel, PartsId = "medea", MaxHp = 290f,
         Height = 12.0f, Radius = 2.2f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -201,7 +201,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Demeter = new()
     {
         Id = "demeter", Name = "DEMETER", Tonnage = 100f, House = "Scorpions", JumpCapable = false,
-        ModelPath = "res://assets/demeter.fbx", PartsId = "demeter", MaxHp = 340f,
+        ModelPath = Paths.DemeterModel, PartsId = "demeter", MaxHp = 340f,
         Height = 13.5f, Radius = 2.5f, StepTime = 0.62f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -221,7 +221,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Theseus = new()
     {
         Id = "theseus", Name = "THESEUS", Tonnage = 95f, House = "Hounds", JumpCapable = false,
-        ModelPath = "res://assets/theseus.fbx", PartsId = "theseus", MaxHp = 320f,
+        ModelPath = Paths.TheseusModel, PartsId = "theseus", MaxHp = 320f,
         Height = 13.5f, Radius = 2.4f, StepTime = 0.60f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -250,7 +250,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Hermes = new()
     {
         Id = "hermes", Name = "HERMES", Tonnage = 75f, House = "Scorpions", JumpCapable = false,
-        ModelPath = "res://assets/hermes.fbx", PartsId = "hermes", MaxHp = 260f,
+        ModelPath = Paths.HermesModel, PartsId = "hermes", MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelNimble, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -284,7 +284,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Apollo = new()
     {
         Id = "apollo", Name = "APOLLO", Tonnage = 70f, House = "Shadows", JumpCapable = true,
-        ModelPath = "res://assets/apollo.fbx", PartsId = "apollo", MaxHp = 250f,
+        ModelPath = Paths.ApolloModel, PartsId = "apollo", MaxHp = 250f,
         Height = 12.5f, Radius = 2.1f, StepTime = 0.48f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = AccelFast, BaseSpeed = 50f / 9f,
         FlipKneePole = false, SagittalKneePole = true,
         Slots = new[]
@@ -308,7 +308,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Hades = new()
     {
         Id = "hades", Name = "HADES", Tonnage = 75f, House = "Dragons", JumpCapable = false,
-        ModelPath = "res://assets/hades.fbx", PartsId = "hades", MaxHp = 265f,
+        ModelPath = Paths.HadesModel, PartsId = "hades", MaxHp = 265f,
         Height = 13.5f, Radius = 2.0f, StepTime = 0.52f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelBrisk, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -328,7 +328,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Ares = new()
     {
         Id = "ares", Name = "ARES", Tonnage = 85f, House = "Scorpions", JumpCapable = false,
-        ModelPath = "res://assets/ares.fbx", PartsId = "ares", MaxHp = 295f,
+        ModelPath = Paths.AresModel, PartsId = "ares", MaxHp = 295f,
         Height = 13.0f, Radius = 2.3f, StepTime = 0.56f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
@@ -353,7 +353,7 @@ public static class RiderSpecs
     public static readonly RiderSpec Amadeus = new()
     {
         Id = "amadeus", Name = "AMADEUS", Tonnage = 90f, House = "Scorpions", JumpCapable = false,
-        ModelPath = "res://assets/amadeus.fbx", PartsId = "amadeus", MaxHp = 310f,
+        ModelPath = Paths.AmadeusModel, PartsId = "amadeus", MaxHp = 310f,
         Height = 13.5f, Radius = 2.3f, StepTime = 0.58f, StepThreshold = 1.7f, StepLift = 0.95f, Accel = AccelStandard, BaseSpeed = 50f / 9f,
         FlipKneePole = false,
         Slots = new[]
