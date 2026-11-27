@@ -34,6 +34,9 @@ public partial class Titans
     private const float DormantRange = 500f;   // full rate inside this
     private const float FreezeRange = 1500f;   // = the longest weapon range (LRM)
     private const float DormantTick = 0.2f;    // 5 Hz between the two
+    private const float StaticStreamBaseRange = 750f;  // a static renders within this + its size margin
+    private const float StaticStreamSizeFactor = 0.75f; // size margin per unit of half-diagonal
+    private const float StreamPassInterval = 0.25f;    // visibility pass cadence
 
     // Called once at the end of the ascent build: register
     // every static world node for sector streaming.
@@ -51,7 +54,7 @@ public partial class Titans
             if (box.Size == Vector3.Zero) continue;
             var centre = new Vector2(box.GetCenter().X, box.GetCenter().Z);
             float halfDiag = 0.5f * new Vector2(box.Size.X, box.Size.Z).Length();
-            _streamed.Add((n3, centre, 750f + 0.75f * halfDiag));
+            _streamed.Add((n3, centre, StaticStreamBaseRange + StaticStreamSizeFactor * halfDiag));
             statics++;
         }
         Dbg.Print($"STREAMING ascent: {_streamed.Count} streamed nodes " +
@@ -89,7 +92,7 @@ public partial class Titans
         foreach (var a in _allies) DormCheck(a.Walker, pp, dt);
 
         _streamAcc += dt;
-        if (_streamAcc < 0.25f) return;
+        if (_streamAcc < StreamPassInterval) return;
         _streamAcc = 0f;
         // Destroyed props stay gone (owner, 2026-11-22): this pass
         // used to re-show a collapsed building within a quarter

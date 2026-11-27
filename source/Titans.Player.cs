@@ -15,6 +15,12 @@ public partial class Titans
     // VK_CAPITAL); elsewhere it is tracked from the
     // CapsLock key's own presses.
     private bool _capsLockOn;
+    private const int VkCapital = 0x14;              // Windows virtual-key code for Caps Lock
+    private const float MouseYawSensitivity = 0.0030f;
+    private const float MousePitchSensitivity = 0.0025f;
+    private const float AimPitchCap = 1.35f;         // the mouse aim pitch clamp, radians
+    private const float ReverseSpeedFactor = 0.55f;  // reverse pace vs walk speed
+    private const float ThrusterForwardBonus = 3.0f; // jets burning + forward key: extra forward push
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern short GetKeyState(int vKey);
@@ -22,7 +28,7 @@ public partial class Titans
     private void PollCapsLock()
     {
         if (OS.HasFeature("windows"))
-            _capsLockOn = (GetKeyState(0x14) & 1) != 0; // VK_CAPITAL toggle bit
+            _capsLockOn = (GetKeyState(VkCapital) & 1) != 0; // VK_CAPITAL toggle bit
     }
 
     public override void _Input(InputEvent e)
@@ -212,14 +218,14 @@ public partial class Titans
             // MaintainTorsoWorldYaw turns it into a twist each frame.
             // In sniper view the look slows by the zoom ratio, so
             // fine aim stays controllable at 16 degrees.
-            float sensK = _sniper ? SniperFov / 70f : 1f;
-            _torsoWorldYaw -= mm.Relative.X * 0.0030f * sensK;
+            float sensK = _sniper ? SniperFov / BaseFov : 1f;
+            _torsoWorldYaw -= mm.Relative.X * MouseYawSensitivity * sensK;
             // The mouse target roams free (owner, round 13): the
             // wide aim pitch accumulates past the torso's mechanical
             // clamp, and the torso follows only as far as its stops
             // allow. Seeded from the torso on first motion.
             if (float.IsNaN(_player.AimPitchWide)) _player.AimPitchWide = _player.TorsoPitch;
-            _player.AimPitchWide = Mathf.Clamp(_player.AimPitchWide - mm.Relative.Y * 0.0025f * sensK, -1.35f, 1.35f);
+            _player.AimPitchWide = Mathf.Clamp(_player.AimPitchWide - mm.Relative.Y * MousePitchSensitivity * sensK, -AimPitchCap, AimPitchCap);
             _player.TorsoPitch = _player.AimPitchWide;
         }
     }
@@ -267,8 +273,8 @@ public partial class Titans
         _running = (shift || _capsLockOn) && w;
         float spd = 0f;
         if (w) spd = _playerSpec.MaxSpeed * (_running ? RunFactor : 1f);
-        if (w && _player.Thrusting) spd += 3.0f; // jets burning + forward key: the thrusters push the rider forward too (owner)
-        else if (s) spd = -_playerSpec.MaxSpeed * 0.55f;
+        if (w && _player.Thrusting) spd += ThrusterForwardBonus; // jets burning + forward key: the thrusters push the rider forward too (owner)
+        else if (s) spd = -_playerSpec.MaxSpeed * ReverseSpeedFactor;
         _player.SetDrive(_playerYaw, spd);
     }
 

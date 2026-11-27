@@ -10,6 +10,16 @@ public partial class Titans
     // UpdateCamera and the mouse-look scaling in Player input).
     private bool _sniper;
     private const float SniperFov = 16f;
+    private const float BaseFov = 70f;               // the chase camera's normal field of view
+    private const float HeroLightHeight = 15f;       // hero light offset above the player
+    private const float BoomLength = 26f;            // chase boom at chassis scale 1 (x k in code)
+    private const float BoomMinLength = 8f;          // steep-pitch boom floor (x k)
+    private const float CameraFloorClearance = 1.3f; // the boom/floor clamps keep the camera this far off the ground
+    private const float AnchorHeightFactor = 1.15f;  // boom anchor height, in chassis heights
+    private const float AnchorPitchLiftFactor = 0.22f; // extra anchor lift at the pitch cap
+    private const float AimPitchCapSin = 0.9757f;    // sin of the +-1.35 rad aim pitch cap
+    private const float FovEaseRate = 11f;           // sniper zoom ease
+    private const float ShakeAmplitude = 0.3f;       // camera shake offset scale
 
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
     {
@@ -61,7 +71,7 @@ public partial class Titans
         // The hero light rides over the player rider so it
         // reads in any shadow (owner, 2026-11-11).
         if (_heroLight != null && _player != null)
-            _heroLight.GlobalPosition = _player.RootPos + new Vector3(0f, 15f, 0f);
+            _heroLight.GlobalPosition = _player.RootPos + new Vector3(0f, HeroLightHeight, 0f);
         if (_camMode == "missionBase")
         {
             var pad = Main.SpawnPads[0];
@@ -354,8 +364,8 @@ public partial class Titans
             // with the aim, and at the extremes its head would
             // otherwise crowd the crosshair the boom is centered
             // on. Level framing (ramp ~0) is untouched.
-            float upRamp = Mathf.Abs(aimDir.Y) / 0.9757f;
-            var anchor = _player.RootPos + Vector3.Up * (_playerSpec.Height * (1.15f + 0.22f * upRamp));
+            float upRamp = Mathf.Abs(aimDir.Y) / AimPitchCapSin;
+            var anchor = _player.RootPos + Vector3.Up * (_playerSpec.Height * (AnchorHeightFactor + AnchorPitchLiftFactor * upRamp));
             // Boom length: the full 26k while it fits. A steep
             // up-pitch swings the boom down behind the rider;
             // where the full boom would sink it into the ground,
@@ -365,11 +375,11 @@ public partial class Titans
             // last length that keeps it above the terrain under
             // the anchor. The floor clamp below stays as a
             // backstop for sloping ground behind the rider.
-            float boom = 26f * k;
+            float boom = BoomLength * k;
             if (aimDir.Y > 0.05f)
             {
-                float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + 1.3f);
-                boom = Mathf.Min(boom, Mathf.Max(8f * k, clearance / aimDir.Y));
+                float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + CameraFloorClearance);
+                boom = Mathf.Min(boom, Mathf.Max(BoomMinLength * k, clearance / aimDir.Y));
             }
             // NOTHING blocks the camera (owner, 2026-11-15, two
             // rulings the same evening): the camera tracks only
@@ -387,7 +397,7 @@ public partial class Titans
             // through; single-sided geometry renders see-through
             // from inside, so the rider stays in frame.
             var target = anchor - aimDir * boom;
-            float floorY = Main.HeightAt(target.X, target.Z) + 1.3f;
+            float floorY = Main.HeightAt(target.X, target.Z) + CameraFloorClearance;
             if (target.Y < floorY) target.Y = floorY;
             // No position smoothing (owner, round 29): the
             // camera sits exactly on the boom target every
@@ -423,15 +433,15 @@ public partial class Titans
             // stays true; the ease keeps the zoom from snapping.
             if (delta > 0f)
             {
-                float fovT = _sniper ? SniperFov : 70f;
-                _cam.Fov = Mathf.Lerp(_cam.Fov, fovT, 1f - Mathf.Exp(-11f * delta));
+                float fovT = _sniper ? SniperFov : BaseFov;
+                _cam.Fov = Mathf.Lerp(_cam.Fov, fovT, 1f - Mathf.Exp(-FovEaseRate * delta));
             }
             if (delta > 0f && _shake > 0.002f)
             {
                 _cam.GlobalPosition += new Vector3(
                     (float)_rng.NextDouble() * 2f - 1f,
                     (float)_rng.NextDouble() * 1.2f - 0.6f,
-                    (float)_rng.NextDouble() * 2f - 1f) * (_shake * 0.3f);
+                    (float)_rng.NextDouble() * 2f - 1f) * (_shake * ShakeAmplitude);
             }
         }
     }

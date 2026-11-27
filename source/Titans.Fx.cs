@@ -15,6 +15,39 @@ public partial class Titans
     // peak this time, not by counters alone.
     private int _fxParticles;
 
+    // FX palette and tuning (owner's refactor rules: look
+    // values named once, feel values named at their exact
+    // current settings - never retuned by a refactor).
+    private static readonly Color FireColor = new(1f, 1f, 1f, 0.95f);
+    private static readonly Color SparkColor = new(0.75f, 0.96f, 1f);
+    private static readonly Color[] FireRampColors =
+    {
+        new Color(1f, 0.80f, 0.35f, 0.95f), new Color(1f, 0.50f, 0.10f, 0.9f),
+        new Color(0.85f, 0.20f, 0.03f, 0.5f), new Color(0.30f, 0.05f, 0.01f, 0f),
+    };
+    private static readonly Color FireballModulate = new(1.5f, 1.5f, 1.5f, 1f);
+    private static readonly Color ExplosionFlashColor = new(1f, 0.55f, 0.18f);
+    private static readonly Color ExplosionCoreColor = new(1f, 0.9f, 0.65f);
+    private static readonly Color ExplosionSparkColor = new(1f, 0.62f, 0.25f);
+    private static readonly Color DeathFlashColor = new(1f, 0.72f, 0.3f);
+    private static readonly Color DeathCoreColor = new(1f, 0.95f, 0.72f);
+    private static readonly Color DeathLowColor = new(1f, 0.5f, 0.18f);
+    private static readonly Color DmgNumberEnemyColor = new(1f, 0.78f, 0.3f);
+    private static readonly Color DmgNumberPlayerColor = new(1f, 0.38f, 0.3f);
+    private static readonly Color DmgNumberOutlineColor = new(0f, 0f, 0f, 0.9f);
+    private const float DenyFlashSeconds = 0.5f;         // denied-shot cooldown-bar flash
+    private const float HitSfxThrottleSeconds = 0.06f;   // ordinary hit-sound floor
+    private const float RocketHitSfxThrottleSeconds = 1.1f; // one boom per salvo (see OnDamaged)
+    private const float JoltLaser = 0.12f, JoltRocket = 0.85f, JoltCannon = 1.0f, JoltMg = 0.3f, JoltDefault = 0.4f;
+    private const float PlayerHitShake = 0.22f, PlayerHitShakeMax = 0.5f;
+    private const float DeathShake = 1.0f, DeathShakeRange = 45f;
+    private const float SparkEmissionEnergy = 2.2f;
+    private const float BurnStopFadeSeconds = 1.8f;      // emitter tail after a burn stops
+    private const float ParticleAabbHalf = 45f;          // particle visibility box half-extent
+    private const int FlipbookCell = 128, FlipbookFrameCount = 64, FlipbookColumns = 8;
+    private const int DmgNumberFontSize = 128, DmgNumberOutlineSize = 16;
+    private const float DmgNumberPixelSize = 0.016f;
+
     private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
     // Round 20 (owner: the fire looked like "a couple of yellow
     // bubbles" - it WAS bubbles: the draw pass was a low-poly
@@ -57,7 +90,7 @@ public partial class Titans
 
     private static readonly StandardMaterial3D FireParticleMat = new StandardMaterial3D
     {
-        AlbedoColor = new Color(1f, 1f, 1f, 0.95f),
+        AlbedoColor = FireColor,
         AlbedoTexture = FlameTexture(),
         Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
@@ -66,7 +99,7 @@ public partial class Titans
 
     private static readonly StandardMaterial3D SparkParticleMat = new StandardMaterial3D
     {
-        AlbedoColor = new Color(0.75f, 0.96f, 1f),
+        AlbedoColor = SparkColor,
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
     };
     private GpuParticles3D MakeParticles(Vector3 point, StandardMaterial3D mat, int amount,
@@ -91,8 +124,7 @@ public partial class Titans
         {
             pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
                 Offsets = new float[] { 0f, 0.30f, 0.62f, 1f },
-                Colors = new Color[] { new Color(1f, 0.80f, 0.35f, 0.95f), new Color(1f, 0.50f, 0.10f, 0.9f),
-                                       new Color(0.85f, 0.20f, 0.03f, 0.5f), new Color(0.30f, 0.05f, 0.01f, 0f) } } };
+                Colors = FireRampColors } };
             var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.5f)); sc.AddPoint(new Vector2(0.35f, 0.9f)); sc.AddPoint(new Vector2(1f, 1.12f));
             pm.ScaleCurve = new CurveTexture { Curve = sc };
         }
@@ -115,7 +147,7 @@ public partial class Titans
             Explosiveness = oneShot ? 0.88f : 0f,
             ProcessMaterial = pm,
             DrawPass1 = mesh,
-            VisibilityAabb = new Aabb(-45f, -45f, -45f, 90f, 90f, 90f),
+            VisibilityAabb = new Aabb(-ParticleAabbHalf, -ParticleAabbHalf, -ParticleAabbHalf, ParticleAabbHalf * 2f, ParticleAabbHalf * 2f, ParticleAabbHalf * 2f),
         };
         AddChild(p);
         p.GlobalPosition = point;
@@ -155,7 +187,7 @@ public partial class Titans
             if (stop && n is GpuParticles3D gp)
             {
                 gp.Emitting = false;
-                _timedFx[i] = (n, 1.8f, false);
+                _timedFx[i] = (n, BurnStopFadeSeconds, false);
                 continue;
             }
             n.QueueFree();
@@ -212,7 +244,7 @@ public partial class Titans
             AlbedoColor = col,
             EmissionEnabled = true,
             Emission = col,
-            EmissionEnergyMultiplier = 2.2f,
+            EmissionEnergyMultiplier = SparkEmissionEnergy,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
         };
         for (int i = 0; i < count; i++)
@@ -240,12 +272,12 @@ public partial class Titans
         if (sheet == null) { Dbg.Print("FLIPBOOK sheet missing: res://assets/fx/explosion_fireball.png"); return null; }
         var sf = new SpriteFrames();
         sf.AddAnimation("boom");
-        sf.SetAnimationSpeed("boom", 64f); // 64 frames = 1.0s at speed 1
+        sf.SetAnimationSpeed("boom", FlipbookFrameCount); // 64 frames = 1.0s at speed 1
         sf.SetAnimationLoopMode("boom", SpriteFrames.LoopMode.None);
-        for (int f = 0; f < 64; f++)
+        for (int f = 0; f < FlipbookFrameCount; f++)
         {
-            int row = f / 8, col = f % 8;
-            sf.AddFrame("boom", new AtlasTexture { Atlas = sheet, Region = new Rect2(col * 128, row * 128, 128, 128) });
+            int row = f / FlipbookColumns, col = f % FlipbookColumns;
+            sf.AddFrame("boom", new AtlasTexture { Atlas = sheet, Region = new Rect2(col * FlipbookCell, row * FlipbookCell, FlipbookCell, FlipbookCell) });
         }
         _flipbookFrames = sf;
         return sf;
@@ -259,10 +291,10 @@ public partial class Titans
         {
             SpriteFrames = frames,
             Animation = "boom",
-            PixelSize = size / 128f,
+            PixelSize = size / FlipbookCell,
             Shaded = false,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            Modulate = new Color(1.5f, 1.5f, 1.5f, 1f),
+            Modulate = FireballModulate,
             SpeedScale = 1.0f / seconds,
             FlipH = _fxRng.Randf() < 0.5f,
             FlipV = _fxRng.Randf() < 0.5f,
@@ -282,9 +314,9 @@ public partial class Titans
     {
         _fxBooms++;
         SpawnFlipbookFireball(point, 3.4f, 0.9f);
-        SpawnFlash(point, new Color(1f, 0.55f, 0.18f), 1.15f, 0.22f);
-        SpawnFlash(point, new Color(1f, 0.9f, 0.65f), 0.5f, 0.12f);
-        SpawnSparks(point, new Color(1f, 0.62f, 0.25f), 5, 3.8f);
+        SpawnFlash(point, ExplosionFlashColor, 1.15f, 0.22f);
+        SpawnFlash(point, ExplosionCoreColor, 0.5f, 0.12f);
+        SpawnSparks(point, ExplosionSparkColor, 5, 3.8f);
         _fxSparkBursts--; // explosion sparks are not a laser burst; keep the counters honest
     }
 
@@ -294,9 +326,9 @@ public partial class Titans
     {
         _lastDenied = kind;
         Dbg.Print($"WPN DENIED {kind} (mounting part destroyed)");
-        if (kind == DenyKind.Laser) _denyLaserT = 0.5f;
-        else if (kind == DenyKind.Autocannon) _denyAcT = 0.5f;
-        else if (kind == DenyKind.Lrm) _denyLrmT = 0.5f;
+        if (kind == DenyKind.Laser) _denyLaserT = DenyFlashSeconds;
+        else if (kind == DenyKind.Autocannon) _denyAcT = DenyFlashSeconds;
+        else if (kind == DenyKind.Lrm) _denyLrmT = DenyFlashSeconds;
     }
 
     // Creates (or recreates, after a rider-selection change) the
@@ -311,11 +343,11 @@ public partial class Titans
         // at the hit point, no blinking or shining of the rider.)
         float jolt = kind switch
         {
-            HitKinds.Laser => 0.12f,
-            HitKinds.Rocket => 0.85f,
-            HitKinds.Cannon => 1.0f,
-            HitKinds.Mg => 0.3f,
-            _ => 0.4f,
+            HitKinds.Laser => JoltLaser,
+            HitKinds.Rocket => JoltRocket,
+            HitKinds.Cannon => JoltCannon,
+            HitKinds.Mg => JoltMg,
+            _ => JoltDefault,
         };
         // Hit-sound throttle: 60ms for ordinary fire, but a
         // whole second-plus for rockets (owner, 2026-11-24).
@@ -330,9 +362,9 @@ public partial class Titans
         // salvos never merge.
         if (kind == "rocket")
         {
-            if (_simT - _lastRocketHitSfxT > 1.1) { _lastRocketHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
+            if (_simT - _lastRocketHitSfxT > RocketHitSfxThrottleSeconds) { _lastRocketHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
         }
-        else if (_simT - _lastHitSfxT > 0.06) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
+        else if (_simT - _lastHitSfxT > HitSfxThrottleSeconds) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
         if (jolt > 0f)
         {
             RiderWalker shooter = source == Roles.Player ? _player : source == Roles.Enemy ? _enemy : null;
@@ -344,14 +376,14 @@ public partial class Titans
             }
         }
         bool onEnemy = target == _enemy;
-        SpawnDmgNumber(point, dmg, onEnemy ? new Color(1f, 0.78f, 0.3f) : new Color(1f, 0.38f, 0.3f));
+        SpawnDmgNumber(point, dmg, onEnemy ? DmgNumberEnemyColor : DmgNumberPlayerColor);
         if (onEnemy && source == Roles.Player) _cross.Hitmark = 1f;
         // Camera shake is the PLAYER's hit feedback only
         // (owner, 2026-11-20: NPCs shooting each other across
         // the map shook his screen - external fire is not
         // his feedback). The death-explosion shake below
         // stays proximity-gated as it was.
-        if (target == _player) _shake = Mathf.Min(_shake + 0.22f, 0.5f);
+        if (target == _player) _shake = Mathf.Min(_shake + PlayerHitShake, PlayerHitShakeMax);
     }
 
     private void OnDeath(RiderWalker w)
@@ -362,9 +394,9 @@ public partial class Titans
         // rains down and settles on the terrain.
         var parts = PartsOf(w);
         var center = w.RootPos + Vector3.Up * 6.5f;
-        SpawnFlash(center, new Color(1f, 0.72f, 0.3f), 2.8f, 0.4f);
-        SpawnFlash(center, new Color(1f, 0.95f, 0.72f), 1.5f, 0.25f);
-        SpawnFlash(center + Vector3.Up * 2.2f, new Color(1f, 0.5f, 0.18f), 1.9f, 0.55f);
+        SpawnFlash(center, DeathFlashColor, 2.8f, 0.4f);
+        SpawnFlash(center, DeathCoreColor, 1.5f, 0.25f);
+        SpawnFlash(center + Vector3.Up * 2.2f, DeathLowColor, 1.9f, 0.55f);
         SpawnExplosionFx(center + Vector3.Up * 1.5f);
         SpawnFlipbookFireball(center + Vector3.Up * 1.5f, 10f, 1.2f);
         _fxBooms--; // the death bundle is not a rocket hit; keep counters honest
@@ -374,7 +406,7 @@ public partial class Titans
         parts.ExplodeAll();
         _exploding = false;
         float distToPlayer = w.RootPos.DistanceTo(_player.RootPos);
-        if (w == _player || distToPlayer < 45f) _shake = 1.0f;
+        if (w == _player || distToPlayer < DeathShakeRange) _shake = DeathShake;
         Dbg.Print($"DEATHBLOW {TagOf(w)} exploded into debris");
         w.SetDarkened(true);
         // No centre banner for a destruction (owner: the
@@ -391,12 +423,12 @@ public partial class Titans
         var l = new Label3D
         {
             Text = $"{dmg:F0}",
-            FontSize = 128,
-            PixelSize = 0.016f,
+            FontSize = DmgNumberFontSize,
+            PixelSize = DmgNumberPixelSize,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
             Modulate = col,
-            OutlineSize = 16,
-            OutlineModulate = new Color(0f, 0f, 0f, 0.9f),
+            OutlineSize = DmgNumberOutlineSize,
+            OutlineModulate = DmgNumberOutlineColor,
             NoDepthTest = true
         };
         AddChild(l);

@@ -21,6 +21,37 @@ public static class PhotoEnv
     // terrain it extends.
     private const float ApronDrop = 3f;
 
+    // Biome tint palette (C# side only - the terrain
+    // shader's own literals are NOT touched by this pass:
+    // a silent shader compile failure once hid for weeks).
+    private static readonly Color DesertGrassTint = new(1.30f, 1.10f, 0.62f);
+    private static readonly Color DesertDirtTint = new(1.22f, 1.02f, 0.66f);
+    private static readonly Color DesertRockTint = new(1.05f, 0.98f, 0.90f);
+    private static readonly Color DesertAsphTint = new(1.05f, 0.98f, 0.85f);
+    private static readonly Color CityGrassTint = new(0.55f, 0.58f, 0.55f);
+    private static readonly Color CityDirtTint = new(0.80f, 0.78f, 0.75f);
+    private static readonly Color CityRockTint = new(1.0f, 1.0f, 1.0f);
+    private static readonly Color CityAsphTint = new(0.78f, 0.78f, 0.82f);
+    private static readonly Color SnowGroundTint = new(1.35f, 1.45f, 1.75f); // grass/dirt lift under snow; also the apron's snow colour
+    private static readonly Color SnowRockTint = new(0.88f, 0.89f, 0.94f);
+    private static readonly Color SnowAsphTint = new(1.05f, 1.12f, 1.30f);
+    private static readonly Color ApronFieldTint = new(0.52f, 0.55f, 0.5f);
+    private static readonly Color DesertFogColor = new(0.80f, 0.70f, 0.53f);
+    private static readonly Color CityFogColor = new(0.42f, 0.52f, 0.60f);
+    private static readonly Color ForestFogColor = new(0.55f, 0.65f, 0.78f);
+    // Renderer tuning for Tune() - exact current values.
+    private const float SdfgiCellSize = 0.35f;
+    private const float GlowIntensityValue = 0.15f, GlowStrengthValue = 0.7f;
+    private const float TonemapExposureValue = 0.94f, AmbientEnergyValue = 0.50f, SdfgiEnergyValue = 0.85f;
+    private const float AdjustmentContrastValue = 1.08f, AdjustmentSaturationValue = 1.05f;
+    private const float SunShadowOpacity = 0.55f;
+    private const float MissionShadowDistance = 900f, ArenaShadowDistance = 520f;
+    private const float WallTileSize = 3.5f, RoofTileSize = 3f;   // UV tiling divisors for the wall/roof sets
+    private const float WallNormalScale = 0.9f, RoofNormalScale = 0.7f;
+    private const float PineStandInHeight = 7.6f, IslandTreeHeight = 5.9f;
+    private const int BackdropTreeCount = 44;
+    private const int HeroClumpCap = 320;
+
     private static Texture2D Tex(string set, string kind)
     {
         string key = set + "/" + kind;
@@ -382,9 +413,9 @@ void fragment() {
         // lighter concrete in the city; Forest stays neutral.
         var (gt, dt, rt, at) = WorldConfig.Biome switch
         {
-            WorldConfig.BiomeKind.Desert => (new Color(1.30f, 1.10f, 0.62f), new Color(1.22f, 1.02f, 0.66f), new Color(1.05f, 0.98f, 0.90f), new Color(1.05f, 0.98f, 0.85f)),
-            WorldConfig.BiomeKind.City => (new Color(0.55f, 0.58f, 0.55f), new Color(0.80f, 0.78f, 0.75f), new Color(1.0f, 1.0f, 1.0f), new Color(0.78f, 0.78f, 0.82f)),
-            _ => (new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f), new Color(1f, 1f, 1f))
+            WorldConfig.BiomeKind.Desert => (DesertGrassTint, DesertDirtTint, DesertRockTint, DesertAsphTint),
+            WorldConfig.BiomeKind.City => (CityGrassTint, CityDirtTint, CityRockTint, CityAsphTint),
+            _ => (Colors.White, Colors.White, Colors.White, Colors.White)
         };
         string grassSet = "leafy_grass", dirtSet = "forest_floor";
         if (WorldConfig.SnowGround)
@@ -395,9 +426,9 @@ void fragment() {
             // stone: the rock channel keeps a neutral stone
             // tint. (The first pass lifted every channel to
             // snow white and the whole range washed out.)
-            gt = new Color(1.35f, 1.45f, 1.75f); dt = gt;
-            rt = new Color(0.88f, 0.89f, 0.94f);
-            at = new Color(1.05f, 1.12f, 1.30f);
+            gt = SnowGroundTint; dt = gt;
+            rt = SnowRockTint;
+            at = SnowAsphTint;
             // No green under snow (owner, 2026-11-22): the
             // grass and dirt channels sample the rock set
             // itself, so no green can show through; under the
@@ -451,7 +482,7 @@ void fragment() {
         // stands in for the pine variety in this probe.
         string id = variety == 1 ? "island_tree_03"
             : (rng.RandiRange(0, 1) == 0 ? "island_tree_01" : "island_tree_02");
-        float targetH = variety == 1 ? 7.6f : 5.9f;
+        float targetH = variety == 1 ? PineStandInHeight : IslandTreeHeight;
         var inst = Scene(id).Instantiate<Node3D>();
         var box = LocalAabb(inst);
         float s = targetH / Mathf.Max(box.Size.Y, 0.01f);
@@ -496,12 +527,12 @@ void fragment() {
             AlbedoColor = tint, // per-building shade (owner: buildings must not all look the same)
             AlbedoTexture = Tex(set, "diff"),
             NormalEnabled = true,
-            NormalScale = 0.9f,
+            NormalScale = WallNormalScale,
             NormalTexture = Tex(set, "nor_gl"),
             RoughnessTexture = Tex(set, "arm"),
             RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
             AOTexture = Tex(set, "arm"),
-            Uv1Scale = new Vector3(Mathf.Max(size.X, size.Z) / 3.5f, size.Y / 3.5f, 1f)
+            Uv1Scale = new Vector3(Mathf.Max(size.X, size.Z) / WallTileSize, size.Y / WallTileSize, 1f)
         };
     }
 
@@ -512,12 +543,12 @@ void fragment() {
         {
             AlbedoTexture = Tex("gravel_concrete_02", "diff"),
             NormalEnabled = true,
-            NormalScale = 0.7f,
+            NormalScale = RoofNormalScale,
             NormalTexture = Tex("gravel_concrete_02", "nor_gl"),
             RoughnessTexture = Tex("gravel_concrete_02", "arm"),
             RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
             AOTexture = Tex("gravel_concrete_02", "arm"),
-            Uv1Scale = new Vector3(size.X / 3f, size.Z / 3f, 1f)
+            Uv1Scale = new Vector3(size.X / RoofTileSize, size.Z / RoofTileSize, 1f)
         };
     }
 
@@ -575,7 +606,7 @@ void fragment() {
         probe.QueueFree();
         if (heroMesh != null)
         {
-            int heroes = Mathf.Min(320, spots.Count);
+            int heroes = Mathf.Min(HeroClumpCap, spots.Count);
             var hmm = new MultiMesh
             {
                 TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
@@ -598,41 +629,6 @@ void fragment() {
         }
     }
 
-    private static Texture2D BladeTexture()
-    {
-        const int N = 256;
-        var img = Image.CreateEmpty(N, N, true, Image.Format.Rgba8);
-        img.Fill(new Color(0f, 0f, 0f, 0f)); // explicit alpha 0: CreateEmpty's fill is opaque black, which defeated the alpha scissor in probe run 2 (black slabs)
-        var rng = new RandomNumberGenerator { Seed = 1357 };
-        for (int b = 0; b < 30; b++)
-        {
-            // Thin blades with air between them: the first texture
-            // packed 52 wide blades (~63% coverage), so at any
-            // distance the cards averaged into solid green boxes.
-            float x0 = rng.RandfRange(8f, N - 8f);
-            float hgt = rng.RandfRange(N * 0.5f, N * 0.97f);
-            float lean = rng.RandfRange(-26f, 26f);
-            float w0 = rng.RandfRange(2.2f, 4.2f);
-            var root = new Color(rng.RandfRange(0.05f, 0.10f),
-                rng.RandfRange(0.16f, 0.24f), rng.RandfRange(0.03f, 0.06f), 1f);
-            var tip = new Color(rng.RandfRange(0.32f, 0.45f),
-                rng.RandfRange(0.48f, 0.60f), rng.RandfRange(0.12f, 0.20f), 1f);
-            int rows = (int)hgt;
-            for (int r = 0; r < rows; r++)
-            {
-                float t = r / (float)rows;
-                float cx = x0 + lean * t * t;
-                float hw = w0 * (1f - t) * 0.5f + 0.5f;
-                int y = N - 1 - r;
-                var col = root.Lerp(tip, t);
-                for (int px = (int)(cx - hw); px <= (int)(cx + hw); px++)
-                    if (px >= 0 && px < N) img.SetPixel(px, y, col);
-            }
-        }
-        img.GenerateMipmaps(); // without mips, distant cards sample base-level alpha and alias into solid blocks (probe run 5)
-        return ImageTexture.CreateFromImage(img);
-    }
-
     // ---- Backdrop: ground apron + biome rim rings (forest trees,
     // desert rocks). The procedural peak ring was removed entirely
     // (owner, 2026-11-19: the cone mountains read fake on every map).
@@ -645,7 +641,7 @@ void fragment() {
         var apronMat = new StandardMaterial3D
         {
             AlbedoTexture = Tex("leafy_grass", "diff"),
-            AlbedoColor = WorldConfig.SnowGround ? new Color(1.35f, 1.45f, 1.75f) : new Color(0.52f, 0.55f, 0.5f),
+            AlbedoColor = WorldConfig.SnowGround ? SnowGroundTint : ApronFieldTint,
             Roughness = 1f,
             Uv1Scale = new Vector3(220f, 220f, 1f)
         };
@@ -683,7 +679,7 @@ void fragment() {
             Dbg.Print("PHOTO backdrop: apron only (desert - rock ring removed)");
             return;
         }
-        for (int i = 0; i < 44; i++)
+        for (int i = 0; i < BackdropTreeCount; i++)
         {
             float a = rng.RandfRange(0f, Mathf.Tau);
             float half = Main.TerrainSize / 2f;
@@ -696,7 +692,7 @@ void fragment() {
             holder.Scale = Vector3.One * rng.RandfRange(1.15f, 1.6f);
             parent.AddChild(holder);
         }
-        Dbg.Print("PHOTO backdrop: apron + 44 ring trees");
+        Dbg.Print($"PHOTO backdrop: apron + {BackdropTreeCount} ring trees");
     }
 
     // ---- Renderer / atmosphere tuning for the probe ----
@@ -710,7 +706,7 @@ void fragment() {
         // in practice - 4 cascades cover 170u comfortably.
         env.SdfgiCascades = WorldConfig.IsMission ? 6 : 4;
         env.SdfgiUseOcclusion = true;
-        env.SdfgiMinCellSize = 0.35f;
+        env.SdfgiMinCellSize = SdfgiCellSize;
         env.SsaoEnabled = true;
         env.VolumetricFogEnabled = true;
         // Fog by biome: warm haze in the desert, a duskier
@@ -718,15 +714,15 @@ void fragment() {
         // the standing blue-grey in the forest.
         var (fogC, fogD, volD, sunE) = WorldConfig.Biome switch
         {
-            WorldConfig.BiomeKind.Desert => (new Color(0.80f, 0.70f, 0.53f), WorldConfig.IsMission ? 0.00050f : 0.0019f, WorldConfig.IsMission ? 0.0009f : 0.0026f, 1.55f),
-            WorldConfig.BiomeKind.City => (new Color(0.42f, 0.52f, 0.60f), WorldConfig.IsMission ? 0.00055f : 0.0021f, WorldConfig.IsMission ? 0.0010f : 0.0028f, 1.15f),
-            _ => (new Color(0.55f, 0.65f, 0.78f), WorldConfig.IsMission ? 0.00042f : 0.0016f, WorldConfig.IsMission ? 0.00075f : 0.0022f, 1.45f)
+            WorldConfig.BiomeKind.Desert => (DesertFogColor, WorldConfig.IsMission ? 0.00050f : 0.0019f, WorldConfig.IsMission ? 0.0009f : 0.0026f, 1.55f),
+            WorldConfig.BiomeKind.City => (CityFogColor, WorldConfig.IsMission ? 0.00055f : 0.0021f, WorldConfig.IsMission ? 0.0010f : 0.0028f, 1.15f),
+            _ => (ForestFogColor, WorldConfig.IsMission ? 0.00042f : 0.0016f, WorldConfig.IsMission ? 0.00075f : 0.0022f, 1.45f)
         };
         env.VolumetricFogDensity = volD;
         env.FogDensity = fogD; // distance haze; the Mission front hazes out near ~1200u
         env.GlowEnabled = true;
-        env.GlowIntensity = 0.15f;
-        env.GlowStrength = 0.7f;
+        env.GlowIntensity = GlowIntensityValue;
+        env.GlowStrength = GlowStrengthValue;
         // Look pass (owner: fog + bright light overilluminated the
         // scene). The wash came from stacked ambient terms - sky
         // ambient 0.42 + full-strength SDFGI bounce + bright fog -
@@ -734,18 +730,18 @@ void fragment() {
         // everything else: lower exposure, weaker ambient and
         // bounce, darker fog, and a gentle filmic contrast/
         // saturation adjustment on top. The haze itself stays.
-        env.TonemapExposure = 0.94f;
-        env.AmbientLightEnergy = 0.50f; // raised 0.30 -> 0.50 (owner, 2026-11-11: shadows must stay readable)
-        env.SdfgiEnergy = 0.85f;
+        env.TonemapExposure = TonemapExposureValue;
+        env.AmbientLightEnergy = AmbientEnergyValue; // raised 0.30 -> 0.50 (owner, 2026-11-11: shadows must stay readable)
+        env.SdfgiEnergy = SdfgiEnergyValue;
         env.FogLightColor = fogC;
         env.VolumetricFogAlbedo = fogC;
         env.AdjustmentEnabled = true;
         env.AdjustmentBrightness = 1.0f;
-        env.AdjustmentContrast = 1.08f;
-        env.AdjustmentSaturation = 1.05f;
+        env.AdjustmentContrast = AdjustmentContrastValue;
+        env.AdjustmentSaturation = AdjustmentSaturationValue;
         sun.LightEnergy = sunE;
-        sun.ShadowOpacity = 0.55f; // real shade depth (owner round 6: rider's shadow was too bright)
-        sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? 900f : 520f;
+        sun.ShadowOpacity = SunShadowOpacity; // real shade depth (owner round 6: rider's shadow was too bright)
+        sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? MissionShadowDistance : ArenaShadowDistance;
         Dbg.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
     }
 }

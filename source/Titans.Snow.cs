@@ -15,6 +15,15 @@ public partial class Titans
     // player stamp - prints are a near-field detail.
     private const int PrintPool = 384;
     private const float PrintLife = 75f;
+    private const float PrintFadeSeconds = 20f;      // prints fade over their last 20 s
+    private const float PrintMaxAlpha = 0.55f;
+    private const float PrintStampRange = 500f;      // only plants within this of the player stamp
+    private const float PrintLift = 0.12f;           // stamp offset along the terrain normal
+    private const float SnowfallFollowHeight = 4f;   // snowfall box rides this far above the camera
+    private static readonly Vector2 PrintPlaneSize = new(1.8f, 2.7f);
+    private static readonly Color PrintColor = new(0.40f, 0.48f, 0.68f, 0f); // alpha driven per-frame by the fade
+    private static readonly Color FlakeColor = new(1f, 1f, 1f, 0.95f);
+    private static readonly Color FlakeTint = new(0.96f, 0.98f, 1f); // flake RGB; alpha comes from the distance field
     private MeshInstance3D[] _prints;
     private StandardMaterial3D[] _printMats;
     private float[] _printAge;
@@ -73,7 +82,7 @@ public partial class Titans
         _prints = new MeshInstance3D[PrintPool];
         _printMats = new StandardMaterial3D[PrintPool];
         _printAge = new float[PrintPool];
-        var mesh = new PlaneMesh { Size = new Vector2(1.8f, 2.7f) };
+        var mesh = new PlaneMesh { Size = PrintPlaneSize };
         for (int i = 0; i < PrintPool; i++)
         {
             var mat = new StandardMaterial3D
@@ -84,7 +93,7 @@ public partial class Titans
                 // as a blob pasted ON the snow (owner,
                 // 2026-11-23); a depression reads darker and
                 // takes the scene's light.
-                AlbedoColor = new Color(0.40f, 0.48f, 0.68f, 0f),
+                AlbedoColor = PrintColor,
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
                 NoDepthTest = false,
@@ -122,7 +131,7 @@ public partial class Titans
             Material = new StandardMaterial3D
             {
                 AlbedoTexture = FlakeTexture(),
-                AlbedoColor = new Color(1f, 1f, 1f, 0.95f),
+                AlbedoColor = FlakeColor,
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
                 BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
@@ -144,7 +153,7 @@ public partial class Titans
     private void StampPrint(RiderWalker w)
     {
         Vector3 pos = w.LastPlantPos;
-        if (_player != null && pos.DistanceTo(_player.RootPos) > 500f) return;
+        if (_player != null && pos.DistanceTo(_player.RootPos) > PrintStampRange) return;
         // Terrain normal from the height gradient.
         float e = 1.5f;
         float hx = Main.HeightAt(pos.X + e, pos.Z) - Main.HeightAt(pos.X - e, pos.Z);
@@ -159,7 +168,7 @@ public partial class Titans
         int i = _printHead;
         _printHead = (_printHead + 1) % PrintPool;
         _printAge[i] = 0f;
-        _prints[i].GlobalTransform = new Transform3D(basis, pos + n * 0.12f); // 0.05 clipped corners into slopes (owner, 2026-11-23)
+        _prints[i].GlobalTransform = new Transform3D(basis, pos + n * PrintLift); // 0.05 clipped corners into slopes (owner, 2026-11-23)
         _prints[i].Visible = true;
     }
 
@@ -183,16 +192,16 @@ public partial class Titans
         {
             if (_printAge[i] > PrintLife) { if (_prints[i].Visible) _prints[i].Visible = false; continue; }
             _printAge[i] += dt;
-            float fade = Mathf.Clamp((PrintLife - _printAge[i]) / 20f, 0f, 1f);
+            float fade = Mathf.Clamp((PrintLife - _printAge[i]) / PrintFadeSeconds, 0f, 1f);
             var c = _printMats[i].AlbedoColor;
-            c.A = 0.55f * fade;
+            c.A = PrintMaxAlpha * fade;
             _printMats[i].AlbedoColor = c;
         }
 
         if (_snowfall != null)
         {
             _snowfall.Emitting = !_labOpen;
-            if (_cam != null) _snowfall.GlobalPosition = _cam.GlobalPosition + Vector3.Up * 4f;
+            if (_cam != null) _snowfall.GlobalPosition = _cam.GlobalPosition + Vector3.Up * SnowfallFollowHeight;
         }
     }
     // A six-armed dendrite snowflake, drawn as a distance
@@ -275,7 +284,7 @@ public partial class Titans
             float core = Mathf.Clamp(1f - p.Length() / 0.16f, 0f, 1f);
             float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.30f;
             alpha = Mathf.Max(alpha, core * 0.18f);
-            img.SetPixel(x, y, new Color(0.96f, 0.98f, 1f, alpha));
+            img.SetPixel(x, y, new Color(FlakeTint, alpha));
         }
         return ImageTexture.CreateFromImage(img);
     }

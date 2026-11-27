@@ -45,6 +45,20 @@ public partial class RadarView : Control
     // just inside the rim instead of clamped on it).
     public float Range = 160f;
 
+    // Scope palette (named once; the grid alphas derive
+    // from the ink colour per element in _Draw).
+    private static readonly Color ScopeInkColor = new(0.45f, 0.9f, 0.95f);
+    private static readonly Color PanelColor = new(0.03f, 0.06f, 0.09f, 0.5f);
+    private static readonly Color EnemyContactColor = new(1f, 0.3f, 0.22f, 0.95f);
+    private static readonly Color FriendlyColor = new(0.45f, 0.95f, 0.55f, 0.95f);
+    private static readonly Color HeightDeepColor = new(0.05f, 0.10f, 0.13f);
+    private static readonly Color HeightMidColor = new(0.13f, 0.23f, 0.22f);
+    private static readonly Color HeightCrestColor = new(0.42f, 0.48f, 0.42f);
+    private static readonly Color HeightTintColor = new(1f, 1f, 1f, 0.5f);
+    private const float ContactRadius = 4.5f;
+    private const float ContactRimInset = 6f;  // contacts clamp this far inside the rim
+    private const float ScopeInset = 10f;      // scope disc inset from the panel edge
+
     // Heightmap underlay (owner ask, 2026-11-20): a semi-
     // transparent relief of the current world's heightfield
     // inside the scope. Generated lazily on first draw from
@@ -92,9 +106,9 @@ public partial class RadarView : Control
         float cellW = Main.TerrainSize / N;
         var light = new Vector3(-0.55f, 0.75f, -0.35f).Normalized();
         var img = Image.CreateEmpty(N, N, false, Image.Format.Rgb8);
-        var deep = new Color(0.05f, 0.10f, 0.13f);
-        var mid = new Color(0.13f, 0.23f, 0.22f);
-        var crest = new Color(0.42f, 0.48f, 0.42f);
+        var deep = HeightDeepColor;
+        var mid = HeightMidColor;
+        var crest = HeightCrestColor;
         for (int j = 0; j < N; j++)
             for (int i = 0; i < N; i++)
             {
@@ -141,17 +155,17 @@ public partial class RadarView : Control
         if (w == null || down || Player == null) return;
         var d = ScopeOf(w.RootPos) * px;
         if (d.Length() > maxOff) d = d.Normalized() * maxOff; // clamp to the rim
-        DrawCircle(c + d, 4.5f, col ?? new Color(1f, 0.3f, 0.22f, 0.95f));
+        DrawCircle(c + d, ContactRadius, col ?? EnemyContactColor);
     }
 
     public override void _Draw()
     {
-        var ink = new Color(0.45f, 0.9f, 0.95f);
+        var ink = ScopeInkColor;
         float W = Size.X, H = Size.Y;
         var border = new Rect2(1f, 1f, W - 2f, H - 2f);
-        DrawRect(border, new Color(0.03f, 0.06f, 0.09f, 0.5f));
+        DrawRect(border, PanelColor);
         var c = Size * 0.5f;
-        float half = Mathf.Min(W, H) * 0.5f - 10f; // scope radius in px
+        float half = Mathf.Min(W, H) * 0.5f - ScopeInset; // scope radius in px
         float px = half / Range;                  // pixels per world unit
 
         // Heightmap underlay: a fan over the scope disc; the
@@ -167,7 +181,7 @@ public partial class RadarView : Control
             // was effectively invisible in play, 2026-11-20).
             // Triangles always rasterize.
             const int SEG = 48;
-            var tint = new Color(1f, 1f, 1f, 0.5f);
+            var tint = HeightTintColor;
             var pw = new Vector2(Player.RootPos.X, Player.RootPos.Z);
             var uvC = WorldUv(pw);
             for (int k = 0; k < SEG; k++)
@@ -242,13 +256,13 @@ public partial class RadarView : Control
         if (Player == null) return;
 
         // Enemy contacts, clamped to the rim when out of range.
-        DrawContact(Enemy, EnemyDown, c, px, half - 6f);
-        DrawContact(Enemy2, Enemy2Down, c, px, half - 6f);
+        DrawContact(Enemy, EnemyDown, c, px, half - ContactRimInset);
+        DrawContact(Enemy2, Enemy2Down, c, px, half - ContactRimInset);
         foreach (var (fw, fdown) in Foes)
-            DrawContact(fw, fdown, c, px, half - 6f);
+            DrawContact(fw, fdown, c, px, half - ContactRimInset);
         // Friendly contacts in the player's green.
         foreach (var (aw, adown) in Allies)
-            DrawContact(aw, adown, c, px, half - 6f, new Color(0.45f, 0.95f, 0.55f, 0.95f));
+            DrawContact(aw, adown, c, px, half - ContactRimInset, FriendlyColor);
         // Player triangle: fixed, pointing up - up IS the
         // player's facing on a heading-up scope.
         var pts = new[]
@@ -257,7 +271,7 @@ public partial class RadarView : Control
             c + new Vector2(5f, 6f),
             c + new Vector2(-5f, 6f)
         };
-        DrawPolygon(pts, new[] { new Color(0.45f, 0.95f, 0.55f, 0.95f) });
+        DrawPolygon(pts, new[] { FriendlyColor });
         DrawString(font, new Vector2(6f, H - 5f), "RADAR",
             HorizontalAlignment.Left, -1f, 9, new Color(ink, 0.65f));
     }

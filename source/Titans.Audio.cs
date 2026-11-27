@@ -21,7 +21,23 @@ public partial class Titans
     // order cuts the clip still speaking.
     private AudioStream _voxFollow, _voxAttackTarget, _voxAttackNearby, _voxProtect, _voxStop;
     private AudioStreamPlayer _voxPlayer;
-    private float _windDb = -60f, _servoDb = -60f, _prevTorsoYaw;
+    // Audio levels and pool tuning (named at their exact
+    // current values - a refactor never retunes sound).
+    private const int WavSampleRate = 22050;             // loop-end math for the baked WAVs
+    private const int SfxPoolSize = 20;
+    private const float SfxPoolMaxDistance = 220f;
+    private const float SfxBaseVolumeDb = -6f;           // pool baseline; callers offset from it
+    private const float VoxVolumeDb = -4f;               // order-announcement level
+    private const float AmbienceSilentDb = -60f;         // the ambience floor (effectively off)
+    private const float WindWorldDb = -38f;              // wind bed level in the world (silent in the lab)
+    private const float WindFadeRate = 9f, ServoFadeRate = 26f;
+    private const float ServoBaseDb = -30f, ServoActivityDb = 14f;
+    private const float ServoPitchBase = 0.92f, ServoPitchRange = 0.16f;
+    private const float PitchJitterMin = 0.94f, PitchJitterMax = 1.06f;
+    private const float RunStepSpeedThreshold = 7f;      // gait speed that counts as running, for step sounds
+    private const float PlayerStepDb = -1f, NpcStepDb = -3f, RunStepDbBonus = 2.5f, RunStepPitch = 0.9f;
+    private const float ThrusterMaxDistance = 260f, ThrusterVolumeDb = -13f;
+    private float _windDb = AmbienceSilentDb, _servoDb = AmbienceSilentDb, _prevTorsoYaw;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();
     private readonly System.Collections.Generic.List<bool> _sfxProtected = new();
     private int _sfxNext;
@@ -55,7 +71,7 @@ public partial class Titans
         {
             tw.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
             tw.LoopBegin = 0;
-            tw.LoopEnd = (int)tw.GetLength() * 22050;
+            tw.LoopEnd = (int)tw.GetLength() * WavSampleRate;
         }
         _sfxWind = GD.Load<AudioStream>("res://assets/sfx/wind.wav");
         _sfxServo = GD.Load<AudioStream>("res://assets/sfx/servo.wav");
@@ -64,7 +80,7 @@ public partial class Titans
             {
                 lw.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
                 lw.LoopBegin = 0;
-                lw.LoopEnd = (int)lw.GetLength() * 22050;
+                lw.LoopEnd = (int)lw.GetLength() * WavSampleRate;
             }
         _windPlayer = new AudioStreamPlayer { Stream = _sfxWind, VolumeDb = _windDb };
         AddChild(_windPlayer); _windPlayer.Play();
@@ -75,11 +91,11 @@ public partial class Titans
         _voxAttackNearby = GD.Load<AudioStream>("res://assets/sfx/vox_attack_nearby.mp3");
         _voxProtect = GD.Load<AudioStream>("res://assets/sfx/vox_protect.mp3");
         _voxStop = GD.Load<AudioStream>("res://assets/sfx/vox_stop.mp3");
-        _voxPlayer = new AudioStreamPlayer { VolumeDb = -4f }; // announcement level; tune here
+        _voxPlayer = new AudioStreamPlayer { VolumeDb = VoxVolumeDb }; // announcement level; tune here
         AddChild(_voxPlayer);
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < SfxPoolSize; i++)
         {
-            var p = new AudioStreamPlayer3D { MaxDistance = 220f, VolumeDb = -6f };
+            var p = new AudioStreamPlayer3D { MaxDistance = SfxPoolMaxDistance, VolumeDb = SfxBaseVolumeDb };
             AddChild(p);
             _sfxPool.Add(p);
             _sfxProtected.Add(false);
@@ -117,8 +133,8 @@ public partial class Titans
     private void StepAmbient(float dt)
     {
         if (_windPlayer == null || dt <= 0f) return;
-        float windTarget = _labOpen ? -60f : -38f; // owner, 2026-11-24: -26 buried the fight, -32 still too loud - the bed sits lower now
-        _windDb = Mathf.MoveToward(_windDb, windTarget, dt * 9f);
+        float windTarget = _labOpen ? AmbienceSilentDb : WindWorldDb; // owner, 2026-11-24: -26 buried the fight, -32 still too loud - the bed sits lower now
+        _windDb = Mathf.MoveToward(_windDb, windTarget, dt * WindFadeRate);
         _windPlayer.VolumeDb = _windDb;
 
         float torso = _player != null ? _player.TorsoYawWorld : 0f;
@@ -131,10 +147,10 @@ public partial class Titans
                      + Mathf.Clamp(yawRate / 1.2f, 0f, 1f) * 0.6f;
             activity = Mathf.Clamp(activity, 0f, 1f);
         }
-        float servoTarget = activity <= 0.02f ? -60f : -30f + activity * 14f;
-        _servoDb = Mathf.MoveToward(_servoDb, servoTarget, dt * 26f);
+        float servoTarget = activity <= 0.02f ? AmbienceSilentDb : ServoBaseDb + activity * ServoActivityDb;
+        _servoDb = Mathf.MoveToward(_servoDb, servoTarget, dt * ServoFadeRate);
         _servoPlayer.VolumeDb = _servoDb;
-        _servoPlayer.PitchScale = 0.92f + 0.16f * activity;
+        _servoPlayer.PitchScale = ServoPitchBase + ServoPitchRange * activity;
     }
 
     private void PlaySfx(AudioStream stream, Vector3 pos, float volDb = 0f, float pitch = 1f)
@@ -181,8 +197,8 @@ public partial class Titans
         _sfxProtected[pi] = prot;
         p.Stream = stream;
         p.GlobalPosition = pos;
-        p.VolumeDb = -6f + volDb;
-        p.PitchScale = pitch * _fxRng.RandfRange(0.94f, 1.06f);
+        p.VolumeDb = SfxBaseVolumeDb + volDb;
+        p.PitchScale = pitch * _fxRng.RandfRange(PitchJitterMin, PitchJitterMax);
         p.Play();
     }
 
@@ -211,9 +227,9 @@ public partial class Titans
             _stepsSeen[w] = w.Steps;
             bool alt = _stepAltW.TryGetValue(w, out bool a) && a;
             _stepAltW[w] = !alt;
-            bool running = w.Speed > 7f;
-            float vol = (w == _player ? -1f : -3f) + (running ? 2.5f : 0f);
-            PlaySfx(alt ? _sfxStepA : _sfxStepB, w.RootPos, vol, running ? 0.9f : 1f);
+            bool running = w.Speed > RunStepSpeedThreshold;
+            float vol = (w == _player ? PlayerStepDb : NpcStepDb) + (running ? RunStepDbBonus : 0f);
+            PlaySfx(alt ? _sfxStepA : _sfxStepB, w.RootPos, vol, running ? RunStepPitch : 1f);
         }
     }
 
@@ -231,7 +247,7 @@ public partial class Titans
             {
                 if (!_thrusterPlayers.TryGetValue(w, out var p))
                 {
-                    p = new AudioStreamPlayer3D { Stream = _sfxThruster, MaxDistance = 260f, VolumeDb = -13f };  // owner, 2026-11-17: thrusters sit under the fight, not over it
+                    p = new AudioStreamPlayer3D { Stream = _sfxThruster, MaxDistance = ThrusterMaxDistance, VolumeDb = ThrusterVolumeDb };  // owner, 2026-11-17: thrusters sit under the fight, not over it
                     AddChild(p);
                     _thrusterPlayers[w] = p;
                 }
