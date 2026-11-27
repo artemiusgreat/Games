@@ -24,6 +24,11 @@ public static class CityKits
 
     private static readonly Dictionary<int, List<Entry>> _kits = new();
 
+    private const int MaxKitIndex = 64;        // bounded scan range for b_<i>.glb files
+    private const float MinBuildingHeight = 0.5f; // a model shorter than this is not a building
+    private const float MinTakeScale = 0.3f;   // uniform-scale clamp for instanced kit buildings
+    private const float MaxTakeScale = 3.5f;
+
     private static List<Entry> Load(int kit)
     {
         if (_kits.TryGetValue(kit, out var cached)) return cached;
@@ -34,7 +39,7 @@ public static class CityKits
         // towers were deleted from kit4 outright - the old
         // stop-at-first-gap scan would have emptied the
         // whole kit and fallen back to procedural boxes.)
-        for (int i = 0; i < 64; i++)
+        for (int i = 0; i < MaxKitIndex; i++)
         {
             string path = $"res://assets/citykits/kit{kit}/b_{i}.glb";
             if (!ResourceLoader.Exists(path)) continue;
@@ -43,7 +48,7 @@ public static class CityKits
             var probe = scene.Instantiate<Node3D>();
             var box = Measure(probe);
             probe.Free();
-            if (box.Size.Y < 0.5f) continue; // not a building
+            if (box.Size.Y < MinBuildingHeight) continue; // not a building
             list.Add(new Entry { Scene = scene, Box = box });
         }
         _kits[kit] = list;
@@ -86,7 +91,7 @@ public static class CityKits
         var list = Load(kit);
         if (list.Count == 0) return null;
         var e = list[Mathf.Abs(seq) % list.Count];
-        float s = Mathf.Clamp(wantHeight / e.Box.Size.Y, 0.3f, 3.5f);
+        float s = Mathf.Clamp(wantHeight / e.Box.Size.Y, MinTakeScale, MaxTakeScale);
         var node = e.Scene.Instantiate<Node3D>();
         node.Scale = Vector3.One * s;
         effSize = e.Box.Size * s;

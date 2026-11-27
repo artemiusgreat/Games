@@ -11,6 +11,8 @@ public partial class Titans
     // survives any window size or aspect (owner). Null when the
     // chassis lacks the part or it is off-screen: the lab falls
     // back to its fractional anchors then.
+    private const float LabAnchorSlack = 40f; // px past the viewport edge an anchor may sit and still anchor a panel
+
     private Vector2? ProjectSlotAnchor(PartId slotId)
     {
         if (_partsPlayer == null || _cam == null || !_partsPlayer.Has(slotId)) return null;
@@ -18,7 +20,7 @@ public partial class Titans
         if (_cam.IsPositionBehind(w)) return null;
         var sp = _cam.UnprojectPosition(w);
         var vp = GetViewport().GetVisibleRect().Size;
-        if (sp.X < -40f || sp.Y < -40f || sp.X > vp.X + 40f || sp.Y > vp.Y + 40f) return null;
+        if (sp.X < -LabAnchorSlack || sp.Y < -LabAnchorSlack || sp.X > vp.X + LabAnchorSlack || sp.Y > vp.Y + LabAnchorSlack) return null;
         return sp;
     }
 
@@ -34,7 +36,7 @@ public partial class Titans
         if (_cam.IsPositionBehind(w)) return null;
         var sp = _cam.UnprojectPosition(w);
         var vp = GetViewport().GetVisibleRect().Size;
-        if (sp.X < -40f || sp.Y < -40f || sp.X > vp.X + 40f || sp.Y > vp.Y + 40f) return null;
+        if (sp.X < -LabAnchorSlack || sp.Y < -LabAnchorSlack || sp.X > vp.X + LabAnchorSlack || sp.Y > vp.Y + LabAnchorSlack) return null;
         return sp;
     }
 

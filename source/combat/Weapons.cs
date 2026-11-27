@@ -153,6 +153,13 @@ public static class WeaponFx
         return m;
     }
 
+    private static readonly Color TracerCoreColor = new(0.23f, 0.16f, 0.07f); // dark brass slug
+    private static readonly Color TracerEmissionColor = new(1f, 0.38f, 0.06f);
+    private static readonly Color TracerGlowColor = new(1f, 0.5f, 0.1f, 0.3f);
+    private static readonly Color RocketBodyColor = new(0.62f, 0.62f, 0.66f);
+    private static readonly Color RocketTipColor = new(1f, 0.45f, 0.1f);
+    private static readonly Color TrailPuffColor = new(0.9f, 0.9f, 0.92f, 0.45f);
+
     private static StandardMaterial3D _tracerCoreMat;
     private static StandardMaterial3D _tracerGlowMat;
     private static StandardMaterial3D _rocketBodyMat;
@@ -192,14 +199,14 @@ public static class WeaponFx
     {
         _tracerCoreMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.23f, 0.16f, 0.07f),
+            AlbedoColor = TracerCoreColor,
             Metallic = 0.8f,
             Roughness = 0.32f,
             EmissionEnabled = true,
-            Emission = new Color(1f, 0.38f, 0.06f),
+            Emission = TracerEmissionColor,
             EmissionEnergyMultiplier = 0.35f
         };
-        _tracerGlowMat ??= Unshaded(new Color(1f, 0.5f, 0.1f, 0.3f), alpha: true);
+        _tracerGlowMat ??= Unshaded(TracerGlowColor, alpha: true);
         var root = new Node3D();
         var body = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         body.Mesh = new CylinderMesh { TopRadius = 0.075f, BottomRadius = 0.075f, Height = 0.62f, RadialSegments = 8 };
@@ -223,8 +230,8 @@ public static class WeaponFx
     // Rocket: gray cylinder body + orange tip cone, nose toward -Z.
     public static Node3D MakeRocket()
     {
-        _rocketBodyMat ??= new StandardMaterial3D { AlbedoColor = new Color(0.62f, 0.62f, 0.66f), Roughness = 0.5f };
-        _rocketTipMat ??= Unshaded(new Color(1f, 0.45f, 0.1f));
+        _rocketBodyMat ??= new StandardMaterial3D { AlbedoColor = RocketBodyColor, Roughness = 0.5f };
+        _rocketTipMat ??= Unshaded(RocketTipColor);
         var root = new Node3D();
         var body = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         body.Mesh = new CylinderMesh { TopRadius = 0.09f, BottomRadius = 0.09f, Height = 0.72f };
@@ -246,7 +253,7 @@ public static class WeaponFx
     {
         var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         mi.Mesh = new BoxMesh { Size = new Vector3(0.14f, 0.14f, 0.14f) };
-        mi.MaterialOverride = Unshaded(new Color(0.9f, 0.9f, 0.92f, 0.45f), alpha: true);
+        mi.MaterialOverride = Unshaded(TrailPuffColor, alpha: true);
         mi.GlobalTransform = new Transform3D(Basis.Identity, pos);
         return mi;
     }

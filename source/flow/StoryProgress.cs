@@ -10,6 +10,7 @@ using Godot;
 // per planet, comma-separated).
 public static class StoryProgress
 {
+    private const int MissionMaskBits = 31; // completed-mission bitmask width (mission indices 0..30)
     private const string SavePath = "user://story_progress.cfg";
     private const string DonePath = "user://story_completed.cfg";
     private static int[] _counts; // per planet; null = not loaded
@@ -48,7 +49,7 @@ public static class StoryProgress
     // 2026-11-16): it stays visible in the offers but can no
     // longer be signed again.
     public static bool IsCompleted(int planet, int mission)
-        => planet >= 0 && planet < PlanetCount && mission >= 0 && mission < 31
+        => planet >= 0 && planet < PlanetCount && mission >= 0 && mission < MissionMaskBits
            && (DoneMasks[planet] & (1 << mission)) != 0;
 
     private static int PlanetCount => MissionCatalog.Planets.Count;
@@ -137,7 +138,7 @@ public static class StoryProgress
     public static void Complete(int planet, int mission)
     {
         if (planet < 0 || planet >= PlanetCount) return;
-        if (mission >= 0 && mission < 31 && !IsCompleted(planet, mission))
+        if (mission >= 0 && mission < MissionMaskBits && !IsCompleted(planet, mission))
         {
             DoneMasks[planet] |= 1 << mission;
             SaveDone();

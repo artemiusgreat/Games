@@ -125,6 +125,8 @@ public static class Ascent
     // is on; the site flattening in Height and the river
     // carves apply unchanged, so the villages, the road
     // dressing and the bridges sit on the new ground.
+    private const int HillsGridSize = 512; // the baked hills grid is 512x512 floats
+    private const float HillsGridMaxCoord = 510.999f; // last bilinear sample coordinate (grid size - 1.001)
     private static float[] _hills;
     private static bool _hillsTried;
 
@@ -136,22 +138,35 @@ public static class Ascent
             using var f = FileAccess.Open("res://assets/hills/hills_height.bin", FileAccess.ModeFlags.Read);
             if (f != null)
             {
-                var bytes = f.GetBuffer(512 * 512 * 4);
-                if (bytes.Length == 512 * 512 * 4)
+                var bytes = f.GetBuffer(HillsGridSize * HillsGridSize * 4);
+                if (bytes.Length == HillsGridSize * HillsGridSize * 4)
                 {
-                    _hills = new float[512 * 512];
+                    _hills = new float[HillsGridSize * HillsGridSize];
                     System.Buffer.BlockCopy(bytes, 0, _hills, 0, bytes.Length);
                 }
             }
         }
         if (_hills == null) return 0f;
-        float fx = Mathf.Clamp((x + 950f) / 1900f * 512f - 0.5f, 0f, 510.999f);
-        float fz = Mathf.Clamp((z + 950f) / 1900f * 512f - 0.5f, 0f, 510.999f);
+        float fx = Mathf.Clamp((x + 950f) / 1900f * HillsGridSize - 0.5f, 0f, HillsGridMaxCoord);
+        float fz = Mathf.Clamp((z + 950f) / 1900f * HillsGridSize - 0.5f, 0f, HillsGridMaxCoord);
         int ix = (int)fx, iz = (int)fz;
         float tx = fx - ix, tz = fz - iz;
-        float top = _hills[iz * 512 + ix] * (1f - tx) + _hills[iz * 512 + ix + 1] * tx;
-        float bot = _hills[(iz + 1) * 512 + ix] * (1f - tx) + _hills[(iz + 1) * 512 + ix + 1] * tx;
+        float top = _hills[iz * HillsGridSize + ix] * (1f - tx) + _hills[iz * HillsGridSize + ix + 1] * tx;
+        float bot = _hills[(iz + 1) * HillsGridSize + ix] * (1f - tx) + _hills[(iz + 1) * HillsGridSize + ix + 1] * tx;
         return top * (1f - tz) + bot * tz;
+    }
+
+    // Rivers: a channel carved across the whole valley,
+    // shallower under the bridge span (the deck there is
+    // registered by the environment build).
+    private static float CarveRivers(float h, float x, float z)
+    {
+        foreach (float rz in Rivers)
+        {
+            float bridgeMask = 1f - Smooth(20f, 36f, Mathf.Abs(x - RoadX(rz)));
+            h -= 8f * (1f - Smooth(0f, 30f, Mathf.Abs(z - rz))) * (1f - 0.65f * bridgeMask);
+        }
+        return h;
     }
 
     private static float RawBase(float x, float z)
@@ -159,12 +174,7 @@ public static class Ascent
         if (WorldConfig.Hills)
         {
             float hh = HillsSample(x, z);
-            foreach (float rz in Rivers)
-            {
-                float bridgeMask = 1f - Smooth(20f, 36f, Mathf.Abs(x - RoadX(rz)));
-                hh -= 8f * (1f - Smooth(0f, 30f, Mathf.Abs(z - rz))) * (1f - 0.65f * bridgeMask);
-            }
-            return hh;
+            return CarveRivers(hh, x, z);
         }
         float h = Profile(z);
         float d = Mathf.Abs(x - RoadX(z));
@@ -200,15 +210,7 @@ public static class Ascent
         // The map rim.
         float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
         h += Smooth(860f, 950f, sq) * 70f * openS;
-        // Rivers: a channel carved across the whole valley,
-        // shallower under the bridge span (the deck there is
-        // registered by the environment build).
-        foreach (float rz in Rivers)
-        {
-            float bridgeMask = 1f - Smooth(20f, 36f, Mathf.Abs(x - RoadX(rz)));
-            h -= 8f * (1f - Smooth(0f, 30f, Mathf.Abs(z - rz))) * (1f - 0.65f * bridgeMask);
-        }
-        return h;
+        return CarveRivers(h, x, z);
     }
 
     private static readonly float[] SiteH = BuildSiteH();

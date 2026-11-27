@@ -835,6 +835,7 @@ public sealed class RiderParts
         orig.Free();
     }
 
+    private static readonly Color SocketPlateColor = new(0.05f, 0.05f, 0.06f); // the dark socket plate
     private static StandardMaterial3D _socketMat;
 
     // Cap the wound a carved pod leaves in the core piece. The cut
@@ -1050,7 +1051,7 @@ public sealed class RiderParts
         }
         _socketMat ??= new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.05f, 0.05f, 0.06f),
+            AlbedoColor = SocketPlateColor,
             Roughness = 0.92f,
             Metallic = 0.25f,
             // The plate is read at glancing angles from either

@@ -27,6 +27,13 @@ public partial class Titans
 {
     private enum TeamOrder { Follow, AttackTarget, AttackNearby, ProtectCompanion, Hold }
 
+    // Per-order engagement reach (owner, teams stage): how
+    // close a foe must close before an ally on that order
+    // engages it.
+    private const float FollowEngageRange = 260f;
+    private const float AttackEngageRange = 450f;
+    private const float ProtectEngageRange = 170f;
+
     private TeamOrder _teamOrder = TeamOrder.Follow;
     private int _allyShots; // harness counter (the team test reads it)
 
@@ -128,7 +135,7 @@ public partial class Titans
         if (dist < 7f) { w.SetDrive(a.Yaw, 0f); return; }
         float yawTo = RiderWalker.YawOf(to.Normalized());
         float dy = RiderWalker.WrapAngle(yawTo - a.Yaw);
-        float yaw = a.Yaw + Mathf.Clamp(dy, -0.7f * dt, 0.7f * dt);
+        float yaw = a.Yaw + Mathf.Clamp(dy, -NpcTurnRate * dt, NpcTurnRate * dt);
         a.Yaw = yaw;
         float pace = PaceFor(a.Spec, dist);
         // Hold the universal separation (owner, 2026-11-15):
@@ -139,10 +146,11 @@ public partial class Titans
         // When the way to the station is blocked, sidestep
         // around the rider at the boundary instead of halting
         // nose-first: the station may lie straight past him.
+        const float SidestepAngle = 1.35f; // yaw offset tried on each side when the way ahead is blocked
         if (RiderAhead(w, yaw))
         {
-            if (!RiderAhead(w, yaw + 1.35f)) { yaw += 1.35f; a.Yaw = yaw; }
-            else if (!RiderAhead(w, yaw - 1.35f)) { yaw -= 1.35f; a.Yaw = yaw; }
+            if (!RiderAhead(w, yaw + SidestepAngle)) { yaw += SidestepAngle; a.Yaw = yaw; }
+            else if (!RiderAhead(w, yaw - SidestepAngle)) { yaw -= SidestepAngle; a.Yaw = yaw; }
             else pace = 0f;
         }
         w.SetDrive(yaw, pace);
@@ -178,10 +186,10 @@ public partial class Titans
             }
             RiderWalker tgt = _teamOrder switch
             {
-                TeamOrder.Follow => NearestEnemyWalker(a.Walker.RootPos, 260f),
-                TeamOrder.AttackTarget => ActiveTargetWalker() ?? NearestEnemyWalker(a.Walker.RootPos, 450f),
-                TeamOrder.ProtectCompanion => NearestEnemyWalker(ProtectAnchor(), 170f),
-                _ => NearestEnemyWalker(a.Walker.RootPos, 450f)
+                TeamOrder.Follow => NearestEnemyWalker(a.Walker.RootPos, FollowEngageRange),
+                TeamOrder.AttackTarget => ActiveTargetWalker() ?? NearestEnemyWalker(a.Walker.RootPos, AttackEngageRange),
+                TeamOrder.ProtectCompanion => NearestEnemyWalker(ProtectAnchor(), ProtectEngageRange),
+                _ => NearestEnemyWalker(a.Walker.RootPos, AttackEngageRange)
             };
             if (tgt != null)
             {
@@ -192,7 +200,7 @@ public partial class Titans
                 if (a.Cd <= 0f && EnsureBallistic(a))
                     UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                         a.Role, TagOf(tgt), tgt, VelOf(tgt),
-                        () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _allyShots++; });
+                        () => { a.Cd = a.DefBallistic?.Cooldown ?? NpcFallbackCooldown; _allyShots++; });
             }
             else
             {
@@ -243,7 +251,7 @@ public partial class Titans
             if (a.Cd <= 0f && EnsureBallistic(a))
                 UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                     a.Role, TagOf(tgt), tgt, VelOf(tgt),
-                    () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _allyShots++; });
+                    () => { a.Cd = a.DefBallistic?.Cooldown ?? NpcFallbackCooldown; _allyShots++; });
         }
     }
 
@@ -271,7 +279,7 @@ public partial class Titans
             if (a.Cd <= 0f && EnsureBallistic(a))
                 UpdateFoeGunnery(a.Walker, a.Parts, a.DefBallistic, a.BallisticSlot,
                     a.Role, TagOf(tgt), tgt, VelOf(tgt),
-                    () => { a.Cd = a.DefBallistic?.Cooldown ?? 2.4f; _bracketShots++; });
+                    () => { a.Cd = a.DefBallistic?.Cooldown ?? NpcFallbackCooldown; _bracketShots++; });
         }
     }
 }

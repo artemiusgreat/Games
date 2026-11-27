@@ -327,21 +327,24 @@ public partial class Main : Node3D
 			foreach (var sc in secs)
 			{
 				float d = Mathf.Abs(Mathf.Wrap(th - sc.Ang, -Mathf.Pi, Mathf.Pi));
-				if (d < sc.Half + 0.65f)
-					scale = Mathf.Min(scale, Mathf.SmoothStep(sc.Half, sc.Half + 0.65f, d));
+				const float SectorBlend = 0.65f; // rad of outline blend into a connection sector
+				if (d < sc.Half + SectorBlend)
+					scale = Mathf.Min(scale, Mathf.SmoothStep(sc.Half, sc.Half + SectorBlend, d));
 			}
 			lobe = 1f + (lobe - 1f) * scale;
 		}
 		return rd * lobe;
 	}
 
+	private const float BlobEdgeSlack = 0.15f; // outline tolerance shared by both BlobContains tests
+
 	public static bool BlobContains(BlobDeck b, float x, float z)
 	{
 		float dx = x - b.Cx, dz = z - b.Cz;
 		float dist = Mathf.Sqrt(dx * dx + dz * dz);
-		if (dist > b.RMax + 0.15f) return false;
+		if (dist > b.RMax + BlobEdgeSlack) return false;
 		float th = Mathf.Atan2(dz, dx);
-		return dist <= BlobRadius(b.Hx, b.Hz, th, b.Seed, b.Sectors) + 0.15f;
+		return dist <= BlobRadius(b.Hx, b.Hz, th, b.Seed, b.Sectors) + BlobEdgeSlack;
 	}
 
 	// Axis-aligned walls with a top (terrace platform sides,
@@ -422,7 +425,8 @@ public partial class Main : Node3D
 		foreach (var r in Ramps)
 		{
 			float h = RampHeightAt(r, x, z, out bool inside);
-			if (inside && h - 3.3f > aboveY && h - 3.3f < c) c = h - 3.3f;
+			const float RampUndersideDrop = 3.3f; // the wedge box is 3.5 thick; its underside runs ~3.3 below the walking line
+			if (inside && h - RampUndersideDrop > aboveY && h - RampUndersideDrop < c) c = h - RampUndersideDrop;
 		}
 		return c;
 	}
@@ -455,13 +459,15 @@ public partial class Main : Node3D
 		return Mathf.Min(Mathf.Abs(z - 6f), Mathf.Abs(x + 14f));
 	}
 
+	private const float NoStreetDistance = 1e6f; // DistrictStreetDistance's "no street here" sentinel
+
 	// Street grid of the city district (kit contracts): lanes
 	// run between the building plots. Distance to the nearest
 	// lane centerline; a large number outside the district or
 	// off a kit contract.
 	public static float DistrictStreetDistance(float x, float z)
 	{
-		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return 1e6f;
+		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return NoStreetDistance;
 		float p = CityGrid.Pitch;
 		// Terraced city: the street lattice repeats per
 		// valley - except the home valley (owner, 2026-11-11
@@ -472,7 +478,7 @@ public partial class Main : Node3D
 		// rectangles of snow between asphalt grid lines.
 		if (WorldConfig.TerracedCity)
 		{
-			float best = 1e6f;
+			float best = NoStreetDistance;
 			float extV = CityGrid.Radius + p;
 			for (int pi = 0; pi < SpawnPads.Length; pi++)
 			{
@@ -488,12 +494,33 @@ public partial class Main : Node3D
 			return best;
 		}
 		float ext = CityGrid.Radius + p;
-		if (x * x + z * z > ext * ext) return 1e6f;
+		if (x * x + z * z > ext * ext) return NoStreetDistance;
 		float yx = x / p - 0.5f, yz = z / p - 0.5f;
 		float dx = Mathf.Abs(yx - Mathf.Round(yx)) * p;
 		float dz = Mathf.Abs(yz - Mathf.Round(yz)) * p;
 		return Mathf.Min(dx, dz);
 	}
+
+	// The terrain palette (owner: look-and-feel values live in
+	// named fields, not inline at the lerp sites).
+	private static readonly Color DesertGroundLow = new(0.70f, 0.565f, 0.335f);
+	private static readonly Color DesertGroundHigh = new(0.79f, 0.66f, 0.42f);
+	private static readonly Color CityGroundLow = new(0.345f, 0.35f, 0.36f);
+	private static readonly Color CityGroundHigh = new(0.41f, 0.405f, 0.395f);
+	private static readonly Color ForestGroundLow = new(0.185f, 0.36f, 0.145f);
+	private static readonly Color ForestGroundHigh = new(0.36f, 0.485f, 0.21f);
+	private static readonly Color DryPatchColor = new(0.44f, 0.43f, 0.235f);
+	private static readonly Color DesertDirtColor = new(0.60f, 0.46f, 0.29f);
+	private static readonly Color CityDirtColor = new(0.42f, 0.385f, 0.335f); // rubble
+	private static readonly Color ForestDirtColor = new(0.40f, 0.315f, 0.205f);
+	private static readonly Color RockBaseColor = new(0.395f, 0.395f, 0.415f);
+	private static readonly Color DesertPeakColor = new(0.84f, 0.75f, 0.57f);
+	private static readonly Color PeakColor = new(0.72f, 0.71f, 0.685f);
+	private static readonly Color DesertAsphaltColor = new(0.50f, 0.40f, 0.27f); // packed earth
+	private static readonly Color CityAsphaltColor = new(0.235f, 0.235f, 0.25f);
+	private static readonly Color ForestAsphaltColor = new(0.16f, 0.16f, 0.175f);
+	private static readonly Color DesertRoadEdgeColor = new(0.72f, 0.62f, 0.45f); // worn edge line
+	private static readonly Color RoadEdgeColor = new(0.5f, 0.48f, 0.4f);
 
 	// Ground color without any texture image: grass tones varied by two
 	// noise fields (patchiness + fine breakup), dirt on mid slopes, rock
@@ -514,36 +541,37 @@ public partial class Main : Node3D
 		bool desert = WorldConfig.Biome == WorldConfig.BiomeKind.Desert;
 		bool city = WorldConfig.Biome == WorldConfig.BiomeKind.City;
 		var col = desert
-			? new Color(0.70f, 0.565f, 0.335f).Lerp(new Color(0.79f, 0.66f, 0.42f), patch)
+			? DesertGroundLow.Lerp(DesertGroundHigh, patch)
 			: city
-				? new Color(0.345f, 0.35f, 0.36f).Lerp(new Color(0.41f, 0.405f, 0.395f), patch)
-				: new Color(0.185f, 0.36f, 0.145f).Lerp(new Color(0.36f, 0.485f, 0.21f), patch);
+				? CityGroundLow.Lerp(CityGroundHigh, patch)
+				: ForestGroundLow.Lerp(ForestGroundHigh, patch);
 		if (!desert && !city)
-			col = col.Lerp(new Color(0.44f, 0.43f, 0.235f), Mathf.Clamp((patch - 0.60f) * 1.5f, 0f, 0.5f)); // dry patches
+			col = col.Lerp(DryPatchColor, Mathf.Clamp((patch - 0.60f) * 1.5f, 0f, 0.5f)); // dry patches
 		float l = 0.88f + 0.24f * grain;
 		col = new Color(col.R * l, col.G * l, col.B * l);
 		float dirtW = Smooth(0.045f, 0.12f, slope + (grain - 0.5f) * 0.05f);
-		var dirtC = desert ? new Color(0.60f, 0.46f, 0.29f)
-			: city ? new Color(0.42f, 0.385f, 0.335f) // rubble
-			: new Color(0.40f, 0.315f, 0.205f);
+		var dirtC = desert ? DesertDirtColor
+			: city ? CityDirtColor
+			: ForestDirtColor;
 		col = col.Lerp(dirtC, dirtW * 0.8f);
 		float rockW = Smooth(0.13f, 0.28f, slope + (grain - 0.5f) * 0.06f);
-		var rock = new Color(0.395f, 0.395f, 0.415f);
+		var rock = RockBaseColor;
 		float rl = 0.82f + 0.36f * grain;
 		col = col.Lerp(new Color(rock.R * rl, rock.G * rl, rock.B * rl), rockW);
 		float peakW = Smooth(13.5f, 19f, h + (grain - 0.5f) * 3f);
-		col = col.Lerp(desert ? new Color(0.84f, 0.75f, 0.57f) : new Color(0.72f, 0.71f, 0.685f), peakW * 0.85f);
+		col = col.Lerp(desert ? DesertPeakColor : PeakColor, peakW * 0.85f);
 		// Asphalt on the roads, blended over a soft shoulder.
 		float roadD = RoadDistance(x, z);
 		if (roadD < 3.1f)
 		{
 			float rw = 1f - Smooth(2.25f, 3.1f, roadD);
 			float al = 0.85f + 0.3f * grain;
-			var asphalt = desert ? new Color(0.50f * al, 0.40f * al, 0.27f * al) // packed earth
-				: city ? new Color(0.235f * al, 0.235f * al, 0.25f * al)
-				: new Color(0.16f * al, 0.16f * al, 0.175f * al);
+			var asphaltBase = desert ? DesertAsphaltColor
+				: city ? CityAsphaltColor
+				: ForestAsphaltColor;
+			var asphalt = new Color(asphaltBase.R * al, asphaltBase.G * al, asphaltBase.B * al);
 			if (roadD > 1.85f && roadD < 2.25f)
-				asphalt = asphalt.Lerp(desert ? new Color(0.72f, 0.62f, 0.45f) : new Color(0.5f, 0.48f, 0.4f), 0.35f); // worn edge line
+				asphalt = asphalt.Lerp(desert ? DesertRoadEdgeColor : RoadEdgeColor, 0.35f); // worn edge line
 			col = col.Lerp(asphalt, rw * 0.94f);
 		}
 		// No district street darkening (owner, 2026-11-11

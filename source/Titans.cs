@@ -33,11 +33,29 @@ public partial class Titans : Node3D
     // chassis speed toward its target instead of creeping at the
     // tactical cap - a 1000u approach at 2.2 u/s would take 8 minutes.
     private float PaceFor(RiderSpec spec, float distToTarget) =>
-        WorldConfig.IsMission && distToTarget > 130f ? spec.MaxSpeed
+        WorldConfig.IsMission && distToTarget > MarchRange ? spec.MaxSpeed
         : Mathf.Min(spec.MaxSpeed, EnemyMaxSpeed);
+    private const float MarchRange = 130f; // mission approach distance past which the AI marches at full chassis speed (see PaceFor)
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 1.35f; // A/D leg turn, rad/s (owner, 2026-11-11: 'keys A and D should rotate rider faster' - was 0.85)
     private static float WorldBound => WorldConfig.WorldBound; // arena 115 (260 world); Mission front 915 (1900 world)
+
+    // Scene look (owner: look-and-feel values live in named
+    // fields): the duel's sun, lab fill, hero fill, sky and
+    // fog colours and the HUD bar glass, defined once here
+    // and consumed by the _Ready scene build.
+    private static readonly Color SunColor = new(1f, 0.955f, 0.885f);
+    private static readonly Color LabFillColor = new(0.9f, 0.95f, 1f);
+    private static readonly Color HeroFillColor = new(0.85f, 0.92f, 1f);
+    private static readonly Color DuelSkyTopColor = new(0.20f, 0.40f, 0.71f);
+    private static readonly Color DuelSkyHorizonColor = new(0.63f, 0.73f, 0.84f);
+    private static readonly Color DuelGroundBottomColor = new(0.16f, 0.145f, 0.12f);
+    private static readonly Color DuelGroundHorizonColor = new(0.56f, 0.56f, 0.52f);
+    private static readonly Color FogDesertColor = new(0.82f, 0.72f, 0.56f);
+    private static readonly Color FogCityColor = new(0.45f, 0.54f, 0.62f);
+    private static readonly Color FogForestColor = new(0.63f, 0.73f, 0.84f); // matches the sky horizon by design
+    private static readonly Color BarTrackColor = new(0.03f, 0.05f, 0.08f, 0.9f);
+    private static readonly Color BarBorderColor = new(0.4f, 0.6f, 0.7f, 0.35f);
 
     private RiderWalker _player;
     private RiderWalker _enemy;
@@ -341,6 +359,12 @@ public partial class Titans : Node3D
     private DenyKind _lastDenied = DenyKind.None;
     private int _rocketsLaunched, _beamsSpawned;
 
+    // Velocity estimation for aim lead (owner): each rider's
+    // per-frame velocity is capped so teleports do not read
+    // as motion, then blended toward the new sample.
+    private const float VelEstimateCap = 8f;
+    private const float VelEstimateBlend = 0.5f;
+
     private bool _built; // staged build finished (loading fix, owner 2026-11-14)
     private CanvasLayer _buildCover;
 
@@ -505,14 +529,14 @@ public partial class Titans : Node3D
             // lights and ambient, not on leaked sunlight.
             ShadowOpacity = 0.55f,
             LightEnergy = 1.45f,
-            LightColor = new Color(1f, 0.955f, 0.885f)
+            LightColor = SunColor
         };
         sun.DirectionalShadowMaxDistance = 320f;
         AddChild(sun);
         _labLight = new DirectionalLight3D
         {
             LightEnergy = 0.85f,
-            LightColor = new Color(0.9f, 0.95f, 1f),
+            LightColor = LabFillColor,
             ShadowEnabled = false,
             Visible = false
         };
@@ -524,19 +548,19 @@ public partial class Titans : Node3D
             // side anywhere. 0.30 keeps him readable in shade
             // while his shadow side can actually go dark.
             LightEnergy = 0.30f,
-            LightColor = new Color(0.85f, 0.92f, 1f),
+            LightColor = HeroFillColor,
             OmniRange = 24f,
             ShadowEnabled = false
         };
         AddChild(_heroLight);
         var skyMat = new ProceduralSkyMaterial
         {
-            SkyTopColor = new Color(0.20f, 0.40f, 0.71f),
-            SkyHorizonColor = new Color(0.63f, 0.73f, 0.84f),
+            SkyTopColor = DuelSkyTopColor,
+            SkyHorizonColor = DuelSkyHorizonColor,
             SkyCurve = 0.09f,
             SkyEnergyMultiplier = 1.0f,
-            GroundBottomColor = new Color(0.16f, 0.145f, 0.12f),
-            GroundHorizonColor = new Color(0.56f, 0.56f, 0.52f),
+            GroundBottomColor = DuelGroundBottomColor,
+            GroundHorizonColor = DuelGroundHorizonColor,
             GroundCurve = 0.08f
         };
         var duelEnv = new Environment
@@ -554,9 +578,9 @@ public partial class Titans : Node3D
                 FogEnabled = true,
                 FogLightColor = WorldConfig.Biome switch
                 {
-                    WorldConfig.BiomeKind.Desert => new Color(0.82f, 0.72f, 0.56f),
-                    WorldConfig.BiomeKind.City => new Color(0.45f, 0.54f, 0.62f),
-                    _ => new Color(0.63f, 0.73f, 0.84f)
+                    WorldConfig.BiomeKind.Desert => FogDesertColor,
+                    WorldConfig.BiomeKind.City => FogCityColor,
+                    _ => FogForestColor
                 },
                 FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0011f,
                 FogSunScatter = 0.25f
@@ -681,7 +705,7 @@ public partial class Titans : Node3D
         _partsPlayer.OnBreak = (id, c) => OnPartBroken(_partsPlayer, id, c);
         _partsEnemy.OnBreak = (id, c) => OnPartBroken(_partsEnemy, id, c);
 
-        _cam = new Camera3D { Fov = 70f };
+        _cam = new Camera3D { Fov = BaseFov };
         AddChild(_cam);
         _cam.GlobalPosition = new Vector3(-14f, 9f, 44f);
         _cam.LookAt(new Vector3(0f, 6f, 18f), Vector3.Up);
@@ -728,13 +752,13 @@ public partial class Titans : Node3D
         if (_terrainTest) TerrainSelfCheck();
         if (_weaponsTest)
         {
-            WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+            WSetup(TestMarkPlayer, TestMarkEnemy);
             ApplyRangeFit();
             SetWPhase(0);
         }
         if (_breakTest)
         {
-            BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+            BSetup(TestMarkPlayer, TestMarkEnemy);
             ApplyRangeFit();
             SetBPhase(0);
         }
@@ -847,7 +871,7 @@ public partial class Titans : Node3D
         // Pill bars in the owner's example style (2026-11-22):
         // full-height rounding on a dark glass track.
         int pill = Mathf.Max(2, Mathf.CeilToInt(minSize.Y / 2f));
-        var bg = new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.08f, 0.9f), BorderColor = new Color(0.4f, 0.6f, 0.7f, 0.35f) };
+        var bg = new StyleBoxFlat { BgColor = BarTrackColor, BorderColor = BarBorderColor };
         bg.SetBorderWidthAll(1);
         bg.SetCornerRadiusAll(pill);
         var fg = new StyleBoxFlat { BgColor = fill };
@@ -1253,8 +1277,8 @@ public partial class Titans : Node3D
             if (dt > 0f)
             {
                 var v = (_player.RootPos - _prevPlayerRoot) / dt;
-                if (v.Length() > 8f) v = v.Normalized() * 8f; // teleports are not velocity
-                _playerVel = _playerVel.Lerp(v, 0.5f);
+                if (v.Length() > VelEstimateCap) v = v.Normalized() * VelEstimateCap; // teleports are not velocity
+                _playerVel = _playerVel.Lerp(v, VelEstimateBlend);
                 _prevPlayerRoot = _player.RootPos;
             }
             if (dt > 0f)
@@ -1262,23 +1286,23 @@ public partial class Titans : Node3D
                 if (TickReady(_enemy))
                 {
                     var ev = (_enemy.RootPos - _prevEnemyRoot) / TickDt(_enemy, dt);
-                    if (ev.Length() > 8f) ev = ev.Normalized() * 8f;
-                    _enemyVel = _enemyVel.Lerp(ev, 0.5f);
+                    if (ev.Length() > VelEstimateCap) ev = ev.Normalized() * VelEstimateCap;
+                    _enemyVel = _enemyVel.Lerp(ev, VelEstimateBlend);
                     _prevEnemyRoot = _enemy.RootPos;
                 }
                 if (_foe != null && TickReady(_foe.Walker))
                 {
                     var fv = (_foe.Walker.RootPos - _foe.PrevRoot) / TickDt(_foe.Walker, dt);
-                    if (fv.Length() > 8f) fv = fv.Normalized() * 8f;
-                    _foe.Vel = _foe.Vel.Lerp(fv, 0.5f);
+                    if (fv.Length() > VelEstimateCap) fv = fv.Normalized() * VelEstimateCap;
+                    _foe.Vel = _foe.Vel.Lerp(fv, VelEstimateBlend);
                     _foe.PrevRoot = _foe.Walker.RootPos;
                 }
                 foreach (var a in _allies)
                 {
                     if (!TickReady(a.Walker)) continue;
                     var av = (a.Walker.RootPos - a.PrevRoot) / TickDt(a.Walker, dt);
-                    if (av.Length() > 8f) av = av.Normalized() * 8f;
-                    a.Vel = a.Vel.Lerp(av, 0.5f);
+                    if (av.Length() > VelEstimateCap) av = av.Normalized() * VelEstimateCap;
+                    a.Vel = a.Vel.Lerp(av, VelEstimateBlend);
                     a.PrevRoot = a.Walker.RootPos;
                 }
             }

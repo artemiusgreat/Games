@@ -64,6 +64,18 @@ public partial class RiderWalker : Node3D
     }
 
     private const float StandReachFactor = 0.90f;
+    private const float AirborneSoleDrop = 10.5f; // SoleLevel: the soles hang this far under the root when no foot is planted
+    private const float GroundStepTolerance = 1.5f; // GroundHere: sole level plus this is the roof-adoption reference
+    // Thruster tuning (owner, see the SetThrust comment):
+    // burn time, recharge time, climb acceleration and cap,
+    // fall gravity and terminal velocity - exact values.
+    private const float ThrustBurnSeconds = 2.2f;
+    private const float ThrustRechargeSeconds = 5f;
+    private const float ThrustAccel = 34f;
+    private const float ThrustClimbSpeed = 10.5f;
+    private const float FallGravity = 24f;
+    private const float FallTerminalSpeed = -18f;
+    private const float JoltAngleScale = 0.055f; // impact jolt: push strength to rock angle
     // Torso twist was clamped to ±135° (a 270° arc) until 2026-10-29,
     // when the owner removed the clamp: the torso rotates the full
     // 360°, including fully backward. The setter below no longer
@@ -175,8 +187,8 @@ public partial class RiderWalker : Node3D
             float s = float.MinValue;
             if (_legL.Planted) s = Mathf.Max(s, _legL.SoleTarget.Y);
             if (_legR.Planted) s = Mathf.Max(s, _legR.SoleTarget.Y);
-            if (s == float.MinValue) s = _rootPos.Y - 10.5f;
-            if (_jumpH > 0.05f) s = Mathf.Max(s, _rootPos.Y - 10.5f);
+            if (s == float.MinValue) s = _rootPos.Y - AirborneSoleDrop;
+            if (_jumpH > 0.05f) s = Mathf.Max(s, _rootPos.Y - AirborneSoleDrop);
             return s;
         }
     }
@@ -184,8 +196,8 @@ public partial class RiderWalker : Node3D
     // Foot ground: terrain, or a building roof the soles are
     // already level with (standing on it, falling onto it).
     private float GroundHere(float x, float z) => Airborne
-        ? Main.GroundAt(x, z, SoleLevel + 1.5f, _rootPos.Y, 4.0f)
-        : Main.GroundAt(x, z, SoleLevel + 1.5f);
+        ? Main.GroundAt(x, z, SoleLevel + GroundStepTolerance, _rootPos.Y, 4.0f)
+        : Main.GroundAt(x, z, SoleLevel + GroundStepTolerance);
     public float LegsYaw => _legsYaw;
     public float CollisionRadius => _cfg.CollisionRadius;
     public float Height => _cfg.TargetHeight;
@@ -566,9 +578,10 @@ public partial class RiderWalker : Node3D
         if (Halted) { SolveAll(); return; }
         if (_fallT >= 0f)
         {
+            const float FallSeconds = 0.5f; // the tip-over takes half a second
             _fallT += (float)delta;
             float t = _fallT;
-            if (t < 0.5f) { float u = t / 0.5f; _fallAmt = u * u; }
+            if (t < FallSeconds) { float u = t / FallSeconds; _fallAmt = u * u; }
             else _fallAmt = 1f; // down for good - no rise, ever
         }
         _acc += Mathf.Min(delta, 0.1);
@@ -764,12 +777,12 @@ public partial class RiderWalker : Node3D
         else if (!Thrusting && _jumpH <= 0f) _freezeLegs = false;
         if (Thrusting)
         {
-            JumpCharge = Mathf.Max(0f, JumpCharge - h / 2.2f);
-            _jumpVel = Mathf.Min(_jumpVel + 34f * h, 10.5f);
+            JumpCharge = Mathf.Max(0f, JumpCharge - h / ThrustBurnSeconds);
+            _jumpVel = Mathf.Min(_jumpVel + ThrustAccel * h, ThrustClimbSpeed);
         }
         else if (_jumpH > 0f)
         {
-            _jumpVel = Mathf.Max(_jumpVel - 24f * h, -18f);
+            _jumpVel = Mathf.Max(_jumpVel - FallGravity * h, FallTerminalSpeed);
         }
         else _jumpVel = 0f;
         if (_jumpH > 0f || _jumpVel > 0f)
@@ -804,7 +817,7 @@ public partial class RiderWalker : Node3D
             }
         }
         if (!_thrustHeld && JumpCharge < 1f)
-            JumpCharge = Mathf.Min(1f, JumpCharge + h / 5f); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released - ground or air (owner round 22) - and a held key on empty tanks stays dead instead of sputtering
+            JumpCharge = Mathf.Min(1f, JumpCharge + h / ThrustRechargeSeconds); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released - ground or air (owner round 22) - and a held key on empty tanks stays dead instead of sputtering
         _yawRate = Mathf.Abs(WrapAngle(_legsYaw - _prevYaw)) / h;
         _prevYaw = _legsYaw;
 
@@ -984,8 +997,9 @@ public partial class RiderWalker : Node3D
         float dhFwd = (Main.HeightAt(_rootPos.X + fwd.X * ge, _rootPos.Z + fwd.Z * ge)
                      - Main.HeightAt(_rootPos.X - fwd.X * ge, _rootPos.Z - fwd.Z * ge)) / (2f * ge);
         var upT = (Vector3.Up - right * dhLat - fwd * dhFwd).Normalized();
+        const float MaxTilt = 0.23f; // rad: the root's terrain tilt is capped here
         float tilt = Mathf.Acos(Mathf.Clamp(upT.Dot(Vector3.Up), -1f, 1f));
-        if (tilt > 0.23f) upT = Vector3.Up.Lerp(upT, 0.23f / tilt).Normalized();
+        if (tilt > MaxTilt) upT = Vector3.Up.Lerp(upT, MaxTilt / tilt).Normalized();
         // Limp: permanent lean toward a dead leg, on top of terrain tilt.
         // upT - right*sin leans the body's top toward its anatomical left.
         if (LimpRoll != 0f)
@@ -1195,8 +1209,8 @@ public partial class RiderWalker : Node3D
         if (worldPushDir.LengthSquared() < 0.01f || strength <= 0f) return;
         var fwd = HeadingVec(_legsYaw);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
-        _joltPitch = -worldPushDir.Dot(fwd) * strength * 0.055f;
-        _joltRoll = worldPushDir.Dot(right) * strength * 0.055f;
+        _joltPitch = -worldPushDir.Dot(fwd) * strength * JoltAngleScale;
+        _joltRoll = worldPushDir.Dot(right) * strength * JoltAngleScale;
         _joltEnv = 1f;
     }
 

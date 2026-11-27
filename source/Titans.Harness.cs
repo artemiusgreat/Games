@@ -15,6 +15,21 @@ public partial class Titans
     private const float StagingDriveSpeed = 3f;
     private const float LimpMeasureSeconds = 3f;
 
+    // The calibrated duel marks the precision suites stage
+    // on: the player at (0, 18) facing the enemy at (0, -12).
+    private static Vector3 TestMarkPlayer => new(0f, Main.HeightAt(0f, 18f), 18f);
+    private static Vector3 TestMarkEnemy => new(0f, Main.HeightAt(0f, -12f), -12f);
+
+    // The flats trio several camera probes stage identically:
+    // player (0, 85), enemy (0, -100), foe (60, -100), all
+    // facing yaw 0 on the arena flats.
+    private void StageFlatsTrio()
+    {
+        _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
+        _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+        _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+    }
+
     // ---------- stand separation test (--stand-test) ----------
     // The owner's leak (2026-11-15): cycle riders in the open
     // lab (each cycle re-enters OpenLab), then deploy and
@@ -360,8 +375,8 @@ public partial class Titans
                 if (_aimStep == 0 && _phaseT > 0.15f)
                 {
                     ResetDuel();
-                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), 0f);
-                    _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -12f), -12f), Mathf.Pi);
+                    _player.Teleport(TestMarkPlayer, 0f);
+                    _enemy.Teleport(TestMarkEnemy, Mathf.Pi);
                     _playerYaw = 0f; _enemyYaw = Mathf.Pi;
                     _playerVel = Vector3.Zero;
                     _prevPlayerRoot = _player.RootPos;
@@ -1569,9 +1584,7 @@ public partial class Titans
             _boomStage = 0;
             _boomT = 0f;
             _boomPitch = -1.35f;
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
-            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            StageFlatsTrio();
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _hpPlayer = 100000f;
@@ -1627,9 +1640,7 @@ public partial class Titans
         {
             _flipStage = 0;
             _flipT = 0f;
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
-            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            StageFlatsTrio();
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _player.AimPitchWide = 0f;
@@ -1683,9 +1694,7 @@ public partial class Titans
         {
             _lagStage = 0;
             _lagT = 0f;
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
-            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+            StageFlatsTrio();
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _player.TorsoPitch = 0f;
@@ -2674,7 +2683,7 @@ public partial class Titans
                     _enemyMayFire = false;
                     _player.TorsoTwist = 0f;
                     ResetDuel();
-                    WSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    WSetup(TestMarkPlayer, TestMarkEnemy);
                     SetWPhase(6);
                 }
                 if (_wPhaseT > 35) WFail($"hector return fire timeout shots={_enemyShots}");
@@ -3182,7 +3191,7 @@ public partial class Titans
                         GD.Print($"BRKTEST GUNPASS PASS hector waist gun silent for 5.5s after its loss (shots flat at {_enemyShots})");
                         _enemyMayFire = false;
                         ResetDuel();
-                        BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                        BSetup(TestMarkPlayer, TestMarkEnemy);
                         SetBPhase(4);
                     }
                 }
@@ -3341,7 +3350,7 @@ public partial class Titans
                 else if (_bStep == 2 && _pendingPath == null && !_capturing)
                 {
                     ResetDuel();
-                    BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    BSetup(TestMarkPlayer, TestMarkEnemy);
                     SetBPhase(7);
                 }
                 break;
@@ -3420,7 +3429,7 @@ public partial class Titans
                         if (_bDragMax > 1f) BFail($"reticle wandered {_bDragMax:F1}px with the head gone (owner: no sway)");
                         GD.Print($"BRKTEST HEADSTILL PASS player head lost -> reticle stays centred (max dev {_bDragMax:F2}px)");
                         ResetDuel();
-                        BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                        BSetup(TestMarkPlayer, TestMarkEnemy);
                         SetBPhase(8);
                     }
                 }
@@ -3464,7 +3473,7 @@ public partial class Titans
                 if (_bStep == 0)
                 {
                     ResetDuel();
-                    BSetup(new Vector3(0f, Main.HeightAt(0f, 18f), 18f), new Vector3(0f, Main.HeightAt(0f, -12f), -12f));
+                    BSetup(TestMarkPlayer, TestMarkEnemy);
                     // 36t of autocannon impacts - far past every retired
                     // knockdown threshold. Legs intact.
                     CraftHit(_enemy, PartId.Torso, 12f, WeaponCatalog.Autocannon.Weight);

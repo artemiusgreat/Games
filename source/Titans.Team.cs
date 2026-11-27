@@ -55,6 +55,11 @@ public partial class Titans
         public float PatrolT;
     }
 
+    // Muster-ring staging (owner): teammates and guards ring
+    // their pad/home at this radius, stepped by this angle.
+    private const float MusterRingRadius = 13f;
+    private const float MusterRingStep = 2.1f;
+
     private readonly List<Ally> _allies = new();
     private int _leaderSlot = -1; // roster slot the player drives
     private bool _missionDone;    // complete or failed, announced once
@@ -282,8 +287,8 @@ public partial class Titans
         {
             if (slot == _leaderSlot) continue;
             var member = TeamRoster.Story[slot];
-            float ang = (k + 1) * 2.1f;
-            var pos = PadPos(pad) + new Vector3(Mathf.Sin(ang) * 13f, 0f, Mathf.Cos(ang) * 13f);
+            float ang = (k + 1) * MusterRingStep;
+            var pos = PadPos(pad) + new Vector3(Mathf.Sin(ang) * MusterRingRadius, 0f, Mathf.Cos(ang) * MusterRingRadius);
             pos.Y = Main.HeightAt(pos.X, pos.Z);
             var a = MakeAlly(member, RoleForSlot(slot), slot, 0, pos, SpawnYaw(pad), $"Ally{slot}");
             _allies.Add(a);
@@ -344,7 +349,7 @@ public partial class Titans
             {
                 var spec = RiderSpecs.All[(seed + k * 5 + 1) % RiderSpecs.All.Length];
                 float ang = k * 2.4f + seed;
-                var pos = home + new Vector3(Mathf.Sin(ang) * 13f, 0f, Mathf.Cos(ang) * 13f);
+                var pos = home + new Vector3(Mathf.Sin(ang) * MusterRingRadius, 0f, Mathf.Cos(ang) * MusterRingRadius);
                 pos.Y = Main.HeightAt(pos.X, pos.Z);
                 float yaw = Mathf.Atan2(centre.X - pos.X, centre.Y - pos.Z);
                 var a = MakeAlly(TeamRoster.Make(spec), $"{Roles.AllyPrefix}G{n}", 100 + n, 1, pos, yaw, $"Guard{n}");
@@ -393,7 +398,7 @@ public partial class Titans
                 int k = perTeam.TryGetValue(t, out var c) ? c : 0;
                 perTeam[t] = k + 1;
                 var anchor = TeamAnchor(t);
-                float ang = k * 2.1f + 0.8f;
+                float ang = k * MusterRingStep + 0.8f;
                 var pos = anchor + new Vector3(Mathf.Sin(ang) * 12f, 0f, Mathf.Cos(ang) * 12f);
                 pos.Y = Main.HeightAt(pos.X, pos.Z);
                 float yaw = AnchorYaw(anchor);
