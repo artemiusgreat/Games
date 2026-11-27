@@ -261,12 +261,13 @@ public partial class Titans
         if (_standSkyTex != null) return _standSkyTex;
         const int H = 256;
         var img = Image.CreateEmpty(2, H, false, Image.Format.Rgb8);
+        var band = new Color(0.075f, 0.092f, 0.120f); // the horizon band, shared by both stops (symmetric by design)
         var stops = new (float At, Color C)[]
         {
             (0.00f, new Color(0.030f, 0.038f, 0.052f)),
-            (0.38f, new Color(0.075f, 0.092f, 0.120f)),
+            (0.38f, band),
             (0.50f, new Color(0.135f, 0.160f, 0.200f)),
-            (0.62f, new Color(0.075f, 0.092f, 0.120f)),
+            (0.62f, band),
             (1.00f, new Color(0.035f, 0.045f, 0.062f))
         };
         for (int y = 0; y < H; y++)
