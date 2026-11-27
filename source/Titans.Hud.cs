@@ -21,7 +21,7 @@ public partial class Titans
         l.AddThemeColorOverride("font_color", col);
         // Dashboard text carries a hard shadow (owner: HUD text
         // washed out against bright ground without one).
-        l.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
+        l.AddThemeColorOverride("font_shadow_color", LabelShadowColor);
         l.AddThemeConstantOverride("shadow_offset_x", 1);
         l.AddThemeConstantOverride("shadow_offset_y", 1);
         return l;
@@ -50,9 +50,9 @@ public partial class Titans
             p.SetAnchorsPreset(preset);
             var sb = new StyleBoxFlat
             {
-                BgColor = new Color(0, 0, 0, 0),
-                ContentMarginLeft = 16, ContentMarginRight = 16,
-                ContentMarginTop = 12, ContentMarginBottom = 12,
+                BgColor = PanelFillTransparent,
+                ContentMarginLeft = PanelContentMarginX, ContentMarginRight = PanelContentMarginX,
+                ContentMarginTop = PanelContentMarginY, ContentMarginBottom = PanelContentMarginY,
             };
             p.AddThemeStyleboxOverride("panel", sb);
             layer.AddChild(p);
@@ -65,7 +65,7 @@ public partial class Titans
         // Team-command feed, top-left: rides under the weapons
         // block (owner, 2026-11-21 - restored for team orders
         // only; the 2026-11-20 event feed stays removed).
-        _feedLabel = MakeLabel(15, new Color(0.98f, 0.88f, 0.62f));
+        _feedLabel = MakeLabel(15, FeedTextColor);
         _feedLabel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         _feedLabel.OffsetLeft = 18; _feedLabel.OffsetTop = 14;
         _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
@@ -90,9 +90,9 @@ public partial class Titans
         _panelRadar.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         var rsb = new StyleBoxFlat
         {
-            BgColor = new Color(0, 0, 0, 0),
-            ContentMarginLeft = 16, ContentMarginRight = 16,
-            ContentMarginTop = 12, ContentMarginBottom = 12,
+            BgColor = PanelFillTransparent,
+            ContentMarginLeft = PanelContentMarginX, ContentMarginRight = PanelContentMarginX,
+            ContentMarginTop = PanelContentMarginY, ContentMarginBottom = PanelContentMarginY,
         };
         _panelRadar.AddThemeStyleboxOverride("panel", rsb);
         layer.AddChild(_panelRadar);
@@ -104,7 +104,7 @@ public partial class Titans
         {
             Player = _player,
             Enemy = _enemy,
-            CustomMinimumSize = new Vector2(300f, 300f),
+            CustomMinimumSize = new Vector2(DashboardWidth, DashboardWidth),
             Range = WorldConfig.IsMission ? 600f : 160f
         };
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -126,7 +126,7 @@ public partial class Titans
             var h = new HBoxContainer();
             h.AddThemeConstantOverride("separation", 8);
             h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(20, 20), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
-            var l = MakeLabel(15, new Color(0.90f, 0.96f, 1.0f));
+            var l = MakeLabel(15, HeaderTextColor);
             l.Text = t;
             l.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             h.AddChild(l);
@@ -140,19 +140,19 @@ public partial class Titans
             var m = new MarginContainer();
             m.AddThemeConstantOverride("margin_top", 5);
             m.AddThemeConstantOverride("margin_bottom", 5);
-            m.AddChild(new ColorRect { Color = new Color(accent, 0.35f), CustomMinimumSize = new Vector2(0, 1) });
+            m.AddChild(new ColorRect { Color = new Color(accent, DividerAccentAlpha), CustomMinimumSize = new Vector2(0, 1) });
             return m;
         }
 
         // -- Left: own rider integrity + per-part status grid.
-        var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) }; // the shared dashboard width (owner: all panels match the target block)
+        var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) }; // the shared dashboard width (owner: all panels match the target block)
         leftBox.AddThemeConstantOverride("separation", 4);
         _panelHealth.AddChild(leftBox);
         leftBox.AddChild(PanelHeader("STATUS", 2, HudCyan));
         leftBox.AddChild(PanelDivider(HudCyan));
-        _lblPlayerHp = MakeLabel(16, new Color(0.85f, 0.95f, 0.85f));
+        _lblPlayerHp = MakeLabel(16, HealthTextColor);
         leftBox.AddChild(_lblPlayerHp);
-        _barPlayer = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(300, 20));
+        _barPlayer = MakeBar(HealthFillColor, new Vector2(DashboardWidth, 20));
         leftBox.AddChild(_barPlayer);
         var grid = new GridContainer { Columns = 4 };
         grid.AddThemeConstantOverride("h_separation", 10);
@@ -166,10 +166,10 @@ public partial class Titans
         {
             var cell = new VBoxContainer();
             cell.AddThemeConstantOverride("separation", 1);
-            var lab = MakeLabel(10, new Color(0.75f, 0.8f, 0.85f));
+            var lab = MakeLabel(10, PartTextColor);
             lab.Text = name;
             cell.AddChild(lab);
-            var bar = MakeBar(new Color(0.45f, 0.75f, 0.5f), new Vector2(67, 8)); // 4 cells + gaps = the 300 dashboard width
+            var bar = MakeBar(PartFillColor, new Vector2(67, 8)); // 4 cells + gaps = the 300 dashboard width
             cell.AddChild(bar);
             grid.AddChild(cell);
             _partCells[id] = (lab, bar);
@@ -181,9 +181,9 @@ public partial class Titans
         {
             var tbox = new VBoxContainer();
             tbox.AddThemeConstantOverride("separation", 1);
-            var tlab = MakeLabel(13, new Color(0.85f, 0.95f, 0.85f));
+            var tlab = MakeLabel(13, HealthTextColor);
             tbox.AddChild(tlab);
-            var tbar = MakeBar(new Color(0.3f, 0.85f, 0.32f), new Vector2(300, 12));
+            var tbar = MakeBar(HealthFillColor, new Vector2(DashboardWidth, 12));
             tbox.AddChild(tbar);
             tbox.Visible = false;
             leftBox.AddChild(tbox);
@@ -194,7 +194,7 @@ public partial class Titans
         // -- Center: weapons. The selected row is marked with a pointer
         // and bright text (set in UpdateHud); the hint line teaches the
         // switching scheme in-game.
-        var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
+        var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) };
         midBox.AddThemeConstantOverride("separation", 4);
         _panelWeapons.AddChild(midBox);
         midBox.AddChild(PanelHeader("WEAPONS", 0, HudCyan));
@@ -203,13 +203,13 @@ public partial class Titans
         {
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
-            var lab = MakeLabel(14, new Color(0.9f, 0.9f, 0.9f, 0.9f));
+            var lab = MakeLabel(14, CdLabelNormal);
             lab.Text = name;
             lab.CustomMinimumSize = new Vector2(136, 0); // THRUST row: sized so its bar starts on the weapon bars' line (112 name + digit cell)
             lab.ClipText = true;
             lab.HorizontalAlignment = HorizontalAlignment.Right; // panel labels right-aligned (owner, 2026-11-22)
             row.AddChild(lab);
-            var bar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
+            var bar = MakeBar(CdNormal, new Vector2(100, 13));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             // Every bar stretches to the row's right edge (owner:
             // the bars' start and end X must match across rows -
@@ -239,7 +239,7 @@ public partial class Titans
         {
             var wrow = new HBoxContainer();
             wrow.AddThemeConstantOverride("separation", 6);
-            var gcell = MakeLabel(14, new Color(0.62f, 0.85f, 0.95f));
+            var gcell = MakeLabel(14, GroupTextColor);
             gcell.CustomMinimumSize = new Vector2(20, 0);
             gcell.HorizontalAlignment = HorizontalAlignment.Center;
             wrow.AddChild(gcell);
@@ -248,7 +248,7 @@ public partial class Titans
             wlab.ClipText = true;
             wlab.HorizontalAlignment = HorizontalAlignment.Right; // panel labels right-aligned (owner, 2026-11-22)
             wrow.AddChild(wlab);
-            var wbar = MakeBar(new Color(0.95f, 0.8f, 0.3f), new Vector2(100, 13));
+            var wbar = MakeBar(CdNormal, new Vector2(100, 13));
             wbar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             wbar.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             wrow.AddChild(wbar);
@@ -268,27 +268,27 @@ public partial class Titans
 
 
         // -- Right: target + own systems readouts.
-        var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
+        var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) };
         rightBox.AddThemeConstantOverride("separation", 4);
         _panelTarget.AddChild(rightBox);
         rightBox.AddChild(PanelHeader("TARGET", 3, HudRed));
         rightBox.AddChild(PanelDivider(HudRed));
-        _lblEnemyHp = MakeLabel(16, new Color(0.98f, 0.85f, 0.8f));
+        _lblEnemyHp = MakeLabel(16, EnemyTextColor);
         rightBox.AddChild(_lblEnemyHp);
-        _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(300, 20));
+        _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(DashboardWidth, 20));
         rightBox.AddChild(_barEnemy);
         // Second opponent (free-for-all): a compact readout under
         // the primary target's. Hidden when the foe is not fielded
         // (the precision test modes).
-        _lblFoeHp = MakeLabel(13, new Color(0.98f, 0.85f, 0.8f));
+        _lblFoeHp = MakeLabel(13, EnemyTextColor);
         rightBox.AddChild(_lblFoeHp);
-        _barFoe = MakeBar(new Color(0.88f, 0.45f, 0.24f), new Vector2(300, 12));
+        _barFoe = MakeBar(new Color(0.88f, 0.45f, 0.24f), new Vector2(DashboardWidth, 12));
         rightBox.AddChild(_barFoe);
-        _lblRange = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        _lblRange = MakeLabel(13, ReadoutTextColor);
         rightBox.AddChild(_lblRange);
-        _lblReticle = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        _lblReticle = MakeLabel(13, ReadoutTextColor);
         rightBox.AddChild(_lblReticle);
-        _lblSpeed = MakeLabel(13, new Color(0.85f, 0.88f, 0.9f));
+        _lblSpeed = MakeLabel(13, ReadoutTextColor);
         rightBox.AddChild(_lblSpeed);
         // No LEGS line in this panel (owner, 2026-11-22: the
         // "Legs: OK" readout is removed).
@@ -339,6 +339,54 @@ public partial class Titans
     private static readonly Color HudCyan = new(0.30f, 0.80f, 0.95f);
     private static readonly Color HudRed = new(1.0f, 0.35f, 0.22f);
 
+    // Shared dashboard colours (Stage B, 2026-11-26: the
+    // repeated look-and-feel recipes get one home each; every
+    // value is EXACTLY the inline value it replaces).
+    private static readonly Color LabelShadowColor = new(0f, 0f, 0f, 0.9f);
+    private static readonly Color PanelFillTransparent = new(0, 0, 0, 0);
+    private static readonly Color FeedTextColor = new(0.98f, 0.88f, 0.62f);
+    private static readonly Color HeaderTextColor = new(0.90f, 0.96f, 1.0f);
+    private static readonly Color HealthTextColor = new(0.85f, 0.95f, 0.85f);
+    private static readonly Color HealthFillColor = new(0.3f, 0.85f, 0.32f);
+    private static readonly Color PartTextColor = new(0.75f, 0.8f, 0.85f);
+    private static readonly Color PartFillColor = new(0.45f, 0.75f, 0.5f);
+    private static readonly Color GroupTextColor = new(0.62f, 0.85f, 0.95f);
+    private static readonly Color EnemyTextColor = new(0.98f, 0.85f, 0.8f);
+    private static readonly Color ReadoutTextColor = new(0.85f, 0.88f, 0.9f);
+    private static readonly Color MarkerTextColor = new(1f, 0.95f, 0.6f);
+    private static readonly Color SelectedTextColor = new(1f, 0.85f, 0.3f);
+    private static readonly Color ThrusterReadyColor = new(0.35f, 0.9f, 0.75f);
+    private static readonly Color PartWarningFillColor = new(0.9f, 0.45f, 0.2f);
+    // Popup family (leave / team / controls overlays).
+    private static readonly Color OverlayDimColor = new(0f, 0f, 0f, 0.93f);
+    private static readonly Color PopupPanelColor = new(0.015f, 0.03f, 0.07f, 0.85f);
+    private static readonly Color PopupPanelColorDense = new(0.015f, 0.03f, 0.07f, 0.88f);
+    private static readonly Color PopupBorderColor = new(1f, 1f, 1f, 0.18f);
+    private static readonly Color PopupGoldColor = new(0.98f, 0.80f, 0.35f);
+    private static readonly Color PopupInkColor = new(0.92f, 0.94f, 0.96f);
+    private static readonly Color PopupSteelColor = new(0.5f, 0.56f, 0.62f, 0.65f);
+    private static readonly Color PopupMutedTextColor = new(0.55f, 0.58f, 0.62f);
+    private static readonly Color PopupFaceColor = new(0.08f, 0.11f, 0.17f, 0.95f);
+    private static readonly Color CornerBracketColor = new(1f, 1f, 1f, 0.9f);
+
+    // Dashboard layout + behaviour constants (exact values).
+    private const float DashboardWidth = 300f;       // the shared panel width (owner)
+    private const float PanelContentMarginX = 16f;   // corner-panel inner margins
+    private const float PanelContentMarginY = 12f;
+    private const float PanelScreenMarginX = 16f;    // corner-panel screen insets (FitCornerPanels)
+    private const float PanelScreenMarginY = 14f;
+    private const float DividerAccentAlpha = 0.35f;  // PanelDivider's hairline
+    private const float PanelAccentBorderAlpha = 0.18f; // ChromePanel's hairline
+    private const float FeedLifetimeSeconds = 6f;    // an order line's feed life
+    private const int FeedMaxLines = 5;              // the feed keeps at most this many
+    private const ulong OpeningKeyGuardMsec = 200;   // a popup ignores its opening key this long
+    private const float DenyFlashFrequency = 42f;    // the denied-row strobe rate
+    private const float ThrusterFullChargeFraction = 0.999f; // charge reads "ready" at this fill
+    private const float PartLowHealthFraction = 0.35f;       // a part cell warns below this HP fraction
+    private const double HudFlickerChance = 0.38;    // head-loss flicker: dark-frame probability
+    private const float HudFlickerAlpha = 0.15f;     // head-loss flicker: dark-frame alpha
+    private const float DroopDurationSeconds = 1.5f; // a wreck's droop ease duration
+
     // The active-weapon marker: a triangle drawn centered in
     // its own rect (which is the cooldown bar's exact box), so
     // its center is the bar's center by construction.
@@ -355,7 +403,7 @@ public partial class Titans
                 new Vector2(c.X + 4f, c.Y - 5f),
                 new Vector2(c.X + 4f, c.Y + 5f),
                 new Vector2(c.X - 5f, c.Y)
-            }, new Color(1f, 0.95f, 0.6f));
+            }, MarkerTextColor);
         }
     }
 
@@ -366,7 +414,11 @@ public partial class Titans
     // the whole frame under the content.
     private sealed partial class ChromePanel : PanelContainer
     {
-        public Color Accent = new(0.30f, 0.80f, 0.95f);
+        public Color Accent = HudCyan;
+
+        private const float BracketOutset = 6f;
+        private const float BracketArm = 17f;
+        private const float BracketWidth = 2f;
 
         public override void _Notification(int what)
         {
@@ -384,13 +436,13 @@ public partial class Titans
             // colour and weight, arms 17 long, standing 6px
             // proud of the panel's corners (the popup's frame
             // sits 7 out with its lines 1 in).
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color(0.015f, 0.03f, 0.07f, 0.85f));
+            DrawRect(new Rect2(Vector2.Zero, Size), PopupPanelColor);
             // Barely-there hairline border (owner, 2026-11-24):
             // the header separator's own recipe - the panel's
             // accent at 0.35 alpha, 1px (see PanelDivider).
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Accent, 0.18f), false, 1f);
-            var col = new Color(1f, 1f, 1f, 0.9f);
-            float o = 6f, L = 17f, w = 2f;
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Accent, PanelAccentBorderAlpha), false, 1f);
+            var col = CornerBracketColor;
+            float o = BracketOutset, L = BracketArm, w = BracketWidth;
             var s = Size;
             DrawLine(new Vector2(-o, -o + L), new Vector2(-o, -o), col, w);
             DrawLine(new Vector2(-o, -o), new Vector2(-o + L, -o), col, w);
@@ -412,9 +464,11 @@ public partial class Titans
         // Glyph metrics (owner, 2026-11-25: named constants).
         private const float GlyphLineSpacing = 3f; // the weapons glyph's three lines
         private const float CheckTipRise = 3f;     // the status check's rising tip
+        private const float GlyphLineWidth = 1.6f; // the badges' shared stroke
+        private const float GlyphHalfWidth = 4.2f; // the glyphs' shared half-extent
 
         public int Kind;
-        public Color Accent = new(0.30f, 0.80f, 0.95f);
+        public Color Accent = HudCyan;
 
         public override void _Draw()
         {
@@ -427,33 +481,33 @@ public partial class Titans
             // kind wears the same ring at the same radius; the
             // glyph inside stays within the same inner zone.
             float badge = Mathf.Min(Size.X, Size.Y) * 0.5f - 1f;
-            DrawArc(c, badge, 0, Mathf.Tau, 32, col, 1.6f, true);
+            DrawArc(c, badge, 0, Mathf.Tau, 32, col, GlyphLineWidth, true);
             switch (Kind)
             {
                 case 0: // weapons: three plain lines
                     for (int i = 0; i < 3; i++)
                     {
                         float y = c.Y + (i - 1) * GlyphLineSpacing;
-                        DrawLine(new Vector2(c.X - 4.2f, y), new Vector2(c.X + 4.2f, y), col, 1.7f, true);
+                        DrawLine(new Vector2(c.X - GlyphHalfWidth, y), new Vector2(c.X + GlyphHalfWidth, y), col, 1.7f, true);
                     }
                     break;
                 case 1: // radar: fan + sweep, centred in the badge
-                    DrawArc(c, 2.6f, -2.4f, -0.7f, 10, col, 1.6f, true);
-                    DrawArc(c, 5.0f, -2.4f, -0.7f, 12, col, 1.6f, true);
-                    DrawLine(c, c + new Vector2(3.4f, -3.4f), col, 1.6f, true);
+                    DrawArc(c, 2.6f, -2.4f, -0.7f, 10, col, GlyphLineWidth, true);
+                    DrawArc(c, 5.0f, -2.4f, -0.7f, 12, col, GlyphLineWidth, true);
+                    DrawLine(c, c + new Vector2(3.4f, -3.4f), col, GlyphLineWidth, true);
                     DrawCircle(c, 1.3f, col);
                     break;
                 case 2: // status: a check (the shield is retired)
                     DrawLine(c + new Vector2(-4f, 0.2f), c + new Vector2(-1.3f, 3f), col, 1.9f, true);
-                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(4.2f, -CheckTipRise), col, 1.9f, true);
+                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(GlyphHalfWidth, -CheckTipRise), col, 1.9f, true);
                     break;
                 default: // target: inner ring, dot, four ticks
-                    DrawArc(c, 2.8f, 0, Mathf.Tau, 20, col, 1.6f, true);
+                    DrawArc(c, 2.8f, 0, Mathf.Tau, 20, col, GlyphLineWidth, true);
                     DrawCircle(c, 1.1f, col);
-                    DrawLine(c + new Vector2(-6.2f, 0), c + new Vector2(-4.2f, 0), col, 1.6f, true);
-                    DrawLine(c + new Vector2(4.2f, 0), c + new Vector2(6.2f, 0), col, 1.6f, true);
-                    DrawLine(c + new Vector2(0, -6.2f), c + new Vector2(0, -4.2f), col, 1.6f, true);
-                    DrawLine(c + new Vector2(0, 4.2f), c + new Vector2(0, 6.2f), col, 1.6f, true);
+                    DrawLine(c + new Vector2(-6.2f, 0), c + new Vector2(-GlyphHalfWidth, 0), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(GlyphHalfWidth, 0), c + new Vector2(6.2f, 0), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(0, -6.2f), c + new Vector2(0, -GlyphHalfWidth), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(0, GlyphHalfWidth), c + new Vector2(0, 6.2f), col, GlyphLineWidth, true);
                     break;
             }
         }
@@ -469,10 +523,11 @@ public partial class Titans
     {
         public bool Show;
         public Rect2 Box;
+        private static readonly Color FrameColor = new(1f, 0.30f, 0.22f, 0.95f);
         public override void _Draw()
         {
             if (!Show) return;
-            var col = new Color(1f, 0.30f, 0.22f, 0.95f);
+            var col = FrameColor;
             float L = Mathf.Min(20f, Box.Size.X * 0.3f), w = 2f;
             var a = Box.Position; var b = Box.Position + Box.Size;
             DrawLine(a + new Vector2(0, L), a, col, w);
@@ -496,7 +551,7 @@ public partial class Titans
     {
         public override void _Draw()
         {
-            var col = new Color(1f, 1f, 1f, 0.9f);
+            var col = CornerBracketColor;
             float L = 18f, w = 2f;
             var s = Size;
             DrawLine(new Vector2(1, L), new Vector2(1, 1), col, w);
@@ -529,7 +584,7 @@ public partial class Titans
             SetAnchorsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Stop;
 
-            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.93f) };
+            var dim = new ColorRect { Color = OverlayDimColor };
             dim.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(dim);
 
@@ -544,7 +599,7 @@ public partial class Titans
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
             // Some transparency (owner): the game ghosts
             // through the panel; buttons stay solid.
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.85f), BorderColor = new Color(1f, 1f, 1f, 0.18f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColor, BorderColor = PopupBorderColor, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
             root.AddChild(panel);
 
             var v = new VBoxContainer();
@@ -617,7 +672,7 @@ public partial class Titans
             // The Esc that OPENED the popup reaches this handler
             // in the same dispatch (parent first, then children)
             // - ignore Esc for a beat after opening.
-            if (Time.GetTicksMsec() - _openedAt < 200) return;
+            if (Time.GetTicksMsec() - _openedAt < OpeningKeyGuardMsec) return;
             if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
             {
                 Visible = false;
@@ -644,6 +699,8 @@ public partial class Titans
         public event System.Action LeaveRequested;
         private readonly VBoxContainer _rows;
         private readonly Control _root;
+        private const float BaseHeight = 210f; // the team panel's height before its rows
+        private const float RowPitch = 60f;    // one member row: 52 face + 8 separation
         private ulong _openedAt;
 
         public TeamOverlay()
@@ -653,7 +710,7 @@ public partial class Titans
             SetAnchorsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Stop;
 
-            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.93f) };
+            var dim = new ColorRect { Color = OverlayDimColor };
             dim.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(dim);
 
@@ -666,7 +723,7 @@ public partial class Titans
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f), BorderColor = new Color(1f, 1f, 1f, 0.18f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColorDense, BorderColor = PopupBorderColor, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
             _root.AddChild(panel);
 
             var v = new VBoxContainer();
@@ -722,10 +779,10 @@ public partial class Titans
                 string pct = $"{Mathf.RoundToInt(Mathf.Clamp(m.HpFrac, 0f, 1f) * 100f)}%";
                 // A lab-style row: bordered box, framed
                 // initials tile, name over a state line.
-                var gold = new Color(0.98f, 0.80f, 0.35f);
-                var steel = new Color(0.5f, 0.56f, 0.62f, 0.65f);
-                var ink = new Color(0.92f, 0.94f, 0.96f);
-                var dim = new Color(0.55f, 0.58f, 0.62f);
+                var gold = PopupGoldColor;
+                var steel = PopupSteelColor;
+                var ink = PopupInkColor;
+                var dim = PopupMutedTextColor;
                 Color border = m.Leader ? gold : steel;
                 Color nameCol = m.Dead ? dim : m.Leader ? gold : ink;
                 string state = m.Dead ? "Destroyed"
@@ -740,7 +797,7 @@ public partial class Titans
                 }
                 var bg = m.Leader ? new Color(0.16f, 0.13f, 0.04f, 0.95f)
                     : m.Dead ? new Color(0.05f, 0.05f, 0.06f, 0.9f)
-                    : new Color(0.08f, 0.11f, 0.17f, 0.95f);
+                    : PopupFaceColor;
                 if (m.Dead || m.Leader)
                 {
                     b.Disabled = true;
@@ -793,7 +850,7 @@ public partial class Titans
                 IgnoreMouse(b);
                 _rows.AddChild(b);
             }
-            _root.CustomMinimumSize = new Vector2(520, 210 + members.Count * 60);
+            _root.CustomMinimumSize = new Vector2(520, BaseHeight + members.Count * RowPitch);
             _openedAt = Time.GetTicksMsec();
             Visible = true;
         }
@@ -807,7 +864,7 @@ public partial class Titans
         public override void _Input(InputEvent e)
         {
             if (!Visible) return;
-            if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening key
+            if (Time.GetTicksMsec() - _openedAt < OpeningKeyGuardMsec) return; // the opening key
             if (e is InputEventKey k && k.Pressed && !k.Echo && (k.Keycode == Key.Escape || k.Keycode == Key.F2))
             {
                 Visible = false;
@@ -831,6 +888,10 @@ public partial class Titans
     // on every open.
     private sealed partial class ControlsOverlay : Control
     {
+        private const float PanelMaxWidth = 600f;   // the controls panel's design caps
+        private const float PanelMaxHeight = 760f;
+        private const float ViewportMarginX = 32f;  // closest the panel gets to the screen edges
+        private const float ViewportMarginY = 48f;
         private ulong _openedAt;
         private Control _root;
 
@@ -879,7 +940,7 @@ public partial class Titans
             SetAnchorsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Stop;
 
-            var dim = new ColorRect { Color = new Color(0f, 0f, 0f, 0.93f) };
+            var dim = new ColorRect { Color = OverlayDimColor };
             dim.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(dim);
 
@@ -892,7 +953,7 @@ public partial class Titans
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.015f, 0.03f, 0.07f, 0.88f), BorderColor = new Color(1f, 1f, 1f, 0.18f), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColorDense, BorderColor = PopupBorderColor, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
             _root.AddChild(panel);
 
             var v = new VBoxContainer();
@@ -904,11 +965,11 @@ public partial class Titans
             var title = new Label { Text = "CONTROLS", HorizontalAlignment = HorizontalAlignment.Center };
             title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
             title.AddThemeFontSizeOverride("font_size", 21);
-            title.AddThemeColorOverride("font_color", new Color(0.92f, 0.94f, 0.96f));
+            title.AddThemeColorOverride("font_color", PopupInkColor);
             v.AddChild(title);
 
-            var gold = new Color(0.98f, 0.80f, 0.35f);
-            var ink = new Color(0.92f, 0.94f, 0.96f);
+            var gold = PopupGoldColor;
+            var ink = PopupInkColor;
 
             var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
             scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -990,7 +1051,7 @@ public partial class Titans
             v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
             var resume = new Button { Text = "Resume", CustomMinimumSize = new Vector2(120, 36) };
             resume.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
-            var sb = new StyleBoxFlat { BgColor = new Color(0.08f, 0.11f, 0.17f, 0.95f), BorderColor = new Color(0.5f, 0.56f, 0.62f, 0.65f) };
+            var sb = new StyleBoxFlat { BgColor = PopupFaceColor, BorderColor = PopupSteelColor };
             sb.SetBorderWidthAll(1);
             resume.AddThemeStyleboxOverride("normal", sb);
             resume.AddThemeStyleboxOverride("hover", sb);
@@ -1016,15 +1077,15 @@ public partial class Titans
             // edges; the list scrolls when the cap bites.
             var vs = GetViewportRect().Size;
             _root.CustomMinimumSize = new Vector2(
-                Mathf.Min(600f, vs.X - 32f),
-                Mathf.Min(760f, vs.Y - 48f));
+                Mathf.Min(PanelMaxWidth, vs.X - ViewportMarginX),
+                Mathf.Min(PanelMaxHeight, vs.Y - ViewportMarginY));
             Visible = true;
         }
 
         public override void _Input(InputEvent e)
         {
             if (!Visible) return;
-            if (Time.GetTicksMsec() - _openedAt < 200) return; // the opening key
+            if (Time.GetTicksMsec() - _openedAt < OpeningKeyGuardMsec) return; // the opening key
             if (e is InputEventKey k && k.Pressed && !k.Echo && (k.Keycode == Key.Escape || k.Keycode == Key.F1))
             {
                 Visible = false;
@@ -1073,7 +1134,7 @@ public partial class Titans
         if (fg != null)
         {
             if (denyT > 0f)
-                fg.BgColor = Mathf.Sin((float)_simT * 42f) > 0f ? CdDeny : CdDead;
+                fg.BgColor = Mathf.Sin((float)_simT * DenyFlashFrequency) > 0f ? CdDeny : CdDead;
             else if (destroyed) fg.BgColor = CdDead;
             else fg.BgColor = CdNormal;
         }
@@ -1126,7 +1187,8 @@ public partial class Titans
             minX = Mathf.Min(minX, sp.X); maxX = Mathf.Max(maxX, sp.X);
             minY = Mathf.Min(minY, sp.Y); maxY = Mathf.Max(maxY, sp.Y);
         }
-        if (maxX < -40f || minX > vp.X + 40f || maxY < -40f || minY > vp.Y + 40f)
+        const float OffscreenMargin = 40f;
+        if (maxX < -OffscreenMargin || minX > vp.X + OffscreenMargin || maxY < -OffscreenMargin || minY > vp.Y + OffscreenMargin)
         { _targetFrame.Show = false; _targetFrame.QueueRedraw(); return; }
         float pad = 6f;
         _targetFrame.Box = new Rect2(
@@ -1144,8 +1206,8 @@ public partial class Titans
     // feed was removed on 2026-11-20 and stays removed.
     private void AddFeed(string text)
     {
-        _feed.Add((text, 6f));
-        while (_feed.Count > 5) _feed.RemoveAt(0);
+        _feed.Add((text, FeedLifetimeSeconds));
+        while (_feed.Count > FeedMaxLines) _feed.RemoveAt(0);
         // Every order announces itself (owner, 2026-11-24):
         // posting a line is what makes the feed visible -
         // a reset used to hide the label for good, and no
@@ -1170,11 +1232,11 @@ public partial class Titans
             tbox.Visible = true;
             tlab.Text = a.Dead ? $"{a.Spec.Name} - DESTROYED" : $"{a.Spec.Name} - {a.Hp:F0} HP";
             tlab.AddThemeColorOverride("font_color",
-                a.Dead ? CdLabelDead : new Color(0.85f, 0.95f, 0.85f));
+                a.Dead ? CdLabelDead : HealthTextColor);
             tbar.Value = a.Spec.MaxHp > 0f ? a.Hp / a.Spec.MaxHp : 0f;
             var tfill = tbar.GetThemeStylebox("fill") as StyleBoxFlat;
             if (tfill != null)
-                tfill.BgColor = a.Dead ? CdDead : new Color(0.3f, 0.85f, 0.32f);
+                tfill.BgColor = a.Dead ? CdDead : HealthFillColor;
         }
         for (; ti < _teamHpRows.Length; ti++) _teamHpRows[ti].Box.Visible = false;
         // Group aliveness (owner's lab groups): a group is
@@ -1229,12 +1291,12 @@ public partial class Titans
                 _wpnRows[wi].Visible = true;
                 _wpnGroupCells[wi].Text = grp.Num.ToString();
                 _wpnGroupCells[wi].AddThemeColorOverride("font_color",
-                    sel ? new Color(1f, 0.85f, 0.3f) : new Color(0.62f, 0.85f, 0.95f));
+                    sel ? SelectedTextColor : GroupTextColor);
                 _wpnLabels[wi].Text = gun.Def.Name;
                 float wfrac = gun.Def.Cooldown > 0f ? 1f - gun.Cd / gun.Def.Cooldown : 1f;
                 UpdateCdRow(_wpnBars[wi], _wpnLabels[wi], wfrac, dead, grp.DenyT);
                 if (sel && !dead)
-                    _wpnLabels[wi].AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
+                    _wpnLabels[wi].AddThemeColorOverride("font_color", MarkerTextColor);
                 bool mark = sel && !markPlaced;
                 if (_wpnMarks[wi].On != mark) { _wpnMarks[wi].On = mark; _wpnMarks[wi].QueueRedraw(); }
                 if (mark) markPlaced = true;
@@ -1257,7 +1319,7 @@ public partial class Titans
             {
                 _cdBarThr.Value = _player.JumpCharge;
                 var tfg = _cdBarThr.GetThemeStylebox("fill") as StyleBoxFlat;
-                if (tfg != null) tfg.BgColor = _player.JumpCharge >= 0.999f ? new Color(0.35f, 0.9f, 0.75f) : CdNormal;
+                if (tfg != null) tfg.BgColor = _player.JumpCharge >= ThrusterFullChargeFraction ? ThrusterReadyColor : CdNormal;
                 _lblThr.AddThemeColorOverride("font_color", CdLabelNormal);
                 _lblThr.Text = "Thrusters";
             }
@@ -1275,10 +1337,10 @@ public partial class Titans
             var fg = cell.Bar.GetThemeStylebox("fill") as StyleBoxFlat;
             if (fg != null)
                 fg.BgColor = part.Destroyed ? CdDead
-                    : frac < 0.35f ? new Color(0.9f, 0.45f, 0.2f)
-                    : new Color(0.45f, 0.75f, 0.5f);
+                    : frac < PartLowHealthFraction ? PartWarningFillColor
+                    : PartFillColor;
             cell.Lab.AddThemeColorOverride("font_color",
-                part.Destroyed ? CdLabelDead : new Color(0.75f, 0.8f, 0.85f));
+                part.Destroyed ? CdLabelDead : PartTextColor);
         }
 
         // Systems readouts. TARGET RANGE is the distance to
@@ -1363,7 +1425,7 @@ public partial class Titans
         // whole HUD stutters (seeded, visual only).
         float alpha = 1f;
         if (_hudFlickerT > 0f)
-            alpha = _rng.NextDouble() < 0.38 ? 0.15f : 1f;
+            alpha = _rng.NextDouble() < HudFlickerChance ? HudFlickerAlpha : 1f;
         // Sniper scope overlay (owner, 2026-11-23): shown
         // while the sniper view is on, replacing the plain
         // crosshair. Toggled here, not in the camera step -
@@ -1409,61 +1471,63 @@ public partial class Titans
         // per panel.
         float w = _panelTarget.GetCombinedMinimumSize().X;
         var ws = _panelWeapons.GetCombinedMinimumSize();
-        _panelWeapons.OffsetLeft = 16; _panelWeapons.OffsetTop = 14;
-        _panelWeapons.OffsetRight = 16 + w; _panelWeapons.OffsetBottom = 14 + ws.Y;
+        _panelWeapons.OffsetLeft = PanelScreenMarginX; _panelWeapons.OffsetTop = PanelScreenMarginY;
+        _panelWeapons.OffsetRight = PanelScreenMarginX + w; _panelWeapons.OffsetBottom = PanelScreenMarginY + ws.Y;
         // Loss lines under the panel (owner, 2026-11-25), the
         // order feed under them; with no losses the feed sits
         // exactly where it always did.
-        float feedTop = 14 + ws.Y + 10;
+        float feedTop = PanelScreenMarginY + ws.Y + 10;
         if (_lblWeaponStatus != null)
         {
             _lblWeaponStatus.OffsetLeft = 18;
-            _lblWeaponStatus.OffsetRight = 16 + w;
-            _lblWeaponStatus.OffsetTop = 14 + ws.Y + 8;
+            _lblWeaponStatus.OffsetRight = PanelScreenMarginX + w;
+            _lblWeaponStatus.OffsetTop = PanelScreenMarginY + ws.Y + 8;
             float lh = _lblWeaponStatus.GetCombinedMinimumSize().Y;
-            if (lh > 0f) feedTop = 14 + ws.Y + 8 + lh + 8;
+            if (lh > 0f) feedTop = PanelScreenMarginY + ws.Y + 8 + lh + 8;
         }
         if (_feedLabel != null) _feedLabel.OffsetTop = feedTop;
         var hs = _panelHealth.GetCombinedMinimumSize();
-        _panelHealth.OffsetLeft = 16; _panelHealth.OffsetBottom = -14;
-        _panelHealth.OffsetRight = 16 + w; _panelHealth.OffsetTop = -14 - hs.Y;
+        _panelHealth.OffsetLeft = PanelScreenMarginX; _panelHealth.OffsetBottom = -PanelScreenMarginY;
+        _panelHealth.OffsetRight = PanelScreenMarginX + w; _panelHealth.OffsetTop = -PanelScreenMarginY - hs.Y;
         var ts = _panelTarget.GetCombinedMinimumSize();
-        _panelTarget.OffsetRight = -16; _panelTarget.OffsetBottom = -14;
-        _panelTarget.OffsetLeft = -16 - w; _panelTarget.OffsetTop = -14 - ts.Y;
+        _panelTarget.OffsetRight = -PanelScreenMarginX; _panelTarget.OffsetBottom = -PanelScreenMarginY;
+        _panelTarget.OffsetLeft = -PanelScreenMarginX - w; _panelTarget.OffsetTop = -PanelScreenMarginY - ts.Y;
         if (_panelRadar != null)
         {
             var rs = _panelRadar.GetCombinedMinimumSize();
-            _panelRadar.OffsetRight = -16; _panelRadar.OffsetTop = 14;
-            _panelRadar.OffsetLeft = -16 - rs.X; _panelRadar.OffsetBottom = 14 + rs.Y;
+            _panelRadar.OffsetRight = -PanelScreenMarginX; _panelRadar.OffsetTop = PanelScreenMarginY;
+            _panelRadar.OffsetLeft = -PanelScreenMarginX - rs.X; _panelRadar.OffsetBottom = PanelScreenMarginY + rs.Y;
         }
     }
+
+    private static float DroopCurve(float t) => t * t * (3f - 2f * t) * 0.5f;
 
     private void UpdateDroop(float dt)
     {
         if (_foe != null && _foe.Dead && _foe.DroopT < 1f)
         {
-            _foe.DroopT = Mathf.Min(_foe.DroopT + dt / 1.5f, 1f);
+            _foe.DroopT = Mathf.Min(_foe.DroopT + dt / DroopDurationSeconds, 1f);
             float t1 = _foe.DroopT;
-            _foe.Walker.Droop = t1 * t1 * (3f - 2f * t1) * 0.5f;
+            _foe.Walker.Droop = DroopCurve(t1);
         }
         if (_enemyDead && _enemyDroopT < 1f)
         {
-            _enemyDroopT = Mathf.Min(_enemyDroopT + dt / 1.5f, 1f);
+            _enemyDroopT = Mathf.Min(_enemyDroopT + dt / DroopDurationSeconds, 1f);
             float t = _enemyDroopT;
-            _enemy.Droop = t * t * (3f - 2f * t) * 0.5f;
+            _enemy.Droop = DroopCurve(t);
         }
         if (_playerDead && _playerDroopT < 1f)
         {
-            _playerDroopT = Mathf.Min(_playerDroopT + dt / 1.5f, 1f);
+            _playerDroopT = Mathf.Min(_playerDroopT + dt / DroopDurationSeconds, 1f);
             float t = _playerDroopT;
-            _player.Droop = t * t * (3f - 2f * t) * 0.5f;
+            _player.Droop = DroopCurve(t);
         }
         foreach (var a in _allies)
         {
             if (!a.Dead || a.DroopT >= 1f) continue;
-            a.DroopT = Mathf.Min(a.DroopT + dt / 1.5f, 1f);
+            a.DroopT = Mathf.Min(a.DroopT + dt / DroopDurationSeconds, 1f);
             float t = a.DroopT;
-            a.Walker.Droop = t * t * (3f - 2f * t) * 0.5f;
+            a.Walker.Droop = DroopCurve(t);
         }
     }
 
