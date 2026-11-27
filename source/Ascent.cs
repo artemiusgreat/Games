@@ -135,7 +135,7 @@ public static class Ascent
         if (!_hillsTried)
         {
             _hillsTried = true;
-            using var f = FileAccess.Open("res://assets/hills/hills_height.bin", FileAccess.ModeFlags.Read);
+            using var f = FileAccess.Open(Paths.HillsHeightmap, FileAccess.ModeFlags.Read);
             if (f != null)
             {
                 var bytes = f.GetBuffer(HillsGridSize * HillsGridSize * 4);

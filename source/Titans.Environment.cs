@@ -2059,7 +2059,7 @@ public partial class Titans
         var tilePath = WorldConfig.SkyTile;
         if (!string.IsNullOrEmpty(tilePath)
             && ResourceLoader.Load<Texture2D>(tilePath) is Texture2D tileTex
-            && ResourceLoader.Load<Shader>("res://assets/skies/tiled_sky.gdshader") is Shader tileShader)
+            && ResourceLoader.Load<Shader>(Paths.TiledSkyShader) is Shader tileShader)
         {
             var tm = new ShaderMaterial { Shader = tileShader };
             tm.SetShaderParameter("tile", tileTex);
@@ -2079,7 +2079,7 @@ public partial class Titans
         // other painted sky keeps the plain panorama material.
         bool starsOn = false;
         Material skyMat;
-        if (WorldConfig.SkyStars && ResourceLoader.Load<Shader>("res://assets/skies/star_layer.gdshader") is Shader starShader)
+        if (WorldConfig.SkyStars && ResourceLoader.Load<Shader>(Paths.StarLayerShader) is Shader starShader)
         {
             var sm = new ShaderMaterial { Shader = starShader };
             sm.SetShaderParameter("panorama", tex);

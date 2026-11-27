@@ -15,7 +15,7 @@ public partial class Titans
         // (owner): every HUD label renders in Open Sans Semibold
         // (the game-wide font change, 2026-11-13 - it succeeds
         // Plex Mono Medium in this role).
-        _hudFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
+        _hudFont ??= GD.Load<FontFile>(Paths.OpenSansSemiBold);
         if (_hudFont != null) l.AddThemeFontOverride("font", _hudFont);
         l.AddThemeFontSizeOverride("font_size", fontSize);
         l.AddThemeColorOverride("font_color", col);

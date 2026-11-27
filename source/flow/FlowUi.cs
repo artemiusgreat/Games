@@ -113,7 +113,7 @@ public static class FlowUi
     // Cinzel headings + Open Sans text on every screen - set
     // in code, not left to the project theme, so a stale theme
     // cache can never bring the mono back).
-    public static FontFile BodyFont => _bodyFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-Regular.ttf");
+    public static FontFile BodyFont => _bodyFont ??= GD.Load<FontFile>(Paths.OpenSansRegular);
 
     public static Button MakeButton(string text, int fontSize = DefaultButtonFontSize)
     {
@@ -218,7 +218,7 @@ public static class FlowUi
 
     private static FontFile _headFont;
     public static FontFile HeadFont(bool bold) =>
-        _headFont ??= GD.Load<FontFile>("res://assets/fonts/Cinzel-Bold.ttf");
+        _headFont ??= GD.Load<FontFile>(Paths.CinzelBold);
 
     // Display font for HEADINGS everywhere (owner, 2026-11-13:
     // the home screen's new fonts apply game-wide): Cinzel Bold,
@@ -241,7 +241,7 @@ public static class FlowUi
     // 2026-11-14) - no Cinzel there. Semibold keeps the
     // headings' weight without the serif.
     public static FontFile NavFont =>
-        _navFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
+        _navFont ??= GD.Load<FontFile>(Paths.OpenSansSemiBold);
 
     public static Label NavHeading(string text, int size, Color color,
         HorizontalAlignment align = HorizontalAlignment.Left)
@@ -561,7 +561,7 @@ public static class FlowUi
 
     public static Control MakeLoadingArt()
     {
-        _loadingTex ??= GD.Load<Texture2D>("res://assets/ui/loading_target.png");
+        _loadingTex ??= GD.Load<Texture2D>(Paths.LoadingTarget);
         var root = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         root.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         var arc = new AspectRatioContainer { Ratio = 1f, StretchMode = AspectRatioContainer.StretchModeEnum.Fit };

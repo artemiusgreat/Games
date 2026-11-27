@@ -675,8 +675,8 @@ public partial class Main : Node3D
 	{
 		if (_rockNor != null) return;
 		_rockNor = ResourceLoader.Load<Texture2D>(
-			"res://photo/textures/aerial_rocks_02/aerial_rocks_02_nor_gl_2k.jpg");
+			Paths.TerrainNormal);
 		_rockArm = ResourceLoader.Load<Texture2D>(
-			"res://photo/textures/aerial_rocks_02/aerial_rocks_02_arm_2k.jpg");
+			Paths.TerrainArm);
 	}
 }

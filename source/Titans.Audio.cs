@@ -64,24 +64,24 @@ public partial class Titans
         // no longer shares the laser's), cannon, missile launch,
         // and the hit, which is his explosion recording - the old
         // synthetic hit read as a plastic bottle dropping.
-        _sfxLaser = GD.Load<AudioStream>("res://assets/sfx/laser.mp3");
-        _sfxPpc = GD.Load<AudioStream>("res://assets/sfx/ppc.mp3");
-        _sfxCannon = GD.Load<AudioStream>("res://assets/sfx/cannon.mp3");
-        _sfxRocket = GD.Load<AudioStream>("res://assets/sfx/rocket.mp3");
-        _sfxHit = GD.Load<AudioStream>("res://assets/sfx/hit.mp3");
-        _sfxTree = GD.Load<AudioStream>("res://assets/sfx/tree.wav");
-        _sfxExplosion = GD.Load<AudioStream>("res://assets/sfx/explosion.wav");
-        _sfxStepA = GD.Load<AudioStream>("res://assets/sfx/step_a.wav");
-        _sfxStepB = GD.Load<AudioStream>("res://assets/sfx/step_b.wav");
-        _sfxThruster = GD.Load<AudioStream>("res://assets/sfx/thruster.wav");
+        _sfxLaser = GD.Load<AudioStream>(Paths.SfxLaser);
+        _sfxPpc = GD.Load<AudioStream>(Paths.SfxPpc);
+        _sfxCannon = GD.Load<AudioStream>(Paths.SfxCannon);
+        _sfxRocket = GD.Load<AudioStream>(Paths.SfxRocket);
+        _sfxHit = GD.Load<AudioStream>(Paths.SfxHit);
+        _sfxTree = GD.Load<AudioStream>(Paths.SfxTree);
+        _sfxExplosion = GD.Load<AudioStream>(Paths.SfxExplosion);
+        _sfxStepA = GD.Load<AudioStream>(Paths.SfxStepA);
+        _sfxStepB = GD.Load<AudioStream>(Paths.SfxStepB);
+        _sfxThruster = GD.Load<AudioStream>(Paths.SfxThruster);
         if (_sfxThruster is AudioStreamWav tw)
         {
             tw.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
             tw.LoopBegin = 0;
             tw.LoopEnd = (int)tw.GetLength() * WavSampleRate;
         }
-        _sfxWind = GD.Load<AudioStream>("res://assets/sfx/wind.wav");
-        _sfxServo = GD.Load<AudioStream>("res://assets/sfx/servo.wav");
+        _sfxWind = GD.Load<AudioStream>(Paths.SfxWind);
+        _sfxServo = GD.Load<AudioStream>(Paths.SfxServo);
         foreach (var st in new[] { _sfxWind, _sfxServo })
             if (st is AudioStreamWav lw)
             {
@@ -93,11 +93,11 @@ public partial class Titans
         AddChild(_windPlayer); _windPlayer.Play();
         _servoPlayer = new AudioStreamPlayer { Stream = _sfxServo, VolumeDb = _servoDb };
         AddChild(_servoPlayer); _servoPlayer.Play();
-        _voxFollow = GD.Load<AudioStream>("res://assets/sfx/vox_follow.mp3");
-        _voxAttackTarget = GD.Load<AudioStream>("res://assets/sfx/vox_attack_target.mp3");
-        _voxAttackNearby = GD.Load<AudioStream>("res://assets/sfx/vox_attack_nearby.mp3");
-        _voxProtect = GD.Load<AudioStream>("res://assets/sfx/vox_protect.mp3");
-        _voxStop = GD.Load<AudioStream>("res://assets/sfx/vox_stop.mp3");
+        _voxFollow = GD.Load<AudioStream>(Paths.VoxFollow);
+        _voxAttackTarget = GD.Load<AudioStream>(Paths.VoxAttackTarget);
+        _voxAttackNearby = GD.Load<AudioStream>(Paths.VoxAttackNearby);
+        _voxProtect = GD.Load<AudioStream>(Paths.VoxProtect);
+        _voxStop = GD.Load<AudioStream>(Paths.VoxStop);
         _voxPlayer = new AudioStreamPlayer { VolumeDb = VoxVolumeDb }; // announcement level; tune here
         AddChild(_voxPlayer);
         for (int i = 0; i < SfxPoolSize; i++)

@@ -20,7 +20,7 @@ public partial class PlanetScreen : Control
     private UniverseMap _map;
 
     private static Texture2D _bgTex;
-    private static Texture2D BgTex => _bgTex ??= GD.Load<Texture2D>("res://assets/ui/universe_bg.jpg");
+    private static Texture2D BgTex => _bgTex ??= GD.Load<Texture2D>(Paths.UniverseBackground);
 
     private bool IsMission => WorldConfig.IsMission;
     private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];

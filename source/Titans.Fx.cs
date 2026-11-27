@@ -318,8 +318,8 @@ public partial class Titans
     private static SpriteFrames FlipbookFrames()
     {
         if (_flipbookFrames != null) return _flipbookFrames;
-        var sheet = GD.Load<Texture2D>("res://assets/fx/explosion_fireball.png");
-        if (sheet == null) { Dbg.Print("FLIPBOOK sheet missing: res://assets/fx/explosion_fireball.png"); return null; }
+        var sheet = GD.Load<Texture2D>(Paths.ExplosionSheet);
+        if (sheet == null) { Dbg.Print($"FLIPBOOK sheet missing: {Paths.ExplosionSheet}"); return null; }
         var sf = new SpriteFrames();
         sf.AddAnimation("boom");
         sf.SetAnimationSpeed("boom", FlipbookFrameCount); // 64 frames = 1.0s at speed 1

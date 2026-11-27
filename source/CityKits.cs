@@ -41,7 +41,7 @@ public static class CityKits
         // whole kit and fallen back to procedural boxes.)
         for (int i = 0; i < MaxKitIndex; i++)
         {
-            string path = $"res://assets/citykits/kit{kit}/b_{i}.glb";
+            string path = string.Format(Paths.CityKitBuildingFormat, kit, i);
             if (!ResourceLoader.Exists(path)) continue;
             var scene = ResourceLoader.Load<PackedScene>(path);
             if (scene == null) continue;

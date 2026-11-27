@@ -83,10 +83,10 @@ public partial class MapTypeScreen : Control
     private static readonly Color BarFeaturedText = new(0.09f, 0.07f, 0.02f);
 
     private static FontFile _cinzelBold, _cinzel, _sans, _sansSemi;
-    private static FontFile CinzelBold => _cinzelBold ??= GD.Load<FontFile>("res://assets/fonts/Cinzel-Bold.ttf");
-    private static FontFile Cinzel => _cinzel ??= GD.Load<FontFile>("res://assets/fonts/Cinzel-Regular.ttf");
-    private static FontFile Sans => _sans ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-Regular.ttf");
-    private static FontFile SansSemi => _sansSemi ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-SemiBold.ttf");
+    private static FontFile CinzelBold => _cinzelBold ??= GD.Load<FontFile>(Paths.CinzelBold);
+    private static FontFile Cinzel => _cinzel ??= GD.Load<FontFile>(Paths.CinzelRegular);
+    private static FontFile Sans => _sans ??= GD.Load<FontFile>(Paths.OpenSansRegular);
+    private static FontFile SansSemi => _sansSemi ??= GD.Load<FontFile>(Paths.OpenSansSemiBold);
 
     public override void _Ready()
     {
@@ -108,7 +108,7 @@ public partial class MapTypeScreen : Control
         root.AddChild(top);
         _titleRect = new TextureRect
         {
-            Texture = GD.Load<Texture2D>("res://assets/flow/title_card.png"),
+            Texture = GD.Load<Texture2D>(Paths.TitleCard),
             CustomMinimumSize = new Vector2(TitleBaseWidth, TitleBaseHeight),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
@@ -125,14 +125,14 @@ public partial class MapTypeScreen : Control
         centre.AddChild(cards);
         cards.AddChild(Card(
             "TOURNAMENT", "SELECT YOUR CHAMPION",
-            "res://assets/flow/card_tournament.jpg",
+            Paths.CardTournament,
             "Arena duel on a compact battlefield. Three riders enter - one leaves. " +
             "The classic test of machine and pilot, fought around the mesa under tournament rules.",
             "ENTER TOURNAMENT", featured: true, icon: CardIcon.Kind.Compass,
             go: () => OnTournament?.Invoke()));
         cards.AddChild(Card(
             "STORY", "TAKE ON A MISSION",
-            "res://assets/flow/card_mission.jpg",
+            Paths.CardMission,
             "Planetary operations on a full-scale front. Pick a world in orbit, take on " +
             "a mission, then deploy from your base and march on the enemy.",
             "VIEW MISSIONS", featured: false, icon: CardIcon.Kind.Target,
