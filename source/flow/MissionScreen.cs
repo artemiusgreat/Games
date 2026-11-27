@@ -45,8 +45,27 @@ public partial class MissionScreen : Control
     // scene data; these are the shared piece recipes).
     private const float StoolSeatRadius = 0.30f, StoolSeatHeight = 0.09f;
     private const int StoolSeatSegments = 12;
+    private const int StoolCount = 4;
+    private const float StoolStartX = -1.6f, StoolSpacing = 1.5f; // the stool row in front of the counter
+    private const float StoolZ = -1.55f, StoolSeatY = 0.60f;
+    private static readonly Vector3 StoolPostSize = new(0.12f, 0.56f, 0.12f);
     private const float TableTopRadius = 0.62f, TableTopHeight = 0.06f;
     private const int TableTopSegments = 14;
+    private const float TableZ = -0.6f, TableTopY = 0.78f;
+    private static readonly float[] TableXs = { -3.9f, 4.3f }; // the two side tables' centres
+    private static readonly Vector3 TableLegSize = new(0.1f, 0.78f, 0.1f);
+    private const float ChairOffsetX = -0.95f, ChairY = 0.45f;
+    private static readonly Vector3 ChairSize = new(0.5f, 0.9f, 0.5f);
+    private static readonly Vector3 CandleOffset = new(0.2f, 0.90f, 0.1f); // from the table centre (z against TableZ)
+    private static readonly Vector3 CandleSize = new(0.08f, 0.18f, 0.08f);
+    private const int ShelfRowCount = 2;
+    private static readonly Vector3 HoloPosition = new(3.6f, 1.75f, -2.6f);
+    private static readonly Vector3[] PendantPositions =
+    {
+        new(0.7f, 3.1f, -2.2f), new(-3.9f, 2.9f, -0.6f), new(4.3f, 2.9f, -0.6f)
+    };
+    private static readonly Vector3 PendantShadeOffset = new(0f, 0.35f, 0f);
+    private static readonly Vector3 PendantShadeSize = new(0.3f, 0.12f, 0.3f);
     private const float HoloRadius = 0.42f;
     private const int HoloSegments = 24, HoloRings = 12;
     private const int HoloTextureSize = 256;
@@ -420,41 +439,41 @@ public partial class MissionScreen : Control
         Box(new Vector3(0.7f, 0.72f, -2.02f), new Vector3(6.4f, 0.10f, 0.04f),
             Mat(StripLightColor, StripLightRoughness, StripLightEmission));
         // Back-bar shelves + bottles.
-        for (int sIdx = 0; sIdx < 2; sIdx++)
+        for (int sIdx = 0; sIdx < ShelfRowCount; sIdx++)
             Box(new Vector3(0.7f, 1.9f + sIdx * ShelfRowStep, ShelfZ), new Vector3(6.2f, 0.06f, 0.35f), woodMat);
         for (int i = 0; i < BottleCount; i++)
         {
             float x = BottleStartX + i * BottleSpacing;
-            float y = BottleBaseY + (i % 2) * ShelfRowStep;
+            float y = BottleBaseY + (i % ShelfRowCount) * ShelfRowStep;
             Box(new Vector3(x, y + BottleYOffset, ShelfZ), BottleSize,
                 Mat(BottleColors[i % BottleColors.Length], BottleRoughness, BottleEmission));
         }
         // Stools in front of the counter.
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < StoolCount; i++)
         {
-            float x = -1.6f + i * 1.5f;
-            Box(new Vector3(x, 0.28f, -1.55f), new Vector3(0.12f, 0.56f, 0.12f), brassMat);
+            float x = StoolStartX + i * StoolSpacing;
+            Box(new Vector3(x, StoolPostSize.Y * 0.5f, StoolZ), StoolPostSize, brassMat);
             var seat = new MeshInstance3D
             {
                 Mesh = new CylinderMesh { TopRadius = StoolSeatRadius, BottomRadius = StoolSeatRadius, Height = StoolSeatHeight, RadialSegments = StoolSeatSegments },
                 MaterialOverride = Mat(SeatColor, SeatRoughness),
-                Position = new Vector3(x, 0.60f, -1.55f)
+                Position = new Vector3(x, StoolSeatY, StoolZ)
             };
             root.AddChild(seat);
         }
         // Two side tables with chairs.
-        foreach (var tx in new[] { -3.9f, 4.3f })
+        foreach (var tx in TableXs)
         {
             var top = new MeshInstance3D
             {
                 Mesh = new CylinderMesh { TopRadius = TableTopRadius, BottomRadius = TableTopRadius, Height = TableTopHeight, RadialSegments = TableTopSegments },
                 MaterialOverride = woodMat,
-                Position = new Vector3(tx, 0.78f, -0.6f)
+                Position = new Vector3(tx, TableTopY, TableZ)
             };
             root.AddChild(top);
-            Box(new Vector3(tx, 0.39f, -0.6f), new Vector3(0.1f, 0.78f, 0.1f), brassMat);
-            Box(new Vector3(tx - 0.95f, 0.45f, -0.6f), new Vector3(0.5f, 0.9f, 0.5f), Mat(ChairColor));
-            Box(new Vector3(tx + 0.2f, 0.90f, -0.5f), new Vector3(0.08f, 0.18f, 0.08f),
+            Box(new Vector3(tx, TableLegSize.Y * 0.5f, TableZ), TableLegSize, brassMat);
+            Box(new Vector3(tx + ChairOffsetX, ChairY, TableZ), ChairSize, Mat(ChairColor));
+            Box(new Vector3(tx + CandleOffset.X, CandleOffset.Y, TableZ + CandleOffset.Z), CandleSize,
                 Mat(CandleColor, CandleRoughness, CandleEmission));
         }
         // Patrons: capsule bodies + heads, one bartender behind
@@ -470,7 +489,7 @@ public partial class MissionScreen : Control
         var holo = new MeshInstance3D
         {
             Mesh = new SphereMesh { Radius = HoloRadius, Height = HoloRadius * 2f, RadialSegments = HoloSegments, Rings = HoloRings },
-            Position = new Vector3(3.6f, 1.75f, -2.6f)
+            Position = HoloPosition
         };
         var holoMat = new StandardMaterial3D
         {
@@ -485,7 +504,7 @@ public partial class MissionScreen : Control
         root.AddChild(holo);
         _holo = holo;
         // Warm pendant lights.
-        foreach (var lp in new[] { new Vector3(0.7f, 3.1f, -2.2f), new Vector3(-3.9f, 2.9f, -0.6f), new Vector3(4.3f, 2.9f, -0.6f) })
+        foreach (var lp in PendantPositions)
         {
             var omni = new OmniLight3D
             {
@@ -495,7 +514,7 @@ public partial class MissionScreen : Control
                 OmniRange = PendantLightRange
             };
             root.AddChild(omni);
-            Box(lp + new Vector3(0f, 0.35f, 0f), new Vector3(0.3f, 0.12f, 0.3f), brassMat);
+            Box(lp + PendantShadeOffset, PendantShadeSize, brassMat);
         }
     }
 
