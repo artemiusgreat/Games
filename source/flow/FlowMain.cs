@@ -212,7 +212,7 @@ public partial class FlowMain : Node3D
                 _flowshot = null;
                 var img = GetViewport().GetTexture().GetImage();
                 img.SavePng(_flowshotPath);
-                GD.Print($"FLOW captured {_flowshotPath} size={img.GetSize()}");
+                Dbg.Print($"FLOW captured {_flowshotPath} size={img.GetSize()}");
                 GetTree().Quit(0);
             }
         }

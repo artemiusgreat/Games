@@ -465,10 +465,10 @@ public partial class Titans
                         if (_aimTarget == Roles.Enemy) { onFoe = true; break; }
                     }
                     if (!onFoe)
-                    { GD.PrintErr("DUEL FAIL: no pitch puts the crosshair on the Hector"); GetTree().Quit(1); break; }
+                    { Dbg.Err("DUEL FAIL: no pitch puts the crosshair on the Hector"); GetTree().Quit(1); break; }
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents < 1)
-                    { GD.PrintErr("DUEL FAIL: cursor low on the Hector but the laser missed him"); GetTree().Quit(1); break; }
+                    { Dbg.Err("DUEL FAIL: cursor low on the Hector but the laser missed him"); GetTree().Quit(1); break; }
                     int evAfterHit = _enemyDmgEvents;
                     _cdLaser = 0f;
                     // 1.0 rad, not the old 0.30: on the domed map
@@ -483,7 +483,7 @@ public partial class Titans
                     _aimPoint = TorsoAimPoint();
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents > evAfterHit)
-                    { GD.PrintErr("DUEL FAIL: cursor above the Hector but a shot still hit him"); GetTree().Quit(1); break; }
+                    { Dbg.Err("DUEL FAIL: cursor above the Hector but a shot still hit him"); GetTree().Quit(1); break; }
                     // Beam length on a miss (owner, 2026-11-25,
                     // physical beams): the beam runs its gun's
                     // full range along its own line, PAST the
@@ -1030,7 +1030,7 @@ public partial class Titans
             var mo = MuzzleForSlot(g.Slot, false) - root;
             muzzles += $" {g.Slot}:lat{mo.Dot(right):F2}";
         }
-        GD.Print($"BONEPROBE {spec.Id}: torso local lat={off.Dot(right):F2} fwd={off.Dot(h):F2} h={off.Y:F2} | energy muzzles:{muzzles}");
+        Dbg.Print($"BONEPROBE {spec.Id}: torso local lat={off.Dot(right):F2} fwd={off.Dot(h):F2} h={off.Y:F2} | energy muzzles:{muzzles}");
     }
 
     // ---------- Bindings probe ----------
@@ -2197,14 +2197,14 @@ public partial class Titans
                 foreach (var cap in _hit.Riders) if (cap.Id == a.Role) capped = true;
                 if (!capped) { DeployFail($"rebuilt ally {a.Role} missing from the hit caps"); return; }
             }
-            GD.Print($"DEPLOYTEST REBUILD PASS lab-added members take the field: {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
+            Dbg.Print($"DEPLOYTEST REBUILD PASS lab-added members take the field: {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
             // A second deploy with an unchanged roster is a
             // no-op: the same walkers stay.
             var w0 = _allies[0].Walker;
             RebuildAlliesForDeploy();
             if (_allies.Count != 2 || _allies[0].Walker != w0) { DeployFail("unchanged roster rebuilt anyway"); return; }
-            GD.Print("DEPLOYTEST NOOP PASS an unchanged roster deploys as-is");
-            GD.Print("DEPLOYTEST DONE");
+            Dbg.Print("DEPLOYTEST NOOP PASS an unchanged roster deploys as-is");
+            Dbg.Print("DEPLOYTEST DONE");
             GetTree().Quit(0);
         }
     }
@@ -2220,7 +2220,7 @@ public partial class Titans
 
     private void BracketFail(string why)
     {
-        GD.PrintErr($"BRACKETTEST FAIL: {why}");
+        Dbg.Err($"BRACKETTEST FAIL: {why}");
         GetTree().Quit(1);
     }
 
@@ -2327,7 +2327,7 @@ public partial class Titans
         {
             _teamStaged = true;
             if (_allies.Count != 2) { TeamFail($"expected 2 allies from the seeded roster, got {_allies.Count}"); return; }
-            GD.Print($"TEAMTEST staged: leader slot {_leaderSlot} {_playerSpec.Id}, allies {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
+            Dbg.Print($"TEAMTEST staged: leader slot {_leaderSlot} {_playerSpec.Id}, allies {_allies[0].Spec.Id} + {_allies[1].Spec.Id}");
             // FORM phase first (owner, 2026-11-15): the
             // leader stands still at the home pad, both
             // followers start AHEAD of him - ally 0 dead ahead,
@@ -2988,7 +2988,7 @@ public partial class Titans
 
     private void BFail(string msg)
     {
-        GD.PrintErr($"BRKTEST FAIL: {msg}");
+        Dbg.Err($"BRKTEST FAIL: {msg}");
         GetTree().Quit(1);
     }
 
@@ -3044,7 +3044,7 @@ public partial class Titans
         }
         else from = aim + Vector3.Up * 15f;
         var res = _hit.Ray(from, (aim - from).Normalized(), 40f, target == _player ? Roles.Enemy : Roles.Player);
-        GD.Print($"BRK CRAFTRAY {partId} hit={res.Hit} target={res.Target} part={res.Part} point={res.Point}");
+        Dbg.Print($"BRK CRAFTRAY {partId} hit={res.Hit} target={res.Target} part={res.Part} point={res.Point}");
         if (!res.Hit || res.Part != partId)
         {
             BFail($"craft ray for {partId} attributed '{res.Part}'");
@@ -3536,7 +3536,7 @@ public partial class Titans
                               - Main.GridHeightAt(i, j));
             if (d > maxDiff) maxDiff = d;
         }
-        GD.Print($"TERRAIN SELFCHECK nodes={(Main.TerrainSegs + 1) * (Main.TerrainSegs + 1)} maxNodeDiff={maxDiff:F5}");
+        Dbg.Print($"TERRAIN SELFCHECK nodes={(Main.TerrainSegs + 1) * (Main.TerrainSegs + 1)} maxNodeDiff={maxDiff:F5}");
         // Arena grade scan (the duel-playable core).
         float maxG = 0f; Vector2 atG = Vector2.Zero;
         for (float x = -36f; x <= 36f; x += 1.5f)
@@ -4899,7 +4899,7 @@ public partial class Titans
             foreach (var (legName, hip, knee, ankle, planted, stepT) in _enemy.DebugLegJoints())
             {
                 float Lat(Vector3 p) => (p - _enemy.RootPos).Dot(right);
-                GD.Print($"GAITDBG t={_gaitT:F2} {legName}: hipLat={Lat(hip):F3} kneeLat={Lat(knee):F3} ankleLat={Lat(ankle):F3} planted={planted} stepT={stepT:F2}");
+                Dbg.Print($"GAITDBG t={_gaitT:F2} {legName}: hipLat={Lat(hip):F3} kneeLat={Lat(knee):F3} ankleLat={Lat(ankle):F3} planted={planted} stepT={stepT:F2}");
             }
             // Ground-contact audit (owner, 2026-11-15: "legs don't
             // touch the ground, gap between leg and shadow"): the
@@ -4907,7 +4907,7 @@ public partial class Titans
             // bottom (lowest skinned foot vertex vs the terrain
             // under it), so a solver error and a bind/geometry
             // mismatch read as different numbers.
-            GD.Print($"GAITDBG t={_gaitT:F2} CONTACT soleDiffMax={_enemy.MaxPlantedDiff():F3} " +
+            Dbg.Print($"GAITDBG t={_gaitT:F2} CONTACT soleDiffMax={_enemy.MaxPlantedDiff():F3} " +
                 $"footGapL={_partsEnemy.FootVisualGap(PartId.LegL):F3} footGapR={_partsEnemy.FootVisualGap(PartId.LegR):F3}");
             var joints = _enemy.DebugLegJoints();
             var fwdW = RiderWalker.HeadingVec(_enemy.LegsYaw);

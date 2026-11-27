@@ -48,7 +48,7 @@ public partial class Titans
     private void SetTeamOrder(TeamOrder o)
     {
         _teamOrder = o;
-        GD.Print($"TEAM order={o}");
+        Dbg.Print($"TEAM order={o}");
         AnnounceOrder(o); // the voice clip rides the feed line (owner, 2026-11-25)
     }
 

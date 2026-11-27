@@ -149,7 +149,7 @@ public static class StoryProgress
         {
             Counts[planet] = want;
             Save();
-            GD.Print($"STORY progress: completed planet {planet} mission {mission}; that planet now has {want}/{cap} unlocked");
+            Dbg.Print($"STORY progress: completed planet {planet} mission {mission}; that planet now has {want}/{cap} unlocked");
         }
     }
 
@@ -159,6 +159,6 @@ public static class StoryProgress
         Save();
         for (int p = 0; p < PlanetCount; p++) DoneMasks[p] = 0;
         SaveDone();
-        GD.Print("STORY progress reset: every planet back to its first mission");
+        Dbg.Print("STORY progress reset: every planet back to its first mission");
     }
 }

@@ -361,7 +361,7 @@ public partial class RiderWalker : Node3D
     {
         _cfg = cfg;
         var packed = GD.Load<PackedScene>(cfg.ModelPath);
-        if (packed == null) { GD.PrintErr($"{cfg.Label} FAIL: {cfg.ModelPath} did not load"); return; }
+        if (packed == null) { Dbg.Err($"{cfg.Label} FAIL: {cfg.ModelPath} did not load"); return; }
         _inner = packed.Instantiate<Node3D>();
         AddChild(_inner);
 
@@ -392,7 +392,7 @@ public partial class RiderWalker : Node3D
         Rotation = new Vector3(0f, Mathf.Pi, 0f);
         Position = spawnPos;
 
-        if (_skel == null) { GD.PrintErr($"{cfg.Label} FAIL: no Skeleton3D"); return; }
+        if (_skel == null) { Dbg.Err($"{cfg.Label} FAIL: no Skeleton3D"); return; }
         CollectMaterials();
         var names = new string[_skel.GetBoneCount()];
         for (int i = 0; i < names.Length; i++) names[i] = _skel.GetBoneName(i);
@@ -400,7 +400,7 @@ public partial class RiderWalker : Node3D
 
         _torsoBone = _skel.FindBone(Bones.Torso);
         InitLegs(spawnPos);
-        if (_legL.Hip < 0 || _legR.Hip < 0) { GD.PrintErr($"{cfg.Label} FAIL: leg bones not found"); return; }
+        if (_legL.Hip < 0 || _legR.Hip < 0) { Dbg.Err($"{cfg.Label} FAIL: leg bones not found"); return; }
 
         _legsYaw = legsYaw;
         _prevYaw = legsYaw;

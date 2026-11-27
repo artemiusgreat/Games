@@ -124,7 +124,7 @@ public partial class Titans
             SetHudPanelsVisible(true);
             _radar.Visible = true;
             Input.MouseMode = Input.MouseModeEnum.Captured;
-            GD.Print("LAB deploy: duel started with the lab loadout");
+            Dbg.Print("LAB deploy: duel started with the lab loadout");
         };
         lab.OnSelectionChanged = () => SetRiderSelection(lab.PlayerSpecId, lab.EnemySpecId);
         // Showroom stance (owner, 2026-11-25): the lab rider
@@ -388,7 +388,7 @@ public partial class Titans
         var eb = SlotOf(spec, WeaponSlotType.Ballistic);
         _foe.BallisticSlot = eb;
         _foe.DefBallistic = eb == null ? null : _foe.Loadout.FirstDef(eb.Value);
-        GD.Print($"FFA foe built: {spec.Id} at pad 2, ballistic={_foe.DefBallistic?.Id}");
+        Dbg.Print($"FFA foe built: {spec.Id} at pad 2, ballistic={_foe.DefBallistic?.Id}");
     }
 
     private void RebuildFoe()
@@ -479,7 +479,7 @@ public partial class Titans
             RebuildRider(false);
             if (_foe != null) RebuildFoe(); // the FFA partner re-picks from the priority data
         }
-        GD.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
+        Dbg.Print($"LAB selection player={_playerSpec.Id} enemy={_enemySpec.Id}");
         if (_lab != null) Callable.From(() => { if (_labOpen) OpenLab(); }).CallDeferred();
     }
 
@@ -548,7 +548,7 @@ public partial class Titans
         var eb = SlotOf(_enemySpec, WeaponSlotType.Ballistic);
         _enemyBallisticSlot = eb;
         _defEnemyBallistic = eb == null ? null : _enemyLoadout.FirstDef(eb.Value);
-        GD.Print($"LAB loadout energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id} total={_loadout.TotalWeaponWeight:F0}t");
+        Dbg.Print($"LAB loadout energy={_defEnergy?.Id} ballistic={_defBallistic?.Id} podL={_defPodL?.Id} podR={_defPodR?.Id} total={_loadout.TotalWeaponWeight:F0}t");
     }
 
     private static WeaponDef Slowest(System.Collections.Generic.List<(PartId Slot, WeaponDef Def)> guns)

@@ -478,7 +478,7 @@ public sealed class RiderParts
                 }
                 if (best != null)
                 {
-                    GD.PrintErr($"PARTS {_riderId}: mesh '{kv.Key}' claimed by no layout - attached to {best.Id} by the safety net");
+                    Dbg.Err($"PARTS {_riderId}: mesh '{kv.Key}' claimed by no layout - attached to {best.Id} by the safety net");
                     AttachMesh(best, kv.Value);
                 }
             }
@@ -569,7 +569,7 @@ public sealed class RiderParts
         {
             if (!byName.TryGetValue(name, out var mi))
             {
-                GD.PrintErr($"{_riderId} PARTS: mesh '{name}' not found for part {id}");
+                Dbg.Err($"{_riderId} PARTS: mesh '{name}' not found for part {id}");
                 continue;
             }
             AttachMesh(part, mi);
@@ -1497,9 +1497,9 @@ public sealed class RiderParts
         {
             var box = WorldAabb(d.Node);
             var low = LowestCorner(box);
-            GD.Print($"DEBRISDUMP {tag} {_riderId} part={d.Part.Id} settled={d.Settled} pos={d.Node.GlobalPosition} aabbMinY={box.Position.Y:F2} lowCornerY={low.Y:F2} groundAtLow={Main.HeightAt(low.X, low.Z):F2} groundAtCenter={Main.HeightAt(box.GetCenter().X, box.GetCenter().Z):F2}");
+            Dbg.Print($"DEBRISDUMP {tag} {_riderId} part={d.Part.Id} settled={d.Settled} pos={d.Node.GlobalPosition} aabbMinY={box.Position.Y:F2} lowCornerY={low.Y:F2} groundAtLow={Main.HeightAt(low.X, low.Z):F2} groundAtCenter={Main.HeightAt(box.GetCenter().X, box.GetCenter().Z):F2}");
         }
-        if (_debris.Count == 0) GD.Print($"DEBRISDUMP {tag} {_riderId} (no debris)");
+        if (_debris.Count == 0) Dbg.Print($"DEBRISDUMP {tag} {_riderId} (no debris)");
     }
 
     public void StepDebris(float dt)

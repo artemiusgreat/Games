@@ -764,7 +764,7 @@ public partial class Titans : Node3D
         _built = true;
         _buildCover.QueueFree();
         _buildCover = null;
-        GD.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest} props={_props.Count} circles");
+        Dbg.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest} props={_props.Count} circles");
         if (_terrainTest) TerrainSelfCheck();
         if (_weaponsTest)
         {
@@ -871,7 +871,7 @@ public partial class Titans : Node3D
         _playerVel = Vector3.Zero;
         _banner.Visible = false;
         _bannerSub.Visible = false;
-        GD.Print("WPN RESET both riders restored to spawn, HP full");
+        Dbg.Print("WPN RESET both riders restored to spawn, HP full");
     }
 
     private static ProgressBar MakeBar(Color fill, Vector2 minSize)
@@ -1005,7 +1005,7 @@ public partial class Titans : Node3D
             SetHudPanelsVisible(true); _radar.Visible = true;
             if (_feedLabel != null) _feedLabel.Visible = true;
             _pointHector = true;
-            GD.Print("POINTTEST selected Hector at start (lab path)");
+            Dbg.Print("POINTTEST selected Hector at start (lab path)");
         }
         if (_leaveShot && !_leaveShotDone && _player != null && _player.IsReady)
         {
@@ -1082,7 +1082,7 @@ public partial class Titans : Node3D
             _loadout.TryAssign(_playerSpec, PartId.ArmR, WeaponCatalog.HeavyCannon);  // AC 12 + HC 16 = 28 > 25 cap: must refuse
             var err = _loadout.Check(_playerSpec, PartId.ArmR, WeaponCatalog.HeavyCannon);
             _lab.Refresh();
-            GD.Print($"MULTISHOT fitted arm_L={string.Join(",", _loadout.WeaponsIn(PartId.ArmL))} pod_L={string.Join(",", _loadout.WeaponsIn(PartId.PodL))} arm_R refused: {err}");
+            Dbg.Print($"MULTISHOT fitted arm_L={string.Join(",", _loadout.WeaponsIn(PartId.ArmL))} pod_L={string.Join(",", _loadout.WeaponsIn(PartId.PodL))} arm_R refused: {err}");
         }
 
         // The capture waits for BOTH wall time and a frame
@@ -1098,14 +1098,14 @@ public partial class Titans : Node3D
         {
             _layoutDumped = true;
             if (_labEquipTab) _lab.OpenOnEquipmentTab();
-            GD.Print(_lab.DumpLayout());
+            Dbg.Print(_lab.DumpLayout());
         }
 
         if (_labShot && Time.GetTicksMsec() > 20000 && _labShotFrames > 50)
         {
             _labShot = false;
             GetViewport().GetTexture().GetImage().SavePng("/tmp/lab_live.png");
-            GD.Print("LABSHOT saved");
+            Dbg.Print("LABSHOT saved");
             GetTree().Quit();
             return;
         }

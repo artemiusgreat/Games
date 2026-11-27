@@ -1290,7 +1290,7 @@ public partial class Titans
         var path = WorldConfig.SkyTex;
         if (string.IsNullOrEmpty(path)) return;
         var tex = ResourceLoader.Load<Texture2D>(path);
-        if (tex == null) { GD.PrintErr($"SKY texture missing: {path}"); return; }
+        if (tex == null) { Dbg.Err($"SKY texture missing: {path}"); return; }
         // Hybrid sky (owner's pick, 2026-11-13): where the
         // contract asks for it, the painted panorama is sampled
         // by a sky shader that adds a procedural star layer -
