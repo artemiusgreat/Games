@@ -49,6 +49,15 @@ public partial class Projectile : Node3D
     // whenever that point has moved - the salvo converges
     // on the ENEMY, not the spot the reticle rested on at
     // fire time. SRM never locks.
+    // Guidance/step tuning (owner's rules: named, exact values).
+    private const float GuideResolveDistSq = 0.0225f; // re-solve when the tracked point moved > 0.15u (squared)
+    private const float GuideMinTof = 0.05f;          // below this time-of-flight the salvo flies out its arc
+    private const float GuideMinDur = 0.3f;           // re-solved blend window floor
+    private const float GuideDurFraction = 0.8f;      // blend window = this fraction of the remaining flight
+    private const float StepMinLength = 1e-5f;        // shorter steps skip the swept test
+    private const float OrientMinSpeedSq = 0.01f;     // below 0.1 u/s the node keeps its facing (squared)
+    private const float OrientMinDistSq = 1e-6f;      // look-target must differ from the position (squared)
+
     public System.Func<Vector3?> GuideTrack;
     public Vector3 GuideEnd;    // the point the current solve runs through
     public float GuideBaseSpeed = 36f;
@@ -81,19 +90,19 @@ public partial class Projectile : Node3D
             {
                 var tp = GuideTrack();
                 if (tp == null) GuideTrack = null; // target gone: the current arc finishes at the last solved point
-                else if (tp.Value.DistanceSquaredTo(GuideEnd) > 0.0225f) // moved > 0.15u: re-solve from here
+                else if (tp.Value.DistanceSquaredTo(GuideEnd) > GuideResolveDistSq) // moved > 0.15u: re-solve from here
                 {
                     GuideEnd = tp.Value;
                     float distNow = GlobalPosition.DistanceTo(GuideEnd);
                     float tofNow = Mathf.Min(distNow / GuideBaseSpeed, GuideTofMax);
-                    if (tofNow < 0.05f) GuideTrack = null; // on top of it: fly out the arc
+                    if (tofNow < GuideMinTof) GuideTrack = null; // on top of it: fly out the arc
                     else
                     {
                         GuideStart = GlobalPosition;
                         GuideOrigin = GlobalPosition;
                         GuideTime = 0f;
                         GuideVel0 = (GuideEnd - GlobalPosition) / tofNow + Vector3.Up * (0.5f * Gravity * tofNow);
-                        GuideDur = Mathf.Max(0.3f, tofNow * 0.8f);
+                        GuideDur = Mathf.Max(GuideMinDur, tofNow * GuideDurFraction);
                     }
                 }
             }
@@ -115,7 +124,7 @@ public partial class Projectile : Node3D
         }
         var from = GlobalPosition;
         float len = from.DistanceTo(to);
-        if (len > 1e-5f)
+        if (len > StepMinLength)
         {
             var hit = hm.Ray(from, (to - from) / len, len, OwnerId);
             if (hit.Hit)
@@ -127,10 +136,10 @@ public partial class Projectile : Node3D
             }
         }
         GlobalPosition = to;
-        if (Vel.LengthSquared() > 0.01f)
+        if (Vel.LengthSquared() > OrientMinSpeedSq)
         {
             var target = to + Vel;
-            if (GlobalPosition.DistanceSquaredTo(target) > 1e-6f)
+            if (GlobalPosition.DistanceSquaredTo(target) > OrientMinDistSq)
                 LookAt(target, Vector3.Up);
         }
         OnStep?.Invoke(this);
@@ -160,6 +169,27 @@ public static class WeaponFx
     private static readonly Color RocketTipColor = new(1f, 0.45f, 0.1f);
     private static readonly Color TrailPuffColor = new(0.9f, 0.9f, 0.92f, 0.45f);
 
+    // FX recipe values (owner's rules: named, exact values).
+    private const float BeamMinLength = 0.1f;         // a beam never collapses below this
+    private const float OpaqueAlpha = 0.99f;          // at/above this alpha the beam skips transparency
+    private const float TracerMetallic = 0.8f;
+    private const float TracerRoughness = 0.32f;
+    private const float TracerEmissionEnergy = 0.35f;
+    private const float TracerRadius = 0.075f;
+    private const float TracerBodyLength = 0.62f;
+    private const float TracerTipLength = 0.3f;
+    private const float TracerTipOffsetZ = -0.46f;    // seats the tip against the body end
+    private const int TracerRadialSegments = 8;
+    private const float TracerGlowRadius = 0.09f;
+    private const int TracerGlowRings = 4;
+    private const float TracerGlowStretch = 8f;       // slim streak: 0.18 wide, 1.44 long
+    private const float RocketBodyRoughness = 0.5f;
+    private const float RocketRadius = 0.09f;
+    private const float RocketBodyLength = 0.72f;
+    private const float RocketTipLength = 0.3f;
+    private const float RocketTipOffsetZ = -0.5f;
+    private const float TrailPuffSize = 0.14f;
+
     private static StandardMaterial3D _tracerCoreMat;
     private static StandardMaterial3D _tracerGlowMat;
     private static StandardMaterial3D _rocketBodyMat;
@@ -171,8 +201,8 @@ public static class WeaponFx
     {
         var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
         float len = a.DistanceTo(b);
-        mi.Mesh = new BoxMesh { Size = new Vector3(width, width, Mathf.Max(len, 0.1f)) };
-        mi.MaterialOverride = Unshaded(core, alpha: core.A < 0.99f);
+        mi.Mesh = new BoxMesh { Size = new Vector3(width, width, Mathf.Max(len, BeamMinLength)) };
+        mi.MaterialOverride = Unshaded(core, alpha: core.A < OpaqueAlpha);
         var dir = (b - a).Normalized();
         var basis = Basis.LookingAt(dir, Vector3.Up);
         mi.GlobalTransform = new Transform3D(basis, (a + b) * 0.5f);
@@ -200,29 +230,29 @@ public static class WeaponFx
         _tracerCoreMat ??= new StandardMaterial3D
         {
             AlbedoColor = TracerCoreColor,
-            Metallic = 0.8f,
-            Roughness = 0.32f,
+            Metallic = TracerMetallic,
+            Roughness = TracerRoughness,
             EmissionEnabled = true,
             Emission = TracerEmissionColor,
-            EmissionEnergyMultiplier = 0.35f
+            EmissionEnergyMultiplier = TracerEmissionEnergy
         };
         _tracerGlowMat ??= Unshaded(TracerGlowColor, alpha: true);
         var root = new Node3D();
         var body = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        body.Mesh = new CylinderMesh { TopRadius = 0.075f, BottomRadius = 0.075f, Height = 0.62f, RadialSegments = 8 };
+        body.Mesh = new CylinderMesh { TopRadius = TracerRadius, BottomRadius = TracerRadius, Height = TracerBodyLength, RadialSegments = TracerRadialSegments };
         body.MaterialOverride = _tracerCoreMat;
         body.RotationDegrees = new Vector3(90f, 0f, 0f); // cylinder Y axis -> Z
         root.AddChild(body);
         var tip = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        tip.Mesh = new CylinderMesh { TopRadius = 0f, BottomRadius = 0.075f, Height = 0.3f, RadialSegments = 8 };
+        tip.Mesh = new CylinderMesh { TopRadius = 0f, BottomRadius = TracerRadius, Height = TracerTipLength, RadialSegments = TracerRadialSegments };
         tip.MaterialOverride = _tracerCoreMat;
         tip.RotationDegrees = new Vector3(-90f, 0f, 0f); // point toward -Z (rocket tip pattern)
-        tip.Position = new Vector3(0f, 0f, -0.46f);
+        tip.Position = new Vector3(0f, 0f, TracerTipOffsetZ);
         root.AddChild(tip);
         var glow = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        glow.Mesh = new SphereMesh { Radius = 0.09f, Height = 0.18f, RadialSegments = 8, Rings = 4 };
+        glow.Mesh = new SphereMesh { Radius = TracerGlowRadius, Height = TracerGlowRadius * 2f, RadialSegments = TracerRadialSegments, Rings = TracerGlowRings };
         glow.MaterialOverride = _tracerGlowMat;
-        glow.Scale = new Vector3(1f, 1f, 8f); // slim streak: 0.18 wide, 1.44 long
+        glow.Scale = new Vector3(1f, 1f, TracerGlowStretch);
         root.AddChild(glow);
         return root;
     }
@@ -230,18 +260,18 @@ public static class WeaponFx
     // Rocket: gray cylinder body + orange tip cone, nose toward -Z.
     public static Node3D MakeRocket()
     {
-        _rocketBodyMat ??= new StandardMaterial3D { AlbedoColor = RocketBodyColor, Roughness = 0.5f };
+        _rocketBodyMat ??= new StandardMaterial3D { AlbedoColor = RocketBodyColor, Roughness = RocketBodyRoughness };
         _rocketTipMat ??= Unshaded(RocketTipColor);
         var root = new Node3D();
         var body = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        body.Mesh = new CylinderMesh { TopRadius = 0.09f, BottomRadius = 0.09f, Height = 0.72f };
+        body.Mesh = new CylinderMesh { TopRadius = RocketRadius, BottomRadius = RocketRadius, Height = RocketBodyLength };
         body.MaterialOverride = _rocketBodyMat;
         body.RotationDegrees = new Vector3(90f, 0f, 0f); // cylinder Y axis -> Z
         var tip = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        tip.Mesh = new CylinderMesh { TopRadius = 0f, BottomRadius = 0.09f, Height = 0.3f };
+        tip.Mesh = new CylinderMesh { TopRadius = 0f, BottomRadius = RocketRadius, Height = RocketTipLength };
         tip.MaterialOverride = _rocketTipMat;
         tip.RotationDegrees = new Vector3(-90f, 0f, 0f);
-        tip.Position = new Vector3(0f, 0f, -0.5f);
+        tip.Position = new Vector3(0f, 0f, RocketTipOffsetZ);
         root.AddChild(body);
         root.AddChild(tip);
         return root;
@@ -252,7 +282,7 @@ public static class WeaponFx
     public static MeshInstance3D MakeTrailPuff(Vector3 pos)
     {
         var mi = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-        mi.Mesh = new BoxMesh { Size = new Vector3(0.14f, 0.14f, 0.14f) };
+        mi.Mesh = new BoxMesh { Size = new Vector3(TrailPuffSize, TrailPuffSize, TrailPuffSize) };
         mi.MaterialOverride = Unshaded(TrailPuffColor, alpha: true);
         mi.GlobalTransform = new Transform3D(Basis.Identity, pos);
         return mi;
