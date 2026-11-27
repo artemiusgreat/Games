@@ -91,6 +91,13 @@ public partial class MissionScreen : Control
     private const float SeatRoughness = 0.8f;
     private static readonly Color ChairColor = new(0.13f, 0.15f, 0.19f);
     private static readonly Color CandleColor = new(0.95f, 0.7f, 0.25f);
+    // The bar patrons' shirt colors, in creation order
+    // (0 bartender, 1-2 seated, 3-4 standing).
+    private static readonly Color[] PatronShirts =
+    {
+        new(0.55f, 0.48f, 0.40f), new(0.20f, 0.30f, 0.55f), new(0.45f, 0.20f, 0.16f),
+        new(0.25f, 0.38f, 0.28f), new(0.38f, 0.33f, 0.45f)
+    };
     private const float CandleRoughness = 0.25f, CandleEmission = 0.8f;
     // Back-bar bottle row: count, spacing and the bottle
     // piece recipe (the shelves share the row step).
@@ -453,11 +460,11 @@ public partial class MissionScreen : Control
         // Patrons: capsule bodies + heads, one bartender behind
         // the bar. Holders are recorded in creation order and
         // mapped to missions by FigureOrder in RefreshPatrons.
-        Patron(root, new Vector3(0.9f, 0f, -3.3f), new Color(0.55f, 0.48f, 0.40f), 0f);          // 0 bartender
-        Patron(root, new Vector3(-1.6f, -0.42f, -1.45f), new Color(0.20f, 0.30f, 0.55f), 3.14f); // 1 seated at the bar
-        Patron(root, new Vector3(0.9f, -0.42f, -1.5f), new Color(0.45f, 0.20f, 0.16f), 3.14f);   // 2 seated
-        Patron(root, new Vector3(-3.1f, 0f, -0.5f), new Color(0.25f, 0.38f, 0.28f), 1.35f);      // 3 standing by a table
-        Patron(root, new Vector3(4.6f, 0f, -2.9f), new Color(0.38f, 0.33f, 0.45f), -0.7f);       // 4 standing at the counter end
+        Patron(root, new Vector3(0.9f, 0f, -3.3f), PatronShirts[0], 0f);          // 0 bartender
+        Patron(root, new Vector3(-1.6f, -0.42f, -1.45f), PatronShirts[1], 3.14f); // 1 seated at the bar
+        Patron(root, new Vector3(0.9f, -0.42f, -1.5f), PatronShirts[2], 3.14f);   // 2 seated
+        Patron(root, new Vector3(-3.1f, 0f, -0.5f), PatronShirts[3], 1.35f);      // 3 standing by a table
+        Patron(root, new Vector3(4.6f, 0f, -2.9f), PatronShirts[4], -0.7f);       // 4 standing at the counter end
         BuildPatronUi(root);
         // Holo planet over the right end of the bar.
         var holo = new MeshInstance3D

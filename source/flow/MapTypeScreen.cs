@@ -69,7 +69,6 @@ public partial class MapTypeScreen : Control
     private const float CardCornerRadius = 18f;
     private const float ActionBarCornerRadius = 20f;
     private const float CardBorderWidth = 2f;
-    private const float FeaturedCardBorderWidth = 2.5f;
     private const float RuleHeight = 2f;
 
     // Action-bar palette (the featured card's bar is solid
@@ -214,7 +213,7 @@ public partial class MapTypeScreen : Control
         var shell = new CutPanel
         {
             Cut = CardCornerRadius,
-            BorderWidth = featured ? FeaturedCardBorderWidth : CardBorderWidth,
+            BorderWidth = CardBorderWidth,
             FillNormal = FlowUi.Navy,
             FillHover = FlowUi.NavySoft,
             FillPressed = FlowUi.ButtonPressed,
@@ -347,8 +346,10 @@ public partial class MapTypeScreen : Control
 // owning button.
 public partial class CutPanel : Control
 {
-    public float Cut = 16f;
-    public float BorderWidth = 2f;
+    private const float DefaultCut = 16f;
+    private const float DefaultBorderWidth = 2f;
+    public float Cut = DefaultCut;
+    public float BorderWidth = DefaultBorderWidth;
     public Color FillNormal = Colors.Transparent;
     public Color FillHover = Colors.Transparent;
     public Color FillPressed = Colors.Transparent;
@@ -386,6 +387,18 @@ public partial class CardIcon : Control
     private const float IconThinStrokeWidth = 1.25f;
     private const int IconArcSegments = 48;
     private const int IconInnerArcSegments = 32;
+    private const float IconCenterFraction = 0.5f;   // both marks are centred in the box
+    private const float IconRadiusFraction = 0.46f;  // outer radius against the box's short side
+    private const float QuarterTurn = Mathf.Pi * 0.5f;
+    private const float EighthTurn = Mathf.Pi * 0.25f;
+    private const float CompassPointReach = 1.02f;   // long points overshoot the ring slightly
+    private const float CompassShortPointFraction = 0.55f;
+    private const float CompassDotRadius = 2.5f;
+    private const float TargetRingFraction = 0.78f;
+    private const float TargetInnerRingFraction = 0.30f;
+    private const float TickInnerFraction = 0.52f;
+    private const float TickOuterReach = 1.05f;
+    private const float TargetDotRadius = 2f;
 
     public enum Kind { Compass, Target }
     public Kind IconKind;
@@ -393,34 +406,34 @@ public partial class CardIcon : Control
 
     public override void _Draw()
     {
-        var c = Size * 0.5f;
-        float r = Mathf.Min(Size.X, Size.Y) * 0.46f;
+        var c = Size * IconCenterFraction;
+        float r = Mathf.Min(Size.X, Size.Y) * IconRadiusFraction;
         if (IconKind == Kind.Compass)
         {
             DrawArc(c, r, 0f, Mathf.Tau, IconArcSegments, Tint, IconStrokeWidth, true);
             // Four long points, four short diagonals.
             for (int i = 0; i < 4; i++)
             {
-                float a = i * Mathf.Pi * 0.5f;
+                float a = i * QuarterTurn;
                 var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                DrawLine(c - dir * r * 1.02f, c + dir * r * 1.02f, Tint, IconStrokeWidth, true);
-                float b = a + Mathf.Pi * 0.25f;
+                DrawLine(c - dir * r * CompassPointReach, c + dir * r * CompassPointReach, Tint, IconStrokeWidth, true);
+                float b = a + EighthTurn;
                 var d2 = new Vector2(Mathf.Cos(b), Mathf.Sin(b));
-                DrawLine(c, c + d2 * r * 0.55f, Tint, IconThinStrokeWidth, true);
+                DrawLine(c, c + d2 * r * CompassShortPointFraction, Tint, IconThinStrokeWidth, true);
             }
-            DrawCircle(c, 2.5f, Tint);
+            DrawCircle(c, CompassDotRadius, Tint);
         }
         else
         {
-            DrawArc(c, r * 0.78f, 0f, Mathf.Tau, IconArcSegments, Tint, IconStrokeWidth, true);
-            DrawArc(c, r * 0.30f, 0f, Mathf.Tau, IconInnerArcSegments, Tint, IconThinStrokeWidth, true);
+            DrawArc(c, r * TargetRingFraction, 0f, Mathf.Tau, IconArcSegments, Tint, IconStrokeWidth, true);
+            DrawArc(c, r * TargetInnerRingFraction, 0f, Mathf.Tau, IconInnerArcSegments, Tint, IconThinStrokeWidth, true);
             for (int i = 0; i < 4; i++)
             {
-                float a = i * Mathf.Pi * 0.5f;
+                float a = i * QuarterTurn;
                 var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                DrawLine(c + dir * r * 0.52f, c + dir * r * 1.05f, Tint, IconStrokeWidth, true);
+                DrawLine(c + dir * r * TickInnerFraction, c + dir * r * TickOuterReach, Tint, IconStrokeWidth, true);
             }
-            DrawCircle(c, 2f, Tint);
+            DrawCircle(c, TargetDotRadius, Tint);
         }
     }
 }
