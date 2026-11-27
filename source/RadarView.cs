@@ -8,15 +8,16 @@ using System.Collections.Generic;
 // a circle'). HEADING-UP (owner, 2026-11-11): the plot
 // rotates with the rider's legs, so a contact dead ahead
 // sits at the top centre and the rim ticks read as relative
-// bearing; the N marker travels around the rim to wherever
-// north actually is. Range 90u. Dressed like the reference
+// bearing; the cardinal letters (N, E, S, W) travel around
+// the rim to wherever each world side actually is. Dressed like the reference
 // instrument: a grid clipped to the circle (15u minor / 30u
 // major), circular range rings at 30/60/90 and bearing
 // ticks around the rim every 10 degrees (major at 30). NO
 // numbers anywhere (owner: 'remove numbers, they are fake
 // anyway'). The player is a fixed up-triangle in the center,
-// enemies are red contacts clamped to the rim - buildings
-// are NOT shown (owner). Pure presentation - it reads
+// contacts are clamped to the rim - allies SkyBlue, enemies
+// OrangeRed (owner, 2026-11-27); buildings are NOT shown
+// (owner). Pure presentation - it reads
 // walker positions each redraw and owns no state.
 public partial class RadarView : Control
 {
@@ -26,7 +27,7 @@ public partial class RadarView : Control
     public RiderWalker Enemy2;
     public bool Enemy2Down;
     // Story teammates (owner, teams stage): friendly contacts
-    // in the player's own green. Refreshed by the HUD each
+    // in SkyBlue. Refreshed by the HUD each
     // frame like the enemy references (walkers are rebuilt on
     // lab swaps and leader changes).
     public readonly List<(RiderWalker W, bool Down)> Allies = new();
@@ -49,12 +50,12 @@ public partial class RadarView : Control
     // from the ink colour per element in _Draw).
     private static readonly Color ScopeInkColor = new(0.45f, 0.9f, 0.95f);
     private static readonly Color PanelColor = new(0.03f, 0.06f, 0.09f, 0.5f);
-    private static readonly Color EnemyContactColor = new(1f, 0.3f, 0.22f, 0.95f);
-    private static readonly Color FriendlyColor = new(0.45f, 0.95f, 0.55f, 0.95f);
+    private static readonly Color EnemyContactColor = new(Colors.OrangeRed, 0.95f);
+    private static readonly Color FriendlyColor = new(Colors.SkyBlue, 0.95f);
     private static readonly Color HeightDeepColor = new(0.05f, 0.10f, 0.13f);
     private static readonly Color HeightMidColor = new(0.13f, 0.23f, 0.22f);
     private static readonly Color HeightCrestColor = new(0.42f, 0.48f, 0.42f);
-    private static readonly Color HeightTintColor = new(1f, 1f, 1f, 0.5f);
+    private static readonly Color HeightTintColor = new(1f, 1f, 1f, 0.75f); // owner, 2026-11-27: the relief reads through stronger (was 0.5)
     private const float ContactRadius = 4.5f;
     private const float ContactRimInset = 6f;  // contacts clamp this far inside the rim
     private const float ScopeInset = 10f;      // scope disc inset from the panel edge
@@ -70,11 +71,10 @@ public partial class RadarView : Control
     private const float TickAlpha = 0.5f, MajorTickAlpha = 0.85f;
     private const float MajorTickWidth = 1.5f;
     private const float MinNorthDirSq = 0.001f; // squared-length guard for the north marker's direction
-    private const float NorthLabelInset = 11f;
-    private const int NorthLabelFontSize = 10;
-    private const float NorthLabelAlpha = 0.95f;
-    private const int RadarLabelFontSize = 9;
-    private const float RadarLabelAlpha = 0.65f;
+    private const float CardinalLabelInset = 11f;
+    private const int CardinalLabelFontSize = 10;
+    private const float CardinalLabelAlpha = 0.95f;
+    private const float CardinalLabelBoxWidth = 12f; // letters centre on their rim point over this draw width
 
     // Heightmap underlay (owner ask, 2026-11-20): a semi-
     // transparent relief of the current world's heightfield
@@ -251,18 +251,25 @@ public partial class RadarView : Control
             bool maj = deg % MajorTickDeg == 0;
             DrawLine(rim, rim - dir * (maj ? MajorTickLength : TickLength), new Color(ink, maj ? MajorTickAlpha : TickAlpha), maj ? MajorTickWidth : 1f);
         }
-        // N marker just inside the rim (a letter, not a
-        // number), riding to wherever north falls under the
-        // current heading.
+        // Cardinal markers just inside the rim (letters, not
+        // numbers), riding to wherever each world side falls
+        // under the current heading (owner, 2026-11-27: N, E,
+        // S, W - the N marker used to ride alone).
         var font = GetThemeDefaultFont();
         if (Player != null)
         {
-            var nd = ToScope(new Vector2(0f, -1f)); // world north in (X, Z)
+            var nd = ToScope(new Vector2(0f, -1f)).Normalized(); // world north in scope space
             if (nd.LengthSquared() > MinNorthDirSq)
             {
-                var np = c + nd.Normalized() * (half - NorthLabelInset);
-                DrawString(font, np + new Vector2(-3f, 3f), "N",
-                    HorizontalAlignment.Left, -1f, NorthLabelFontSize, new Color(ink, NorthLabelAlpha));
+                var ed = new Vector2(-nd.Y, nd.X); // east: north rotated a quarter turn clockwise on screen
+                var cardinals = new (Vector2 Dir, string Letter)[]
+                    { (nd, "N"), (ed, "E"), (-nd, "S"), (-ed, "W") };
+                foreach (var (dir, letter) in cardinals)
+                {
+                    var lp = c + dir * (half - CardinalLabelInset);
+                    DrawString(font, lp + new Vector2(-CardinalLabelBoxWidth * 0.5f, 3f), letter,
+                        HorizontalAlignment.Center, CardinalLabelBoxWidth, CardinalLabelFontSize, new Color(ink, CardinalLabelAlpha));
+                }
             }
         }
 
@@ -277,7 +284,7 @@ public partial class RadarView : Control
         DrawContact(Enemy2, Enemy2Down, c, px, half - ContactRimInset);
         foreach (var (fw, fdown) in Foes)
             DrawContact(fw, fdown, c, px, half - ContactRimInset);
-        // Friendly contacts in the player's green.
+        // Friendly contacts in SkyBlue.
         foreach (var (aw, adown) in Allies)
             DrawContact(aw, adown, c, px, half - ContactRimInset, FriendlyColor);
         // Player triangle: fixed, pointing up - up IS the
@@ -289,7 +296,5 @@ public partial class RadarView : Control
             c + new Vector2(-5f, 6f)
         };
         DrawPolygon(pts, new[] { FriendlyColor });
-        DrawString(font, new Vector2(6f, H - 5f), "RADAR",
-            HorizontalAlignment.Left, -1f, RadarLabelFontSize, new Color(ink, RadarLabelAlpha));
     }
 }

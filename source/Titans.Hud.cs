@@ -99,7 +99,7 @@ public partial class Titans
         var radarBox = new VBoxContainer();
         radarBox.AddThemeConstantOverride("separation", RadarBoxSeparation);
         _panelRadar.AddChild(radarBox);
-        radarBox.AddChild(PanelHeader("RADAR", 1, HudCyan));
+        radarBox.AddChild(PanelHeader("", IconKind.Radar, HudCyan)); // owner, 2026-11-27: no RADAR label - the icon alone heads the panel
         _radar = new RadarView
         {
             Player = _player,
@@ -121,15 +121,18 @@ public partial class Titans
         // Panel header in the owner's example style: a line-icon
         // badge, the panel name in pale caps, and a hairline in
         // the panel's accent under it.
-        HBoxContainer PanelHeader(string t, int icon, Color accent)
+        HBoxContainer PanelHeader(string t, IconKind icon, Color accent)
         {
             var h = new HBoxContainer();
             h.AddThemeConstantOverride("separation", PanelHeaderSeparation);
             h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(HeaderIconSize, HeaderIconSize), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
-            var l = MakeLabel(HeaderFontSize, HeaderTextColor);
-            l.Text = t;
-            l.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-            h.AddChild(l);
+            if (t.Length > 0) // an empty title means icon only (the radar panel, owner, 2026-11-27)
+            {
+                var l = MakeLabel(HeaderFontSize, HeaderTextColor);
+                l.Text = t;
+                l.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+                h.AddChild(l);
+            }
             return h;
         }
         Control PanelDivider(Color accent)
@@ -148,7 +151,7 @@ public partial class Titans
         var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) }; // the shared dashboard width (owner: all panels match the target block)
         leftBox.AddThemeConstantOverride("separation", PanelColumnSeparation);
         _panelHealth.AddChild(leftBox);
-        leftBox.AddChild(PanelHeader("STATUS", 2, HudCyan));
+        leftBox.AddChild(PanelHeader("STATUS", IconKind.Status, HudCyan));
         leftBox.AddChild(PanelDivider(HudCyan));
         _lblPlayerHp = MakeLabel(MainHealthFontSize, HealthTextColor);
         leftBox.AddChild(_lblPlayerHp);
@@ -197,7 +200,7 @@ public partial class Titans
         var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) };
         midBox.AddThemeConstantOverride("separation", PanelColumnSeparation);
         _panelWeapons.AddChild(midBox);
-        midBox.AddChild(PanelHeader("WEAPONS", 0, HudCyan));
+        midBox.AddChild(PanelHeader("WEAPONS", IconKind.Weapons, HudCyan));
         midBox.AddChild(PanelDivider(HudCyan));
         (Label, ProgressBar, TriMark) CdRow(string name)
         {
@@ -271,7 +274,7 @@ public partial class Titans
         var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) };
         rightBox.AddThemeConstantOverride("separation", PanelColumnSeparation);
         _panelTarget.AddChild(rightBox);
-        rightBox.AddChild(PanelHeader("TARGET", 3, HudRed));
+        rightBox.AddChild(PanelHeader("TARGET", IconKind.Target, HudRed));
         rightBox.AddChild(PanelDivider(HudRed));
         _lblEnemyHp = MakeLabel(MainHealthFontSize, EnemyTextColor);
         rightBox.AddChild(_lblEnemyHp);
@@ -537,6 +540,10 @@ public partial class Titans
     // badges of one size (owner, 2026-11-23), glyphs inside:
     // 0 weapons (lines), 1 radar (fan + sweep), 2 status
     // (check), 3 target (reticle).
+    // HUD panel header icons (owner, 2026-11-27: an enum, not
+    // magic numbers at the PanelHeader call sites).
+    public enum IconKind { Weapons, Radar, Status, Target }
+
     private sealed partial class IconMark : Control
     {
         // Glyph metrics (owner, 2026-11-25: named constants).
@@ -546,8 +553,14 @@ public partial class Titans
         private const float GlyphHalfWidth = 4.2f; // the glyphs' shared half-extent
         private const float WeaponsGlyphLineWidth = 1.7f; // the weapons glyph's stroke (slightly heavier than the shared stroke)
         private const float CheckGlyphLineWidth = 1.9f;   // the status check's stroke
+        private const float RadarGlyphRingRadius = 5.5f;  // the radar glyph's inner ring (spans most of the badge)
+        private const float RadarGlyphDotRadius = 1.1f;   // the radar glyph's centre dot
+        private const float RadarGlyphBlipOffset = 3f;    // the radar glyph's blip, up-right inside the ring
+        private const float RadarGlyphBlipRadius = 1.3f;  // the radar glyph's blip dot
+        private const float CheckGlyphLeftX = -4f, CheckGlyphLeftY = 0.2f, CheckGlyphMidX = -1.3f, CheckGlyphMidY = 3f;
+        private const float TargetGlyphRingRadius = 2.8f, TargetGlyphDotRadius = 1.1f, TargetGlyphTickReach = 6.2f;
 
-        public int Kind;
+        public IconKind Kind;
         public Color Accent = HudCyan;
 
         public override void _Draw()
@@ -564,30 +577,36 @@ public partial class Titans
             DrawArc(c, badge, 0, Mathf.Tau, 32, col, GlyphLineWidth, true);
             switch (Kind)
             {
-                case 0: // weapons: three plain lines
+                case IconKind.Weapons: // three plain lines
                     for (int i = 0; i < 3; i++)
                     {
                         float y = c.Y + (i - 1) * GlyphLineSpacing;
                         DrawLine(new Vector2(c.X - GlyphHalfWidth, y), new Vector2(c.X + GlyphHalfWidth, y), col, WeaponsGlyphLineWidth, true);
                     }
                     break;
-                case 1: // radar: fan + sweep, centred in the badge
-                    DrawArc(c, 2.6f, -2.4f, -0.7f, 10, col, GlyphLineWidth, true);
-                    DrawArc(c, 5.0f, -2.4f, -0.7f, 12, col, GlyphLineWidth, true);
-                    DrawLine(c, c + new Vector2(3.4f, -3.4f), col, GlyphLineWidth, true);
-                    DrawCircle(c, 1.3f, col);
+                case IconKind.Radar: // radar (owner, 2026-11-27: the old fan +
+                    // sweep sat in the middle and left the badge
+                    // empty - a miniature scope instead: an inner
+                    // ring and a cross spanning it fill the badge
+                    // evenly, with a centre dot and one blip).
+                    DrawArc(c, RadarGlyphRingRadius, 0, Mathf.Tau, 24, col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(-RadarGlyphRingRadius, 0), c + new Vector2(RadarGlyphRingRadius, 0), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(0, -RadarGlyphRingRadius), c + new Vector2(0, RadarGlyphRingRadius), col, GlyphLineWidth, true);
+                    DrawCircle(c, RadarGlyphDotRadius, col);
+                    DrawCircle(c + new Vector2(RadarGlyphBlipOffset, -RadarGlyphBlipOffset), RadarGlyphBlipRadius, col);
                     break;
-                case 2: // status: a check (the shield is retired)
-                    DrawLine(c + new Vector2(-4f, 0.2f), c + new Vector2(-1.3f, 3f), col, CheckGlyphLineWidth, true);
-                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(GlyphHalfWidth, -CheckTipRise), col, CheckGlyphLineWidth, true);
+                case IconKind.Status: // a check (the shield is retired)
+                    DrawLine(c + new Vector2(CheckGlyphLeftX, CheckGlyphLeftY), c + new Vector2(CheckGlyphMidX, CheckGlyphMidY), col, CheckGlyphLineWidth, true);
+                    DrawLine(c + new Vector2(CheckGlyphMidX, CheckGlyphMidY), c + new Vector2(GlyphHalfWidth, -CheckTipRise), col, CheckGlyphLineWidth, true);
                     break;
+                case IconKind.Target:
                 default: // target: inner ring, dot, four ticks
-                    DrawArc(c, 2.8f, 0, Mathf.Tau, 20, col, GlyphLineWidth, true);
-                    DrawCircle(c, 1.1f, col);
-                    DrawLine(c + new Vector2(-6.2f, 0), c + new Vector2(-GlyphHalfWidth, 0), col, GlyphLineWidth, true);
-                    DrawLine(c + new Vector2(GlyphHalfWidth, 0), c + new Vector2(6.2f, 0), col, GlyphLineWidth, true);
-                    DrawLine(c + new Vector2(0, -6.2f), c + new Vector2(0, -GlyphHalfWidth), col, GlyphLineWidth, true);
-                    DrawLine(c + new Vector2(0, GlyphHalfWidth), c + new Vector2(0, 6.2f), col, GlyphLineWidth, true);
+                    DrawArc(c, TargetGlyphRingRadius, 0, Mathf.Tau, 20, col, GlyphLineWidth, true);
+                    DrawCircle(c, TargetGlyphDotRadius, col);
+                    DrawLine(c + new Vector2(-TargetGlyphTickReach, 0), c + new Vector2(-GlyphHalfWidth, 0), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(GlyphHalfWidth, 0), c + new Vector2(TargetGlyphTickReach, 0), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(0, -TargetGlyphTickReach), c + new Vector2(0, -GlyphHalfWidth), col, GlyphLineWidth, true);
+                    DrawLine(c + new Vector2(0, GlyphHalfWidth), c + new Vector2(0, TargetGlyphTickReach), col, GlyphLineWidth, true);
                     break;
             }
         }
