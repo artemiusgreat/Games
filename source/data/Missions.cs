@@ -57,7 +57,6 @@ public sealed class MissionDef
     public bool SnowGround;
     // Three terrace levels with ramps and lifts, plus an
     // island district on a bridge (owner: Harbor rebuild).
-    public bool Terraces;
     // The Ascent campaign map (owner, 2026-11-20): the
     // valley-to-summit world with village guard groups (maps/Babylon.cs).
     public bool Ascent;
@@ -86,7 +85,7 @@ public static class MissionCatalog
     private static MissionDef M(PlanetDef p, string name, string site, float sx, float sy,
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
-        bool flat = false, string sky = "", bool snow = false, bool terraces = false,
+        bool flat = false, string sky = "", bool snow = false,
         bool stars = false, bool ascent = false, bool alwaysAvailable = false,
         bool photoreal = false, bool hills = false, string tile = "")
     {
@@ -95,7 +94,7 @@ public static class MissionCatalog
             Name = name, Site = site, SitePos = new Vector2(sx, sy), Type = type,
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
-            FlatTerrain = flat, SkyTex = sky, SkyTile = tile, SnowGround = snow, Terraces = terraces, Planet = p,
+            FlatTerrain = flat, SkyTex = sky, SkyTile = tile, SnowGround = snow, Planet = p,
             ProceduralStars = stars, Ascent = ascent, AlwaysAvailable = alwaysAvailable,
             Photoreal = photoreal, Hills = hills
         };

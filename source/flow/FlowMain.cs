@@ -349,9 +349,6 @@ public partial class FlowMain : Node3D
         if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Snow)))
             WorldConfig.SnowGround = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.SnowGround;
-        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Terraces)))
-            WorldConfig.TerracedCity = WorldConfig.IsMission
-                && WorldConfig.SelectedMission.Terraces;
         if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Ascent)))
             WorldConfig.Ascent = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Ascent;

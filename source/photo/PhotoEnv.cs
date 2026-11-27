@@ -452,11 +452,10 @@ void fragment() {
         var zones = new Vector4[4];
         if (WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.City)
         {
-            float padR = WorldConfig.TerracedCity ? 300f : 120f;
+            float padR = 120f;
             for (int i = 0; i < 3 && i < Main.SpawnPads.Length; i++)
                 zones[i] = new Vector4(Main.SpawnPads[i].X, Main.SpawnPads[i].Y, padR, 1f);
-            if (!WorldConfig.TerracedCity)
-                zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
+            zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
         }
         m.SetShaderParameter("solid_zones", zones);
         m.SetShaderParameter("snow_mode", WorldConfig.SnowGround ? 1f : 0f);

@@ -2102,30 +2102,30 @@ public partial class Titans
         float fy = Main.HeightAt(expected.X, expected.Z) + 1.3f;
         if (expected.Y < fy) expected.Y = fy;
         float dev = _cam.GlobalPosition.DistanceTo(expected);
-        bool ok = dev < 0.15f;
+        bool ok = dev < BoomCheckDeviationMax;
         if (!ok) _boomCheckFails++;
-        GD.Print($"BOOMCHECK {tag} pitch={pitch:F2} dev={dev:F3} {(ok ? "PASS" : "FAIL")} camPos={_cam.GlobalPosition} expected={expected}");
+        Dbg.Print($"BOOMCHECK {tag} pitch={pitch:F2} dev={dev:F3} {(ok ? "PASS" : "FAIL")} camPos={_cam.GlobalPosition} expected={expected}");
     }
 
     private void UpdateBoomCheck(float dt)
     {
         _aimPoint = TorsoAimPoint();
         _boomCheckT += dt;
-        if (_boomCheckStage < 0)
+        if (_boomCheckStage < BoomCheckStage.CityLevel)
         {
-            _boomCheckStage = 0;
+            _boomCheckStage = BoomCheckStage.CityLevel;
             _boomCheckT = 0f;
             var bp = _buildingPts[0];
-            _player.Teleport(new Vector3(bp.X, Main.HeightAt(bp.X, bp.Y - 14f), bp.Y - 14f), 0f);
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, -100f), -100f), 0f);
+            _player.Teleport(new Vector3(bp.X, Main.HeightAt(bp.X, bp.Y - BoomCheckBuildingGapZ), bp.Y - BoomCheckBuildingGapZ), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ParkedEnemyZ), ParkedEnemyZ), 0f);
             _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
-            _hpPlayer = 100000f;
-            GD.Print($"BOOMCHECK staged: rider 14u in front of building[0] at {bp}, facing -Z (building behind)");
+            _hpPlayer = InvulnerableHp;
+            Dbg.Print($"BOOMCHECK staged: rider 14u in front of building[0] at {bp}, facing -Z (building behind)");
             return;
         }
-        if (_pendingPath != null || _capturing || _boomCheckT < 0.4f) return;
+        if (_pendingPath != null || _capturing || _boomCheckT < BoomCheckGateSeconds) return;
         _boomCheckT = 0f;
         if (_boomCheckStage == BoomCheckStage.CityLevel || _boomCheckStage == BoomCheckStage.CityPitch)
         {
@@ -2136,13 +2136,13 @@ public partial class Titans
             var vp = GetViewport().GetVisibleRect().Size;
             var head = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
             var feet = _cam.UnprojectPosition(_player.RootPos);
-            GD.Print($"BOOMCHECK city pitch={pitch:F2} camPos={_cam.GlobalPosition} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) viewport={vp}");
+            Dbg.Print($"BOOMCHECK city pitch={pitch:F2} camPos={_cam.GlobalPosition} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) viewport={vp}");
             BoomAssert("city", pitch);
             var anch = _player.RootPos + Vector3.Up * (_playerSpec.Height * 1.15f);
             var blk = _hit.Ray(anch, -AimDirWorld(), 26f, Roles.Player);
-            GD.Print($"BOOMDBG root={_player.RootPos} anchor={anch} terrainAtCam={Main.HeightAt(_cam.GlobalPosition.X, _cam.GlobalPosition.Z):F1} blockHit={blk.Hit} blockT={blk.T:F1} blockTarget={blk.Target}");
-            foreach (var pc in _hit.Props) if (new Vector2(pc.P.X - _buildingPts[0].X, pc.P.Y - _buildingPts[0].Y).Length() < 12f)
-                GD.Print($"BOOMDBG cyl P={pc.P} R={pc.R:F1} base={pc.BaseY:F1} top={pc.BaseY + pc.Height:F1}");
+            Dbg.Print($"BOOMDBG root={_player.RootPos} anchor={anch} terrainAtCam={Main.HeightAt(_cam.GlobalPosition.X, _cam.GlobalPosition.Z):F1} blockHit={blk.Hit} blockT={blk.T:F1} blockTarget={blk.Target}");
+            foreach (var pc in _hit.Props) if (new Vector2(pc.P.X - _buildingPts[0].X, pc.P.Y - _buildingPts[0].Y).Length() < BoomCheckPropPrintRadius)
+                Dbg.Print($"BOOMDBG cyl P={pc.P} R={pc.R:F1} base={pc.BaseY:F1} top={pc.BaseY + pc.Height:F1}");
             int st = (int)_boomCheckStage;
             _boomCheckStage++;
             QueueCapture($"{ProofDir}boom_city{st}.png", $"boomcity{st}", CamMode.Chase);
@@ -4260,525 +4260,54 @@ public partial class Titans
             if (!gone)
             {
                 _rgLastAlong = (_rgShell.GlobalPosition - _rgOrigin).Dot(_rgDir);
-                if (_rgT > 20f) { GD.PrintErr("RANGE FAIL D: timeout"); GetTree().Quit(1); }
+                if (_rgT > RgTrackTimeoutSeconds) { Dbg.Err("RANGE FAIL D: timeout"); GetTree().Quit(1); }
             }
             else
             {
-                GD.Print($"RANGE D: shell end along={_rgLastAlong:F0}u (autocannon range 600)");
-                if (_rgLastAlong < 540f || _rgLastAlong > 700f) { GD.PrintErr("RANGE FAIL D: burnout off the weapon's range"); GetTree().Quit(1); return; }
-                GD.Print("RANGE TEST DONE");
+                Dbg.Print($"RANGE D: shell end along={_rgLastAlong:F0}u (autocannon range 600)");
+                if (_rgLastAlong < RgBurnoutMinAlong || _rgLastAlong > RgBurnoutMaxAlong) { Dbg.Err("RANGE FAIL D: burnout off the weapon's range"); GetTree().Quit(1); return; }
+                Dbg.Print("RANGE TEST DONE");
                 GetTree().Quit(0);
             }
         }
         if (_rgT > RgPhaseTimeoutSeconds && _rgPhase < RangePhase.TrackShell) { Dbg.Err("RANGE FAIL: phase timeout"); GetTree().Quit(1); }
     }
 
-    private int _xPhase;
-    private float _xPhaseT;
 
-    // Terrace test (AOT_TERRATEST=1 on a terraced mission):
-    // drive the player up a ramp, ride a lift, cross the
-    // bridge to the island - sole levels are the verdicts.
-    private void UpdateTerraceTest(float dt)
-    {
-        _xPhaseT += dt;
-        if (_xPhase == 5 || _xPhase == 6) { UpdateDeckWalkTest(dt); return; }
-        if (_xPhase == 94) { UpdateBlockedWalkTest(dt); return; }
-        if (_xPhase == 93) { UpdateRampSideTest(dt); return; }
-        if (_xPhase == 96) { UpdateFreezeTest(dt); return; }
-        if (_xPhase == 98) { UpdateUnderDeckTest(dt); return; }
-        if (_xPhase == 0 && _xPhaseT > 1.5f)
-        {
-            if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
-            GD.Print($"TERRACE ramp foot=({TestRampFoot.X:F0},{TestRampFoot.Y:F0}) {TestRampLo:F0}->{TestRampHi:F0}; lift pad=({TestLiftPad.X:F0},{TestLiftPad.Y:F0}) {TestLiftLo:F0}->{TestLiftHi:F0}");
-            string start = EnvVars.Value(EnvVars.TerraTest);
-            if (start == "2")
-            {
-                _player.Teleport(new Vector3(TestLiftPad.X, TestLiftLo, TestLiftPad.Y), 0f);
-                _xPhase = 2; _xPhaseT = 0f; return;
-            }
-            if (start == "7") { _xPhase = 99; RunSeamScan(); return; }
-            if (start == "8") { _xPhase = 98; RunLipSweep(); return; }
-            if (start == "9") { _xPhase = 97; RunDeckShot(); return; }
-            if (start == "16") { RunShotBlock(); return; }
-            if (start == "17") { RunRadarCheck(); return; }
-            if (start == "18")
-            {
-                var simg = PhotoEnv.SplatImage();
-                EnsureSaveDir(ProofDir + "splat.png");
-        simg.SavePng(ProofDir + "splat.png");
-                GD.Print($"SPLAT saved {simg.GetWidth()}x{simg.GetHeight()}");
-                GetTree().Quit(0); return;
-            }
-            if (start == "11")
-            {
-                // Under-deck light + island containment
-                // (owner, 2026-11-11): park the player under
-                // the test deck, capture the lit underside,
-                // then capture the island from the water.
-                _xPhase = 95;
-                _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
-                QueueCapture(ProofDir + "underdeck.png", "under", CamMode.Underdeck,
-                    () => QueueCapture(ProofDir + "decktop.png", "decktop", CamMode.Decktop,
-                        () => QueueCapture(ProofDir + "homevalley.png", "home", CamMode.Homecam,
-                            () => QueueCapture(ProofDir + "passview.png", "pass", CamMode.Passcam,
-                                () => { GD.Print("DECKVIEWS saved"); GetTree().Quit(0); }))));
-                return;
-            }
-            if (start == "12")
-            {
-                // Blocked walk (owner, 2026-11-11: a rider
-                // walking into an obstacle lifted one leg and
-                // shook it; his follow-up the same day: keep
-                // the walk cycle running against the collider):
-                // start west of the test deck block and drive
-                // east into it for 12s. Blocked must engage, the
-                // gait must keep marching (steps continue), and
-                // the root must not pass the block's west face.
-                _xPhase = 94; _xPhaseT = 0f;
-                _bwSteps0 = -1; _bwEngageSteps = -1; _bwMaxX = float.MinValue; _bwShot = false; _bwFootPen = float.MinValue;
-                var st = TestDeckPoint + new Vector2(-34f, 0f);
-                _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(Vector3.Right));
-                return;
-            }
-            if (start == "14")
-            {
-                // Thruster leg freeze (owner, 2026-11-11
-                // round 4): stage on the open home plaza,
-                // walk 1.5s to build a stride, then burn with
-                // the drive held for 4s. No step may complete
-                // from burn start to touchdown.
-                _xPhase = 96; _xPhaseT = 0f;
-                _fzSteps0 = -1; _fzStepsFrozen = 0; _fzMaxH = 0f; _fzMaxY = 0f; _fzWasAir = false;
-                var hp = Main.SpawnPads[0];
-                _player.Teleport(new Vector3(hp.X, 0f, hp.Y - 25f), 0f);
-                return;
-            }
-            if (start == "15")
-            {
-                // Under-deck drive (owner, 2026-11-11 round 6:
-                // 'why does rider sometimes get stuck under
-                // the platform?'): stage on the ground south of
-                // a building that stands ON an L1 deck and
-                // drive straight through its XZ. The building's
-                // collision circle used to run from below the
-                // terrain to its roof - an invisible wall under
-                // the deck. With the base gate the rider walks
-                // under the deck, through the building's
-                // footprint, and out the other side.
-                _xPhase = 98; _xPhaseT = 0f;
-                Vector2 bp = Vector2.Zero; bool found = false;
-                foreach (var pc in _hit.Props)
-                {
-                    if (pc.BaseY < 15f || pc.BaseY > 30f) continue;
-                    bool blocked = false;
-                    foreach (var c in _props)
-                        if (c.R <= 1.2f && Mathf.Abs(c.P.X - pc.P.X) < 3.6f && c.P.Y > pc.P.Y - 8f && c.P.Y < pc.P.Y + 16f) { blocked = true; break; }
-                    if (blocked) continue;
-                    bp = pc.P; found = true; break;
-                }
-                if (!found) { GD.PrintErr("UNDERDECK FAIL: no deck building with a clear approach"); GetTree().Quit(1); return; }
-                _udTarget = bp;
-                _player.Teleport(new Vector3(bp.X, 0f, bp.Y + 16f), 0f);
-                GD.Print($"UNDERDECK staged under deck building at ({bp.X:F0},{bp.Y:F0})");
-                return;
-            }
-            if (start == "13")
-            {
-                // Ramp side (owner, 2026-11-11: 'I can walk
-                // through the ramp if I come from the side'):
-                // stage beside the test ramp at its mid-height,
-                // 14u off the centreline, and drive straight at
-                // the wedge's side for 8s. The root must stop
-                // at the corridor edge (HalfWid + radius) and
-                // never reach the centreline.
-                _xPhase = 93; _xPhaseT = 0f;
-                _rsMinPerp = float.MaxValue;
-                var rp = TestRampRect;
-                var perp = new Vector2(-rp.DirZ, rp.DirX);
-                var st = new Vector2(rp.Cx, rp.Cz) + perp * 14f;
-                _rsPerp = perp; _rsCentre = new Vector2(rp.Cx, rp.Cz);
-                _player.Teleport(new Vector3(st.X, 0f, st.Y), RiderWalker.YawOf(new Vector3(-perp.X, 0f, -perp.Y)));
-                return;
-            }
-            if (start == "10")
-            {
-                // Canyon presence (owner: "looks like you
-                // removed canyon"): height profile from the
-                // home pad toward pad 1, plus a HUD-free vista
-                // of the rim and the pass notch.
-                _xPhase = 96;
-                var p0 = Main.SpawnPads[0]; var p1 = Main.SpawnPads[1];
-                var ray = (p1 - p0).Normalized();
-                string prof = "";
-                foreach (float r in new[] { 300f, 400f, 460f, 500f, 540f, 580f, 620f })
-                {
-                    var s = p0 + ray * r;
-                    prof += $" r{r:F0}={Main.HeightAt(s.X, s.Y):F0}";
-                }
-                var saddle = (p0 + p1) / 2f;
-                GD.Print($"CANYONPROFILE toward pad1:{prof} saddle={Main.HeightAt(saddle.X, saddle.Y):F0}");
-                SetHudPanelsVisible(false);
-                QueueCapture(ProofDir + "canyon_vista.png", "canyon", CamMode.CanyonVista,
-                    () => { GD.Print("CANYONVISTA saved"); GetTree().Quit(0); });
-                return;
-            }
-            if (start == "5")
-            {
-                var back5 = TestRampFoot - TestRampDir * 10f;
-                _player.Teleport(new Vector3(back5.X, Main.HeightAt(back5.X, back5.Y), back5.Y), RiderWalker.YawOf(new Vector3(TestRampDir.X, 0f, TestRampDir.Y)));
-                _xPhase = 5; _xPhaseT = 0f; _dwMin = 0f; _dwLeg = 0; _dwOnDeck = false; return;
-            }
-            if (start == "6")
-            {
-                _player.Teleport(new Vector3(TestDeckPoint.X, 0f, TestDeckPoint.Y), RiderWalker.YawOf(Vector3.Right));
-                _xPhase = 6; _xPhaseT = 0f; _bkMaxRoot = 0f; _bkOnDeck = false; return;
-            }
-            var back = TestRampFoot - TestRampDir * 10f + new Vector2(0f, 0f);
-            var spot = new Vector3(back.X, Main.HeightAt(back.X, back.Y), back.Y);
-            _player.Teleport(spot, RiderWalker.YawOf(new Vector3(TestRampDir.X, 0f, TestRampDir.Y)));
-            _xPhase = 1; _xPhaseT = 0f;
-        }
-        else if (_xPhase == 1)
-        {
-            if (((int)_xPhaseT) % 5 == 0 && _xPhaseT - Mathf.Floor(_xPhaseT) < dt * 1.5f)
-                GD.Print($"TERRACE P1 pos=({_player.RootPos.X:F0},{_player.RootPos.Z:F0}) sole={_player.SoleLevel:F1}");
-            var target = TestRampFoot + TestRampDir * (TestRampRun + 12f);
-            var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
-            _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), StagingDriveSpeed);
-            if (_player.SoleLevel >= TestRampHi - 1f)
-            {
-                GD.Print($"TERRACE RAMP PASS sole={_player.SoleLevel:F1} (target {TestRampHi:F0})");
-                var pad = new Vector3(TestLiftPad.X, TestLiftLo, TestLiftPad.Y);
-                _player.Teleport(pad, 0f);
-                _xPhase = 2; _xPhaseT = 0f;
-            }
-            else if (_xPhaseT > 45f) { GD.PrintErr($"TERRACE FAIL: ramp climb stalled sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
-        }
-        else if (_xPhase == 2)
-        {
-            _player.SetDrive(0f, 0f);
-            if (_player.SoleLevel >= TestLiftHi - 1f)
-            {
-                GD.Print($"TERRACE LIFT PASS sole={_player.SoleLevel:F1} (target {TestLiftHi:F0})");
-                // Chain used to continue over the island
-                // bridge; the island district is gone
-                // (owner, 2026-11-11 round 3).
-                GD.Print("TERRACE TEST DONE");
-                GetTree().Quit(0);
-            }
-            else if (_xPhaseT > 16f) { GD.PrintErr($"TERRACE FAIL: lift did not rise sole={_player.SoleLevel:F1}"); GetTree().Quit(1); return; }
-        }
-    }
-
-    // Phase 7: platform tiling invariant - sample GroundAt
-    // on a grid inside every valley-0 platform rect; every
-    // sample must read the platform top (no holes, no slits).
-    // The plaza and the ground under the top platform must
-    // stay open. Instant (one frame at world build).
-    // Phase 8 (owner: intermittent fall-through at the TOP of a
-    // ramp, where it meets the higher level): instead of driving
-    // the walker (stride-phase luck), sweep the exact plant
-    // geometry - for every leading-foot target around the lip and
-    // every stride length, GroundAt with the trailing foot's sole
-    // as refY must return (nearly) the analytic surface. A miss
-    // is a foot that would plant through the deck.
-    private void RunLipSweep()
-    {
-        var dir = TestRampDir; var perp = new Vector2(-dir.Y, dir.X);
-        var s1 = TestRampFoot + dir * TestRampRun; // the lip, 2u inside the deck
-        int misses = 0, total = 0;
-        for (float lat = -4f; lat <= 4f; lat += 2f)
-        for (float along = -10f; along <= 8f; along += 0.5f)
-        for (float stride = 2f; stride <= 6f; stride += 1f)
-        {
-            var lead = s1 + dir * along + perp * lat;
-            var trail = s1 + dir * (along - stride) + perp * lat;
-            // trailing foot stands on the ramp (analytic height there)
-            float ht = 0f; bool onRamp = false;
-            foreach (var rp in Main.Ramps) { float hh = Main.RampHeightAt(rp, trail.X, trail.Y, out bool ins); if (ins) { ht = hh; onRamp = true; } }
-            if (!onRamp) continue;
-            float exp = Main.HeightAt(lead.X, lead.Y);
-            foreach (var rr in Main.Roofs) if (rr.Top > exp && Mathf.Abs(lead.X - rr.Cx) <= rr.Hx && Mathf.Abs(lead.Y - rr.Cz) <= rr.Hz) exp = rr.Top;
-            foreach (var bb in Main.BlobDecks) if (bb.Top > exp && Main.BlobContains(bb, lead.X, lead.Y)) exp = bb.Top;
-            foreach (var rp in Main.Ramps) { float hh = Main.RampHeightAt(rp, lead.X, lead.Y, out bool ins); if (ins && hh > exp) exp = hh; }
-            float got = Main.GroundAt(lead.X, lead.Y, ht + 1.5f);
-            total++;
-            if (exp - got > 1.0f)
-            {
-                misses++;
-                if (misses <= 8) GD.Print($"LIPSWEEP MISS lead=({lead.X:F1},{lead.Y:F1}) along={along:F1} stride={stride:F0} lat={lat:F0} trailH={ht:F1} exp={exp:F1} got={got:F1}");
-            }
-        }
-        if (misses == 0) { GD.Print($"LIPSWEEP PASS: {total} plant cases at the ramp lip, GroundAt always finds the surface"); GetTree().Quit(0); }
-        else { GD.PrintErr($"LIPSWEEP FAIL: {misses} of {total} plant cases fall through at the ramp lip"); GetTree().Quit(1); }
-    }
-
-    // Deck-shot proof (owner: platforms must collide with
-    // weapons): the shared HitModel ray against the home L1
-    // platform - top from above, underside from below, side
-    // band from the side, a clear pass UNDER the deck, the
-    // ramp slope, and a rider standing on the deck.
-    // City audit (owner: "random pieces of building are
-    // sticking out of the ground"): every destructible
-    // building whose base sits below the terrain at its
-    // centre or corners is buried there - print them all.
-    private void RunCityAudit()
-    {
-        int buried = 0, total = 0;
-        foreach (var bd in _destructibles)
-        {
-            if (bd.Kind != "building") continue;
-            total++;
-            float baseY = bd.Center.Y;
-            float worst = Main.HeightAt(bd.Center.X, bd.Center.Z) - baseY;
-            float rr = bd.Radius * 0.7f;
-            for (int sx = -1; sx <= 1; sx += 2)
-            for (int sz = -1; sz <= 1; sz += 2)
-                worst = Mathf.Max(worst,
-                    Main.HeightAt(bd.Center.X + sx * rr, bd.Center.Z + sz * rr) - baseY);
-            if (worst > 1.0f)
-            {
-                buried++;
-                if (buried <= 12)
-                    GD.Print($"CITYAUDIT BURIED at ({bd.Center.X:F0},{bd.Center.Z:F0}) base={baseY:F1} h={bd.Height:F0} terrain over base by {worst:F1}");
-            }
-        }
-        GD.Print($"CITYAUDIT {buried} of {total} buildings buried (terrain above base by >1u somewhere on the footprint)");
-    }
-
-    private void RunDeckShot()
-    {
-        PrintTriCount();
-        RunCityAudit();
-        int fails = 0;
-        void Check(string name, bool ok, string detail)
-        {
-            GD.Print($"DECKSHOT {name}: {(ok ? "ok" : "FAIL")} {detail}");
-            if (!ok) fails++;
-        }
-        var (pc, ph, pr, ptop) = TestPlatforms[0];
-        // A clear spot on the deck: no building within 9u.
-        Vector2 spot = pc; bool found = false;
-        for (float gx = -ph.X + 10f; gx <= ph.X - 10f && !found; gx += 5f)
-        for (float gz = -ph.Y + 10f; gz <= ph.Y - 10f && !found; gz += 5f)
-        {
-            var cand = new Vector2(pc.X + gx, pc.Y + gz);
-            bool clear = true;
-            foreach (var bp in _buildingPts) if (bp.DistanceTo(cand) < 9f) { clear = false; break; }
-            if (clear) { spot = cand; found = true; }
-        }
-        Check("clearspot", found, $"at ({spot.X:F0},{spot.Y:F0})");
-        // 1. Deck top from above.
-        var h1 = _hit.Ray(new Vector3(spot.X, ptop + 30f, spot.Y),
-            new Vector3(0.3f, -1f, 0.1f).Normalized(), 120f, Roles.Player);
-        Check("top", h1.Hit && h1.Target == Roles.Terrain && Mathf.Abs(h1.Point.Y - ptop) < 0.6f,
-            $"hit={h1.Hit} tgt={h1.Target} y={h1.Point.Y:F1} want {ptop:F0}");
-        // 2. Underside from below (deck Under = Top - 2.2).
-        var h2 = _hit.Ray(new Vector3(spot.X, 2f, spot.Y),
-            new Vector3(0.2f, 1f, -0.15f).Normalized(), 60f, Roles.Player);
-        Check("under", h2.Hit && h2.Target == Roles.Terrain && Mathf.Abs(h2.Point.Y - (ptop - 2.2f)) < 0.7f,
-            $"hit={h2.Hit} tgt={h2.Target} y={h2.Point.Y:F1} want {ptop - 2.2f:F1}");
-        // 3. Side band from the west at deck-band height.
-        var h3 = _hit.Ray(new Vector3(pc.X - ph.X - 30f, ptop - 1f, pc.Y),
-            Vector3.Right, 120f, Roles.Player);
-        Check("side", h3.Hit && h3.Point.X <= pc.X - ph.X + 8f && Mathf.Abs(h3.Point.Y - (ptop - 1f)) < 0.6f,
-            $"hit={h3.Hit} tgt={h3.Target} x={h3.Point.X:F1} want <= {pc.X - ph.X + 8f:F1}");
-        // 4. Control: a shot UNDER the deck (below the band,
-        // started inside the deck's span) flies through - no
-        // phantom slab.
-        var h4 = _hit.Ray(new Vector3(pc.X - 20f, ptop - 5f, pc.Y),
-            Vector3.Right, 40f, Roles.Player);
-        Check("underpass", !h4.Hit, $"hit={h4.Hit} tgt={h4.Target} t={h4.T:F1}");
-        // 5. Ramp slope at its midpoint.
-        var rmid = TestRampFoot + TestRampDir * (TestRampRun * 0.5f);
-        var h5 = _hit.Ray(new Vector3(rmid.X, TestRampHi + 25f, rmid.Y),
-            Vector3.Down, 80f, Roles.Player);
-        Check("ramp", h5.Hit && Mathf.Abs(h5.Point.Y - TestRampHi * 0.5f) < 1.4f,
-            $"hit={h5.Hit} tgt={h5.Target} y={h5.Point.Y:F1} want ~{TestRampHi * 0.5f:F1}");
-        // 6. A rider standing ON the deck is hittable at its
-        // visible height (capsule base = live sole level).
-        if (_enemy != null)
-        {
-            _enemy.Teleport(new Vector3(spot.X, ptop, spot.Y), 0f);
-            var h6 = _hit.Ray(new Vector3(spot.X - 40f, ptop + 7f, spot.Y),
-                Vector3.Right, 120f, Roles.Player);
-            Check("rider", h6.Hit && h6.Target != Roles.Terrain && h6.Target != Roles.Prop && h6.Target != "",
-                $"hit={h6.Hit} tgt={h6.Target} y={h6.Point.Y:F1}");
-        }
-        if (fails == 0) { GD.Print("DECKSHOT PASS: decks, ramps and riders on them collide with the shared hit ray"); GetTree().Quit(0); }
-        else { GD.PrintErr($"DECKSHOT FAIL: {fails} case(s)"); GetTree().Quit(1); }
-    }
-
-    // Phase 17 (owner round 7: 'radar is still broken'):
-    // the lab rebuilds walkers on a rider swap, so the
-    // radar's walker references must be refreshed by the
-    // HUD update - poison them, update once, expect live
-    // references back; then assert the scope geometry
-    // (dead ahead = top centre, dead right = right).
-    private void RunRadarCheck()
-    {
-        int fails = 0;
-        void Check(string name, bool ok, string detail)
-        {
-            GD.Print($"RADAR {name}: {(ok ? "ok" : "FAIL")} {detail}");
-            if (!ok) fails++;
-        }
-        _radar.Player = _enemy; _radar.Enemy = _player; // stale, as after a lab swap
-        UpdateHud();
-        Check("binding", _radar.Player == _player && _radar.Enemy == _enemy,
-            $"playerLive={_radar.Player == _player} enemyLive={_radar.Enemy == _enemy}");
-        float yaw = _player.LegsYaw;
-        var fwd = new Vector3(-Mathf.Sin(yaw), 0f, -Mathf.Cos(yaw));
-        var right = new Vector3(Mathf.Cos(yaw), 0f, -Mathf.Sin(yaw));
-        _enemy.Teleport(_player.RootPos + fwd * 100f, yaw);
-        var s1 = _radar.ScopeOf(_enemy.RootPos);
-        Check("ahead", Mathf.Abs(s1.X) < 2f && Mathf.Abs(s1.Y + 100f) < 2f,
-            $"scope=({s1.X:F1},{s1.Y:F1}) want (0,-100)");
-        if (_foe != null)
-        {
-            _foe.Walker.Teleport(_player.RootPos + right * 80f, yaw);
-            var s2 = _radar.ScopeOf(_foe.Walker.RootPos);
-            Check("right", Mathf.Abs(s2.X - 80f) < 2f && Mathf.Abs(s2.Y) < 2f,
-                $"scope=({s2.X:F1},{s2.Y:F1}) want (80,0)");
-        }
-        if (fails == 0) { GD.Print("RADAR PASS: live bindings after a swap; ahead is top centre, right is right"); GetTree().Quit(0); }
-        else { GD.PrintErr($"RADAR FAIL: {fails} case(s)"); GetTree().Quit(1); }
-    }
-
-    // Phase 16 (owner round 7): obstacles must block shots -
-    // columns (movement-only before) and the ramp wedge BAND
-    // (only the slope plane before). The pass arches joined
-    // this test once; they were removed at the owner's word
-    // (2026-11-20), and their checks went with them.
-    private void RunShotBlock()
-    {
-        int fails = 0;
-        void Check(string name, bool ok, string detail)
-        {
-            GD.Print($"SHOTBLOCK {name}: {(ok ? "ok" : "FAIL")} {detail}");
-            if (!ok) fails++;
-        }
-        // 1. Column: horizontal ray into a tall column's side.
-        bool colFound = false;
-        foreach (var pc in _hit.Props)
-        {
-            if (pc.R < 1.1f || pc.R > 1.2f || pc.Height < 15f) continue;
-            colFound = true;
-            float y = pc.BaseY + pc.Height * 0.5f;
-            var hc = _hit.Ray(new Vector3(pc.P.X, y, pc.P.Y + 10f), new Vector3(0f, 0f, -1f), 30f, Roles.Player);
-            Check("column", hc.Hit && hc.Target == Roles.Prop && Mathf.Abs(hc.T - 8.85f) < 0.9f,
-                $"hit={hc.Hit} tgt={hc.Target} t={hc.T:F2} want ~8.85 at ({pc.P.X:F0},{pc.P.Y:F0})");
-            break;
-        }
-        if (!colFound) Check("column", false, "no tall column prop found");
-        // 2. Ramp wedge band: level shot into the test ramp's
-        // side at mid-slope, 1.5 under the plane.
-        Main.RampRect best = default; float bd = float.MaxValue;
-        foreach (var r in Main.Ramps)
-        {
-            var foot = new Vector2(r.Cx - r.DirX * r.HalfLen, r.Cz - r.DirZ * r.HalfLen);
-            float d = foot.DistanceTo(TestRampFoot);
-            if (d < bd) { bd = d; best = r; }
-        }
-        float hMid = (best.H0 + best.H1) * 0.5f;
-        var rperp = new Vector2(-best.DirZ, best.DirX);
-        var hwb = _hit.Ray(new Vector3(best.Cx + rperp.X * (best.HalfWid + 10f), hMid - 1.5f, best.Cz + rperp.Y * (best.HalfWid + 10f)),
-            new Vector3(-rperp.X, 0f, -rperp.Y), 40f, Roles.Player);
-        Check("wedge-band", hwb.Hit && Mathf.Abs(hwb.T - 10f) < 1.3f,
-            $"hit={hwb.Hit} tgt={hwb.Target} t={hwb.T:F2} want ~10 (foot match d={bd:F1})");
-        if (fails == 0) { GD.Print("SHOTBLOCK PASS: columns and ramp wedges block shots"); GetTree().Quit(0); }
-        else { GD.PrintErr($"SHOTBLOCK FAIL: {fails} case(s)"); GetTree().Quit(1); }
-    }
-
-    private void RunSeamScan()
-    {
-        int bad = 0; string worst = "";
-        foreach (var (c, h, rIns, top) in TestPlatforms)
-        {
-            for (float gx = -h.X + 3f; gx <= h.X - 3f; gx += 6f)
-            for (float gz = -h.Y + 3f; gz <= h.Y - 3f; gz += 6f)
-            {
-                float x = c.X + gx, z = c.Y + gz;
-                float g = Main.GroundAt(x, z, top + 1.5f);
-                if (g < top - 0.1f) { bad++; if (worst.Length < 300) worst += $" ({x:F0},{z:F0})={g:F1}<{top:F0}"; }
-            }
-        }
-        var pad0 = Main.SpawnPads[0];
-        for (int k = 0; k < 8; k++)
-        {
-            float rad = k / 8f * Mathf.Tau;
-            float x = pad0.X + Mathf.Cos(rad) * 12f, z = pad0.Y + Mathf.Sin(rad) * 12f;
-            float g = Main.GroundAt(x, z, 1.5f);
-            if (g > 1.8f) { bad++; if (worst.Length < 300) worst += $" plaza({x:F0},{z:F0})={g:F1}"; }
-        }
-        if (TestPlatforms.Count > 6)
-        {
-            var gc = TestPlatforms[6].C;
-            float g = Main.GroundAt(gc.X, gc.Y, 1.5f);
-            if (g > 1.8f) { bad++; worst += $" underG={g:F1}"; }
-        }
-        if (bad == 0) { GD.Print("TERRACE SEAMSCAN PASS: valley platforms fully tiled, plaza + under-deck open"); GetTree().Quit(0); }
-        else { GD.PrintErr($"TERRACE SEAMSCAN FAIL: {bad} holes:{worst}"); GetTree().Quit(1); }
-    }
-
-    private float _dwMin; private int _dwLeg; private bool _dwOnDeck; private float _dwYaw; private Vector3 _udStart;
-    private float _bkMaxRoot; private bool _bkOnDeck; private float _bkMaxHead;
-    private int _lpCyc; private bool _lpUp; private int _lpFalls; private float _lpLogT; // phase 8: ramp-lip crossing probe (owner fall-through report)
-    private float _rsMinPerp; private Vector2 _rsPerp, _rsCentre;
-    private void UpdateRampSideTest(float dt) // phase 13: drive at a ramp's side - the wedge must be solid (owner, 2026-11-11)
-    {
-        _player.SetDrive(RiderWalker.YawOf(new Vector3(-_rsPerp.X, 0f, -_rsPerp.Y)), StagingDriveSpeed);
-        var rel = new Vector2(_player.RootPos.X, _player.RootPos.Z) - _rsCentre;
-        float perpDist = Mathf.Abs(rel.Dot(_rsPerp));
-        _rsMinPerp = Mathf.Min(_rsMinPerp, perpDist);
-        if (_xPhaseT > 8f)
-        {
-            float stopAt = TestRampRect.HalfWid + _player.CollisionRadius; // 6.5 + 2.0 = 8.5
-            GD.Print($"RAMPSIDE minPerp={_rsMinPerp:F1} stopAt={stopAt:F1} rootPerp={perpDist:F1}");
-            if (_rsMinPerp >= stopAt - 0.6f)
-            { GD.Print("RAMP SIDE PASS: the wedge's side stopped the rider"); GetTree().Quit(0); return; }
-            GD.PrintErr("RAMP SIDE FAIL"); GetTree().Quit(1);
-        }
-    }
-
-    private int _bwSteps0, _bwEngageSteps; private float _bwMaxX; private bool _bwShot;
-    private float _bwFootPen; // phase 12: deepest planted-foot penetration into a blocking circle
+    // Thruster leg freeze test (AOT_TERRATEST=14, staged on
+    // the open home plaza - no terrace hooks; it outlived the
+    // terraced-city removal as its own probe because what it
+    // verifies, no steps completing in flight, is generic
+    // walker machinery): walk 1.5s, burn to empty, coast and
+    // fall, on a 9s cycle. No step may complete from burn
+    // start to touchdown, and the rider lands every cycle.
     private int _fzSteps0, _fzStepsFrozen; private float _fzMaxH, _fzMaxY; private bool _fzWasAir;
-
-    // Phase 14: thruster flight discipline (owner rounds 4-5).
-    // THREE burn cycles with the drive held: no step may
-    // complete while airborne, and the rider must come back
-    // to the ground after every cycle - round 5's 'fly to
-    // outer space and never land' regression (the rigid
-    // foot-carry pumped the root's ground reference through
-    // DesiredRootY) is exactly what the altitude terms
-    // watch: maxRootY across all cycles must stay under 55
-    // (one honest arc is ~24) and the final settle is on
-    // the terrain.
-    private Vector2 _udTarget;
-    private void UpdateUnderDeckTest(float dt)
-    {
-        _xPhaseT += dt;
-        _player.SetDrive(0f, 3.6f);
-        if (_xPhaseT > 15f) // 15s: llvmpipe dt quanta halve the effective stride speed (~1.9 u/s measured) - the pass line needs ~10s
-        {
-            float z = _player.RootPos.Z;
-            GD.Print($"UNDERDECK rootZ={z:F1} targetZ={_udTarget.Y:F1} sole={_player.SoleLevel:F1}");
-            if (z <= _udTarget.Y - 2f && _player.SoleLevel < 5f)
-            { GD.Print("UNDERDECK PASS: rider walks under the deck through a deck building's footprint"); GetTree().Quit(0); return; }
-            GD.PrintErr("UNDERDECK FAIL: root held above the target line (invisible wall)"); GetTree().Quit(1);
-        }
-    }
+    private float _fzT; private bool _fzStaged;
+    private const float FreezeBackOff = 25f;
+    private const float FreezeCycleSeconds = 9f;
+    private const float FreezeWalkSeconds = 1.5f;
+    private const float FreezeBurnEndSeconds = 4.5f;
+    private const float FreezeTotalSeconds = 27.5f;
+    private const float FreezeMinJumpHeight = 3f;
+    private const float FreezeMaxRootY = 55f;
+    private const float FreezeSettleMaxY = 0.7f;
 
     private void UpdateFreezeTest(float dt)
     {
+        if (!_fzStaged)
+        {
+            _fzStaged = true;
+            _fzSteps0 = -1; _fzStepsFrozen = 0; _fzMaxH = 0f; _fzMaxY = 0f; _fzWasAir = false;
+            var hp = Main.SpawnPads[0];
+            _player.Teleport(new Vector3(hp.X, 0f, hp.Y - FreezeBackOff), 0f);
+        }
+        _fzT += dt;
         // Cycle timeline (9s each): walk 1.5s, burn to empty
         // (~2.2s), coast/fall the rest.
-        float ct = _xPhaseT % 9f;
-        int cyc = (int)(_xPhaseT / 9f);
-        if (ct < 1.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
-        else if (ct < 4.5f) { _player.SetDrive(1f, 0f); _player.SetThrust(true); }
+        float ct = _fzT % FreezeCycleSeconds;
+        int cyc = (int)(_fzT / FreezeCycleSeconds);
+        if (ct < FreezeWalkSeconds) { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
+        else if (ct < FreezeBurnEndSeconds) { _player.SetDrive(1f, 0f); _player.SetThrust(true); }
         else { _player.SetDrive(1f, 0f); _player.SetThrust(false); }
         bool air = _player.Airborne;
         if (air && !_fzWasAir && cyc == 0 && _fzSteps0 < 0) _fzSteps0 = _player.Steps;
@@ -4786,162 +4315,27 @@ public partial class Titans
         _fzWasAir = air;
         _fzMaxH = Mathf.Max(_fzMaxH, _player.JumpHeight);
         _fzMaxY = Mathf.Max(_fzMaxY, _player.RootPos.Y);
-        if (_xPhaseT > 27.5f)
+        if (_fzT > FreezeTotalSeconds)
         {
-            GD.Print($"FREEZE stepsDuringFlight={_fzStepsFrozen} maxJumpH={_fzMaxH:F1} maxRootY={_fzMaxY:F1} settleY={_player.RootPos.Y:F1} settleSole={_player.SoleLevel:F1}");
-            if (_fzSteps0 >= 0 && _fzStepsFrozen == 0 && _fzMaxH > 3f && _fzMaxY < 55f && _player.RootPos.Y <= 0.7f)
-            { GD.Print("FREEZE PASS: no steps in flight, no altitude ratchet, lands every cycle"); GetTree().Quit(0); return; }
-            GD.PrintErr("FREEZE FAIL"); GetTree().Quit(1);
+            Dbg.Print($"FREEZE stepsDuringFlight={_fzStepsFrozen} maxJumpH={_fzMaxH:F1} maxRootY={_fzMaxY:F1} settleY={_player.RootPos.Y:F1} settleSole={_player.SoleLevel:F1}");
+            // Settled = on the ground HERE, not at an absolute
+            // height: the original staging plaza was the flat
+            // Harbor floor at 0; on the standard terrain the
+            // rider ends wherever the cycles carried it, so the
+            // settle term reads the ground under its feet.
+            float groundY = Main.HeightAt(_player.RootPos.X, _player.RootPos.Z);
+            if (_fzSteps0 >= 0 && _fzStepsFrozen == 0 && _fzMaxH > FreezeMinJumpHeight && _fzMaxY < FreezeMaxRootY && !_player.Airborne && _player.RootPos.Y <= groundY + FreezeSettleMaxY)
+            { Dbg.Print("FREEZE PASS: no steps in flight, no altitude ratchet, lands every cycle"); GetTree().Quit(0); return; }
+            Dbg.Err("FREEZE FAIL"); GetTree().Quit(1);
         }
-    }
-
-    // Triangle census of the built world (owner asked,
-    // 2026-11-11): every mesh instance in the scene tree,
-    // bucketed by kit buildings / the heightfield terrain /
-    // everything else (terraces, props, riders, sky).
-    private void PrintTriCount()
-    {
-        long total = 0, kit = 0, terrain = 0; int meshes = 0;
-        var groups = new System.Collections.Generic.Dictionary<string, (long Tris, int Count, long Each)>();
-        void AddGroup(string key, long tris)
-        {
-            if (groups.TryGetValue(key, out var g)) groups[key] = (g.Tris + tris, g.Count + 1, g.Each);
-            else groups[key] = (tris, 1, tris);
-        }
-        var stack = new System.Collections.Generic.Stack<Node>();
-        stack.Push(GetTree().Root);
-        while (stack.Count > 0)
-        {
-            var n = stack.Pop();
-            foreach (var ch in n.GetChildren()) stack.Push(ch);
-            if (n is MultiMeshInstance3D mm && mm.Multimesh != null && mm.Multimesh.Mesh != null)
-            {
-                long mt = (long)mm.Multimesh.Mesh.GetFaces().Length / 3 * mm.Multimesh.InstanceCount;
-                total += mt; meshes++;
-                string mk = mm.Multimesh.Mesh.ResourcePath ?? "";
-                AddGroup(mk != "" ? mk.Split("::")[0] + " (multimesh)" : $"code:{mm.Multimesh.Mesh.GetType().Name} (multimesh)", mt);
-                continue;
-            }
-            if (n is not MeshInstance3D mi || mi.Mesh == null) continue;
-            long tris = mi.Mesh.GetFaces().Length / 3; meshes++;
-            total += tris;
-            string rp = mi.Mesh.ResourcePath ?? "";
-            if (rp.Contains("citykits")) kit += tris;
-            else if (rp == "" && tris > terrain) terrain = tris; // largest code-built mesh = the heightfield
-            string key = rp != "" ? rp.Split("::")[0]
-                : !string.IsNullOrEmpty(mi.Mesh.ResourceName) ? "code:" + mi.Mesh.ResourceName
-                : $"code:{mi.Mesh.GetType().Name}:{tris}";
-            AddGroup(key, tris);
-        }
-        GD.Print($"TRICOUNT meshes={meshes} total={total} kitBuildings={kit} terrain={terrain} rest={total - kit - terrain}");
-        // Per-object table (owner, 2026-11-11 round 6): which
-        // objects carry the polygons, so removal candidates
-        // are measured, not guessed.
-        var rows = new System.Collections.Generic.List<(string K, long T, int C, long E)>();
-        foreach (var kv in groups) rows.Add((kv.Key, kv.Value.Tris, kv.Value.Count, kv.Value.Each));
-        rows.Sort((a, b) => b.T.CompareTo(a.T));
-        foreach (var r in rows)
-            GD.Print($"TRILIST total={r.T} count={r.C} each={r.E} {r.K}");
-    }
-    private void UpdateBlockedWalkTest(float dt) // phase 12: drive into a block - root held; gait behaviour at the wall is the generic rig's (owner round 3: no blocked special cases)
-    {
-        if (_bwSteps0 < 0) _bwSteps0 = _player.Steps;
-        _player.SetDrive(RiderWalker.YawOf(Vector3.Right), StagingDriveSpeed);
-        _bwMaxX = Mathf.Max(_bwMaxX, _player.RootPos.X);
-        // Foot clamp (owner round 7, option 1): a PLANTED
-        // foot's centre must never sit inside a blocking
-        // circle (same exemptions as the clamp itself:
-        // roofs being stepped onto, buildings based above
-        // the foot, pass-through stones).
-        foreach (bool left in new[] { true, false })
-        {
-            if (!_player.LegPlanted(left)) continue;
-            var fp = _player.SolePos(left);
-            foreach (var c in _props)
-            {
-                if (c.RoofTop > 0f && fp.Y + 1.5f >= c.RoofTop) continue;
-                if (c.BaseY > 0f && fp.Y < c.BaseY - 1.5f) continue;
-                float pen = c.R - new Vector2(fp.X - c.P.X, fp.Z - c.P.Y).Length();
-                if (pen > _bwFootPen) _bwFootPen = pen;
-            }
-        }
-        if (_player.Blocked && _bwEngageSteps < 0) _bwEngageSteps = _player.Steps; // first engagement only - steps AFTER this are the march metric
-        if (_xPhaseT > 10.5f && !_bwShot)
-        {
-            _bwShot = true;
-            QueueCapture(ProofDir + "blocked_pose.png", "blockedpose", CamMode.BlockedCam);
-        }
-        if (_xPhaseT > 12f)
-        {
-            bool engaged = _bwEngageSteps >= 0;
-            int stepsWhileBlocked = engaged ? _player.Steps - _bwEngageSteps : _player.Steps - _bwSteps0;
-            float westFace = TestDeckPoint.X - 16f;
-            GD.Print($"BLOCKED engaged={engaged} stepsWhileBlocked={stepsWhileBlocked} maxX={_bwMaxX:F1} westFace={westFace:F1} rootX={_player.RootPos.X:F1} footPen={_bwFootPen:F2}");
-            // The owner's current word: the walk cycle keeps
-            // running against the collider (marching), the
-            // root must not pass, and Blocked must engage.
-            // Plus round 7 option 1: planted feet stay out of
-            // the obstacle (footPen <= 0.05).
-            if (engaged && _bwMaxX <= westFace + 3.4f && _bwFootPen <= 0.05f)
-            { GD.Print("BLOCKED WALK PASS: root held at the obstacle, planted feet clamped out of it (steps while blocked are the natural rig's, reported above, not a verdict term)"); GetTree().Quit(0); return; }
-            GD.PrintErr("BLOCKED WALK FAIL"); GetTree().Quit(1);
-        }
-    }
-
-    private void UpdateDeckWalkTest(float dt) // phases 5/6: diagonal ramp drive + ceiling bonk (owner regressions, 2026-11-10)
-    {
-        if (_xPhase == 6)
-        {
-            // BONK (owner: collision both ways): burn straight
-            // up UNDER a +22 deck for 7s. The HEAD (sole level +
-            // the full chassis height) must never reach the
-            // deck's underside (19.8), the rider must never be
-            // adopted onto the deck, and it must settle back on
-            // the ground. (The first version capped the ROOT by
-            // the walker's own head-room allowance and so
-            // certified the through-the-deck bug, 2026-11-11.)
-            if (_xPhaseT < 7f) { _player.SetThrust(true); _player.SetDrive(0f, 0f); }
-            else _player.SetThrust(false);
-            _bkMaxRoot = Mathf.Max(_bkMaxRoot, _player.RootPos.Y);
-            float headTop = _player.SoleLevel + _playerSpec.Height;
-            _bkMaxHead = Mathf.Max(_bkMaxHead, headTop);
-            if (_player.SoleLevel >= TerraceL1 - 1f) _bkOnDeck = true;
-            if (_xPhaseT > 12f)
-            {
-                float cap = TerraceL1 - 2.2f; // the underside itself
-                GD.Print($"BONK maxHead={_bkMaxHead:F1} under={cap:F1} maxRoot={_bkMaxRoot:F1} onDeck={_bkOnDeck} settleSole={_player.SoleLevel:F1}");
-                if (!_bkOnDeck && _bkMaxHead <= cap + 0.05f && _player.SoleLevel <= 0.7f)
-                { GD.Print("TERRACE BONK PASS: flight stops at the deck underside"); GetTree().Quit(0); return; }
-                GD.PrintErr("TERRACE BONK FAIL"); GetTree().Quit(1);
-            }
-            return;
-        }
-        // Phase 5: climb the test ramp on a DIAGONAL line
-        // (aim 5u off the corridor centre) and track the worst
-        // dip of the sole below the ramp's analytic height -
-        // the owner's fall-through: feet leaving a narrow
-        // corridor and grounding far below.
-        var perp = new Vector2(-TestRampDir.Y, TestRampDir.X);
-        var target = TestRampFoot + TestRampDir * (TestRampRun + 10f) + perp * 5f;
-        var to = new Vector2(target.X - _player.RootPos.X, target.Y - _player.RootPos.Z);
-        _player.SetDrive(RiderWalker.YawOf(new Vector3(to.X, 0f, to.Y)), StagingDriveSpeed);
-        float exp = Main.RampHeightAt(TestRampRect, _player.RootPos.X, _player.RootPos.Z, out bool inside);
-        if (inside) _dwMin = Mathf.Max(_dwMin, exp - _player.SoleLevel);
-        if (_player.SoleLevel >= TestRampHi - 1f)
-        {
-            GD.Print($"RAMPWALK done maxDip={_dwMin:F2} sole={_player.SoleLevel:F1}");
-            if (_dwMin <= 1.6f) { GD.Print("TERRACE RAMPWALK PASS"); GetTree().Quit(0); return; }
-            GD.PrintErr($"TERRACE RAMPWALK FAIL maxDip={_dwMin:F2}"); GetTree().Quit(1);
-        }
-        else if (_xPhaseT > 45f) { GD.PrintErr($"RAMPWALK FAIL: stalled sole={_player.SoleLevel:F1} maxDip={_dwMin:F2}"); GetTree().Quit(1); }
     }
 
     private void UpdateMissionTest(float dt)
     {
         _mPhaseT += dt;
-        if (_mPhase == 0 && _mPhaseT > 1.2f)
+        if (_mPhase == MissionPhase.WorldAudit && _mPhaseT > MAuditSeconds)
         {
-            GD.Print($"MISSION WORLD size={Main.TerrainSize} segs={Main.TerrainSegs} bound={WorldConfig.WorldBound}");
+            Dbg.Print($"MISSION WORLD size={Main.TerrainSize} segs={Main.TerrainSegs} bound={WorldConfig.WorldBound}");
             for (int i = 0; i < Main.SpawnPads.Length; i++)
             {
                 var pad = Main.SpawnPads[i];

@@ -44,7 +44,7 @@ public static class Aim
 /// past Chase is a staged capture framing).</summary>
 public enum CamMode
 {
-    Chase, MissionBase, MissionVista, SlopeVista, Stone, SlopeClose, CanyonVista, BlockedCam, Homecam, Passcam, Gatesky, EnemyFront, EnemySide, Wide, Twist, Prop, WpnSide, WpnRockets, WpnBlocked, WpnDead, WpnHud, RiderSide, BrkPlayer, BrkHector, BrkDebris, DetailBuilding, DetailTree, Vista, PhotoOver, PhotoTuft, GrassClose, GrassTop, GrassField, PhotoGround, SlopeSide, GroundDuel, Underdeck, Decktop
+    Chase, MissionBase, MissionVista, SlopeVista, Stone, SlopeClose, CanyonVista, BlockedCam, Homecam, Passcam, Gatesky, EnemyFront, EnemySide, Wide, Twist, Prop, WpnSide, WpnRockets, WpnBlocked, WpnDead, WpnHud, RiderSide, BrkPlayer, BrkHector, BrkDebris, DetailBuilding, DetailTree, Vista, PhotoOver, PhotoTuft, GrassClose, GrassTop, GrassField, PhotoGround, SlopeSide, GroundDuel
 }
 
 /// <summary>

@@ -221,6 +221,7 @@ public partial class Titans : Node3D
     private bool _bracketTest; // --bracket-test: staged Tournament bracket probe (NOT in AnyHarness - the bracket alignment under test is live-path code)
     private bool _deployTest; // --deploy-test: staged lab->deploy roster rebuild probe (also NOT in AnyHarness, same reason)
     private bool _missionTest; // --mission-test: Mission front smoke (world facts, base/vista captures, AI march)
+    private bool _freezeTest; // AOT_TERRATEST=14: thruster leg freeze probe (own dispatch - stages on the home plaza, no terrace hooks)
     private bool _longshotTest; // --longshot-test: shell line vs sight line at 600u (parallel-fire proof)
     private bool _rangeTest; // --range-test: per-weapon Range enforcement proofs (laser reach, LRM clamp, shell burnout)
     private int _foeShots;
@@ -420,6 +421,7 @@ public partial class Titans : Node3D
             if (arg == "--duel-test") _test = true;
             if (arg == "--mission") WorldConfig.Mode = WorldConfig.MapMode.Mission; // must land before BuildTerrain below
             if (arg == "--mission-test") { _missionTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
+            if (arg == "--mission-test" && EnvVars.Value(EnvVars.TerraTest) == "14") _freezeTest = true;
             if (arg == "--longshot-test") { _longshotTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--range-test") { _rangeTest = true; WorldConfig.Mode = WorldConfig.MapMode.Mission; }
             if (arg == "--weapons-test") _weaponsTest = true;
@@ -654,7 +656,6 @@ public partial class Titans : Node3D
         SkinTerrain(terrainMi);
         await BuildFrame(); // staged build: ground done, dressing next
         Main.Roofs.Clear(); // rebuilt by the world builders below
-        Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.BlobDecks.Clear(); Main.Walls.Clear();
         // Round-1 ARENA props at fixed spots around the origin.
         // Arena only (owner: "random pieces of building are
         // sticking out of the ground" - in a 1900u mission
@@ -1256,7 +1257,7 @@ public partial class Titans : Node3D
             else if (_teamTest) UpdateTeamTest(dt);
             else if (_bracketTest) UpdateBracketTest(dt);
             else if (_deployTest) UpdateDeployTest(dt);
-            else if (_missionTest && !EnvVars.IsSet(EnvVars.TerraTest) && WorldConfig.TerracedCity) UpdateTerraceTest(dt);
+            else if (_freezeTest) UpdateFreezeTest(dt);
             else if (_missionTest) UpdateMissionTest(dt);
             else if (_longshotTest) UpdateLongshotTest(dt);
             else if (_rangeTest) UpdateRangeTest(dt);
@@ -1300,7 +1301,6 @@ public partial class Titans : Node3D
             StepSnowFx((float)delta);
             ThrusterSounds();
             StepAmbient((float)delta);
-            UpdateLifts((float)delta);
             ResolveCollisions();
             StompCheck();
             if (dt > 0f)

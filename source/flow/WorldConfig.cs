@@ -65,10 +65,6 @@ public static class WorldConfig
     // copies the contract's flag here; AOT_SNOW=1 forces it.
     public static bool SnowGround = InitSnow();
 
-    // Terraced city (owner: Harbor's three levels): EnterLab
-    // copies the contract's flag; AOT_TERRACES=1 forces it.
-    public static bool TerracedCity = InitTerraces();
-
     // The Ascent campaign map (owner, 2026-11-20): EnterLab
     // copies the contract's flag; AOT_ASCENT=1 forces it.
     public static bool Ascent = InitAscent();
@@ -92,9 +88,6 @@ public static class WorldConfig
 
     private static bool InitHills() =>
         EnvVars.Flag(EnvVars.Hills);
-
-    private static bool InitTerraces() =>
-        EnvVars.Flag(EnvVars.Terraces);
 
     private static bool InitSnow() =>
         EnvVars.Flag(EnvVars.Snow);
@@ -148,7 +141,6 @@ public static class WorldConfig
         SkyTile = InitSkyTile();
         SkyStars = InitStars();
         SnowGround = InitSnow();
-        TerracedCity = InitTerraces();
         FlatWorld = InitFlat();
         Ascent = InitAscent();
         Hills = InitHills();

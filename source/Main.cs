@@ -73,9 +73,6 @@ public partial class Main : Node3D
 		// The Ascent contract (owner, 2026-11-20) gets its own
 		// valley-to-summit heightfield (maps/Babylon.cs holds the math).
 		if (WorldConfig.Ascent) return Babylon.Height(x, z);
-		// The terraced-city contract gets the canyon/valley
-		// terrain (basins at the bases, passes on the roads).
-		if (WorldConfig.TerracedCity) return HarborStacks.Height(x, z);
 		// Flat maps use no height map at all - every street,
 		// road and base on one level plane.
 		if (WorldConfig.FlatWorld) return 0f;
@@ -221,91 +218,6 @@ public partial class Main : Node3D
 	public struct RoofRect { public float Cx, Cz, Hx, Hz, Top, Under; }
 	public static readonly System.Collections.Generic.List<RoofRect> Roofs = new();
 
-	// Sloped walkable surfaces (owner: Harbor terraces): the
-	// height varies linearly along (DirX, DirZ) from H0 at the
-	// -Dir end to H1 at the +Dir end, across a HalfWid corridor.
-	public struct RampRect { public float Cx, Cz, DirX, DirZ, HalfLen, HalfWid, H0, H1; }
-	public static readonly System.Collections.Generic.List<RampRect> Ramps = new();
-
-	// Round standable tops (the Harbor island deck). Kept as
-	// the SHOT-collision approximation for blob decks (ray
-	// vs disc planes/cylinder in HitModel); walkers ground
-	// on the exact BlobDeck outlines below instead - a union
-	// of discs overhangs ramp corridors by metres (a disc
-	// centred on a diagonal reaches sideways past the rect
-	// edge), which read as feet floating at deck height over
-	// a ramp head.
-	public struct DiscRoof { public float Cx, Cz, R, Top, Under; }
-	public static readonly System.Collections.Generic.List<DiscRoof> DiscRoofs = new();
-
-	// A connection sector: the angular span (centre angle,
-	// half-width) where a ramp, lift or bridge meets a blob
-	// platform - inside it the outline stays at the rect
-	// boundary so no bulge roofs a connection corridor.
-	public struct Sector { public float Ang, Half; public Sector(float ang, float half) { Ang = ang; Half = half; } }
-
-	// A round, curvy platform (owner, 2026-11-11 round 5):
-	// the outline is the polar radius function BlobRadius
-	// around (Cx, Cz) over the rect half-extents (Hx, Hz) -
-	// the deck a walker stands on is EXACTLY the deck he
-	// sees, evaluated per query, no disc approximation.
-	public struct BlobDeck { public float Cx, Cz, Hx, Hz, Seed, Top, Under, RMax; public Sector[] Sectors; }
-	public static readonly System.Collections.Generic.List<BlobDeck> BlobDecks = new();
-
-	public static float BlobRadius(float hx, float hz, float th, float seed, Sector[] secs)
-	{
-		float c = Mathf.Cos(th), sn = Mathf.Sin(th);
-		float rd = Mathf.Min(hx / Mathf.Max(Mathf.Abs(c), 0.001f), hz / Mathf.Max(Mathf.Abs(sn), 0.001f));
-		float lobe = 1.08f
-			+ 0.05f * Mathf.Sin(4f * th + seed * 1.7f)
-			+ 0.13f * Mathf.Max(0f, Mathf.Sin(3f * th + seed))
-			+ 0.09f * Mathf.Max(0f, Mathf.Sin(5f * th + seed * 2.3f))
-			+ 0.07f * Mathf.Max(0f, Mathf.Sin(2f * th + seed * 0.6f));
-		if (secs != null)
-		{
-			// Wide blend (0.65 rad): the radius slope stays
-			// gradual near connections, so the outline pulls
-			// smoothly in toward the rect on approach sides.
-			float scale = 1f;
-			foreach (var sc in secs)
-			{
-				float d = Mathf.Abs(Mathf.Wrap(th - sc.Ang, -Mathf.Pi, Mathf.Pi));
-				const float SectorBlend = 0.65f; // rad of outline blend into a connection sector
-				if (d < sc.Half + SectorBlend)
-					scale = Mathf.Min(scale, Mathf.SmoothStep(sc.Half, sc.Half + SectorBlend, d));
-			}
-			lobe = 1f + (lobe - 1f) * scale;
-		}
-		return rd * lobe;
-	}
-
-	private const float BlobEdgeSlack = 0.15f; // outline tolerance shared by both BlobContains tests
-
-	public static bool BlobContains(BlobDeck b, float x, float z)
-	{
-		float dx = x - b.Cx, dz = z - b.Cz;
-		float dist = Mathf.Sqrt(dx * dx + dz * dz);
-		if (dist > b.RMax + BlobEdgeSlack) return false;
-		float th = Mathf.Atan2(dz, dx);
-		return dist <= BlobRadius(b.Hx, b.Hz, th, b.Seed, b.Sectors) + BlobEdgeSlack;
-	}
-
-	// Axis-aligned walls with a top (terrace platform sides,
-	// the island bridge under-deck): Titans's ResolveOne
-	// pushes walkers out while their soles are below Top, in
-	// the same spirit as the building circles' RoofTop gate.
-	public static readonly System.Collections.Generic.List<RoofRect> Walls = new();
-
-	public static float RampHeightAt(RampRect r, float x, float z, out bool inside)
-	{
-		float dx = x - r.Cx, dz = z - r.Cz;
-		float along = dx * r.DirX + dz * r.DirZ;
-		float perp = -dx * r.DirZ + dz * r.DirX;
-		inside = Mathf.Abs(along) <= r.HalfLen && Mathf.Abs(perp) <= r.HalfWid;
-		float t = Mathf.Clamp((along + r.HalfLen) / (2f * r.HalfLen), 0f, 1f);
-		return Mathf.Lerp(r.H0, r.H1, t);
-	}
-
 	// Ground height for a walker at (x, z): the terrain, or a
 	// roof's top when the walker's soles are already at that level
 	// - refY is the sole level plus a small step tolerance, so a
@@ -338,23 +250,13 @@ public partial class Main : Node3D
 		foreach (var r in Roofs)
 			if (r.Top > g && (refY >= r.Top - StepUp || Ledge(r.Top)) && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				g = r.Top;
-		foreach (var b in BlobDecks)
-			if (b.Top > g && (refY >= b.Top - StepUp || Ledge(b.Top)) && BlobContains(b, x, z))
-				g = b.Top;
-		foreach (var r in Ramps)
-		{
-			float h = RampHeightAt(r, x, z, out bool inside);
-			if (inside && h > g && refY >= h - StepUp) g = h;
-		}
 		return g;
 	}
 
 	// The lowest underside strictly above aboveY in this
 	// column (owner: platforms collide from below too - a
 	// thrustering rider must not pass through a deck). Counts
-	// deck/pad undersides and ramp wedge undersides (the wedge
-	// box is 3.5 thick, its top face on the slope line, so the
-	// underside runs ~3.3 below the walking height). Returns
+	// deck/pad undersides. Returns
 	// float.MaxValue when the column is open to the sky.
 	public static float CeilingAt(float x, float z, float aboveY)
 	{
@@ -362,15 +264,6 @@ public partial class Main : Node3D
 		foreach (var r in Roofs)
 			if (r.Under > aboveY && r.Under < c && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
 				c = r.Under;
-		foreach (var b in BlobDecks)
-			if (b.Under > aboveY && b.Under < c && BlobContains(b, x, z))
-				c = b.Under;
-		foreach (var r in Ramps)
-		{
-			float h = RampHeightAt(r, x, z, out bool inside);
-			const float RampUndersideDrop = 3.3f; // the wedge box is 3.5 thick; its underside runs ~3.3 below the walking line
-			if (inside && h - RampUndersideDrop > aboveY && h - RampUndersideDrop < c) c = h - RampUndersideDrop;
-		}
 		return c;
 	}
 
@@ -419,30 +312,6 @@ public partial class Main : Node3D
 	{
 		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return NoStreetDistance;
 		float p = CityGrid.Pitch;
-		// Terraced city: the street lattice repeats per
-		// valley - except the home valley (owner, 2026-11-11
-		// round 7): no city stands there (rounds 4/6 emptied
-		// it), so no streets are painted there either. The
-		// lattice across the empty home floor was the
-		// checkerboard that survived every other fix: plot
-		// rectangles of snow between asphalt grid lines.
-		if (WorldConfig.TerracedCity)
-		{
-			float best = NoStreetDistance;
-			float extV = CityGrid.Radius + p;
-			for (int pi = 0; pi < SpawnPads.Length; pi++)
-			{
-				if (pi == 0) continue; // home valley: no city, no streets
-				var pad = SpawnPads[pi];
-				float lx = x - pad.X, lz = z - pad.Y;
-				if (lx * lx + lz * lz > extV * extV) continue;
-				float vx = lx / p - 0.5f, vz = lz / p - 0.5f;
-				float ddx = Mathf.Abs(vx - Mathf.Round(vx)) * p;
-				float ddz = Mathf.Abs(vz - Mathf.Round(vz)) * p;
-				best = Mathf.Min(best, Mathf.Min(ddx, ddz));
-			}
-			return best;
-		}
 		float ext = CityGrid.Radius + p;
 		if (x * x + z * z > ext * ext) return NoStreetDistance;
 		float yx = x / p - 0.5f, yz = z / p - 0.5f;

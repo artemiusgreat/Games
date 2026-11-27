@@ -41,10 +41,6 @@ public partial class Titans
     private const float CanyonVistaOffsetX = 150f, CanyonVistaCamHeight = 82f, CanyonVistaOffsetZ = -60f;
     private static readonly Vector3 BlockedCamOffset = new(-21f, 9f, 17f);
     private static readonly Vector3 BlockedCamLookOffset = new(0f, 6.5f, 0f);
-    private const float UnderdeckCamOffsetX = -26f, UnderdeckCamHeight = 7f, UnderdeckCamOffsetZ = 10f;
-    private const float UnderdeckLookOffsetX = 6f, UnderdeckLookHeight = 5f;
-    private const float DecktopCamOffsetX = -58f, DecktopCamHeight = 66f, DecktopCamOffsetZ = 58f;
-    private const float DecktopLookOffsetX = -6f, DecktopLookHeight = 20f, DecktopLookOffsetZ = -4f;
     private const float HomecamOffsetX = -150f, HomecamHeight = 62f, HomecamOffsetZ = 150f;
     private const float HomecamLookOffsetX = 30f, HomecamLookHeight = 8f, HomecamLookOffsetZ = -10f;
     private const float PasscamBackDistance = 55f, PasscamEyeHeight = 9f;
@@ -212,26 +208,6 @@ public partial class Titans
             var p = _player.RootPos;
             _cam.GlobalPosition = p + BlockedCamOffset;
             _cam.LookAt(p + BlockedCamLookOffset, Vector3.Up);
-        }
-        else if (_camMode == CamMode.Underdeck)
-        {
-            // Under the test deck, rider height, looking across
-            // the under-deck ground at the rider: the ceiling
-            // fixtures and their light pool read here
-            // (AOT_TERRATEST=11).
-            var dp = TestDeckPoint;
-            _cam.GlobalPosition = new Vector3(dp.X + UnderdeckCamOffsetX, UnderdeckCamHeight, dp.Y + UnderdeckCamOffsetZ);
-            _cam.LookAt(new Vector3(dp.X + UnderdeckLookOffsetX, UnderdeckLookHeight, dp.Y), Vector3.Up);
-        }
-        else if (_camMode == CamMode.Decktop)
-        {
-            // High south-west of the test deck cluster,
-            // looking down at it: the curvy blob outline, the
-            // glowing border ribbon and the plate ramps read
-            // here (AOT_TERRATEST=11).
-            var dp = TestDeckPoint;
-            _cam.GlobalPosition = new Vector3(dp.X + DecktopCamOffsetX, DecktopCamHeight, dp.Y + DecktopCamOffsetZ);
-            _cam.LookAt(new Vector3(dp.X + DecktopLookOffsetX, DecktopLookHeight, dp.Y + DecktopLookOffsetZ), Vector3.Up);
         }
         else if (_camMode == CamMode.Homecam)
         {

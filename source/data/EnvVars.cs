@@ -23,7 +23,6 @@ public static class EnvVars
     public const string SkyTile = "AOT_SKYTILE";
     public const string Stars = "AOT_STARS";
     public const string Snow = "AOT_SNOW";
-    public const string Terraces = "AOT_TERRACES";
     public const string Ascent = "AOT_ASCENT";
     public const string Hills = "AOT_HILLS";
     public const string Photoreal = "AOT_PHOTOREAL";

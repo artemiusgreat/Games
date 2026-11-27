@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // stays one partial class - see Titans.cs for the field block.
 public partial class Titans
 {
-    private struct Circle { public Vector2 P; public float R; public float RoofTop; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on - a rider entirely below it (under the deck it stands on) is NOT blocked.
+    private struct Circle { public Vector2 P; public float R; public float RoofTop; } // RoofTop > 0: a building circle whose push-out lifts at roof level.
 
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees burn and smoke away.
@@ -641,64 +641,6 @@ public partial class Titans
     // pieces hug the walls inside the collider margin, and they
     // ride the building node when it collapses.
 
-    // Shared by the procedural and kit paths: collision
-    // circles, hit cylinders, the destructible record and
-    // the walkable roof, all from the effective size.
-    // Building shell registration: above this footprint
-    // aspect the shell gets two collider circles instead of
-    // one; each circle's radius is the short side plus its
-    // margin; the destructible record carries its own radius
-    // margin and the building's hit points.
-    private const float ElongatedAspect = 1.45f;
-    private const float ElongatedCircleMargin = 0.35f;
-    private const float SquareCircleMargin = 0.3f;
-    private const float BuildingShellRadiusMargin = 0.3f;
-    private const float BuildingHp = 40f;
-
-    private void RegisterBuildingShell(Vector3 pos, Vector3 size, float groundY,
-        float sink, float roofTop, int pc0, int hc0, MeshInstance3D mi)
-    {
-        // Circle colliders: one for near-square footprints, two along the
-        // long axis for elongated ones. Radius covers the short side plus a
-        // margin; extreme corners can poke slightly past a circle (POC).
-        // The same circles register as hit-model cylinders (base sunk
-        // with the mesh, top at the roof) so buildings block shots too.
-        float sx = size.X, sz = size.Z;
-        if (Mathf.Max(sx, sz) / Mathf.Min(sx, sz) > ElongatedAspect)
-        {
-            float off = (Mathf.Max(sx, sz) - Mathf.Min(sx, sz)) / 4f;
-            float r = Mathf.Min(sx, sz) / 2f + ElongatedCircleMargin;
-            var a = new Vector2(pos.X, pos.Z);
-            var b = new Vector2(pos.X, pos.Z);
-            if (sx > sz) { a.X -= off; b.X += off; } else { a.Y -= off; b.Y += off; }
-            _props.Add(new Circle { P = a, R = r, RoofTop = roofTop, BaseY = groundY - sink });
-            _props.Add(new Circle { P = b, R = r, RoofTop = roofTop, BaseY = groundY - sink });
-            _hit.Props.Add(new HitModel.PropCyl { P = a, R = r, BaseY = groundY - sink, Height = size.Y });
-            _hit.Props.Add(new HitModel.PropCyl { P = b, R = r, BaseY = groundY - sink, Height = size.Y });
-        }
-        else
-        {
-            float r = Mathf.Max(sx, sz) / 2f + SquareCircleMargin;
-            _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, RoofTop = roofTop, BaseY = groundY - sink });
-            _hit.Props.Add(new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = groundY - sink, Height = size.Y });
-        }
-        var bd = new Destructible
-        {
-            Kind = "building", Node = mi,
-            Center = new Vector3(pos.X, groundY, pos.Z),
-            Radius = Mathf.Max(size.X, size.Z) / 2f + BuildingShellRadiusMargin,
-            Height = size.Y, Hp = BuildingHp
-        };
-        for (int i = pc0; i < _props.Count; i++) bd.CirclePts.Add(_props[i].P);
-        for (int i = hc0; i < _hit.Props.Count; i++) bd.Cyls.Add(_hit.Props[i]);
-        _destructibles.Add(bd);
-        // The roof is a floor (owner, 2026-10-31): a rider with
-        // thrusters can land and stand on it. Removed again when
-        // the building is destroyed (RemovePropColliders).
-        Main.Roofs.Add(new Main.RoofRect { Cx = pos.X, Cz = pos.Z, Hx = size.X / 2f, Hz = size.Z / 2f, Top = roofTop, Under = groundY - sink });
-    }
-
-
     // ---- City dressing (owner's references): neon signs on the
     // gameplay buildings, a lit skyline beyond the boundary ----
 
@@ -750,10 +692,6 @@ public partial class Titans
     private const float StompReachMargin = 0.9f;
     private const float StompSmokeSeconds = 0.8f;    // stomped trees take the fast evaporation path
     private const float StompShake = 0.18f;
-    private const float FootUnderDeckClearance = 1.5f; // a foot this far below a deck building's base ignores its circles (NOT StepUpClearance - different test, same value)
-    private const float FootUnderSpanClearance = 3.5f; // a foot this far below a ramp's slope plants under the span
-    private const float UnderDeckHeadClearance = 0.5f; // headroom margin when passing under a deck building
-    private const float UnderWedgeClearance = 3.3f;    // clearance under a ramp wedge for the root to pass (foot test above uses 3.5 - different value, kept apart)
     private const float PropHitReach = 0.35f;          // hit attribution slack around a prop cylinder
     private const float PropHitBandMargin = 0.6f;      // hit attribution slack above/below a prop cylinder
     private const float HitSmokeSeconds = 1.0f;        // shot trees smoke out over this
@@ -903,37 +841,14 @@ public partial class Titans
         }
     }
 
-    // Push a point out of an axis-aligned rect expanded by r:
-    // along the separating axis when outside, along the least
-    // penetration axis when the point is already inside.
-    private static Vector2 PushOutRect(Vector2 p, float r, Main.RoofRect rc)
-    {
-        float dx = p.X - Mathf.Clamp(p.X, rc.Cx - rc.Hx, rc.Cx + rc.Hx);
-        float dz = p.Y - Mathf.Clamp(p.Y, rc.Cz - rc.Hz, rc.Cz + rc.Hz);
-        float d2 = dx * dx + dz * dz;
-        if (d2 > 1e-9f)
-        {
-            float d = Mathf.Sqrt(d2);
-            if (d >= r) return p;
-            return p + new Vector2(dx, dz) / d * (r - d);
-        }
-        float px = rc.Hx - Mathf.Abs(p.X - rc.Cx);
-        float pz = rc.Hz - Mathf.Abs(p.Y - rc.Cz);
-        if (px < pz) p.X = rc.Cx + (p.X >= rc.Cx ? rc.Hx + r : -rc.Hx - r);
-        else p.Y = rc.Cz + (p.Y >= rc.Cz ? rc.Hz + r : -rc.Hz - r);
-        return p;
-    }
-
     // Foot-target clamp (owner, 2026-11-11: leg-collider
     // option 1). The root resolves against the obstacle
     // set in ResolveOne; a foot's step TARGET now clamps
-    // against the SAME set - circles, terrace walls, ramp
-    // wedges - with the same exemptions, judged at the
-    // foot's own level: a building whose roof the foot is
-    // stepping onto is not a wall to that foot, a building
-    // standing on a deck does not reach the ground under
-    // it, stones never block, a foot on a ramp's slope or
-    // under its span is left alone. The pad is the foot's
+    // against the SAME set - the prop circles - with the
+    // same exemptions, judged at the foot's own level: a
+    // building whose roof the foot is stepping onto is not
+    // a wall to that foot, and stones never block. The pad
+    // is the foot's
     // own clearance, much smaller than the body's: the
     // foot plants right at the wall base.
     private const float FootPad = 0.5f;
@@ -942,35 +857,10 @@ public partial class Titans
     {
         var p = new Vector2(t.X, t.Z);
         float lvl = t.Y;
-        foreach (var wl in Main.Walls)
-        {
-            if (lvl + StepUpClearance >= wl.Top) continue;
-            p = PushOutRect(p, FootPad, wl);
-        }
         foreach (var c in _props)
         {
             if (c.RoofTop > 0f && lvl + StepUpClearance >= c.RoofTop) continue;
-            if (c.BaseY > 0f && lvl < c.BaseY - FootUnderDeckClearance) continue;
             p = PushOut(p, FootPad, c, out _);
-        }
-        foreach (var rp in Main.Ramps)
-        {
-            float dx = p.X - rp.Cx, dz = p.Y - rp.Cz;
-            float along = dx * rp.DirX + dz * rp.DirZ;
-            float perp = -dx * rp.DirZ + dz * rp.DirX;
-            if (Mathf.Abs(along) > rp.HalfLen + FootPad || Mathf.Abs(perp) > rp.HalfWid + FootPad) continue;
-            float h = Mathf.Lerp(rp.H0, rp.H1, Mathf.Clamp((along + rp.HalfLen) / (2f * rp.HalfLen), 0f, 1f));
-            if (lvl >= h - SlopeTopTolerance) continue;   // planting on the slope
-            if (lvl <= h - FootUnderSpanClearance) continue;   // planting under the span
-            float exP = rp.HalfWid + FootPad - Mathf.Abs(perp);
-            float exA = rp.HalfLen + FootPad - Mathf.Abs(along);
-            if (exP <= exA)
-                perp = (perp >= 0f ? 1f : -1f) * (rp.HalfWid + FootPad);
-            else
-                along = (along >= 0f ? 1f : -1f) * (rp.HalfLen + FootPad);
-            p = new Vector2(rp.Cx, rp.Cz) + new Vector2(
-                rp.DirX * along - rp.DirZ * perp,
-                rp.DirZ * along + rp.DirX * perp);
         }
         return new Vector3(p.X, t.Y, p.Y);
     }
@@ -980,62 +870,13 @@ public partial class Titans
         var p = new Vector2(w.RootPos.X, w.RootPos.Z);
         for (int iter = 0; iter < 2; iter++)
         {
-            // Terrace walls (owner: Harbor levels): rect sides
-            // with a top - a walker below the top is pushed out,
-            // a walker at deck level walks on freely.
-            foreach (var wl in Main.Walls)
-            {
-                if (w.SoleLevel + StepUpClearance >= wl.Top) continue;
-                p = PushOutRect(p, w.CollisionRadius, wl);
-            }
             foreach (var c in _props)
             {
                 // A building's walls stop a rider on the ground -
                 // but not one standing on its roof or flying over
                 // it: at roof level the circle is not a wall.
                 if (c.RoofTop > 0f && w.SoleLevel + StepUpClearance >= c.RoofTop) continue;
-                // A building standing on a deck does not reach
-                // the ground under it (owner, 2026-11-11 round
-                // 6: 'why does rider sometimes get stuck under
-                // the platform?' - the circles were full-height
-                // columns from below the terrain to the roof,
-                // so the under-deck was full of invisible walls
-                // shaped like the buildings above).
-                if (c.BaseY > 0f && w.SoleLevel + w.Height < c.BaseY - UnderDeckHeadClearance) continue;
-                    p = PushOut(p, w.CollisionRadius, c, out _);
-            }
-            // Ramp wedges are solid from the side (owner,
-            // 2026-11-11: 'I can walk through the ramp if I
-            // come from the side'). GroundAt alone only refuses
-            // the FOOT - the root walked on under the wedge and
-            // out the other side. A walker whose soles are
-            // below the slope at its position (beyond the
-            // step-up it could legitimately climb) and whose
-            // head does not fit under the wedge's underside is
-            // pushed out by the shortest exit. On the slope
-            // (soles at its height) or fully under a bridge
-            // span, no push.
-            foreach (var rp in Main.Ramps)
-            {
-                float dx = p.X - rp.Cx, dz = p.Y - rp.Cz;
-                float along = dx * rp.DirX + dz * rp.DirZ;
-                float perp = -dx * rp.DirZ + dz * rp.DirX;
-                float rr = w.CollisionRadius;
-                if (Mathf.Abs(along) > rp.HalfLen + rr || Mathf.Abs(perp) > rp.HalfWid + rr) continue;
-                float h = Mathf.Lerp(rp.H0, rp.H1, Mathf.Clamp((along + rp.HalfLen) / (2f * rp.HalfLen), 0f, 1f));
-                if (w.SoleLevel >= h - SlopeTopTolerance) continue;                 // standing on the slope
-                if (w.SoleLevel + w.Height <= h - UnderWedgeClearance) continue;     // fits under the wedge
-                // Shortest exit in ramp space (perp sides or
-                // either end), then back to world XZ.
-                float exP = rp.HalfWid + rr - Mathf.Abs(perp);
-                float exA = rp.HalfLen + rr - Mathf.Abs(along);
-                if (exP <= exA)
-                    perp = (perp >= 0f ? 1f : -1f) * (rp.HalfWid + rr);
-                else
-                    along = (along >= 0f ? 1f : -1f) * (rp.HalfLen + rr);
-                p = new Vector2(rp.Cx, rp.Cz) + new Vector2(
-                    rp.DirX * along - rp.DirZ * perp,
-                    rp.DirZ * along + rp.DirX * perp);
+                p = PushOut(p, w.CollisionRadius, c, out _);
             }
         }
         float lim = WorldBound - w.CollisionRadius;
