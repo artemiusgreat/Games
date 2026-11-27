@@ -376,9 +376,17 @@ public static class FlowUi
 
     // ---------- procedural textures ----------
 
+    // The hash recipe's seed constants (the classic sin-hash
+    // used by shader noise): arbitrary primes-and-scale whose
+    // only job is decorrelation - named so the recipe reads as
+    // a recipe, not as random floats (owner, 2026-11-27).
+    private const float HashSeedX = 127.1f;
+    private const float HashSeedZ = 311.7f;
+    private const float HashScale = 43758.5453f;
+
     private static float HashNoise(float x, float z)
     {
-        float s = Mathf.Sin(x * 127.1f + z * 311.7f) * 43758.5453f;
+        float s = Mathf.Sin(x * HashSeedX + z * HashSeedZ) * HashScale;
         return s - Mathf.Floor(s);
     }
 
@@ -392,13 +400,23 @@ public static class FlowUi
         return Mathf.Lerp(Mathf.Lerp(a, b, u), Mathf.Lerp(c, d, u), v);
     }
 
+    // FBM octave walk: each octave shrinks the amplitude,
+    // grows the frequency and shifts the sample point so the
+    // octaves do not align.
+    private const float FbmAmplitudeFalloff = 0.5f;
+    private const float FbmFrequencyGrowth = 2.03f;
+    private const float FbmShiftX = 19.19f;
+    private const float FbmShiftZ = -7.31f;
+
     private static float Fbm(float x, float z, int oct)
     {
         float sum = 0f, amp = 1f, tot = 0f;
         for (int i = 0; i < oct; i++)
         {
             sum += amp * ValueNoise(x, z); tot += amp;
-            amp *= 0.5f; x = x * 2.03f + 19.19f; z = z * 2.03f - 7.31f;
+            amp *= FbmAmplitudeFalloff;
+            x = x * FbmFrequencyGrowth + FbmShiftX;
+            z = z * FbmFrequencyGrowth + FbmShiftZ;
         }
         return sum / tot;
     }
@@ -410,10 +428,47 @@ public static class FlowUi
     // the flat texture reads as a globe on the orbital screen.
     public const int PlanetTextureSize = 512;
 
+    // Planet recipe (owner, 2026-11-27): the continent/detail
+    // noise scales and seed decorrelators, the land/polar/cloud
+    // blend thresholds and gains, and the sphere shading.
+    private static readonly Vector2 PlanetLightVector = new(-0.55f, -0.62f); // normalized at use
+    private const float PlanetContinentScale = 3.1f;
+    private const float PlanetContinentSeedX = 13.7f;
+    private const float PlanetContinentSeedZ = 7.3f;
+    private const int PlanetContinentOctaves = 5;
+    private const float PlanetDetailScale = 9f;
+    private const float PlanetDetailSeedX = 3f;
+    private const float PlanetDetailSeedZ = 5f;
+    private const int PlanetDetailOctaves = 4;
+    private const float PlanetLandThreshold = 0.52f;
+    private const float PlanetPolarBlendBase = 0.55f;
+    private const float PlanetPolarBlendGain = 1.6f;
+    private const float PlanetPolarBlendMax = 0.45f;
+    private const float PlanetBaseBlendBase = 0.30f;
+    private const float PlanetBaseBlendGain = 1.4f;
+    private const float PlanetBaseBlendMax = 0.55f;
+    private const float PlanetCapStart = 0.72f;
+    private const float PlanetCapFull = 0.92f;
+    private const float PlanetCapDetailWobble = 0.14f;
+    private const float PlanetCapStrength = 0.85f;
+    private const float PlanetCloudScaleU = 2.2f;
+    private const float PlanetCloudScaleV = 6.5f;
+    private const float PlanetCloudOffset = 40f;
+    private const int PlanetCloudOctaves = 3;
+    private const float PlanetCloudThreshold = 0.60f;
+    private const float PlanetCloudGain = 1.5f;
+    private const float PlanetCloudMax = 0.4f;
+    private const float PlanetDiffuseFlat = 0.5f;
+    private const float PlanetDiffuseHeight = 0.85f;
+    private const float PlanetDiffuseMin = 0.06f;
+    private const float PlanetDiffuseMax = 1.12f;
+    private const float PlanetLimbBase = 0.72f;
+    private const float PlanetLimbGain = 0.28f;
+
     public static ImageTexture PlanetTexture(PlanetDef p, int size = PlanetTextureSize, float seed = 0f)
     {
         var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
-        var light = new Vector2(-0.55f, -0.62f).Normalized();
+        var light = PlanetLightVector.Normalized();
         for (int j = 0; j < size; j++)
         for (int i = 0; i < size; i++)
         {
@@ -422,20 +477,20 @@ public static class FlowUi
             float r2 = u * u + v * v;
             if (r2 > 1f) { img.SetPixel(i, j, Transparent); continue; }
             float nz = Mathf.Sqrt(1f - r2);
-            float n = Fbm(u * 3.1f + seed * 13.7f, v * 3.1f - seed * 7.3f, 5);
-            float detail = Fbm(u * 9f - seed * 3f, v * 9f + seed * 5f, 4);
-            Color col = n > 0.52f
-                ? p.LandColor.Lerp(p.PolarColor, Mathf.Clamp((detail - 0.55f) * 1.6f, 0f, 0.45f))
-                : p.BaseColor.Lerp(p.LandColor, Mathf.Clamp((n - 0.30f) * 1.4f, 0f, 0.55f));
+            float n = Fbm(u * PlanetContinentScale + seed * PlanetContinentSeedX, v * PlanetContinentScale - seed * PlanetContinentSeedZ, PlanetContinentOctaves);
+            float detail = Fbm(u * PlanetDetailScale - seed * PlanetDetailSeedX, v * PlanetDetailScale + seed * PlanetDetailSeedZ, PlanetDetailOctaves);
+            Color col = n > PlanetLandThreshold
+                ? p.LandColor.Lerp(p.PolarColor, Mathf.Clamp((detail - PlanetPolarBlendBase) * PlanetPolarBlendGain, 0f, PlanetPolarBlendMax))
+                : p.BaseColor.Lerp(p.LandColor, Mathf.Clamp((n - PlanetBaseBlendBase) * PlanetBaseBlendGain, 0f, PlanetBaseBlendMax));
             // Polar caps.
-            float cap = Mathf.SmoothStep(0.72f, 0.92f, Mathf.Abs(v) + (detail - 0.5f) * 0.14f);
-            col = col.Lerp(p.PolarColor, cap * 0.85f);
+            float cap = Mathf.SmoothStep(PlanetCapStart, PlanetCapFull, Mathf.Abs(v) + (detail - 0.5f) * PlanetCapDetailWobble);
+            col = col.Lerp(p.PolarColor, cap * PlanetCapStrength);
             // Wispy cloud bands.
-            float cloud = Fbm(u * 2.2f + 40f + seed, v * 6.5f, 3);
-            col = col.Lerp(CloudColor, Mathf.Clamp((cloud - 0.60f) * 1.5f, 0f, 0.4f));
+            float cloud = Fbm(u * PlanetCloudScaleU + PlanetCloudOffset + seed, v * PlanetCloudScaleV, PlanetCloudOctaves);
+            col = col.Lerp(CloudColor, Mathf.Clamp((cloud - PlanetCloudThreshold) * PlanetCloudGain, 0f, PlanetCloudMax));
             // Sphere shading: diffuse from the light dir + limb darkening.
-            float diff = Mathf.Clamp(new Vector2(u, v).Dot(light) * 0.5f + nz * 0.85f, 0.06f, 1.12f);
-            float limb = 0.72f + 0.28f * nz;
+            float diff = Mathf.Clamp(new Vector2(u, v).Dot(light) * PlanetDiffuseFlat + nz * PlanetDiffuseHeight, PlanetDiffuseMin, PlanetDiffuseMax);
+            float limb = PlanetLimbBase + PlanetLimbGain * nz;
             col = new Color(col.R * diff * limb, col.G * diff * limb, col.B * diff * limb, 1f);
             img.SetPixel(i, j, col);
         }
@@ -450,19 +505,54 @@ public static class FlowUi
     public static readonly Color PadSurfaceColor = new(0.72f, 0.74f, 0.78f);
     public static readonly Color PadRingColor = new(0.20f, 0.21f, 0.24f);
 
+    // Arena-card palettes per biome (0 desert, 1 forest,
+    // 2 city - the same indices the card caller passes).
+    private static readonly Color DesertGrass = new(0.72f, 0.58f, 0.34f);
+    private static readonly Color ForestGrass = new(0.42f, 0.40f, 0.22f);
+    private static readonly Color CityGrass = new(0.33f, 0.34f, 0.36f);
+    private static readonly Color DesertDry = new(0.79f, 0.65f, 0.40f);
+    private static readonly Color ForestDry = new(0.55f, 0.47f, 0.28f);
+    private static readonly Color CityDry = new(0.40f, 0.40f, 0.42f);
+    private static readonly Color ArenaRock = new(0.48f, 0.40f, 0.33f);
+    private static readonly Color CityRock = new(0.44f, 0.44f, 0.46f);
+    private static readonly Color DesertMesaTop = new(0.82f, 0.68f, 0.45f);
+    private static readonly Color ForestMesaTop = new(0.62f, 0.54f, 0.42f);
+    private static readonly Color CityMesaTop = new(0.50f, 0.50f, 0.52f);
+    // Arena-card recipe: mottle noise, the city street grid,
+    // the rim hills, the mesa, the pads and the vignette.
+    private const float ArenaNoiseScale = 0.045f;
+    private const float ArenaNoiseOffset = 7f;
+    private const int ArenaNoiseOctaves = 4;
+    private const float ArenaDryBlendBase = 0.3f;
+    private const float ArenaDryBlendGain = 1.8f;
+    private const float StreetGridPeriod = 26f;
+    private const float StreetGridHalf = 13f;
+    private const float StreetBlockMin = 11.4f;
+    private const float StreetDarken = 0.35f;
+    private const float RimStartRadius = 96f;
+    private const float RimFullRadius = 128f;
+    private const float RimNoiseWobble = 22f;
+    private const float MesaWallOuter = 15.5f;
+    private const float MesaTopRadius = 13.5f;
+    private const float PadSurfaceRadius = 5.5f;
+    private const float PadRingRadius = 7.5f;
+    private const float VignetteStrength = 0.25f;
+    private const float VignetteStart = 90f;
+    private const float VignetteFull = 130f;
+
     public static ImageTexture ArenaTexture(int size = ArenaTextureSize, int biome = 1)
     {
         var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
-        var grass = biome == 0 ? new Color(0.72f, 0.58f, 0.34f)
-            : biome == 2 ? new Color(0.33f, 0.34f, 0.36f)
-            : new Color(0.42f, 0.40f, 0.22f);
-        var dry = biome == 0 ? new Color(0.79f, 0.65f, 0.40f)
-            : biome == 2 ? new Color(0.40f, 0.40f, 0.42f)
-            : new Color(0.55f, 0.47f, 0.28f);
-        var rock = biome == 2 ? new Color(0.44f, 0.44f, 0.46f) : new Color(0.48f, 0.40f, 0.33f);
-        var mesaTop = biome == 0 ? new Color(0.82f, 0.68f, 0.45f)
-            : biome == 2 ? new Color(0.50f, 0.50f, 0.52f)
-            : new Color(0.62f, 0.54f, 0.42f);
+        var grass = biome == 0 ? DesertGrass
+            : biome == 2 ? CityGrass
+            : ForestGrass;
+        var dry = biome == 0 ? DesertDry
+            : biome == 2 ? CityDry
+            : ForestDry;
+        var rock = biome == 2 ? CityRock : ArenaRock;
+        var mesaTop = biome == 0 ? DesertMesaTop
+            : biome == 2 ? CityMesaTop
+            : ForestMesaTop;
         float half = size / 2f;
         var pads = new[]
         {
@@ -474,25 +564,25 @@ public static class FlowUi
             float wx = (i - half) / half * ArenaWorldHalfExtent;
             float wz = (j - half) / half * ArenaWorldHalfExtent;
             float r = Mathf.Sqrt(wx * wx + wz * wz);
-            float n = Fbm(wx * 0.045f + 7f, wz * 0.045f, 4);
-            Color col = grass.Lerp(dry, Mathf.Clamp((n - 0.3f) * 1.8f, 0f, 1f));
+            float n = Fbm(wx * ArenaNoiseScale + ArenaNoiseOffset, wz * ArenaNoiseScale, ArenaNoiseOctaves);
+            Color col = grass.Lerp(dry, Mathf.Clamp((n - ArenaDryBlendBase) * ArenaDryBlendGain, 0f, 1f));
             if (biome == 2)
             {
                 // City: a street grid over the blocks.
-                float gx = Mathf.Abs(((wx + 13f) % 26f + 26f) % 26f - 13f);
-                float gz = Mathf.Abs(((wz + 13f) % 26f + 26f) % 26f - 13f);
-                if (Mathf.Min(gx, gz) > 11.4f) col = col.Darkened(0.35f);
+                float gx = Mathf.Abs(((wx + StreetGridHalf) % StreetGridPeriod + StreetGridPeriod) % StreetGridPeriod - StreetGridHalf);
+                float gz = Mathf.Abs(((wz + StreetGridHalf) % StreetGridPeriod + StreetGridPeriod) % StreetGridPeriod - StreetGridHalf);
+                if (Mathf.Min(gx, gz) > StreetBlockMin) col = col.Darkened(StreetDarken);
             }
-            if (r > 96f) col = col.Lerp(rock, Mathf.SmoothStep(96f, 128f, r + (n - 0.5f) * 22f)); // rim hills
-            if (r < 15.5f) col = col.Lerp(rock, Mathf.SmoothStep(15.5f, 13.5f, r));                 // mesa wall
-            if (r < 13.5f) col = mesaTop;                                                          // mesa top
+            if (r > RimStartRadius) col = col.Lerp(rock, Mathf.SmoothStep(RimStartRadius, RimFullRadius, r + (n - 0.5f) * RimNoiseWobble)); // rim hills
+            if (r < MesaWallOuter) col = col.Lerp(rock, Mathf.SmoothStep(MesaWallOuter, MesaTopRadius, r));                 // mesa wall
+            if (r < MesaTopRadius) col = mesaTop;                                                          // mesa top
             foreach (var p in pads)
             {
                 float d = new Vector2(wx - p.X, wz - p.Y).Length();
-                if (d < 5.5f) col = PadSurfaceColor;
-                else if (d < 7.5f) col = PadRingColor;
+                if (d < PadSurfaceRadius) col = PadSurfaceColor;
+                else if (d < PadRingRadius) col = PadRingColor;
             }
-            float vig = 1f - 0.25f * Mathf.SmoothStep(90f, 130f, r);
+            float vig = 1f - VignetteStrength * Mathf.SmoothStep(VignetteStart, VignetteFull, r);
             img.SetPixel(i, j, new Color(col.R * vig, col.G * vig, col.B * vig, 1f));
         }
         return ImageTexture.CreateFromImage(img);
@@ -510,6 +600,22 @@ public static class FlowUi
     public static readonly Color StarWarmColor = new(1f, 0.85f, 0.65f);
     public static readonly Color StarCoolColor = new(0.85f, 0.92f, 1f);
 
+    // Starfield recipe: the two nebula washes (scale,
+    // threshold, gain) and the star brightness rules.
+    private const float NebulaBlueScale = 0.006f;
+    private const float NebulaBlueThreshold = 0.58f;
+    private const float NebulaBlueGain = 1.2f;
+    private const float NebulaBrownScale = 0.004f;
+    private const float NebulaBrownOffset = 31f;
+    private const float NebulaBrownThreshold = 0.62f;
+    private const float NebulaBrownGain = 0.9f;
+    private const int NebulaOctaves = 3;
+    private const float StarBrightnessMin = 0.35f;
+    private const float StarBrightnessMax = 1f;
+    private const float StarWarmChance = 0.12f;
+    private const float StarBrightThreshold = 0.9f;
+    private const float StarNeighborDim = 0.5f;
+
     public static ImageTexture StarTexture(int w = StarTextureWidth, int h = StarTextureHeight, ulong seed = 4242)
     {
         var img = Image.CreateEmpty(w, h, false, Image.Format.Rgb8);
@@ -519,19 +625,19 @@ public static class FlowUi
         {
             float t = j / (float)h;
             var col = SpaceTopColor.Lerp(SpaceBottomColor, 1f - t);
-            float neb = Fbm(i * 0.006f, j * 0.006f, 3);
-            if (neb > 0.58f) col = col.Lerp(NebulaBlueColor, (neb - 0.58f) * 1.2f);
-            float neb2 = Fbm(i * 0.004f + 31f, j * 0.004f, 3);
-            if (neb2 > 0.62f) col = col.Lerp(NebulaBrownColor, (neb2 - 0.62f) * 0.9f);
+            float neb = Fbm(i * NebulaBlueScale, j * NebulaBlueScale, NebulaOctaves);
+            if (neb > NebulaBlueThreshold) col = col.Lerp(NebulaBlueColor, (neb - NebulaBlueThreshold) * NebulaBlueGain);
+            float neb2 = Fbm(i * NebulaBrownScale + NebulaBrownOffset, j * NebulaBrownScale, NebulaOctaves);
+            if (neb2 > NebulaBrownThreshold) col = col.Lerp(NebulaBrownColor, (neb2 - NebulaBrownThreshold) * NebulaBrownGain);
             img.SetPixel(i, j, col);
         }
         for (int s = 0; s < StarCount; s++)
         {
             int x = rng.RandiRange(0, w - 1), y = rng.RandiRange(0, h - 1);
-            float b = rng.RandfRange(0.35f, 1f);
-            var tint = rng.Randf() < 0.12f ? StarWarmColor : StarCoolColor;
+            float b = rng.RandfRange(StarBrightnessMin, StarBrightnessMax);
+            var tint = rng.Randf() < StarWarmChance ? StarWarmColor : StarCoolColor;
             img.SetPixel(x, y, tint * b);
-            if (b > 0.9f && x + 1 < w) img.SetPixel(x + 1, y, tint * b * 0.5f);
+            if (b > StarBrightThreshold && x + 1 < w) img.SetPixel(x + 1, y, tint * b * StarNeighborDim);
         }
         return ImageTexture.CreateFromImage(img);
     }
