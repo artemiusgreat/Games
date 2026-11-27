@@ -7,7 +7,7 @@ public static class Paths
 {
     // Scenes
     public const string FlowScene = "res://flow/Flow.tscn";
-    public const string DuelScene = "res://photo/PhotoDuel.tscn";
+    public const string DuelScene = "res://Duel.tscn";
 
     // Fonts
     public const string CinzelBold = "res://assets/fonts/Cinzel-Bold.ttf";

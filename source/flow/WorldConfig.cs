@@ -1,7 +1,7 @@
 using Godot;
 
 // Which world the duel scene builds, chosen in the front-end flow
-// (map type -> planet -> bar -> lab) before PhotoDuel loads. The
+// (map type -> planet -> bar -> lab) before the duel scene loads. The
 // harness can force it with the AOT_MODE environment variable or
 // the --mission argument. Default is Tournament, so every existing
 // tool, test and editor run boots the arena exactly as before.

@@ -19,7 +19,7 @@ using System.Collections.Generic;
 //   Titans.Audio.cs      sound            Titans.Environment.cs world + props
 //   Titans.Lab.cs        lab/construction Titans.Hud.cs      cockpit panel
 //   Titans.Camera.cs     captures/camera  Titans.Harness.cs  test drivers
-// The photoreal scene (photo/PhotoDuel.tscn, the project's main
+// The duel scene (Duel.tscn, the project's main
 // scene) runs this same class with the photo dressing on.
 // Verification: --duel-test / --weapons-test / --breakable-test /
 // --terrain-test / --photo-test run scripted choreographies and
@@ -97,7 +97,7 @@ public partial class Titans : Node3D
     private bool _layoutDumped;
     private int _labShotFrames;
     private bool _hectorCamDone; private float _hectorCamT; private bool _hectorCamFired;
-    // Set by the photoreal scene itself (photo/PhotoDuel.tscn
+    // Set by the photoreal scene itself (Duel.tscn
     // carries PhotoMode = true in its root's scene data): the
     // scene declares what it is, the engine never sniffs names.
     [Export] public bool PhotoMode;
