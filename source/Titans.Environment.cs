@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // stays one partial class - see Titans.cs for the field block.
 public partial class Titans
 {
-    private struct Circle { public Vector2 P; public float R; public float RoofTop; public bool Pass; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on - a rider entirely below it (under the deck it stands on) is NOT blocked. Pass: the circle never blocks movement (stones - owner, round 29: only TALL objects block a rider)
+    private struct Circle { public Vector2 P; public float R; public float RoofTop; public float BaseY; } // RoofTop > 0: a building circle whose push-out lifts at roof level. BaseY: the level the building stands on - a rider entirely below it (under the deck it stands on) is NOT blocked.
 
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees ignite, burn for 3s, then smoke
@@ -81,30 +81,8 @@ public partial class Titans
     private const float CrownRoughness = 0.9f;
     // Building factory materials: glass panes, detail
     // trim, plain walls/roofs and signs.
-    private static readonly Color PaneFrameColor = new(0.07f, 0.08f, 0.10f);
-    private const float PaneFrameRoughness = 0.9f;
-    private static readonly Color PaneGlassColor = new(0.55f, 0.72f, 0.85f, 0.38f);
-    private const float PaneGlassRoughness = 0.06f, PaneGlassMetallic = 0.35f;
-    private static readonly Color LitWarmAlbedo = new(0.45f, 0.30f, 0.13f);
-    private static readonly Color LitWarmEmission = new(1.0f, 0.72f, 0.38f);
-    private const float LitWarmEnergy = 1.3f;
-    private static readonly Color LitCoolAlbedo = new(0.16f, 0.24f, 0.32f);
-    private static readonly Color LitCoolEmission = new(0.62f, 0.82f, 1.0f);
-    private const float LitCoolEnergy = 1.2f;
-    private const float LitPaneRoughness = 0.4f;
-    private static readonly Color DetailTrimColor = new(0.55f, 0.53f, 0.50f);
-    private const float DetailTrimRoughness = 0.9f;
-    private static readonly Color DetailTrimPhotoTint = new(0.88f, 0.86f, 0.82f);
-    private static readonly Color DetailMetalColor = new(0.15f, 0.16f, 0.18f);
-    private const float DetailMetalMetallic = 0.55f, DetailMetalRoughness = 0.5f;
-    private static readonly Color DetailDarkColor = new(0.05f, 0.06f, 0.07f);
-    private const float DetailDarkMetallic = 0.25f, DetailDarkRoughness = 0.35f;
     private const float WallRoughness = 0.92f;
-    private static readonly Color RoofColor = new(0.13f, 0.12f, 0.11f);
-    private const float RoofRoughness = 1f;
     private const float CityLitRatio = 0.34f, TownLitRatio = 0.16f; // lit-pane share by biome
-    private const float SignEmissionEnergy = 1.5f, SignRoughness = 0.6f;
-    private const float SignWidthFraction = 0.72f, SignMaxWidth = 9f;
 
     private void SpawnChunks(Vector3 center, int count, float sizeMin, float sizeMax,
         Material mat, float upMin, float upMax, float life = -1f)
@@ -234,18 +212,18 @@ public partial class Titans
     private void ScatterNatureMission()
     {
         var rng = new System.Random(0x5EED);
-        var zones = new System.Collections.Generic.List<(Vector2 C, float R, int Trees, int Rocks)>();
-        foreach (var pad in Main.SpawnPads) zones.Add((pad, 250f, 12, 7));
-        zones.Add((Vector2.Zero, 700f, 26, 18)); // wild, centered
-        var (ztMul, zrMul) = WorldConfig.Biome switch
+        var zones = new System.Collections.Generic.List<(Vector2 C, float R, int Trees)>();
+        foreach (var pad in Main.SpawnPads) zones.Add((pad, 250f, 12));
+        zones.Add((Vector2.Zero, 700f, 26)); // wild, centered
+        var ztMul = WorldConfig.Biome switch
         {
-            WorldConfig.BiomeKind.Desert => (DesertTreeMul, DesertRockMul),
-            WorldConfig.BiomeKind.City => (CityTreeMul, CityRockMul),
-            _ => (1f, 1f)
+            WorldConfig.BiomeKind.Desert => DesertTreeMul,
+            WorldConfig.BiomeKind.City => CityTreeMul,
+            _ => 1f
         };
-        foreach (var (c, rad, treeN0, rockN0) in zones)
+        foreach (var (c, rad, treeN0) in zones)
         {
-            int treeN = (int)(treeN0 * ztMul), rockN = (int)(rockN0 * zrMul);
+            int treeN = (int)(treeN0 * ztMul);
             int trees = 0, tries = 0;
             while (trees < treeN && tries++ < ScatterMaxTriesMission)
             {
@@ -259,23 +237,6 @@ public partial class Titans
                 if (Main.HeightAt(p.X, p.Y) > ScatterTreeHeightMax) continue;
                 AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
                 trees++;
-            }
-            int rocks = 0; tries = 0;
-            while (rocks < rockN && tries++ < ScatterMaxTriesMission)
-            {
-                float ang = (float)rng.NextDouble() * Mathf.Tau;
-                float rr = ScatterRockMinRadius + (rad - ScatterRockMinRadius) * Mathf.Sqrt((float)rng.NextDouble());
-                var p = c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
-                if (Mathf.Abs(p.X) > ScatterBoundMission || Mathf.Abs(p.Y) > ScatterBoundMission) continue;
-                var scl = new Vector3(
-                    ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange,
-                    ScatterRockScaleYBase + (float)rng.NextDouble() * ScatterRockScaleYRange,
-                    ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange);
-                scl.Y *= ScatterRockSquash;
-                if (!ScatterFree(p, Mathf.Max(scl.X, scl.Z))) continue;
-                if (Main.HeightAt(p.X, p.Y) > ScatterRockHeightMax) continue;
-                AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
-                rocks++;
             }
         }
     }
@@ -331,7 +292,6 @@ public partial class Titans
     // 2026-11-25: named constants for the bare values).
     private const float TrunkHeightLow = 3f;    // most varieties
     private const float TrunkHeightTall = 3.5f; // variety 1 (the pair is a range: round the range, not each number - owner)
-    private const float LadderUprightHeight = 3f;
     private const float CollapseLightIntensity = 3f;
 
     // Scatter and city conventions shared by the mission
@@ -346,36 +306,26 @@ public partial class Titans
     private const float ScatterTreeScaleRange = 0.75f;
     private const float ScatterTreeGradeMax = 0.5f;
     private const float ScatterTreeHeightMax = 12.5f;
-    private const float ScatterRockHeightMax = 21f;
-    private const float ScatterRockSquash = 0.62f;
-    private const float ScatterRockScaleBase = 1.2f;
-    private const float ScatterRockScaleRange = 2.0f;
-    private const float ScatterRockScaleYBase = 0.8f;
-    private const float ScatterRockScaleYRange = 1.3f;
     private const float CityGradeMax = 0.4f;
-    private const float PitCheckMargin = 6f;
     private const float BuildingSink = 2.4f;
     private const float BuildingFloorStep = 2.9f;
     private const float StepUpClearance = 1.5f;
     private const float SlopeTopTolerance = 2.5f;
     private const float PineTotalHeight = 7.6f;
     private static readonly Color NightHazeColor = new(0.10f, 0.14f, 0.24f);
-    private static readonly Color SignBackingColor = new(0.03f, 0.03f, 0.045f);
 
     // Nature scatter, tree factory and mission-base values
     // (naming pass, 2026-11-27: names only - every value is
     // EXACTLY what the bare literal was).
     private const float TerrainChunkStreamRadius = 1150f; // streamed unload distance for Ascent terrain chunks
     private const float DesertTreeMul = 0.15f, DesertRockMul = 1.8f;   // biome scatter multipliers
-    private const float CityTreeMul = 0.30f, CityRockMul = 0.15f;
-    private const float ForestTreeMul = 0.61f, ForestRockMul = 0.64f;
+    private const float CityTreeMul = 0.30f;
+    private const float ForestTreeMul = 0.61f;
     private const float ScatterTreeMinRadius = 42f;  // mission scatter keeps this far from a zone centre
-    private const float ScatterRockMinRadius = 40f;
     private const float TreeRadiusFactor = 0.7f;     // trunk/hit radius as a fraction of tree scale
     private const float ScatterTreeClearance = 0.6f; // extra clear radius demanded around a scattered tree
     private const int ScatterTreeBaseCount = 33, ScatterRockBaseCount = 25; // arena scatter counts before biome multipliers
     private const float ScatterArenaTreeRadiusBase = 12f, ScatterArenaTreeRadiusRange = 68f;
-    private const float ScatterArenaRockRadiusBase = 10f, ScatterArenaRockRadiusRange = 70f;
     private const float TreeSeedWeightX = 131.7f, TreeSeedWeightZ = 57.3f, TreeSeedOffset = 9001f; // per-tree rng seed hash
     private const float PhotoTreeHeight = 5.9f;      // scanned-tree total height (non-pine varieties)
     private const float TrunkTopRadius = 0.16f, TrunkBottomRadius = 0.32f;
@@ -401,18 +351,6 @@ public partial class Titans
     private const float CanopyRadiusFactor = 2.0f;
     private const float CanopyBaseFraction = 0.38f, CanopyHeightFraction = 0.62f;
     private const float TreeHp = 15f;
-    // Mission base layout.
-    private const float BaseRotationStep = 2.1f;     // per-base layout rotation
-    private const float BaseFootprintJitterStep = 0.07f, BaseHeightJitterStep = 0.13f;
-    private const float MastHeight = 27f, MastWidth = 3f, MastWidthKit = 5f;
-    // Facade texture colours (the painting runs only inside
-    // AddBuilding, currently no-op'd; named for the same audit).
-    private const int FacadeTextureSize = 512;
-    private const float FacadeMortarDarken = 0.42f, FacadeParapetDarken = 0.3f;
-    private static readonly Color FacadeBrickTintColor = new(0.45f, 0.16f, 0.10f);
-    private static readonly Color FacadeDoorColor = new(0.10f, 0.08f, 0.06f);
-    private static readonly Color FacadeTransomColor = new(0.95f, 0.8f, 0.5f);
-
     private void AddTreeV(Vector3 pos, int variety, float scale, float tint)
     {
         pos.Y = Main.HeightAt(pos.X, pos.Z);
@@ -540,75 +478,6 @@ public partial class Titans
         _destructibles.Add(td);
     }
 
-    // Low-poly rock: squashed, randomly tilted icosphere-ish blob. Gets a
-    // hit cylinder (shots still collide) and a movement circle marked
-    // Pass: stones do NOT block riders (owner, round 29 - a rider got
-    // stuck in a tree-and-stone patch; only tall objects, buildings
-    // and other riders, may block movement).
-    private void AddRock(Vector3 pos, Vector3 scl, float yaw, float tint)
-    {
-        // ROCKS REMOVED COMPLETELY (owner, 2026-11-20):
-        // three grounding passes (centre, footprint-min,
-        // measured AABB) and the scattered rocks still
-        // read as floating in his play - he ordered them
-        // out. No visual, no pass-circle, no hit cylinder,
-        // in any mode. Do not re-add without his word.
-        return;
-        // Ground on the LOWEST point under the footprint,
-        // not the centre (owner, 2026-11-20: rocks floated
-        // over hollows - centre-grounding on bumpy ground
-        // leaves the underside hanging in the air).
-        float groundY = Main.HeightAt(pos.X, pos.Z);
-        float fr = Mathf.Max(scl.X, scl.Z) * 0.7f;
-        for (int k = 0; k < 8; k++)
-        {
-            float a = k * Mathf.Pi / 4f;
-            float sy = Main.HeightAt(pos.X + Mathf.Cos(a) * fr, pos.Z + Mathf.Sin(a) * fr);
-            if (sy < groundY) groundY = sy;
-        }
-        if (_photo)
-        {
-            // Photoreal probe: scanned rock at the same spot, scale
-            // and collider; only the visual changes.
-            var rock = PhotoEnv.MakeRock(scl);
-            rock.Position = new Vector3(pos.X, groundY, pos.Z);
-            rock.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
-            AddChild(rock);
-            var wbP = WorldAabb(rock);
-            rock.Position += Vector3.Up * ((groundY - 0.35f * scl.Y) - wbP.Position.Y);
-        }
-        else
-        {
-        var mi = new MeshInstance3D();
-        mi.Mesh = new SphereMesh { Radius = 1f, Height = 2f, RadialSegments = 7, Rings = 3 };
-        float g = 0.36f + tint * 0.14f;
-        mi.MaterialOverride = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(g, g * (0.99f + tint * 0.03f), g * (1.02f - tint * 0.02f)),
-            Roughness = 0.97f
-        };
-        mi.Position = new Vector3(pos.X, groundY, pos.Z);
-        mi.Scale = scl;
-        mi.Rotation = new Vector3(tint * 0.22f - 0.11f, yaw, tint * 0.15f - 0.07f);
-        AddChild(mi);
-        // Sit the rock on its REAL lowest point, tilt
-        // included (owner, 2026-11-20: the min-of-samples
-        // grounding still floated wide rocks - the random
-        // tilt lifts one rim by ~radius x tilt, over a
-        // unit on the big boulders). Measure the placed
-        // world AABB and shift so its bottom is buried.
-        var wb = WorldAabb(mi);
-        mi.Position += Vector3.Up * ((groundY - 0.35f * scl.Y) - wb.Position.Y);
-        }
-        float r = Mathf.Max(scl.X, scl.Z) * 0.92f;
-        _props.Add(new Circle { P = new Vector2(pos.X, pos.Z), R = r, Pass = true });
-        _hit.Props.Add(new HitModel.PropCyl
-        {
-            P = new Vector2(pos.X, pos.Z), R = r,
-            BaseY = groundY - 0.35f * scl.Y, Height = 1.05f * scl.Y
-        });
-    }
-
     // Grass tufts REMOVED (round 28, owner report 2026-11-01:
     // "square grass wasn't removed"): the ~2,400 crossed-quad
     // tufts that used to be built here read as dark filled
@@ -686,17 +555,17 @@ public partial class Titans
     {
         if (WorldConfig.IsMission) { ScatterNatureMission(); return; }
         var rng = new System.Random(0x5EED);
-        var (treeMul, rockMul) = WorldConfig.Biome switch
+        var treeMul = WorldConfig.Biome switch
         {
-            WorldConfig.BiomeKind.Desert => (DesertTreeMul, DesertRockMul),
-            WorldConfig.BiomeKind.City => (CityTreeMul, CityRockMul),
+            WorldConfig.BiomeKind.Desert => DesertTreeMul,
+            WorldConfig.BiomeKind.City => CityTreeMul,
             // Forest thinned (owner, 2026-11-14: "too dense"):
             // 33 trees / 25 rocks in a 260u disc put a
             // shot-blocking crown on every line of fire.
-            WorldConfig.BiomeKind.Forest => (ForestTreeMul, ForestRockMul),
-            _ => (1f, 1f)
+            WorldConfig.BiomeKind.Forest => ForestTreeMul,
+            _ => 1f
         };
-        int treeTarget = (int)(ScatterTreeBaseCount * treeMul), rockTarget = (int)(ScatterRockBaseCount * rockMul);
+        int treeTarget = (int)(ScatterTreeBaseCount * treeMul);
         int trees = 0, tries = 0;
         while (trees < treeTarget && tries++ < ScatterMaxTriesArena)
         {
@@ -710,34 +579,8 @@ public partial class Titans
             AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
             trees++;
         }
-        int rocks = 0;
-        tries = 0;
-        while (rocks < rockTarget && tries++ < ScatterMaxTriesArena)
-        {
-            float ang = (float)rng.NextDouble() * Mathf.Tau;
-            float rad = ScatterArenaRockRadiusBase + ScatterArenaRockRadiusRange * Mathf.Sqrt((float)rng.NextDouble());
-            var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
-            var scl = new Vector3(
-                ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange,
-                ScatterRockScaleYBase + (float)rng.NextDouble() * ScatterRockScaleYRange,
-                ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange);
-            scl.Y *= ScatterRockSquash; // squash
-            if (!ScatterFree(p, Mathf.Max(scl.X, scl.Z))) continue;
-            if (Main.HeightAt(p.X, p.Y) > ScatterRockHeightMax) continue;
-            AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
-            rocks++;
-        }
-        Dbg.Print($"DUEL scatter trees+={trees} rocks={rocks} propsNow={_props.Count}");
+        Dbg.Print($"DUEL scatter trees+={trees} propsNow={_props.Count}");
     }
-
-    private static int _facadeSeq;
-    private static int _kitBuilt, _procBuilt; // placement audit (kit contracts must end procedural-free)
-    private static readonly Color[] FacadeBases =
-    {
-        new(0.62f, 0.60f, 0.58f), new(0.66f, 0.60f, 0.52f),
-        new(0.55f, 0.58f, 0.62f), new(0.60f, 0.55f, 0.50f),
-        new(0.50f, 0.58f, 0.56f), new(0.63f, 0.52f, 0.44f)
-    };
 
     // Photo-scene shades over the shared concrete set (owner:
     // buildings must not all look the same) - blue-grey, teal,
@@ -767,165 +610,6 @@ public partial class Titans
         return (h ^ (h >> 16)) & 0x3FF;
     }
 
-    private static ImageTexture MakeFacadeTexture(int seed, Color baseCol)
-    {
-        var img = Image.Create(FacadeTextureSize, FacadeTextureSize, false, Image.Format.Rgba8);
-        bool stone = seed % 2 == 1;
-        var mortar = baseCol.Darkened(FacadeMortarDarken);
-        img.Fill(mortar);
-        if (stone)
-        {
-            // Ashlar blocks 124x58 with a light top edge and dark foot.
-            for (int ry = 0; ry < 9; ry++)
-            for (int cx = -1; cx < 5; cx++)
-            {
-                int x = cx * 128 + (ry % 2 == 0 ? 0 : 64), y = ry * 58;
-                int j = BrickHash(seed, cx + 3, ry);
-                var c = baseCol.Lightened((j % 13 - 6) * 0.008f);
-                img.FillRect(new Rect2I(x + 3, y + 3, 122, 52), c);
-                img.FillRect(new Rect2I(x + 3, y + 3, 122, 4), c.Lightened(0.13f));
-                img.FillRect(new Rect2I(x + 3, y + 51, 122, 4), c.Darkened(0.16f));
-            }
-        }
-        else
-        {
-            // Brick courses: 62x26 bricks, 3px mortar, staggered rows.
-            for (int ry = 0; ry < 19; ry++)
-            for (int cx = -1; cx < 9; cx++)
-            {
-                int x = cx * 64 + (ry % 2 == 0 ? 0 : 32), y = ry * 27;
-                int j = BrickHash(seed, cx + 3, ry);
-                var c = baseCol.Lightened((j % 17 - 8) * 0.010f)
-                    .Lerp(FacadeBrickTintColor, (j % 5) * 0.03f);
-                img.FillRect(new Rect2I(x + 2, y + 2, 60, 23), c);
-                img.FillRect(new Rect2I(x + 2, y + 2, 60, 3), c.Lightened(0.10f));
-            }
-        }
-        img.FillRect(new Rect2I(0, 0, FacadeTextureSize, 14), baseCol.Darkened(FacadeParapetDarken)); // parapet
-        img.FillRect(new Rect2I(216, 416, 80, 96), FacadeDoorColor); // door
-        img.FillRect(new Rect2I(216, 416, 80, 12), FacadeTransomColor);    // transom light
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    // Window glass for one building: for each of the four walls, a grid
-    // of dark frame quads with a slightly proud transparent pane over
-    // each. All quads merge into ONE ArrayMesh with an alpha glass
-    // material; frames use a second surface of the same mesh with a
-    // dark opaque material. Local space: the building box is centered
-    // at the mesh origin, so panes ride the collapse scale for free.
-    private static MeshInstance3D MakeGlassPanes(Vector3 size, int seed, float litRatio)
-    {
-        var verts = new System.Collections.Generic.List<Vector3>();
-        var norms = new System.Collections.Generic.List<Vector3>();
-        var idx = new System.Collections.Generic.List<int>();
-        var frameMat = new StandardMaterial3D { AlbedoColor = PaneFrameColor, Roughness = PaneFrameRoughness };
-        var glassMat = new StandardMaterial3D
-        {
-            AlbedoColor = PaneGlassColor,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            Roughness = PaneGlassRoughness, Metallic = PaneGlassMetallic
-        };
-        // Lit panes (owner's city references: no two facades
-        // alike) - a seeded share of the panes glow warm or cool
-        // on a third, emissive surface of the same mesh.
-        var litWarm = new StandardMaterial3D
-        {
-            AlbedoColor = LitWarmAlbedo,
-            EmissionEnabled = true, Emission = LitWarmEmission, EmissionEnergyMultiplier = LitWarmEnergy,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = LitPaneRoughness
-        };
-        var litCool = new StandardMaterial3D
-        {
-            AlbedoColor = LitCoolAlbedo,
-            EmissionEnabled = true, Emission = LitCoolEmission, EmissionEnergyMultiplier = LitCoolEnergy,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = LitPaneRoughness
-        };
-        // face: outward normal, right axis, half extents (w = face width, h = height)
-        var faces = new (Vector3 N, Vector3 R, float W)[]
-        {
-            (new Vector3(0, 0, 1), new Vector3(1, 0, 0), size.X),
-            (new Vector3(0, 0, -1), new Vector3(-1, 0, 0), size.X),
-            (new Vector3(1, 0, 0), new Vector3(0, 0, -1), size.Z),
-            (new Vector3(-1, 0, 0), new Vector3(0, 0, 1), size.Z)
-        };
-        var frameIdx = new System.Collections.Generic.List<int>();
-        var glassIdx = new System.Collections.Generic.List<int>();
-        var litWarmIdx = new System.Collections.Generic.List<int>();
-        var litCoolIdx = new System.Collections.Generic.List<int>();
-        // The grid itself varies per building (seeded cell size),
-        // a few panes are missing outright, and the lit share is
-        // the caller's (higher in the city, where dusk facades
-        // glow - the owner's screenshots).
-        float cellW = 2.1f + (BrickHash(seed, 7, 1) % 100) / 100f * 0.9f;
-        float cellH = 2.5f + (BrickHash(seed, 3, 11) % 100) / 100f * 0.8f;
-        int faceI = 0;
-        foreach (var (n, rgt, w) in faces)
-        {
-            float half = (Mathf.Abs(n.Z) > 0.5f ? size.Z : size.X) / 2f + 0.04f;
-            int cols = Mathf.Clamp(Mathf.RoundToInt(w / cellW), 3, 7);
-            int rows = Mathf.Clamp(Mathf.RoundToInt(size.Y / cellH), 2, 6);
-            for (int ri = 0; ri < rows; ri++)
-            for (int ci = 0; ci < cols; ci++)
-            {
-                int hsh = BrickHash(seed, ci * 3 + faceI * 31, ri * 7 + faceI);
-                if (hsh % 23 == 0) continue; // a missing pane
-                float u = (ci + 0.5f) / cols - 0.5f;         // across the face
-                // The grid starts HIGH (owner: the lowest
-                // windows sat at ground level and buried on
-                // slopes): a windowless ground band takes the
-                // bottom third of the wall.
-                float v = 0.34f + (ri + 0.5f) / rows * 0.58f; // 0 at sill band..1 top
-                var center = n * half + rgt * (u * w)
-                    + Vector3.Up * ((v - 0.5f) * size.Y);
-                float pw = w / cols * 0.52f, ph = size.Y / rows * 0.5f;
-                AddQuad(verts, norms, frameIdx, center - n * 0.02f, rgt, n, pw * 1.18f, ph * 1.18f);
-                var dst = (hsh % 100) < (int)(litRatio * 100f)
-                    ? (hsh % 3 == 0 ? litCoolIdx : litWarmIdx) : glassIdx;
-                AddQuad(verts, norms, dst, center, rgt, n, pw, ph);
-            }
-            faceI++;
-        }
-        var arrays = new Godot.Collections.Array();
-        arrays.Resize((int)Mesh.ArrayType.Max);
-        arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-        arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-        var mesh = new ArrayMesh();
-        var fArrays = new Godot.Collections.Array(); fArrays.Resize((int)Mesh.ArrayType.Max);
-        fArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-        fArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-        fArrays[(int)Mesh.ArrayType.Index] = frameIdx.ToArray();
-        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, fArrays);
-        mesh.SurfaceSetMaterial(0, frameMat);
-        var gArrays = new Godot.Collections.Array(); gArrays.Resize((int)Mesh.ArrayType.Max);
-        gArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-        gArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-        gArrays[(int)Mesh.ArrayType.Index] = glassIdx.ToArray();
-        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, gArrays);
-        mesh.SurfaceSetMaterial(1, glassMat);
-        if (litWarmIdx.Count > 0)
-        {
-            var wArrays = new Godot.Collections.Array(); wArrays.Resize((int)Mesh.ArrayType.Max);
-            wArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-            wArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-            wArrays[(int)Mesh.ArrayType.Index] = litWarmIdx.ToArray();
-            int si = mesh.GetSurfaceCount();
-            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, wArrays);
-            mesh.SurfaceSetMaterial(si, litWarm);
-        }
-        if (litCoolIdx.Count > 0)
-        {
-            var cArrays = new Godot.Collections.Array(); cArrays.Resize((int)Mesh.ArrayType.Max);
-            cArrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-            cArrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-            cArrays[(int)Mesh.ArrayType.Index] = litCoolIdx.ToArray();
-            int si = mesh.GetSurfaceCount();
-            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, cArrays);
-            mesh.SurfaceSetMaterial(si, litCool);
-        }
-        return new MeshInstance3D { Mesh = mesh };
-    }
-
     private static void AddQuad(System.Collections.Generic.List<Vector3> verts,
         System.Collections.Generic.List<Vector3> norms,
         System.Collections.Generic.List<int> idx,
@@ -942,53 +626,6 @@ public partial class Titans
         idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
     }
 
-    // Mission fronts: a base cluster on each flattened plateau -
-    // four structures and a comms mast around the spawn court, so
-    // every base reads as a place from across the map and fights
-    // like the arena's building blocks (same HP, roofs, colliders).
-    private void BuildBases()
-    {
-        var offs = new[]
-        {
-            new Vector2(34f, 12f), new Vector2(-30f, 26f),
-            new Vector2(14f, -36f), new Vector2(-34f, -20f)
-        };
-        var sizes = new[]
-        {
-            new Vector3(14f, 12f, 12f), new Vector3(11f, 15f, 11f),
-            new Vector3(15f, 11f, 10f), new Vector3(10f, 16f, 10f)
-        };
-        for (int b = 0; b < Main.SpawnPads.Length; b++)
-        {
-            // The HOME base stands empty (owner, 2026-11-11
-            // round 6: 'remove buildings in the home base') -
-            // the player spawns on open ground; the two enemy
-            // bases keep their structures.
-            if (b == 0) continue;
-            var pad = Main.SpawnPads[b];
-            float rot = b * BaseRotationStep; // vary the layout per base
-            for (int i = 0; i < offs.Length; i++)
-            {
-                var o = offs[i].Rotated(rot);
-                // Per-base size jitter (owner: buildings must not
-                // all look the same) - deterministic per base and
-                // structure, footprints ±10%, heights ±13%.
-                float sx = 1f + ((b * 3 + i) % 4 - 1.5f) * BaseFootprintJitterStep;
-                float sy = 1f + ((b + i * 2) % 3 - 1) * BaseHeightJitterStep;
-                var sz = sizes[i];
-                AddBuilding(new Vector3(pad.X + o.X, 0f, pad.Y + o.Y),
-                    new Vector3(sz.X * sx, sz.Y * sy, sz.Z * sx));
-            }
-            var m = new Vector2(22f, -26f).Rotated(rot);
-            // Comms mast: on a kit contract it is a kit building
-            // too (owner: no procedural buildings on kit maps),
-            // so the footprint widens past the kit threshold.
-            AddBuilding(new Vector3(pad.X + m.X, 0f, pad.Y + m.Y),
-                WorldConfig.CityKit >= 0 ? new Vector3(MastWidthKit, MastHeight, MastWidthKit) : new Vector3(MastWidth, MastHeight, MastWidth));
-        }
-        Dbg.Print("MISSION bases built at the three plateaus");
-    }
-
     // ---- Building detail (owner: buildings read as primitives;
     // they need roofs, doors, balconies, fire escapes) ----
     // One merged mesh per building, three materials - trim
@@ -1000,360 +637,6 @@ public partial class Titans
     // zigzag fire escape, or cornice bands. Visual only - the
     // pieces hug the walls inside the collider margin, and they
     // ride the building node when it collapses.
-    private static readonly Dictionary<bool, Material[]> _detailMats = new();
-
-    private static Material[] DetailMats(bool photo)
-    {
-        if (_detailMats.TryGetValue(photo, out var m)) return m;
-        var trim = photo
-            ? PhotoEnv.BuildingMaterial(new Vector3(3f, 3f, 3f), DetailTrimPhotoTint)
-            : (Material)new StandardMaterial3D { AlbedoColor = DetailTrimColor, Roughness = DetailTrimRoughness };
-        var metal = new StandardMaterial3D { AlbedoColor = DetailMetalColor, Metallic = DetailMetalMetallic, Roughness = DetailMetalRoughness };
-        var dark = new StandardMaterial3D { AlbedoColor = DetailDarkColor, Metallic = DetailDarkMetallic, Roughness = DetailDarkRoughness };
-        m = new[] { trim, metal, dark };
-        _detailMats[photo] = m;
-        return m;
-    }
-
-    private static void AddQuadB(List<Vector3> verts, List<Vector3> norms, List<int> idx,
-        Vector3 center, Vector3 right, Vector3 up, Vector3 normal, float w, float h)
-    {
-        int b0 = verts.Count;
-        verts.Add(center - right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
-        verts.Add(center + right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
-        verts.Add(center + right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
-        verts.Add(center - right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
-        idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
-    }
-
-    // One box (24 verts, flat faces) into a surface list; the
-    // optional basis rotates it (fire-escape stairs tilt).
-    private static void AddBox(List<Vector3> verts, List<Vector3> norms, List<int> idx,
-        Vector3 center, Vector3 size, Basis basis)
-    {
-        var faces = new (Vector3 N, Vector3 R, Vector3 U)[]
-        {
-            (new Vector3(0, 0, 1), new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
-            (new Vector3(0, 0, -1), new Vector3(-1, 0, 0), new Vector3(0, 1, 0)),
-            (new Vector3(1, 0, 0), new Vector3(0, 0, -1), new Vector3(0, 1, 0)),
-            (new Vector3(-1, 0, 0), new Vector3(0, 0, 1), new Vector3(0, 1, 0)),
-            (new Vector3(0, 1, 0), new Vector3(1, 0, 0), new Vector3(0, 0, -1)),
-            (new Vector3(0, -1, 0), new Vector3(1, 0, 0), new Vector3(0, 0, 1))
-        };
-        foreach (var (n, r, u) in faces)
-        {
-            var fc = center + basis * (new Vector3(n.X * size.X, n.Y * size.Y, n.Z * size.Z) / 2f);
-            float fw = Mathf.Abs(r.X) > 0.5f ? size.X : Mathf.Abs(r.Y) > 0.5f ? size.Y : size.Z;
-            float fh = Mathf.Abs(u.X) > 0.5f ? size.X : Mathf.Abs(u.Y) > 0.5f ? size.Y : size.Z;
-            AddQuadB(verts, norms, idx, fc, basis * r, basis * u, basis * n, fw, fh);
-        }
-    }
-
-    private static MeshInstance3D MakeBuildingDetail(Vector3 size, int seq, bool photo)
-    {
-        if (Mathf.Min(size.X, size.Z) < 5f) return null; // the comms mast stays clean
-        int face = BrickHash(seq, 5, 2) % 4;
-        float fw = face % 2 == 0 ? size.X : size.Z;   // front width
-        float fd = face % 2 == 0 ? size.Z : size.X;   // front depth
-        float top = size.Y / 2f;
-        float g = -size.Y / 2f + BuildingSink;         // terrain line (AddBuilding's sink)
-        var verts = new List<Vector3>(); var norms = new List<Vector3>();
-        var trimI = new List<int>(); var metalI = new List<int>(); var darkI = new List<int>();
-        var I = Basis.Identity;
-
-        // Parapet rim (trim).
-        AddBox(verts, norms, trimI, new Vector3(0, top - 0.21f, fd / 2f - 0.03f), new Vector3(fw + 0.12f, 0.42f, 0.2f), I);
-        AddBox(verts, norms, trimI, new Vector3(0, top - 0.21f, -fd / 2f + 0.03f), new Vector3(fw + 0.12f, 0.42f, 0.2f), I);
-        AddBox(verts, norms, trimI, new Vector3(fw / 2f - 0.03f, top - 0.21f, 0), new Vector3(0.2f, 0.42f, fd + 0.12f), I);
-        AddBox(verts, norms, trimI, new Vector3(-fw / 2f + 0.03f, top - 0.21f, 0), new Vector3(0.2f, 0.42f, fd + 0.12f), I);
-
-        // Roof clutter: HVAC boxes (metal), a roof hut on some,
-        // an antenna on others.
-        int hvac = 1 + BrickHash(seq, 8, 3) % 2;
-        for (int i = 0; i < hvac; i++)
-        {
-            float ox = (BrickHash(seq, i, 21) % 61 - 30) / 100f * fw * 0.55f;
-            float oz = (BrickHash(seq, i, 33) % 61 - 30) / 100f * fd * 0.55f;
-            AddBox(verts, norms, metalI, new Vector3(ox, top + 0.38f, oz),
-                new Vector3(1.3f + (BrickHash(seq, i, 7) % 10) * 0.13f, 0.76f, 1.0f + (BrickHash(seq, i, 13) % 10) * 0.09f), I);
-        }
-        if (seq % 3 == 0)
-        {
-            var hut = new Vector3(fw * 0.22f, top + 1.0f, -fd * 0.16f);
-            AddBox(verts, norms, trimI, hut, new Vector3(2.1f, 2.0f, 1.9f), I);
-            AddBox(verts, norms, darkI, hut + new Vector3(0, -0.25f, 0.98f), new Vector3(0.9f, 1.5f, 0.1f), I);
-        }
-        if (seq % 4 == 1)
-        {
-            var ant = new Vector3(-fw * 0.30f, top + 1.35f, fd * 0.22f);
-            AddBox(verts, norms, metalI, ant, new Vector3(0.1f, 2.7f, 0.1f), I);
-            AddBox(verts, norms, metalI, ant + new Vector3(0, 1.05f, 0), new Vector3(1.0f, 0.08f, 0.08f), I);
-        }
-
-        // Front door, canopy, step (dark + trim) on the front face.
-        float doorX = (BrickHash(seq, 4, 17) % 51 - 25) / 100f * fw * 0.6f;
-        AddBox(verts, norms, darkI, new Vector3(doorX, g + 1.35f, fd / 2f + 0.04f), new Vector3(1.7f, 2.7f, 0.14f), I);
-        AddBox(verts, norms, trimI, new Vector3(doorX, g + 3.02f, fd / 2f + 0.48f), new Vector3(2.6f, 0.16f, 1.05f), I);
-        AddBox(verts, norms, trimI, new Vector3(doorX, g + 0.11f, fd / 2f + 0.30f), new Vector3(2.4f, 0.22f, 0.66f), I);
-
-        // City storefront: a dark glass band + header at the base.
-        if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
-        {
-            float sw = Mathf.Min(fw * 0.86f, 12f);
-            AddBox(verts, norms, darkI, new Vector3(0, g + 1.5f, fd / 2f + 0.03f), new Vector3(sw, 3.0f, 0.12f), I);
-            AddBox(verts, norms, trimI, new Vector3(0, g + 3.18f, fd / 2f + 0.05f), new Vector3(sw, 0.3f, 0.2f), I);
-        }
-
-        int style = seq % 3;
-        if (style == 0 && size.Y >= 12f && fw >= 8f)
-        {
-            // Balcony rows on the front (trim slabs, metal rails).
-            int cols = Mathf.Clamp(Mathf.FloorToInt(fw / 4.2f), 2, 3);
-            for (float fy = g + 4.4f; fy < top - 1.7f; fy += BuildingFloorStep)
-            for (int c = 0; c < cols; c++)
-            {
-                if (BrickHash(seq, c * 7, (int)(fy * 3f)) % 4 == 0) continue;
-                float cx = (c - (cols - 1) / 2f) * (fw / cols) * 0.92f;
-                AddBox(verts, norms, trimI, new Vector3(cx, fy, fd / 2f + 0.40f), new Vector3(2.3f, 0.15f, 0.8f), I);
-                AddBox(verts, norms, metalI, new Vector3(cx, fy + 0.36f, fd / 2f + 0.78f), new Vector3(2.3f, 0.57f, 0.05f), I);
-                AddBox(verts, norms, metalI, new Vector3(cx - 1.13f, fy + 0.36f, fd / 2f + 0.40f), new Vector3(0.05f, 0.57f, 0.8f), I);
-                AddBox(verts, norms, metalI, new Vector3(cx + 1.13f, fy + 0.36f, fd / 2f + 0.40f), new Vector3(0.05f, 0.57f, 0.8f), I);
-            }
-        }
-        else if (style == 1 && size.Y >= 13f)
-        {
-            // Zigzag fire escape on the front (metal).
-            float prevX = 0f, prevY = 0f; bool first = true;
-            int lvl = 0;
-            for (float ly = g + 3.4f; ly < top - 1.3f; ly += BuildingFloorStep, lvl++)
-            {
-                float px = lvl % 2 == 0 ? -1.0f : 1.0f;
-                AddBox(verts, norms, metalI, new Vector3(px, ly, fd / 2f + 0.42f), new Vector3(3.6f, 0.13f, 0.85f), I);
-                AddBox(verts, norms, metalI, new Vector3(px, ly + 0.38f, fd / 2f + 0.82f), new Vector3(3.6f, 0.62f, 0.05f), I);
-                AddBox(verts, norms, metalI, new Vector3(px - 1.78f, ly + 0.38f, fd / 2f + 0.42f), new Vector3(0.05f, 0.62f, 0.85f), I);
-                AddBox(verts, norms, metalI, new Vector3(px + 1.78f, ly + 0.38f, fd / 2f + 0.42f), new Vector3(0.05f, 0.62f, 0.85f), I);
-                if (!first)
-                {
-                    float dx = px - prevX, dy = ly - prevY;
-                    float len = Mathf.Sqrt(dx * dx + dy * dy);
-                    var tilt = new Basis(new Vector3(0, 0, 1), Mathf.Atan2(dy, dx));
-                    AddBox(verts, norms, metalI,
-                        new Vector3((px + prevX) / 2f, (ly + prevY) / 2f, fd / 2f + 0.42f),
-                        new Vector3(len, 0.1f, 0.7f), tilt);
-                }
-                if (first)
-                {
-                    // The drop ladder to the ground.
-                    AddBox(verts, norms, metalI, new Vector3(px - 0.35f, g + LadderUprightHeight / 2f, fd / 2f + 0.5f), new Vector3(0.05f, LadderUprightHeight, 0.05f), I);
-                    AddBox(verts, norms, metalI, new Vector3(px + 0.35f, g + LadderUprightHeight / 2f, fd / 2f + 0.5f), new Vector3(0.05f, LadderUprightHeight, 0.05f), I);
-                    for (int r2 = 0; r2 < 4; r2++)
-                        AddBox(verts, norms, metalI, new Vector3(px, g + 0.5f + r2 * 0.75f, fd / 2f + 0.5f), new Vector3(0.7f, 0.05f, 0.05f), I);
-                }
-                prevX = px; prevY = ly; first = false;
-            }
-        }
-        else if (style == 2)
-        {
-            // Cornice bands at every floor line (trim).
-            for (float fy = g + BuildingFloorStep; fy < top - 0.9f; fy += BuildingFloorStep)
-            {
-                AddBox(verts, norms, trimI, new Vector3(0, fy, fd / 2f + 0.03f), new Vector3(fw + 0.26f, 0.2f, 0.16f), I);
-                AddBox(verts, norms, trimI, new Vector3(0, fy, -fd / 2f - 0.03f), new Vector3(fw + 0.26f, 0.2f, 0.16f), I);
-                AddBox(verts, norms, trimI, new Vector3(fw / 2f + 0.03f, fy, 0), new Vector3(0.16f, 0.2f, fd + 0.26f), I);
-                AddBox(verts, norms, trimI, new Vector3(-fw / 2f - 0.03f, fy, 0), new Vector3(0.16f, 0.2f, fd + 0.26f), I);
-            }
-        }
-
-        var mesh = new ArrayMesh();
-        var mats = DetailMats(photo);
-        var lists = new[] { trimI, metalI, darkI };
-        for (int si = 0; si < 3; si++)
-        {
-            if (lists[si].Count == 0) continue;
-            var arr = new Godot.Collections.Array(); arr.Resize((int)Mesh.ArrayType.Max);
-            arr[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-            arr[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-            arr[(int)Mesh.ArrayType.Index] = lists[si].ToArray();
-            int at = mesh.GetSurfaceCount();
-            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
-            mesh.SurfaceSetMaterial(at, mats[si]);
-        }
-        var node = new MeshInstance3D { Mesh = mesh };
-        node.Rotation = new Vector3(0, face * Mathf.Pi / 2f, 0);
-        return node;
-    }
-
-    // The building box as a two-surface ArrayMesh (a BoxMesh
-    // carries one material only): walls on surface 0, the roof
-    // face on surface 1. UVs are 0..1 per face - the mapping
-    // BoxMesh used - so each material's Uv1Scale keeps its
-    // meaning. Faces are (origin, right, up) triples with
-    // right x up = the outward normal, wound like the panes.
-    private static ArrayMesh BuildingBoxMesh(Vector3 size, Material wallMat, Material roofMat)
-    {
-        float hx = size.X / 2f, hy = size.Y / 2f, hz = size.Z / 2f;
-        var verts = new System.Collections.Generic.List<Vector3>();
-        var norms = new System.Collections.Generic.List<Vector3>();
-        var uvs = new System.Collections.Generic.List<Vector2>();
-        var wallI = new System.Collections.Generic.List<int>();
-        var roofI = new System.Collections.Generic.List<int>();
-        void Face(Vector3 o, Vector3 r, Vector3 u, System.Collections.Generic.List<int> idx)
-        {
-            int b = verts.Count;
-            var n = r.Cross(u).Normalized();
-            verts.Add(o); verts.Add(o + r); verts.Add(o + r + u); verts.Add(o + u);
-            for (int i = 0; i < 4; i++) norms.Add(n);
-            uvs.Add(new Vector2(0, 1)); uvs.Add(new Vector2(1, 1));
-            uvs.Add(new Vector2(1, 0)); uvs.Add(new Vector2(0, 0));
-            idx.Add(b); idx.Add(b + 2); idx.Add(b + 1);
-            idx.Add(b); idx.Add(b + 3); idx.Add(b + 2);
-        }
-        var X = new Vector3(size.X, 0, 0); var Y = new Vector3(0, size.Y, 0); var Z = new Vector3(0, 0, size.Z);
-        Face(new Vector3(-hx, -hy, hz), X, Y, wallI);   // +Z
-        Face(new Vector3(hx, -hy, -hz), -X, Y, wallI);  // -Z
-        Face(new Vector3(hx, -hy, hz), -Z, Y, wallI);   // +X
-        Face(new Vector3(-hx, -hy, -hz), Z, Y, wallI);  // -X
-        Face(new Vector3(-hx, -hy, -hz), X, Z, wallI);  // -Y (buried)
-        Face(new Vector3(-hx, hy, hz), X, -Z, roofI);   // +Y roof
-        var mesh = new ArrayMesh();
-        void Surf(System.Collections.Generic.List<int> idx, Material mat)
-        {
-            var arr = new Godot.Collections.Array(); arr.Resize((int)Mesh.ArrayType.Max);
-            arr[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
-            arr[(int)Mesh.ArrayType.Normal] = norms.ToArray();
-            arr[(int)Mesh.ArrayType.TexUV] = uvs.ToArray();
-            arr[(int)Mesh.ArrayType.Index] = idx.ToArray();
-            int at = mesh.GetSurfaceCount();
-            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
-            mesh.SurfaceSetMaterial(at, mat);
-        }
-        Surf(wallI, wallMat);
-        Surf(roofI, roofMat);
-        return mesh;
-    }
-
-    private void AddBuilding(Vector3 pos, Vector3 size, float baseY = float.NaN)
-    {
-        // ALL BUILDINGS REMOVED (owner, 2026-11-24): every
-        // placement path in the game flows through this one
-        // method - the city kits, the mission bases, the
-        // Ascent villages, checkpoint and towers - so the
-        // no-op sweeps them all at once, like AddRock before
-        // it. Nothing registers: no node, no prop collider,
-        // no roof, no streaming entry. Sites, guards and
-        // terrain are untouched; he will provide something
-        // more realistic later.
-        return;
-        int pc0 = _props.Count, hc0 = _hit.Props.Count;
-        // City kits (owner): when the active contract carries a
-        // building kit, the placement instances a real building
-        // model from the kit, uniformly scaled to the requested
-        // height - and `size` becomes the model's scaled AABB,
-        // so the colliders, roof floor and destruction below all
-        // match the model. Any placement the kit can't serve
-        // (it returns null) stays procedural.
-        Node3D kitHolder = null;
-        if (WorldConfig.CityKit >= 0 && size.X >= 4f && size.Z >= 4f)
-        {
-            var req = size;
-            kitHolder = CityKits.Take(WorldConfig.CityKit, _facadeSeq, size.Y, out Vector3 eff);
-            if (kitHolder != null)
-            {
-                size = eff;
-                // Small requests are dense-city slots: a wide
-                // model scaled to the slot's height can sprawl
-                // far past the slot and swallow its neighbours.
-                // Clamp the footprint to the request (+5%),
-                // scaling the model down uniformly with it.
-                if (Mathf.Max(req.X, req.Z) <= 14f)
-                {
-                    float capF = Mathf.Max(req.X, req.Z) * 1.05f;
-                    float m = Mathf.Max(size.X, size.Z);
-                    if (m > capF)
-                    {
-                        float k = capF / m;
-                        size *= k;
-                        kitHolder.Scale *= k;
-                    }
-                }
-            }
-        }
-        // Ground line (owner, 2026-11-15: houses floated on
-        // some maps, base hanging off the downhill side): the
-        // base must sit under the LOWEST ground the footprint
-        // covers - sampling only the centre leaves the downhill
-        // corner hovering on any grade. Sample the footprint's
-        // corners and take the minimum; the kit facing can
-        // quarter-turn the model, so sample the bounding
-        // square. Terrace decks pass their flat top as baseY
-        // and skip the sampling entirely.
-        float groundY;
-        if (!float.IsNaN(baseY)) groundY = baseY;
-        else
-        {
-            float h = Mathf.Max(size.X, size.Z) / 2f;
-            groundY = Main.HeightAt(pos.X, pos.Z);
-            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X - h, pos.Z - h));
-            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X - h, pos.Z + h));
-            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X + h, pos.Z - h));
-            groundY = Mathf.Min(groundY, Main.HeightAt(pos.X + h, pos.Z + h));
-        }
-        // The big footprints (owner, 2026-10-31: larger buildings)
-        // sit on slopes - sink the base well into the grade so no
-        // corner hovers; the roof top is the walkable surface.
-        float roofTop = groundY + size.Y - BuildingSink;
-        pos.Y = groundY + size.Y / 2f - BuildingSink;
-        int seq = _facadeSeq;
-        var mi = new MeshInstance3D();
-        if (kitHolder != null)
-        {
-            // The container stays a MeshInstance3D (destruction
-            // types it as one) with no mesh of its own; the model
-            // sits with its base at the sunk ground line - the
-            // container's origin is the building's center, so the
-            // holder goes half the height down. A seeded quarter
-            // turn varies the street faces (colliders are
-            // circles, so facing is purely visual).
-            kitHolder.Position = new Vector3(0f, -size.Y / 2f, 0f);
-            kitHolder.Rotation = new Vector3(0f, (seq % 4) * Mathf.Pi / 2f, 0f);
-            mi.AddChild(kitHolder);
-            _kitBuilt++;
-            _facadeSeq++;
-            mi.Position = pos;
-            AddChild(mi);
-            _buildingPts.Add(new Vector2(pos.X, pos.Z));
-            RegisterBuildingShell(pos, size, groundY, BuildingSink, roofTop, pc0, hc0, mi);
-            return;
-        }
-        float tintJ = 0.94f + (BrickHash(seq, 3, 9) % 13) * 0.01f;
-        // Two-surface box (walls / roof): in the photo scene the
-        // walls take one of six photographic sets by sequence and
-        // the roof takes gravel; the plain scene keeps its
-        // authored facade and a flat dark roof.
-        var wallMat = _photo
-            ? PhotoEnv.BuildingMaterial(size, BuildingTints[seq % BuildingTints.Length] * tintJ, seq)
-            : new StandardMaterial3D
-            {
-                AlbedoTexture = MakeFacadeTexture(seq, FacadeBases[seq % FacadeBases.Length]),
-                Roughness = WallRoughness
-            };
-        var roofMat = _photo
-            ? PhotoEnv.RoofMaterial(size)
-            : new StandardMaterial3D { AlbedoColor = RoofColor, Roughness = RoofRoughness };
-        mi.Mesh = BuildingBoxMesh(size, wallMat, roofMat);
-        _procBuilt++;
-        _facadeSeq++;
-        mi.Position = pos;
-        AddChild(mi);
-        mi.AddChild(MakeGlassPanes(size, seq,
-            WorldConfig.Biome == WorldConfig.BiomeKind.City ? CityLitRatio : TownLitRatio));
-        var detailNode = MakeBuildingDetail(size, seq, _photo);
-        if (detailNode != null) mi.AddChild(detailNode);
-        if (WorldConfig.Biome == WorldConfig.BiomeKind.City && seq % 3 == 1 && size.Y >= 12f && size.X >= 8f)
-            AddSign(mi, size, seq);
-        _buildingPts.Add(new Vector2(pos.X, pos.Z));
-        RegisterBuildingShell(pos, size, groundY, BuildingSink, roofTop, pc0, hc0, mi);
-    }
 
     // Shared by the procedural and kit paths: collision
     // circles, hit cylinders, the destructible record and
@@ -1416,101 +699,7 @@ public partial class Titans
     // ---- City dressing (owner's references): neon signs on the
     // gameplay buildings, a lit skyline beyond the boundary ----
 
-    private static readonly Color[] SignNeons =
-    {
-        new(0.20f, 0.90f, 1.00f), new(1.00f, 0.35f, 0.80f),
-        new(1.00f, 0.70f, 0.25f), new(0.40f, 1.00f, 0.60f)
-    };
-    private static readonly System.Collections.Generic.Dictionary<int, ImageTexture> _signTex = new();
 
-    private static ImageTexture SignTexture(int variant)
-    {
-        if (_signTex.TryGetValue(variant, out var t)) return t;
-        var neon = SignNeons[variant % SignNeons.Length];
-        var img = Image.Create(256, 128, false, Image.Format.Rgba8);
-        img.Fill(SignBackingColor);
-        img.FillRect(new Rect2I(4, 4, 248, 120), neon);
-        img.FillRect(new Rect2I(10, 10, 236, 108), SignBackingColor);
-        // Abstract ad: bright bars of seeded widths + one block.
-        for (int i = 0; i < 4; i++)
-        {
-            int bw = 60 + BrickHash(variant, i, 5) % 150;
-            var c = i % 2 == 0 ? neon : neon.Lightened(0.35f);
-            img.FillRect(new Rect2I(22, 24 + i * 20, bw, 9), c);
-        }
-        img.FillRect(new Rect2I(196, 78, 36, 36), neon.Lightened(0.2f));
-        t = ImageTexture.CreateFromImage(img);
-        _signTex[variant] = t;
-        return t;
-    }
-
-    private static void AddSign(MeshInstance3D building, Vector3 size, int seq)
-    {
-        int variant = seq % SignNeons.Length;
-        var tex = SignTexture(variant);
-        var mat = new StandardMaterial3D
-        {
-            AlbedoTexture = tex,
-            EmissionEnabled = true, EmissionTexture = tex,
-            Emission = new Color(1f, 1f, 1f), EmissionEnergyMultiplier = SignEmissionEnergy,
-            Roughness = SignRoughness
-        };
-        float w = Mathf.Min(size.X * SignWidthFraction, SignMaxWidth);
-        var sign = new MeshInstance3D
-        {
-            Mesh = new PlaneMesh { Size = new Vector2(w, w * 0.5f) },
-            MaterialOverride = mat
-        };
-        // One face per building, seeded; the sign rides the
-        // building node, so it collapses with it when destroyed.
-        switch (seq % 4)
-        {
-            case 0: sign.Position = new Vector3(0f, size.Y * 0.16f, size.Z / 2f + 0.07f); break;
-            case 1: sign.Position = new Vector3(0f, size.Y * 0.16f, -size.Z / 2f - 0.07f); sign.Rotation = new Vector3(0f, Mathf.Pi, 0f); break;
-            case 2: sign.Position = new Vector3(size.X / 2f + 0.07f, size.Y * 0.16f, 0f); sign.Rotation = new Vector3(0f, Mathf.Pi / 2f, 0f); break;
-            default: sign.Position = new Vector3(-size.X / 2f - 0.07f, size.Y * 0.16f, 0f); sign.Rotation = new Vector3(0f, -Mathf.Pi / 2f, 0f); break;
-        }
-        building.AddChild(sign);
-    }
-
-    // City biome: extra gameplay buildings on the same rules as
-    // the arena's and the bases' (destructible, blocking,
-    // standable) - a town center and street clusters in Mission,
-    // blocks between the mesa and the pads in Tournament. Sizes
-    // vary widely (owner: no two alike). Pads, roads and the
-    // mesa stay clear.
-    // Kit contracts: the town is a real street grid - blocks of
-    // kit buildings on the level district plateau (Main), with
-    // the ground between the plots colored as streets. One
-    // central plot stays empty as a plaza; a few plots skip at
-    // random so the blocks are not a perfect lattice.
-    private void PlaceCityGrid(System.Random rng, ref int placed)
-    {
-        // Terraced city (owner: Harbor's three levels) builds
-        // its own plots, platforms, ramps, lifts and island.
-        if (WorldConfig.TerracedCity) { BuildTerracedCity(rng, ref placed); return; }
-        // The dense city (owner: "so dense the rider can have
-        // space to walk only between the houses or jump on their
-        // roofs - no open space"): every plot in the disc is
-        // built, no plaza, no gap plots; the lanes between the
-        // blocks are the only ground left open. No ScatterFree -
-        // the pads and bases sit 600u+ away, and the pad roads
-        // ARE these streets now.
-        float p = CityGrid.Pitch;
-        int hb = Mathf.CeilToInt(CityGrid.Radius / p);
-        for (int i = -hb; i <= hb; i++)
-        for (int j = -hb; j <= hb; j++)
-        {
-            var c = new Vector2(
-                i * p + (float)(rng.NextDouble() - 0.5) * 2f,
-                j * p + (float)(rng.NextDouble() - 0.5) * 2f);
-            if (c.Length() > CityGrid.Radius) continue;
-            if (TerrainGrade(c.X, c.Y) > CityGradeMax) continue;
-            PlaceCityBlock(rng, c, ref placed);
-        }
-    }
-
-    private readonly System.Collections.Generic.List<(Vector2 C, Vector2 H)> _districtBoxes = new();
 
     // District blocks pack tighter than the generic circle
     // spacing allows: a square's registered circle radius is
@@ -1526,22 +715,6 @@ public partial class Titans
     private const float BlockPropClearance = 2f;     // distance kept from nature-prop circles
     private const float SkipRectMargin = 6f;         // skip rects (ramps/lifts/bridges) repel blocks by this much
 
-    private bool BlockFree(Vector2 pt, Vector3 size)
-    {
-        var h = new Vector2(size.X, size.Z) / 2f + new Vector2(BlockPadMargin, BlockPadMargin);
-        foreach (var b in _districtBoxes)
-            if (Mathf.Abs(pt.X - b.C.X) < h.X + b.H.X + BlockGap &&
-                Mathf.Abs(pt.Y - b.C.Y) < h.Y + b.H.Y + BlockGap)
-                return false;
-        foreach (var c in _props)
-        {
-            if (c.RoofTop > 0f) continue; // building circles are not nature props
-            if (pt.DistanceTo(c.P) < c.R + Mathf.Max(h.X, h.Y) + BlockPropClearance) return false;
-        }
-        _districtBoxes.Add((pt, h));
-        return true;
-    }
-
     // One district plot becomes a city block in the owner's
     // reference image: several buildings of MIXED heights on a
     // single block - low podiums beside a tower - with the gaps
@@ -1550,133 +723,18 @@ public partial class Titans
     // (9-16u) and one tall one (26-39u).
     // Rects where terrace works (ramps, lift pads) displace
     // buildings: block slots landing inside are skipped.
-    private readonly System.Collections.Generic.List<Main.RoofRect> _skipRects = new();
-
-    private bool InSkipRect(Vector2 pt)
-    {
-        foreach (var r in _skipRects)
-            if (Mathf.Abs(pt.X - r.Cx) <= r.Hx + SkipRectMargin && Mathf.Abs(pt.Y - r.Cz) <= r.Hz + SkipRectMargin)
-                return true;
-        return false;
-    }
 
     // City block recipe (naming pass, 2026-11-27).
-    private const int BlockMinBuildings = 3;
     private const float BlockExtraSlotChance = 0.55f; // chance the 4th sub-plot is filled too
-    private const float BlockLowHeightBase = 9f, BlockLowHeightRange = 7f;
-    private const float BlockTallHeightBase = 26f, BlockTallHeightRange = 13f;
     private const float BlockLowChance = 0.45f, BlockMidChance = 0.80f; // height-band rolls for extra buildings
-    private const float BlockLowHeightRangeExtra = 8f;
-    private const float BlockMidHeightBase = 17f, BlockMidHeightRange = 10f;
-    private const float BlockHighHeightBase = 27f, BlockHighHeightRange = 12f;
     private const float BlockJitterRange = 1.6f, BlockJitterHalf = 0.8f; // sub-plot position jitter
-    private const float BlockFootprintBase = 9.8f, BlockFootprintRange = 0.8f;
     private const float BlockDepthMinFraction = 0.8f, BlockDepthRange = 0.2f; // depth as a fraction of width
-
-    private void PlaceCityBlock(System.Random rng, Vector2 c, ref int placed, float baseY = float.NaN)
-    {
-        var slots = new System.Collections.Generic.List<Vector2>
-        {
-            new(-5.5f, -5.5f), new(5.5f, -5.5f), new(-5.5f, 5.5f), new(5.5f, 5.5f)
-        };
-        for (int i = slots.Count - 1; i > 0; i--)
-        { int j = rng.Next(i + 1); (slots[i], slots[j]) = (slots[j], slots[i]); }
-        int n = BlockMinBuildings + (rng.NextDouble() < BlockExtraSlotChance ? 1 : 0);
-        var heights = new System.Collections.Generic.List<float>
-        {
-            BlockLowHeightBase + (float)rng.NextDouble() * BlockLowHeightRange,
-            BlockTallHeightBase + (float)rng.NextDouble() * BlockTallHeightRange
-        };
-        for (int i = 2; i < n; i++)
-        {
-            double hr = rng.NextDouble();
-            heights.Add(hr < BlockLowChance ? BlockLowHeightBase + (float)rng.NextDouble() * BlockLowHeightRangeExtra
-                : hr < BlockMidChance ? BlockMidHeightBase + (float)rng.NextDouble() * BlockMidHeightRange
-                : BlockHighHeightBase + (float)rng.NextDouble() * BlockHighHeightRange);
-        }
-        for (int i = heights.Count - 1; i > 0; i--)
-        { int j = rng.Next(i + 1); (heights[i], heights[j]) = (heights[j], heights[i]); }
-        for (int k = 0; k < n; k++)
-        {
-            var pt = c + slots[k] + new Vector2(
-                (float)(rng.NextDouble() * BlockJitterRange - BlockJitterHalf),
-                (float)(rng.NextDouble() * BlockJitterRange - BlockJitterHalf));
-            // Footprints ~10u on 11u slot spacing: the block
-            // fills its plot and the lane left between blocks is
-            // ~10u wall to wall - a rider fits between the
-            // houses, or goes over the roofs.
-            float fw = BlockFootprintBase + (float)rng.NextDouble() * BlockFootprintRange;
-            var size = new Vector3(fw, heights[k],
-                fw * (BlockDepthMinFraction + (float)rng.NextDouble() * BlockDepthRange));
-            if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + PitCheckMargin)) continue;
-            if (InSkipRect(pt)) continue;
-            if (!BlockFree(pt, size)) continue;
-            AddBuilding(new Vector3(pt.X, 0f, pt.Y), size, baseY);
-            placed++;
-        }
-    }
 
     // Cluster city scatter (naming pass, 2026-11-27).
     private const float ClusterOffset = 48f;         // leg-cluster offset from the pad-pair midpoint
-    private const int CityClusterMaxTries = 500;
     private const float MesaClearRadius = 33f;       // tournament: no buildings inside this of the mesa centre
-    private const float CityBuildingSizeBase = 9f, CityBuildingSizeRange = 8f;
-    private const float CityBuildingHeightBase = 11f, CityBuildingHeightRange = 17f;
     private const float CityBuildingClearMargin = 2.5f; // ScatterFree margin over the footprint half-size (NOT SlopeTopTolerance - different test)
-    private const float RoadClearance = 8f;
     private const float CityMaxGroundHeight = 9.5f;  // tournament: no buildings on ground higher than this
-    private const float PadClearMission = 80f, PadClearTournament = 25f;
-
-    private void ScatterCity()
-    {
-        var rng = new System.Random(0xC17E11);
-        var clusters = new System.Collections.Generic.List<(Vector2 C, float R, int N)>();
-        bool grid = false;
-        if (WorldConfig.IsMission)
-        {
-            if (WorldConfig.CityKit >= 0) grid = true;
-            else clusters.Add((Vector2.Zero, 120f, 7));
-            var p = Main.SpawnPads;
-            for (int leg = 0; leg < (grid ? 0 : 3); leg++)
-            {
-                var a = p[leg]; var b = p[(leg + 1) % 3];
-                var mid = (a + b) / 2f;
-                var perp = new Vector2(b.Y - a.Y, -(b.X - a.X)).Normalized()
-                    * (leg % 2 == 0 ? ClusterOffset : -ClusterOffset);
-                clusters.Add((mid + perp, 65f, 5));
-            }
-        }
-        else clusters.Add((Vector2.Zero, 108f, 12));
-        int placed = 0;
-        if (grid) PlaceCityGrid(rng, ref placed);
-        foreach (var (cc, cr, cn) in clusters)
-        {
-            int got = 0, tries = 0;
-            while (got < cn && tries++ < CityClusterMaxTries)
-            {
-                float ang = (float)rng.NextDouble() * Mathf.Tau;
-                float rr = cr * Mathf.Sqrt((float)rng.NextDouble());
-                var pt = cc + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
-                if (!WorldConfig.IsMission && pt.Length() < MesaClearRadius) continue; // the mesa
-                var size = new Vector3(
-                    CityBuildingSizeBase + (float)rng.NextDouble() * CityBuildingSizeRange,
-                    CityBuildingHeightBase + (float)rng.NextDouble() * CityBuildingHeightRange,
-                    CityBuildingSizeBase + (float)rng.NextDouble() * CityBuildingSizeRange);
-                if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + CityBuildingClearMargin)) continue;
-                if (Main.RoadDistance(pt.X, pt.Y) < RoadClearance) continue;
-                if (TerrainGrade(pt.X, pt.Y) > CityGradeMax) continue;
-                if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + PitCheckMargin)) continue;
-                if (!WorldConfig.IsMission && Main.HeightAt(pt.X, pt.Y) > CityMaxGroundHeight) continue;
-                bool nearPad = false;
-                foreach (var pad in Main.SpawnPads)
-                    if (pt.DistanceTo(pad) < (WorldConfig.IsMission ? PadClearMission : PadClearTournament)) { nearPad = true; break; }
-                if (nearPad) continue;
-                AddBuilding(new Vector3(pt.X, 0f, pt.Y), size);
-                got++; placed++;
-            }
-        }
-        Dbg.Print($"CITY scatter: {placed} buildings placed (world totals: kit {_kitBuilt}, procedural {_procBuilt})");
-    }
 
     // ---------- collisions ----------
 
@@ -1888,7 +946,6 @@ public partial class Titans
         }
         foreach (var c in _props)
         {
-            if (c.Pass) continue;
             if (c.RoofTop > 0f && lvl + StepUpClearance >= c.RoofTop) continue;
             if (c.BaseY > 0f && lvl < c.BaseY - FootUnderDeckClearance) continue;
             p = PushOut(p, FootPad, c, out _);
@@ -1942,8 +999,7 @@ public partial class Titans
                 // so the under-deck was full of invisible walls
                 // shaped like the buildings above).
                 if (c.BaseY > 0f && w.SoleLevel + w.Height < c.BaseY - UnderDeckHeadClearance) continue;
-                if (c.Pass) continue; // stones: kept for scatter spacing and shot hits, never a wall
-                p = PushOut(p, w.CollisionRadius, c, out _);
+                    p = PushOut(p, w.CollisionRadius, c, out _);
             }
             // Ramp wedges are solid from the side (owner,
             // 2026-11-11: 'I can walk through the ramp if I

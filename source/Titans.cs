@@ -640,7 +640,7 @@ public partial class Titans : Node3D
         await BuildFrame(); // staged build: mesh in, skin next
         SkinTerrain(terrainMi);
         await BuildFrame(); // staged build: ground done, dressing next
-        Main.Roofs.Clear(); // rebuilt by the AddBuilding calls below
+        Main.Roofs.Clear(); // rebuilt by the world builders below
         Main.Ramps.Clear(); Main.DiscRoofs.Clear(); Main.BlobDecks.Clear(); Main.Walls.Clear();
         // Round-1 ARENA props at fixed spots around the origin.
         // Arena only (owner: "random pieces of building are
@@ -648,7 +648,7 @@ public partial class Titans : Node3D
         // world the origin is open wilderness; on Harbor it is
         // a mountain, so these four buildings planted
         // themselves on the slope there, half-buried. Missions
-        // dress themselves via BuildBases/ScatterCity/
+        // dress themselves via their own builders/
         // ScatterNature below.)
         if (!WorldConfig.IsMission)
         {
@@ -659,21 +659,11 @@ public partial class Titans : Node3D
             AddTree(new Vector3(30f, 0f, -30f));
             AddTree(new Vector3(-32f, 0f, -6f));
             AddTree(new Vector3(26f, 0f, 30f));
-            // Larger (owner, 2026-10-31): footprints 10-15u, heights
-            // 11-16u - real cover next to a 13-14u rider, and every
-            // roof stays under the ~24u thruster apex so a jump-jet
-            // rider can land on top.
-            AddBuilding(new Vector3(-20f, 0f, 14f), new Vector3(13f, 11f, 11f));
-            AddBuilding(new Vector3(22f, 0f, 8f), new Vector3(12f, 13f, 12f));
-            AddBuilding(new Vector3(14f, 0f, -26f), new Vector3(15f, 12f, 10f));
-            AddBuilding(new Vector3(-14f, 0f, -26f), new Vector3(10f, 16f, 10f));
         }
         if (WorldConfig.IsMission)
         {
             if (WorldConfig.Ascent) BuildAscentWorld();
-            else BuildBases();
         }
-        if (WorldConfig.Biome == WorldConfig.BiomeKind.City) ScatterCity();
         await BuildFrame(); // staged build: built ground in, nature next
         ScatterNature();
         if (_photo)

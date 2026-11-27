@@ -104,10 +104,8 @@ public partial class Titans
     // Ramp registration.
     private const float RampEndInset = 2f;         // the ramp surface stops this far inside both ends
     private const float RampAxisDominance = 0.5f;  // |direction component| above this makes that axis the run axis
-    private const float RampSkipMargin = 0.5f, RampSkipCrossHalf = 7.5f;
     // Lift factory and shuttle tuning.
     private const float LiftPadSize = 8.4f, LiftPadOutset = 4.6f;
-    private const float LiftSkipHalfExtent = 5.4f;
     private const float LiftTrimSize = 8.9f, LiftTrimThickness = 0.3f, LiftTrimRise = 0.18f, LiftTrimDrop = 0.12f;
     private const float LiftPostOffset = 4f, LiftPostThickness = 0.35f, LiftPostExtraHeight = 2f;
     private const float LiftPadHalfExtent = 4.6f;  // occupancy test half-extent around the pad centre
@@ -318,7 +316,6 @@ public partial class Titans
 
     private void BuildTerracedCity(System.Random rng, ref int placed)
     {
-        _skipRects.Clear();
         _lifts.Clear();
         TestPlatforms.Clear();
         foreach (var pad in Main.SpawnPads)
@@ -335,16 +332,14 @@ public partial class Titans
 
     private void BuildValleyCity(System.Random rng, ref int placed, Vector2 ctr, bool home)
     {
-        float p = CityGrid.Pitch;
         Vector2 L(float x, float z) => ctr + new Vector2(x, z);
         // Multi-level terraces stand only around the ENEMY
         // bases (owner, 2026-11-11 round 3: 'multi-level
         // city is needed only around enemy bases, remove it
         // from the home base'): the home valley is a flat
         // ground-level city - no platforms, ramps, lifts,
-        // bridges or island district. Connections first -
-        // they register the skip rects the block placement
-        // respects. Platform spans (plot centres ±16):
+        // bridges or island district. Connections first.
+        // Platform spans (plot centres ±16):
         // A x[-144,-48] z[-80,-16]; B mirrored +x; C/D
         // mirrored +z; E x[-112,-16] z[-176,-112];
         // F x[16,112] z[112,176]; G x[48,112] z[-176,-112].
@@ -368,8 +363,6 @@ public partial class Titans
         // Same-level flat bridges across the plaza.
         BuildFlatBridge(L(-48f, -48f), L(48f, -48f), TerraceL1);
         BuildFlatBridge(L(-48f, 48f), L(48f, 48f), TerraceL1);
-        // The landmark plot stays clear on the top platform.
-        _skipRects.Add(new Main.RoofRect { Cx = ctr.X + 80f, Cz = ctr.Y - 144f, Hx = LandmarkClearHalf, Hz = LandmarkClearHalf, Top = 0f });
         }
         // Harness hooks anchor on the FIRST enemy valley
         // (they pointed at the home decks while those
@@ -389,27 +382,6 @@ public partial class Titans
         // each same-level plot group; the statics register
         // the roofs/columns/lights the blocks then respect).
         if (!home) BuildPlatformClusters(ctr);
-        // Plots: exact grid (platforms must TILE - jittered
-        // centres once left ground-data slits riders fell
-        // through), platform membership by plot index.
-        int hb = Mathf.CeilToInt(CityGrid.Radius / p);
-        for (int i = -hb; i <= hb; i++)
-        for (int j = -hb; j <= hb; j++)
-        {
-            var c = L(i * p, j * p);
-            if ((c - ctr).Length() > CityGrid.Radius) continue;
-            if (TerrainGrade(c.X, c.Y) > CityGradeMax) continue;
-            float l = home ? 0f : PlatformLevel(i, j);
-            // The base plaza at the valley centre stays clear
-            // (spawn + base structures live there), wide
-            // enough for the defenders' 55u patrol disc.
-            if (l == 0f && (c - ctr).Length() < PlazaClearanceRadius) continue;
-            // Home valley: no buildings at all (owner,
-            // 2026-11-11 round 4: 'home base should be a
-            // flat area, no buildings') - the whole valley
-            // stays open ground around the base.
-            if (!home) PlaceCityBlock(rng, c, ref placed, l);
-        }
         if (!home) BuildLandmark(L(80f, -144f), TerraceL3, LandmarkWidth, LandmarkHeight, LandmarkHp, true);
         Dbg.Print($"VALLEY CITY at ({ctr.X:F0},{ctr.Y:F0}) home={home}");
     }
@@ -461,11 +433,6 @@ public partial class Titans
             AddChild(rail);
         }
         AddCeilingLight(new Vector3(mid.X, top - BridgeFixtureDrop, mid.Y), BridgeLightRange);
-        _skipRects.Add(new Main.RoofRect
-        {
-            Cx = mid.X, Cz = mid.Y,
-            Hx = (alongX ? len / 2f : BridgeHalfWidth) + SkipRectMargin, Hz = (alongX ? BridgeHalfWidth : len / 2f) + SkipRectMargin, Top = 0f
-        });
     }
 
     // Ceiling lights under a deck (owner, 2026-11-11: 'when
@@ -908,12 +875,6 @@ public partial class Titans
         };
         Main.Ramps.Add(rect);
         AddRampWedge(s0, lo, s1, hi, RampHalfWidth * 2f);
-        _skipRects.Add(new Main.RoofRect
-        {
-            Cx = (s0.X + s1.X) / 2f, Cz = (s0.Y + s1.Y) / 2f,
-            Hx = Mathf.Abs(dirOut.X) > RampAxisDominance ? run / 2f + RampSkipMargin : RampSkipCrossHalf,
-            Hz = Mathf.Abs(dirOut.Y) > RampAxisDominance ? run / 2f + RampSkipMargin : RampSkipCrossHalf, Top = 0f
-        });
         if (!HasTestRamp)
         {
             TestRampFoot = s0; TestRampDir = -dirOut; TestRampLo = lo; TestRampHi = hi;
@@ -954,7 +915,6 @@ public partial class Titans
         }
         int roofIdx = Main.Roofs.Count;
         Main.Roofs.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = LiftPadSize / 2f, Hz = LiftPadSize / 2f, Top = lo, Under = lo - LiftPadThickness });
-        _skipRects.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = LiftSkipHalfExtent, Hz = LiftSkipHalfExtent, Top = 0f });
         _lifts.Add(new Lift
         {
             C = pc, Lo = lo, Hi = hi, Top = lo, Target = lo,

@@ -34,81 +34,9 @@ public partial class Titans
     private const float MinColumnHeight = 3f;        // shorter columns are skipped
     private const float ColumnFootprint = 5f;
     private const float RampCorridorSinMax = 0.30f;  // plateau towers skip bearings this close to the south ramp corridor
-    private const float DressingRockTint = 0.5f;
 
     private void BuildAscentWorld()
     {
-        // ---- Villages: a ring of buildings around each site's
-        // muster green (kept clear for the guards), growing
-        // taller and denser with altitude.
-        var offs = new[]
-        {
-            new Vector2(30f, 10f), new Vector2(-28f, 24f),
-            new Vector2(12f, -34f), new Vector2(-36f, -14f),
-            new Vector2(42f, -28f), new Vector2(-52f, 42f),
-            new Vector2(56f, 6f)
-        };
-        for (int s = 0; s < Ascent.Sites.Length; s++)
-        {
-            var site = Ascent.Sites[s];
-            float rot = s * 1.3f;
-            float hBase = 6.5f + s * 1.7f; // the climb gets more advanced
-            for (int i = 0; i < offs.Length; i++)
-            {
-                var o = offs[i].Rotated(rot);
-                var pos = new Vector3(site.C.X + o.X, 0f, site.C.Y + o.Y);
-                float h = hBase * (1f + ((s * 3 + i) % 3 - 1) * 0.16f);
-                float w = 9f + ((s + i * 2) % 3) * 2f;
-                AddBuilding(pos, new Vector3(w, h, w * 0.9f));
-            }
-            if (s >= 2)
-            {
-                // Comms mast: the richer villages are wired.
-                var m = new Vector2(22f, -26f).Rotated(rot);
-                AddBuilding(new Vector3(site.C.X + m.X, 0f, site.C.Y + m.Y),
-                    new Vector3(3f, 19f + s * 2f, 3f));
-            }
-            for (int r = 0; r < 3; r++)
-            {
-                float a = rot + r * 2.3f + 0.7f;
-                var rp = new Vector2(site.C.X + Mathf.Cos(a) * (site.R + 14f),
-                                     site.C.Y + Mathf.Sin(a) * (site.R + 14f));
-                AddRock(new Vector3(rp.X, Main.HeightAt(rp.X, rp.Y), rp.Y),
-                    new Vector3(4f + r, 3f + r * 0.7f, 4.5f), a, DressingRockTint);
-            }
-        }
-
-        // ---- Road dressing (owner, 2026-11-20: more objects,
-        // the statics cost almost nothing next to the riders):
-        // a fortified checkpoint mid-valley and boulders
-        // scattered along the run and up the slopes.
-        {
-            float cz = -60f, cx = Ascent.RoadX(cz);
-            AddBuilding(new Vector3(cx + 26f, 0f, cz), new Vector3(6f, 24f, 6f)); // watchtower
-            AddBuilding(new Vector3(cx - 14f, 0f, cz + 13f), new Vector3(11f, 3.5f, 2.5f)); // gate barriers
-            AddBuilding(new Vector3(cx + 14f, 0f, cz - 13f), new Vector3(11f, 3.5f, 2.5f));
-            AddBuilding(new Vector3(cx - 21f, 0f, cz - 9f), new Vector3(4.5f, 2.6f, 4.5f)); // crate stacks
-            AddBuilding(new Vector3(cx + 21f, 0f, cz + 10f), new Vector3(4.5f, 2.6f, 4.5f));
-            var rngR = new System.Random(0x90AD);
-            for (float z = 770f; z > -700f; z -= 118f)
-            {
-                float side = (rngR.NextSingle() < 0.5f) ? -1f : 1f;
-                float rx = Ascent.RoadX(z) + side * (30f + rngR.NextSingle() * 26f);
-                AddRock(new Vector3(rx, Main.HeightAt(rx, z), z),
-                    new Vector3(3f + rngR.NextSingle() * 3f, 2.4f + rngR.NextSingle() * 2f, 3.5f),
-                    rngR.NextSingle() * 6.28f, DressingRockTint);
-            }
-            for (int i = 0; i < 26; i++)
-            {
-                float z = -720f + rngR.NextSingle() * 1520f;
-                float side = (i % 2 == 0) ? -1f : 1f;
-                float rx = Ascent.RoadX(z) + side * (150f + rngR.NextSingle() * 190f);
-                AddRock(new Vector3(rx, Main.HeightAt(rx, z), z),
-                    new Vector3(5f + rngR.NextSingle() * 6f, 4f + rngR.NextSingle() * 4f, 5.5f),
-                    rngR.NextSingle() * 6.28f, DressingRockTint);
-            }
-        }
-
         // ---- Rivers: water in the channel and a deck bridge
         // where the road crosses.
         var waterMat = new StandardMaterial3D
@@ -176,30 +104,6 @@ public partial class Titans
         AddSummitDeck(sc + new Vector2(0f, -30f), 58f, 40f, h0 + 30f);
         AddSummitRamp(new Vector2(sc.X, sc.Y + 89f), h0, h0 + 15f, 13f);
         AddSummitRamp(new Vector2(sc.X, sc.Y + 25f), h0 + 15f, h0 + 30f, 11f);
-        // Plateau towers around the decks.
-        var towerA = new[] { 0.5f, 1.25f, 2.0f, 2.7f, 3.6f, 4.3f, 5.1f, 5.8f };
-        for (int i = 0; i < towerA.Length; i++)
-        {
-            float a = towerA[i];
-            if (Mathf.Abs(Mathf.Sin(a)) < RampCorridorSinMax && Mathf.Cos(a) > 0f) continue; // keep the south ramp corridor clear
-            var tp = sc + new Vector2(Mathf.Cos(a) * 132f, Mathf.Sin(a) * 132f);
-            float th = 26f + (i % 4) * 6f;
-            AddBuilding(new Vector3(tp.X, 0f, tp.Y), new Vector3(14f + (i % 3) * 2f, th, 14f));
-        }
-        // Towers on the first platform.
-        foreach (var o in new[] { new Vector2(-62f, -18f), new Vector2(64f, -24f), new Vector2(-30f, 44f) })
-        {
-            var tp = sc + new Vector2(0f, 8f) + o;
-            AddBuilding(new Vector3(tp.X, 0f, tp.Y), new Vector3(13f, 20f + (o.X > 0f ? 6f : 0f), 13f), h0 + 15f);
-        }
-        // The citadel keep and its flanks on the top platform.
-        var keep = sc + new Vector2(0f, -34f);
-        AddBuilding(new Vector3(keep.X, 0f, keep.Y), new Vector3(22f, 40f, 22f), h0 + 30f);
-        foreach (float side in new[] { -32f, 32f })
-        {
-            var fp = sc + new Vector2(side, -28f);
-            AddBuilding(new Vector3(fp.X, 0f, fp.Y), new Vector3(12f, 24f, 12f), h0 + 30f);
-        }
         Dbg.Print($"ASCENT world built: {Ascent.Sites.Length} villages, {Ascent.Rivers.Length} bridged rivers, summit city at h={h0:F0}");
     }
 

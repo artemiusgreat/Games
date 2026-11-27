@@ -269,8 +269,9 @@ public partial class Main : Node3D
 	public static float GridHeightAt(int i, int j) => Grid[j * GridN + i];
 
 	// Building roofs a rider can stand on (owner, 2026-10-31):
-	// registered by Titans's AddBuilding, removed when the
-	// building is destroyed. Axis-aligned rectangles with a top.
+	// registered by the world builders (building shells,
+	// terrace decks), removed when the building is destroyed.
+	// Axis-aligned rectangles with a top.
 	// Under: the surface's underside height when the space
 	// below it is open (terrace decks, lift pads, the island
 	// bridge slab) - thruster flight bonks against it (owner:

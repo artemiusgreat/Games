@@ -4414,7 +4414,6 @@ public partial class Titans
             var fp = _player.SolePos(left);
             foreach (var c in _props)
             {
-                if (c.Pass) continue;
                 if (c.RoofTop > 0f && fp.Y + 1.5f >= c.RoofTop) continue;
                 if (c.BaseY > 0f && fp.Y < c.BaseY - 1.5f) continue;
                 float pen = c.R - new Vector2(fp.X - c.P.X, fp.Z - c.P.Y).Length();
