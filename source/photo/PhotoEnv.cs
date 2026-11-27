@@ -298,21 +298,6 @@ void fragment() {
 }
 ";
 
-    private static float HashNoise(float x, float z)
-    {
-        float s = Mathf.Sin(x * 127.1f + z * 311.7f) * 43758.5453f;
-        return s - Mathf.Floor(s);
-    }
-
-    private static float ValueNoise(float x, float z)
-    {
-        float xi = Mathf.Floor(x), zi = Mathf.Floor(z);
-        float xf = x - xi, zf = z - zi;
-        float u = xf * xf * (3f - 2f * xf), v = zf * zf * (3f - 2f * zf);
-        float a = HashNoise(xi, zi), b = HashNoise(xi + 1f, zi);
-        float c = HashNoise(xi, zi + 1f), d = HashNoise(xi + 1f, zi + 1f);
-        return Mathf.Lerp(Mathf.Lerp(a, b, u), Mathf.Lerp(c, d, u), v);
-    }
 
     // Splat weights (R rock, G grass, B dirt, A asphalt) from the same
     // heightfield the game logic reads: rock takes steep faces and
@@ -342,8 +327,8 @@ void fragment() {
                 // (The old patch field's fine 0.23 octave and
                 // the narrow dirt/street/road bands drew the
                 // shapes in his screenshot.)
-                float patch = ValueNoise(x * 0.032f, z * 0.032f) * 0.85f
-                            + ValueNoise(x * 0.09f, z * 0.09f) * 0.15f;
+                float patch = TerrainMath.SinValueNoise(x * 0.032f, z * 0.032f) * 0.85f
+                            + TerrainMath.SinValueNoise(x * 0.09f, z * 0.09f) * 0.15f;
                 // Rock is a SLOPE material only (owner,
                 // 2026-11-11 round 7: 'ground should not
                 // look the same as mountains - the grass/
@@ -390,7 +375,7 @@ void fragment() {
                 }
                 else if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
                 {
-                    float blocks = ValueNoise(x * 0.021f + 9f, z * 0.021f + 3f);
+                    float blocks = TerrainMath.SinValueNoise(x * 0.021f + 9f, z * 0.021f + 3f);
                     float paved = Mathf.SmoothStep(0.05f, 0.95f, blocks) * (1f - Mathf.SmoothStep(0.5f, 0.8f, slope));
                     road = Mathf.Max(road, paved * 0.45f);
                     grass *= 0.12f;

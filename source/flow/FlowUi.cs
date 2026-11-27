@@ -376,51 +376,7 @@ public static class FlowUi
 
     // ---------- procedural textures ----------
 
-    // The hash recipe's seed constants (the classic sin-hash
-    // used by shader noise): arbitrary primes-and-scale whose
-    // only job is decorrelation - named so the recipe reads as
-    // a recipe, not as random floats (owner, 2026-11-27).
-    private const float HashSeedX = 127.1f;
-    private const float HashSeedZ = 311.7f;
-    private const float HashScale = 43758.5453f;
-
-    private static float HashNoise(float x, float z)
-    {
-        float s = Mathf.Sin(x * HashSeedX + z * HashSeedZ) * HashScale;
-        return s - Mathf.Floor(s);
-    }
-
-    private static float ValueNoise(float x, float z)
-    {
-        float xi = Mathf.Floor(x), zi = Mathf.Floor(z);
-        float xf = x - xi, zf = z - zi;
-        float u = xf * xf * (3f - 2f * xf), v = zf * zf * (3f - 2f * zf);
-        float a = HashNoise(xi, zi), b = HashNoise(xi + 1f, zi);
-        float c = HashNoise(xi, zi + 1f), d = HashNoise(xi + 1f, zi + 1f);
-        return Mathf.Lerp(Mathf.Lerp(a, b, u), Mathf.Lerp(c, d, u), v);
-    }
-
-    // FBM octave walk: each octave shrinks the amplitude,
-    // grows the frequency and shifts the sample point so the
-    // octaves do not align.
-    private const float FbmAmplitudeFalloff = 0.5f;
-    private const float FbmFrequencyGrowth = 2.03f;
-    private const float FbmShiftX = 19.19f;
-    private const float FbmShiftZ = -7.31f;
-
-    private static float Fbm(float x, float z, int oct)
-    {
-        float sum = 0f, amp = 1f, tot = 0f;
-        for (int i = 0; i < oct; i++)
-        {
-            sum += amp * ValueNoise(x, z); tot += amp;
-            amp *= FbmAmplitudeFalloff;
-            x = x * FbmFrequencyGrowth + FbmShiftX;
-            z = z * FbmFrequencyGrowth + FbmShiftZ;
-        }
-        return sum / tot;
-    }
-
+    // The backdrop's noise is the shared sin-hash value noise
     public static readonly Color CloudColor = new(0.95f, 0.97f, 1.0f);
 
     // A shaded planet disc: fbm continents over a deep base, polar
@@ -477,8 +433,8 @@ public static class FlowUi
             float r2 = u * u + v * v;
             if (r2 > 1f) { img.SetPixel(i, j, Transparent); continue; }
             float nz = Mathf.Sqrt(1f - r2);
-            float n = Fbm(u * PlanetContinentScale + seed * PlanetContinentSeedX, v * PlanetContinentScale - seed * PlanetContinentSeedZ, PlanetContinentOctaves);
-            float detail = Fbm(u * PlanetDetailScale - seed * PlanetDetailSeedX, v * PlanetDetailScale + seed * PlanetDetailSeedZ, PlanetDetailOctaves);
+            float n = TerrainMath.FbmSin(u * PlanetContinentScale + seed * PlanetContinentSeedX, v * PlanetContinentScale - seed * PlanetContinentSeedZ, PlanetContinentOctaves);
+            float detail = TerrainMath.FbmSin(u * PlanetDetailScale - seed * PlanetDetailSeedX, v * PlanetDetailScale + seed * PlanetDetailSeedZ, PlanetDetailOctaves);
             Color col = n > PlanetLandThreshold
                 ? p.LandColor.Lerp(p.PolarColor, Mathf.Clamp((detail - PlanetPolarBlendBase) * PlanetPolarBlendGain, 0f, PlanetPolarBlendMax))
                 : p.BaseColor.Lerp(p.LandColor, Mathf.Clamp((n - PlanetBaseBlendBase) * PlanetBaseBlendGain, 0f, PlanetBaseBlendMax));
@@ -486,7 +442,7 @@ public static class FlowUi
             float cap = Mathf.SmoothStep(PlanetCapStart, PlanetCapFull, Mathf.Abs(v) + (detail - 0.5f) * PlanetCapDetailWobble);
             col = col.Lerp(p.PolarColor, cap * PlanetCapStrength);
             // Wispy cloud bands.
-            float cloud = Fbm(u * PlanetCloudScaleU + PlanetCloudOffset + seed, v * PlanetCloudScaleV, PlanetCloudOctaves);
+            float cloud = TerrainMath.FbmSin(u * PlanetCloudScaleU + PlanetCloudOffset + seed, v * PlanetCloudScaleV, PlanetCloudOctaves);
             col = col.Lerp(CloudColor, Mathf.Clamp((cloud - PlanetCloudThreshold) * PlanetCloudGain, 0f, PlanetCloudMax));
             // Sphere shading: diffuse from the light dir + limb darkening.
             float diff = Mathf.Clamp(new Vector2(u, v).Dot(light) * PlanetDiffuseFlat + nz * PlanetDiffuseHeight, PlanetDiffuseMin, PlanetDiffuseMax);
@@ -564,7 +520,7 @@ public static class FlowUi
             float wx = (i - half) / half * ArenaWorldHalfExtent;
             float wz = (j - half) / half * ArenaWorldHalfExtent;
             float r = Mathf.Sqrt(wx * wx + wz * wz);
-            float n = Fbm(wx * ArenaNoiseScale + ArenaNoiseOffset, wz * ArenaNoiseScale, ArenaNoiseOctaves);
+            float n = TerrainMath.FbmSin(wx * ArenaNoiseScale + ArenaNoiseOffset, wz * ArenaNoiseScale, ArenaNoiseOctaves);
             Color col = grass.Lerp(dry, Mathf.Clamp((n - ArenaDryBlendBase) * ArenaDryBlendGain, 0f, 1f));
             if (biome == 2)
             {
@@ -625,9 +581,9 @@ public static class FlowUi
         {
             float t = j / (float)h;
             var col = SpaceTopColor.Lerp(SpaceBottomColor, 1f - t);
-            float neb = Fbm(i * NebulaBlueScale, j * NebulaBlueScale, NebulaOctaves);
+            float neb = TerrainMath.FbmSin(i * NebulaBlueScale, j * NebulaBlueScale, NebulaOctaves);
             if (neb > NebulaBlueThreshold) col = col.Lerp(NebulaBlueColor, (neb - NebulaBlueThreshold) * NebulaBlueGain);
-            float neb2 = Fbm(i * NebulaBrownScale + NebulaBrownOffset, j * NebulaBrownScale, NebulaOctaves);
+            float neb2 = TerrainMath.FbmSin(i * NebulaBrownScale + NebulaBrownOffset, j * NebulaBrownScale, NebulaOctaves);
             if (neb2 > NebulaBrownThreshold) col = col.Lerp(NebulaBrownColor, (neb2 - NebulaBrownThreshold) * NebulaBrownGain);
             img.SetPixel(i, j, col);
         }

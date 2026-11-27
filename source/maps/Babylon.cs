@@ -62,6 +62,25 @@ public static class Babylon
         return ProfileClimbHeight * t * t * (3f - 2f * t);
     }
 
+    // Babylon's own octave recipe over the shared value
+    // noise: three octaves with weights 0.55 / 0.30 / 0.15
+    // (they sum to 1, so the output stays in the noise's own
+    // 0..1 range), each about 2.13x finer than the last, with
+    // irrational offsets so the octaves never align. (The
+    // generic octave walk in TerrainMath.Fbm halves its
+    // amplitudes instead - a different recipe; this weighting
+    // is part of this map's terrain character.)
+    private static float Fbm(float x, float z)
+        => TerrainMath.ValueNoise(x, z) * 0.55f
+         + TerrainMath.ValueNoise(x * 2.13f + 7.3f, z * 2.13f + 3.1f) * 0.30f
+         + TerrainMath.ValueNoise(x * 4.31f + 13.7f, z * 4.31f + 9.2f) * 0.15f;
+
+    // One-dimensional noise: a slice of the value noise at a
+    // fixed, non-integer z, so a value that varies along one
+    // axis (the wall height along the valley) never correlates
+    // with the 2-D detail built from the same field.
+    private static float Noise1(float t) => TerrainMath.ValueNoise(t, 3.77f);
+
     // River centrelines (z), south to north.
     public static readonly float[] Rivers = { 450f, -300f };
 
@@ -189,11 +208,11 @@ public static class Babylon
         // one stretch, towers in the next) and ridged noise
         // breaks the silhouette, so the mountains stop
         // repeating (owner, 2026-11-20).
-        float wallAmp = 150f * (0.72f + 0.55f * TerrainMath.Noise1(z * 0.0016f));
+        float wallAmp = 150f * (0.72f + 0.55f * Noise1(z * 0.0016f));
         h += Mathf.Pow(TerrainMath.Smooth(110f, 430f, d), 1.5f) * wallAmp * openS;
-        float ridge = 1f - Mathf.Abs(TerrainMath.Fbm(x * 0.011f, z * 0.011f) * 2f - 1f);
+        float ridge = 1f - Mathf.Abs(Fbm(x * 0.011f, z * 0.011f) * 2f - 1f);
         h += ridge * ridge * 52f * TerrainMath.Smooth(120f, 260f, d) * (1f - TerrainMath.Smooth(700f, 940f, d)) * openS;
-        h += (TerrainMath.Fbm(x * 0.045f, z * 0.045f) - 0.5f) * 14f * TerrainMath.Smooth(90f, 220f, d) * openS;
+        h += (Fbm(x * 0.045f, z * 0.045f) - 0.5f) * 14f * TerrainMath.Smooth(90f, 220f, d) * openS;
         // Side canyons: gullies notched into the walls.
         float signedD = x - RoadX(z);
         foreach (var (gz, side) in Gullies)

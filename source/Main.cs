@@ -23,46 +23,16 @@ public partial class Main : Node3D
 	// Amplitude is modulated by radius so the central arena (r < ~36)
 	// keeps gentle duel-playable slopes while the rim rises properly.
 	private static int GridN => TerrainSegs + 1; // sample points per side
-	private const uint NoiseSeed = 20261027u;
+	// The standard terrain's noise seed (owner: one seed for
+	// the whole seeded-noise family - Main's relief and the
+	// map definitions built on the same fields, e.g. the
+	// Harbor Stacks canyon country).
+	public const uint NoiseSeed = 20261027u;
 	// Built lazily on first use: the flow sets WorldConfig.Mode
 	// before the duel scene loads, and whichever mode is current
 	// at first access is the world this process runs.
 	private static float[] _grid;
 	private static float[] Grid => _grid ??= BuildGrid();
-
-	private static float LatticeHash(int ix, int iz)
-	{
-		uint h = (uint)(ix * 374761393) + (uint)(iz * 668265263) + unchecked(NoiseSeed * 2246822519u);
-		h = (h ^ (h >> 13)) * 1274126177u;
-		h ^= h >> 16;
-		return (h & 0x00FFFFFF) / 16777215f; // [0,1]
-	}
-
-	// Smooth value noise, output [0,1].
-	private static float ValueNoise(float x, float z)
-	{
-		int ix = Mathf.FloorToInt(x), iz = Mathf.FloorToInt(z);
-		float fx = x - ix, fz = z - iz;
-		float sx = fx * fx * (3f - 2f * fx), sz = fz * fz * (3f - 2f * fz);
-		float a = LatticeHash(ix, iz), b = LatticeHash(ix + 1, iz);
-		float c = LatticeHash(ix, iz + 1), d = LatticeHash(ix + 1, iz + 1);
-		return Mathf.Lerp(Mathf.Lerp(a, b, sx), Mathf.Lerp(c, d, sx), sz);
-	}
-
-	// Fractal value noise, output ~[-1,1].
-	private static float Fbm(float x, float z, int octaves)
-	{
-		float sum = 0f, amp = 1f, tot = 0f;
-		for (int i = 0; i < octaves; i++)
-		{
-			sum += amp * (ValueNoise(x, z) * 2f - 1f);
-			tot += amp;
-			amp *= 0.5f;
-			x = x * 2.03f + 19.19f;
-			z = z * 2.03f - 7.31f;
-		}
-		return sum / tot;
-	}
 
 	private static float DistToSegment(float px, float pz, float ax, float az, float bx, float bz)
 	{
@@ -71,12 +41,6 @@ public partial class Main : Node3D
 		float t = len2 > 1e-6f ? Mathf.Clamp(((px - ax) * dx + (pz - az) * dz) / len2, 0f, 1f) : 0f;
 		float ex = ax + dx * t - px, ez = az + dz * t - pz;
 		return Mathf.Sqrt(ex * ex + ez * ez);
-	}
-
-	private static float Smooth(float a, float b, float x)
-	{
-		float t = Mathf.Clamp((x - a) / (b - a), 0f, 1f);
-		return t * t * (3f - 2f * t);
 	}
 
 	// The center dome (owner, 2026-10-31): a broad hill in the
@@ -91,68 +55,19 @@ public partial class Main : Node3D
 	// test marks on a 2.3u relative slope, which moved shot
 	// attribution from torso to thigh - a fighting plateau is
 	// also simply better ground to duel on.
+	private const float DomeFlatRadius = 14f;  // the mesa top: flat inside this radius
+	private const float DomePeakHeight = 34f;  // the dome's height over the arena floor
+	private const float DomeFalloff = 30f;     // Gaussian sigma of the skirt beyond the flat top
 	private static float DomeHeight(float x, float z)
 	{
 		float r = Mathf.Sqrt(x * x + z * z);
-		float rr = Mathf.Max(0f, r - 14f);
-		return 34f * Mathf.Exp(-(rr * rr) / (2f * 30f * 30f));
+		float rr = Mathf.Max(0f, r - DomeFlatRadius);
+		return DomePeakHeight * Mathf.Exp(-(rr * rr) / (2f * DomeFalloff * DomeFalloff));
 	}
 
-	// Canyon country for the terraced city (owner: the map's
-	// edge reads as canyon / mountains, with several valleys
-	// connected by pathways - each valley hosts its multilevel
-	// city): ridged mountains everywhere, a walkable pass
-	// carved along each base-to-base road, and a flat basin
-	// floor at each base for its city.
-	private static float ValleyHeight(float x, float z)
-	{
-		float n = Fbm(x / 170f + 3.1f, z / 170f - 8.2f, 4) * 0.5f + 0.5f;
-		float rg = 1f - Mathf.Abs(Fbm(x / 67f - 5.3f, z / 67f + 11.1f, 4));
-		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-		float h = 12f + n * 34f + rg * rg * 62f + Smooth(640f, 920f, sq) * 85f;
-		var p = new Vector2(x, z);
-		// Valley rims (owner: "looks like you removed canyon" -
-		// the basins were flat discs in low rolling ground, so
-		// from inside a valley nothing read as canyon): a ridge
-		// ring just outside each basin puts every valley in a
-		// visible bowl, 22-38u of relief starting beyond the
-		// city (r 452) and fading by r 880. The pass carve
-		// below cuts the road notches through it; the basin
-		// flatten (r <= 440) is untouched.
-		float rim = 0f;
-		foreach (var pad in SpawnPads)
-		{
-			float d = p.DistanceTo(pad);
-			float rimN = Fbm(x / 90f + 17.7f, z / 90f - 4.2f, 3) * 0.5f + 0.5f;
-			rim = Mathf.Max(rim, Smooth(452f, 565f, d)
-				* (1f - Smooth(720f, 880f, d)) * (22f + rimN * 16f));
-		}
-		h += rim;
-		for (int a = 0; a < SpawnPads.Length; a++)
-		for (int b = a + 1; b < SpawnPads.Length; b++)
-		{
-			var pa = SpawnPads[a]; var pb = SpawnPads[b];
-			var ab = pb - pa;
-			float t = Mathf.Clamp((p - pa).Dot(ab) / ab.LengthSquared(), 0f, 1f);
-			float d = (pa + ab * t).DistanceTo(p);
-			if (d < 64f)
-			{
-				// Max(0, ...): Sin(Pi * 1) in floats is a tiny
-				// NEGATIVE, and Pow(neg, 0.8) is NaN - that
-				// poisoned the heightfield (and both AI spawns)
-				// beyond the pb endpoints before this guard.
-				float passH = 3f + 23f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Mathf.Pi * t)), 0.8f);
-				h = Mathf.Lerp(h, Mathf.Min(h, passH), Smooth(64f, 22f, d));
-			}
-		}
-		foreach (var pad in SpawnPads)
-		{
-			float d = p.DistanceTo(pad);
-			if (d < 440f) h = Mathf.Lerp(h, 0f, Smooth(440f, 305f, d));
-		}
-		return h;
-	}
-
+	private const float PadFlatInnerFraction = 0.44f; // a pad is fully at its centre height inside this fraction of the flatten radius
+	private const float ArenaPadMaxHeight = 3f;       // arena pads sit low (see the DomeHeight note)
+	private const float CityPlateauInnerFraction = 0.62f; // the district plateau is fully level inside this fraction of its radius
 	private static float RawHeight(float x, float z)
 	{
 		// The Ascent contract (owner, 2026-11-20) gets its own
@@ -160,7 +75,7 @@ public partial class Main : Node3D
 		if (WorldConfig.Ascent) return Babylon.Height(x, z);
 		// The terraced-city contract gets the canyon/valley
 		// terrain (basins at the bases, passes on the roads).
-		if (WorldConfig.TerracedCity) return ValleyHeight(x, z);
+		if (WorldConfig.TerracedCity) return HarborStacks.Height(x, z);
 		// Flat maps use no height map at all - every street,
 		// road and base on one level plane.
 		if (WorldConfig.FlatWorld) return 0f;
@@ -178,8 +93,8 @@ public partial class Main : Node3D
 				// Mission bases flatten to their own plateau height.
 				float padH = WorldConfig.IsMission
 					? BaseHeight(pad.X, pad.Y)
-					: Mathf.Min(BaseHeight(pad.X, pad.Y), 3f);
-				h = Mathf.Lerp(h, padH, Smooth(flatR, flatR * 0.44f, d));
+					: Mathf.Min(BaseHeight(pad.X, pad.Y), ArenaPadMaxHeight);
+				h = Mathf.Lerp(h, padH, TerrainMath.Smooth(flatR, flatR * PadFlatInnerFraction, d));
 			}
 		}
 		// City district plateau (owner: Harbor Stacks should
@@ -193,34 +108,60 @@ public partial class Main : Node3D
 			if (r < CityGrid.PlateauR)
 			{
 				float h0 = BaseHeight(0f, 0f) - DomeHeight(0f, 0f);
-				h = Mathf.Lerp(h, h0, Smooth(CityGrid.PlateauR, CityGrid.PlateauR * 0.62f, r));
+				h = Mathf.Lerp(h, h0, TerrainMath.Smooth(CityGrid.PlateauR, CityGrid.PlateauR * CityPlateauInnerFraction, r));
 			}
 		}
 		return h;
 	}
 
+	// The shared relief recipe (the arena and the plain
+	// mission fronts): rolling hills everywhere, a craggy
+	// ridge through the NW, a shallow valley through the SE,
+	// a mountain ring at the rim, and the centre dome on top.
+	// Field scales are the noise features' size in world
+	// units; the +offset in each sample is a decorrelation
+	// shift so two fields never align.
+	private const float HillsFieldScale = 58f, HillsAmplitude = 6.5f;
+	private const int HillsOctaves = 5;
+	private const float MacroFieldScale = 420f, MacroAmplitude = 26f; // mission-only broad swells
+	private const int MacroOctaves = 4;
+	private const float MacroFadeStart = 120f, MacroFadeEnd = 300f;   // macro swells fade in over this radius
+	private static readonly Vector2 RidgeStart = new(-88f, -28f), RidgeEnd = new(-24f, -88f); // the NW ridge line
+	private const float RidgeWidth = 15f, RidgeBaseHeight = 5f, RidgeCragHeight = 7f;
+	private const float CragFieldScale = 21f;
+	private const int CragOctaves = 3;
+	private static readonly Vector2 ValleyStart = new(88f, 34f), ValleyEnd = new(28f, -88f); // the SE valley line
+	private const float ValleyDepth = 3.6f, ValleyWidth = 13f;
+	private const float RingInsetFar = 42f, RingInsetNear = 2f; // the mountain ring rises over the last 40u to the rim
+	private const float MountainBaseHeight = 9f, MountainVarHeight = 7f;
+	private const float MountainFieldScale = 37f;
+	private const int MountainOctaves = 4;
+	private const float ForestHillsFactor = 0.45f, ForestRidgeFactor = 0.35f, ForestMountainFactor = 0.5f; // forest arenas run gentle (see below)
+	private const float CenterAmplitudeFloor = 0.22f; // arena relief at the centre, as a fraction of full
+	private const float FullAmplitudeStart = 54f, FullAmplitudeEnd = 94f; // ... reaching full over this radius
+
 	private static float BaseHeight(float x, float z)
 	{
 		float r = Mathf.Sqrt(x * x + z * z);
 		// Rolling hills, the base relief everywhere.
-		float hills = Fbm(x / 58f, z / 58f, 5) * 6.5f;
+		float hills = TerrainMath.Fbm(x / HillsFieldScale, z / HillsFieldScale, HillsOctaves, NoiseSeed) * HillsAmplitude;
 		// Mission fronts get broad macro swells under the detail
 		// noise, so a 1900u crossing has real country in it. Damped
 		// near the center so the mesa keeps its clean plateau.
 		if (WorldConfig.IsMission)
-			hills += Fbm(x / 420f + 7f, z / 420f - 3f, 4) * 26f * Smooth(120f, 300f, r);
+			hills += TerrainMath.Fbm(x / MacroFieldScale + 7f, z / MacroFieldScale - 3f, MacroOctaves, NoiseSeed) * MacroAmplitude * TerrainMath.Smooth(MacroFadeStart, MacroFadeEnd, r);
 		// Craggy ridge line through the NW quadrant.
-		float dRidge = DistToSegment(x, z, -88f, -28f, -24f, -88f);
-		float crag = 1f - Mathf.Abs(Fbm(x / 21f + 40f, z / 21f - 17f, 3));
-		float ridge = Mathf.Exp(-(dRidge * dRidge) / (2f * 15f * 15f)) * (5f + 7f * crag);
+		float dRidge = DistToSegment(x, z, RidgeStart.X, RidgeStart.Y, RidgeEnd.X, RidgeEnd.Y);
+		float crag = 1f - Mathf.Abs(TerrainMath.Fbm(x / CragFieldScale + 40f, z / CragFieldScale - 17f, CragOctaves, NoiseSeed));
+		float ridge = Mathf.Exp(-(dRidge * dRidge) / (2f * RidgeWidth * RidgeWidth)) * (RidgeBaseHeight + RidgeCragHeight * crag);
 		// Shallow valley through the SE quadrant.
-		float dVal = DistToSegment(x, z, 88f, 34f, 28f, -88f);
-		float valley = -3.6f * Mathf.Exp(-(dVal * dVal) / (2f * 13f * 13f));
+		float dVal = DistToSegment(x, z, ValleyStart.X, ValleyStart.Y, ValleyEnd.X, ValleyEnd.Y);
+		float valley = -ValleyDepth * Mathf.Exp(-(dVal * dVal) / (2f * ValleyWidth * ValleyWidth));
 		// Mountain ring bounding the map (square falloff follows the rim).
 		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
 		float half = TerrainSize / 2f;
-		float m = Smooth(half - 42f, half - 2f, sq);
-		float mtn = m * (9f + 7f * (Fbm(x / 37f - 9f, z / 37f + 23f, 4) * 0.5f + 0.5f));
+		float m = TerrainMath.Smooth(half - RingInsetFar, half - RingInsetNear, sq);
+		float mtn = m * (MountainBaseHeight + MountainVarHeight * (TerrainMath.Fbm(x / MountainFieldScale - 9f, z / MountainFieldScale + 23f, MountainOctaves, NoiseSeed) * 0.5f + 0.5f));
 		// Forest arenas read as woodland, not a mountain range
 		// (owner, 2026-11-14: Hyle "looks more like mountains"):
 		// the relief set runs at half strength there, so slopes
@@ -229,13 +170,14 @@ public partial class Main : Node3D
 		// landmark. Missions and the other arenas keep theirs.
 		if (!WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.Forest)
 		{
-			hills *= 0.45f; ridge *= 0.35f; mtn *= 0.5f;
+			hills *= ForestHillsFactor; ridge *= ForestRidgeFactor; mtn *= ForestMountainFactor;
 		}
 		float full = hills + ridge + valley + mtn;
-		// Arena modulation: 22% amplitude at the center, full by r=94.
+		// Arena modulation: the centre keeps only the floor
+		// fraction of the relief, full by the outer radius.
 		// The Mission front keeps full amplitude everywhere.
-		float t = WorldConfig.IsMission ? 1f : Smooth(54f, 94f, r);
-		return full * (0.22f + 0.78f * t) + DomeHeight(x, z);
+		float t = WorldConfig.IsMission ? 1f : TerrainMath.Smooth(FullAmplitudeStart, FullAmplitudeEnd, r);
+		return full * (CenterAmplitudeFloor + (1f - CenterAmplitudeFloor) * t) + DomeHeight(x, z);
 	}
 
 	private static float[] BuildGrid()
@@ -447,6 +389,13 @@ public partial class Main : Node3D
 	// (-14, 6); the Mission front gets dirt roads along the three
 	// base-to-base legs, so the march between bases has a line to
 	// follow.
+	// The arena's road cross (owner, 2026-11-27: these were
+	// bare numbers in RoadDistance): two strips, one along
+	// each axis, crossing at this point - shared by all three
+	// arenas, so the cross lives here as named constants, not
+	// in any one arena's data.
+	private const float ArenaRoadCrossX = -14f;
+	private const float ArenaRoadCrossZ = 6f;
 	public static float RoadDistance(float x, float z)
 	{
 		if (WorldConfig.IsMission)
@@ -457,7 +406,7 @@ public partial class Main : Node3D
 			d = Mathf.Min(d, DistToSegment(x, z, p[2].X, p[2].Y, p[0].X, p[0].Y));
 			return d;
 		}
-		return Mathf.Min(Mathf.Abs(z - 6f), Mathf.Abs(x + 14f));
+		return Mathf.Min(Mathf.Abs(z - ArenaRoadCrossZ), Mathf.Abs(x - ArenaRoadCrossX));
 	}
 
 	private const float NoStreetDistance = 1e6f; // DistrictStreetDistance's "no street here" sentinel
@@ -531,11 +480,33 @@ public partial class Main : Node3D
 	// Ground color without any texture image: grass tones varied by two
 	// noise fields (patchiness + fine breakup), dirt on mid slopes, rock
 	// on steep faces, pale summits up high.
+	// The terrain colour recipe (owner, 2026-11-27: every
+	// blend value named, and the recipe rounded to tidy steps
+	// - the bands and gains below are the whole recipe; the
+	// two noise fields' offsets are decorrelation shifts).
+	private const float PatchFieldScale = 23f;  // patchiness field size (world units)
+	private const float GrainFieldScale = 6.5f; // fine breakup field size
+	private const int ColorFieldOctaves = 3;
+	private const float DryPatchThreshold = 0.6f, DryPatchGain = 1.5f, DryPatchMax = 0.5f; // dry patches where the patch field runs high
+	private const float GrainLightBase = 0.9f, GrainLightAmp = 0.25f;   // per-grain brightness swing
+	private const float DirtSlopeStart = 0.05f, DirtSlopeEnd = 0.1f;    // dirt takes over over this slope band (slope = 1 - n.Y)
+	private const float DirtGrainWobble = 0.05f, DirtBlend = 0.8f;      // the grain field wobbles the dirt line; dirt never fully covers
+	private const float RockSlopeStart = 0.15f, RockSlopeEnd = 0.3f;    // rock takes the steeper band above dirt
+	private const float RockGrainWobble = 0.05f;                        // same wobble as dirt's (one value, owner: collapse imperceptible differences)
+	private const float RockLightBase = 0.8f, RockLightAmp = 0.35f;     // per-grain rock brightness
+	private const float PeakHeightStart = 13.5f, PeakHeightEnd = 19f;   // pale summits over this height band
+	private const float PeakGrainWobble = 3f, PeakBlend = 0.85f;
+	private const float RoadPaintDistance = 3f;                         // asphalt paints inside this distance of a road centreline
+	private const float RoadShoulderStart = 2.5f;                       // the asphalt fades over the outer half-unit shoulder
+	private const float AsphaltLightBase = 0.85f, AsphaltLightAmp = 0.3f;
+	private const float RoadEdgeStart = 2f, RoadEdgeEnd = 2.5f;         // the worn edge line band
+	private const float RoadEdgeBlend = 0.35f, AsphaltBlend = 0.95f;
+
 	public static Color TerrainColor(float x, float z, float h, Vector3 n)
 	{
 		float slope = 1f - n.Y; // 0 flat, grows with gradient
-		float patch = Fbm(x / 23f - 47f, z / 23f + 5f, 3) * 0.5f + 0.5f;
-		float grain = Fbm(x / 6.5f + 31f, z / 6.5f - 11f, 3) * 0.5f + 0.5f;
+		float patch = TerrainMath.Fbm(x / PatchFieldScale - 47f, z / PatchFieldScale + 5f, ColorFieldOctaves, NoiseSeed) * 0.5f + 0.5f;
+		float grain = TerrainMath.Fbm(x / GrainFieldScale + 31f, z / GrainFieldScale - 11f, ColorFieldOctaves, NoiseSeed) * 0.5f + 0.5f;
 		// Biome palettes (owner's map types): Forest keeps the
 		// original greens; Desert runs sand; City runs urban
 		// concrete. The city tint varies SMOOTHLY (the patch
@@ -552,33 +523,33 @@ public partial class Main : Node3D
 				? CityGroundLow.Lerp(CityGroundHigh, patch)
 				: ForestGroundLow.Lerp(ForestGroundHigh, patch);
 		if (!desert && !city)
-			col = col.Lerp(DryPatchColor, Mathf.Clamp((patch - 0.60f) * 1.5f, 0f, 0.5f)); // dry patches
-		float l = 0.88f + 0.24f * grain;
+			col = col.Lerp(DryPatchColor, Mathf.Clamp((patch - DryPatchThreshold) * DryPatchGain, 0f, DryPatchMax)); // dry patches
+		float l = GrainLightBase + GrainLightAmp * grain;
 		col = new Color(col.R * l, col.G * l, col.B * l);
-		float dirtW = Smooth(0.045f, 0.12f, slope + (grain - 0.5f) * 0.05f);
+		float dirtW = TerrainMath.Smooth(DirtSlopeStart, DirtSlopeEnd, slope + (grain - 0.5f) * DirtGrainWobble);
 		var dirtC = desert ? DesertDirtColor
 			: city ? CityDirtColor
 			: ForestDirtColor;
-		col = col.Lerp(dirtC, dirtW * 0.8f);
-		float rockW = Smooth(0.13f, 0.28f, slope + (grain - 0.5f) * 0.06f);
+		col = col.Lerp(dirtC, dirtW * DirtBlend);
+		float rockW = TerrainMath.Smooth(RockSlopeStart, RockSlopeEnd, slope + (grain - 0.5f) * RockGrainWobble);
 		var rock = RockBaseColor;
-		float rl = 0.82f + 0.36f * grain;
+		float rl = RockLightBase + RockLightAmp * grain;
 		col = col.Lerp(new Color(rock.R * rl, rock.G * rl, rock.B * rl), rockW);
-		float peakW = Smooth(13.5f, 19f, h + (grain - 0.5f) * 3f);
-		col = col.Lerp(desert ? DesertPeakColor : PeakColor, peakW * 0.85f);
+		float peakW = TerrainMath.Smooth(PeakHeightStart, PeakHeightEnd, h + (grain - 0.5f) * PeakGrainWobble);
+		col = col.Lerp(desert ? DesertPeakColor : PeakColor, peakW * PeakBlend);
 		// Asphalt on the roads, blended over a soft shoulder.
 		float roadD = RoadDistance(x, z);
-		if (roadD < 3.1f)
+		if (roadD < RoadPaintDistance)
 		{
-			float rw = 1f - Smooth(2.25f, 3.1f, roadD);
-			float al = 0.85f + 0.3f * grain;
+			float rw = 1f - TerrainMath.Smooth(RoadShoulderStart, RoadPaintDistance, roadD);
+			float al = AsphaltLightBase + AsphaltLightAmp * grain;
 			var asphaltBase = desert ? DesertAsphaltColor
 				: city ? CityAsphaltColor
 				: ForestAsphaltColor;
 			var asphalt = new Color(asphaltBase.R * al, asphaltBase.G * al, asphaltBase.B * al);
-			if (roadD > 1.85f && roadD < 2.25f)
-				asphalt = asphalt.Lerp(desert ? DesertRoadEdgeColor : RoadEdgeColor, 0.35f); // worn edge line
-			col = col.Lerp(asphalt, rw * 0.94f);
+			if (roadD > RoadEdgeStart && roadD < RoadEdgeEnd)
+				asphalt = asphalt.Lerp(desert ? DesertRoadEdgeColor : RoadEdgeColor, RoadEdgeBlend); // worn edge line
+			col = col.Lerp(asphalt, rw * AsphaltBlend);
 		}
 		// No district street darkening (owner, 2026-11-11
 		// round 5: checkerboard removed everywhere): the grid
