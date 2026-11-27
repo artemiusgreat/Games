@@ -13,6 +13,11 @@ public partial class Titans
     // square posts; owner, 2026-11-25: named constant).
     private const float BridgePillarWidth = 3f;
 
+    // River-bridge deck and dressing conventions (Stage B
+    // naming pass, 2026-11-27: names only, exact values).
+    private const float RiverBridgeDeckThickness = 1.6f;
+    private const float DressingRockTint = 0.5f;
+
     private void BuildAscentWorld()
     {
         // ---- Villages: a ring of buildings around each site's
@@ -51,7 +56,7 @@ public partial class Titans
                 var rp = new Vector2(site.C.X + Mathf.Cos(a) * (site.R + 14f),
                                      site.C.Y + Mathf.Sin(a) * (site.R + 14f));
                 AddRock(new Vector3(rp.X, Main.HeightAt(rp.X, rp.Y), rp.Y),
-                    new Vector3(4f + r, 3f + r * 0.7f, 4.5f), a, 0.5f);
+                    new Vector3(4f + r, 3f + r * 0.7f, 4.5f), a, DressingRockTint);
             }
         }
 
@@ -73,7 +78,7 @@ public partial class Titans
                 float rx = Ascent.RoadX(z) + side * (30f + rngR.NextSingle() * 26f);
                 AddRock(new Vector3(rx, Main.HeightAt(rx, z), z),
                     new Vector3(3f + rngR.NextSingle() * 3f, 2.4f + rngR.NextSingle() * 2f, 3.5f),
-                    rngR.NextSingle() * 6.28f, 0.5f);
+                    rngR.NextSingle() * 6.28f, DressingRockTint);
             }
             for (int i = 0; i < 26; i++)
             {
@@ -82,7 +87,7 @@ public partial class Titans
                 float rx = Ascent.RoadX(z) + side * (150f + rngR.NextSingle() * 190f);
                 AddRock(new Vector3(rx, Main.HeightAt(rx, z), z),
                     new Vector3(5f + rngR.NextSingle() * 6f, 4f + rngR.NextSingle() * 4f, 5.5f),
-                    rngR.NextSingle() * 6.28f, 0.5f);
+                    rngR.NextSingle() * 6.28f, DressingRockTint);
             }
         }
 
@@ -112,9 +117,9 @@ public partial class Titans
             });
             var deck = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(34f, 1.6f, 68f) },
+                Mesh = new BoxMesh { Size = new Vector3(34f, RiverBridgeDeckThickness, 68f) },
                 MaterialOverride = DeckMat(),
-                Position = new Vector3(cx, top - 0.8f, rz)
+                Position = new Vector3(cx, top - RiverBridgeDeckThickness / 2f, rz)
             };
             AddChild(deck);
             var railMat = new StandardMaterial3D
@@ -190,9 +195,9 @@ public partial class Titans
         });
         var slab = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(hx * 2f, 2.2f, hz * 2f) },
+            Mesh = new BoxMesh { Size = new Vector3(hx * 2f, DeckThickness, hz * 2f) },
             MaterialOverride = DeckMat(),
-            Position = new Vector3(c.X, top - 1.1f, c.Y)
+            Position = new Vector3(c.X, top - DeckThickness / 2f, c.Y)
         };
         AddChild(slab);
         float ground = Main.HeightAt(c.X, c.Y);
@@ -224,9 +229,9 @@ public partial class Titans
         float len = Mathf.Sqrt(30f * 30f + (hTo - hFrom) * (hTo - hFrom));
         var wedge = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(halfWid * 2f, 2.2f, len) },
+            Mesh = new BoxMesh { Size = new Vector3(halfWid * 2f, DeckThickness, len) },
             MaterialOverride = DeckMat(),
-            Position = new Vector3(c.X, (hFrom + hTo) / 2f - 1.1f, c.Y),
+            Position = new Vector3(c.X, (hFrom + hTo) / 2f - DeckThickness / 2f, c.Y),
             Rotation = new Vector3(Mathf.Atan2(hTo - hFrom, 30f), 0f, 0f)
         };
         AddChild(wedge);

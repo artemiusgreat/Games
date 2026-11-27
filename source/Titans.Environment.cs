@@ -191,33 +191,33 @@ public partial class Titans
         {
             int treeN = (int)(treeN0 * ztMul), rockN = (int)(rockN0 * zrMul);
             int trees = 0, tries = 0;
-            while (trees < treeN && tries++ < 600)
+            while (trees < treeN && tries++ < ScatterMaxTriesMission)
             {
                 float ang = (float)rng.NextDouble() * Mathf.Tau;
                 float rr = 42f + (rad - 42f) * Mathf.Sqrt((float)rng.NextDouble());
                 var p = c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
-                if (Mathf.Abs(p.X) > 880f || Mathf.Abs(p.Y) > 880f) continue;
-                float sc = 0.85f + (float)rng.NextDouble() * 0.75f;
+                if (Mathf.Abs(p.X) > ScatterBoundMission || Mathf.Abs(p.Y) > ScatterBoundMission) continue;
+                float sc = ScatterTreeScaleBase + (float)rng.NextDouble() * ScatterTreeScaleRange;
                 if (!ScatterFree(p, 0.7f * sc + 0.6f)) continue;
-                if (TerrainGrade(p.X, p.Y) > 0.5f) continue;
-                if (Main.HeightAt(p.X, p.Y) > 12.5f) continue;
+                if (TerrainGrade(p.X, p.Y) > ScatterTreeGradeMax) continue;
+                if (Main.HeightAt(p.X, p.Y) > ScatterTreeHeightMax) continue;
                 AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
                 trees++;
             }
             int rocks = 0; tries = 0;
-            while (rocks < rockN && tries++ < 600)
+            while (rocks < rockN && tries++ < ScatterMaxTriesMission)
             {
                 float ang = (float)rng.NextDouble() * Mathf.Tau;
                 float rr = 40f + (rad - 40f) * Mathf.Sqrt((float)rng.NextDouble());
                 var p = c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
-                if (Mathf.Abs(p.X) > 880f || Mathf.Abs(p.Y) > 880f) continue;
+                if (Mathf.Abs(p.X) > ScatterBoundMission || Mathf.Abs(p.Y) > ScatterBoundMission) continue;
                 var scl = new Vector3(
-                    1.2f + (float)rng.NextDouble() * 2.0f,
-                    0.8f + (float)rng.NextDouble() * 1.3f,
-                    1.2f + (float)rng.NextDouble() * 2.0f);
-                scl.Y *= 0.62f;
+                    ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange,
+                    ScatterRockScaleYBase + (float)rng.NextDouble() * ScatterRockScaleYRange,
+                    ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange);
+                scl.Y *= ScatterRockSquash;
                 if (!ScatterFree(p, Mathf.Max(scl.X, scl.Z))) continue;
-                if (Main.HeightAt(p.X, p.Y) > 21f) continue;
+                if (Main.HeightAt(p.X, p.Y) > ScatterRockHeightMax) continue;
                 AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
                 rocks++;
             }
@@ -278,6 +278,34 @@ public partial class Titans
     private const float LadderUprightHeight = 3f;
     private const float CollapseLightIntensity = 3f;
 
+    // Scatter and city conventions shared by the mission
+    // and arena passes (Stage B naming pass, 2026-11-27:
+    // names only - every value is EXACTLY what the bare
+    // literal was, so the generated worlds do not change
+    // by a single float).
+    private const int ScatterMaxTriesMission = 600;
+    private const int ScatterMaxTriesArena = 900;
+    private const float ScatterBoundMission = 880f;
+    private const float ScatterTreeScaleBase = 0.85f;
+    private const float ScatterTreeScaleRange = 0.75f;
+    private const float ScatterTreeGradeMax = 0.5f;
+    private const float ScatterTreeHeightMax = 12.5f;
+    private const float ScatterRockHeightMax = 21f;
+    private const float ScatterRockSquash = 0.62f;
+    private const float ScatterRockScaleBase = 1.2f;
+    private const float ScatterRockScaleRange = 2.0f;
+    private const float ScatterRockScaleYBase = 0.8f;
+    private const float ScatterRockScaleYRange = 1.3f;
+    private const float CityGradeMax = 0.4f;
+    private const float PitCheckMargin = 6f;
+    private const float BuildingSink = 2.4f;
+    private const float BuildingFloorStep = 2.9f;
+    private const float StepUpClearance = 1.5f;
+    private const float SlopeTopTolerance = 2.5f;
+    private const float PineTotalHeight = 7.6f;
+    private static readonly Color NightHazeColor = new(0.10f, 0.14f, 0.24f);
+    private static readonly Color SignBackingColor = new(0.03f, 0.03f, 0.045f);
+
     private void AddTreeV(Vector3 pos, int variety, float scale, float tint)
     {
         pos.Y = Main.HeightAt(pos.X, pos.Z);
@@ -300,7 +328,7 @@ public partial class Titans
             // Photoreal contracts share the treatment
             // (owner, 2026-11-20, consolidated on Babylon).
             PhotoEnv.AddTreeModel(tree, variety, rng);
-            totalH = variety == 1 ? 7.6f : 5.9f;
+            totalH = variety == 1 ? PineTotalHeight : 5.9f;
         }
         else
         {
@@ -335,7 +363,7 @@ public partial class Titans
                 };
                 tree.AddChild(cone);
             }
-            totalH = 7.6f;
+            totalH = PineTotalHeight;
         }
         else
         {
@@ -563,32 +591,32 @@ public partial class Titans
         };
         int treeTarget = (int)(33 * treeMul), rockTarget = (int)(25 * rockMul);
         int trees = 0, tries = 0;
-        while (trees < treeTarget && tries++ < 900)
+        while (trees < treeTarget && tries++ < ScatterMaxTriesArena)
         {
             float ang = (float)rng.NextDouble() * Mathf.Tau;
             float rad = 12f + 68f * Mathf.Sqrt((float)rng.NextDouble());
             var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
-            float sc = 0.85f + (float)rng.NextDouble() * 0.75f;
+            float sc = ScatterTreeScaleBase + (float)rng.NextDouble() * ScatterTreeScaleRange;
             if (!ScatterFree(p, 0.7f * sc + 0.6f)) continue;
-            if (TerrainGrade(p.X, p.Y) > 0.5f) continue;
-            if (Main.HeightAt(p.X, p.Y) > 12.5f) continue;
+            if (TerrainGrade(p.X, p.Y) > ScatterTreeGradeMax) continue;
+            if (Main.HeightAt(p.X, p.Y) > ScatterTreeHeightMax) continue;
             AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
             trees++;
         }
         int rocks = 0;
         tries = 0;
-        while (rocks < rockTarget && tries++ < 900)
+        while (rocks < rockTarget && tries++ < ScatterMaxTriesArena)
         {
             float ang = (float)rng.NextDouble() * Mathf.Tau;
             float rad = 10f + 70f * Mathf.Sqrt((float)rng.NextDouble());
             var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
             var scl = new Vector3(
-                1.2f + (float)rng.NextDouble() * 2.0f,
-                0.8f + (float)rng.NextDouble() * 1.3f,
-                1.2f + (float)rng.NextDouble() * 2.0f);
-            scl.Y *= 0.62f; // squash
+                ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange,
+                ScatterRockScaleYBase + (float)rng.NextDouble() * ScatterRockScaleYRange,
+                ScatterRockScaleBase + (float)rng.NextDouble() * ScatterRockScaleRange);
+            scl.Y *= ScatterRockSquash; // squash
             if (!ScatterFree(p, Mathf.Max(scl.X, scl.Z))) continue;
-            if (Main.HeightAt(p.X, p.Y) > 21f) continue;
+            if (Main.HeightAt(p.X, p.Y) > ScatterRockHeightMax) continue;
             AddRock(new Vector3(p.X, 0f, p.Y), scl, (float)rng.NextDouble() * Mathf.Tau, (float)rng.NextDouble());
             rocks++;
         }
@@ -921,7 +949,7 @@ public partial class Titans
         float fw = face % 2 == 0 ? size.X : size.Z;   // front width
         float fd = face % 2 == 0 ? size.Z : size.X;   // front depth
         float top = size.Y / 2f;
-        float g = -size.Y / 2f + 2.4f;                // terrain line (AddBuilding's sink)
+        float g = -size.Y / 2f + BuildingSink;         // terrain line (AddBuilding's sink)
         var verts = new List<Vector3>(); var norms = new List<Vector3>();
         var trimI = new List<int>(); var metalI = new List<int>(); var darkI = new List<int>();
         var I = Basis.Identity;
@@ -974,7 +1002,7 @@ public partial class Titans
         {
             // Balcony rows on the front (trim slabs, metal rails).
             int cols = Mathf.Clamp(Mathf.FloorToInt(fw / 4.2f), 2, 3);
-            for (float fy = g + 4.4f; fy < top - 1.7f; fy += 2.9f)
+            for (float fy = g + 4.4f; fy < top - 1.7f; fy += BuildingFloorStep)
             for (int c = 0; c < cols; c++)
             {
                 if (BrickHash(seq, c * 7, (int)(fy * 3f)) % 4 == 0) continue;
@@ -990,7 +1018,7 @@ public partial class Titans
             // Zigzag fire escape on the front (metal).
             float prevX = 0f, prevY = 0f; bool first = true;
             int lvl = 0;
-            for (float ly = g + 3.4f; ly < top - 1.3f; ly += 2.9f, lvl++)
+            for (float ly = g + 3.4f; ly < top - 1.3f; ly += BuildingFloorStep, lvl++)
             {
                 float px = lvl % 2 == 0 ? -1.0f : 1.0f;
                 AddBox(verts, norms, metalI, new Vector3(px, ly, fd / 2f + 0.42f), new Vector3(3.6f, 0.13f, 0.85f), I);
@@ -1020,7 +1048,7 @@ public partial class Titans
         else if (style == 2)
         {
             // Cornice bands at every floor line (trim).
-            for (float fy = g + 2.9f; fy < top - 0.9f; fy += 2.9f)
+            for (float fy = g + BuildingFloorStep; fy < top - 0.9f; fy += BuildingFloorStep)
             {
                 AddBox(verts, norms, trimI, new Vector3(0, fy, fd / 2f + 0.03f), new Vector3(fw + 0.26f, 0.2f, 0.16f), I);
                 AddBox(verts, norms, trimI, new Vector3(0, fy, -fd / 2f - 0.03f), new Vector3(fw + 0.26f, 0.2f, 0.16f), I);
@@ -1166,9 +1194,8 @@ public partial class Titans
         // The big footprints (owner, 2026-10-31: larger buildings)
         // sit on slopes - sink the base well into the grade so no
         // corner hovers; the roof top is the walkable surface.
-        const float Sink = 2.4f;
-        float roofTop = groundY + size.Y - Sink;
-        pos.Y = groundY + size.Y / 2f - Sink;
+        float roofTop = groundY + size.Y - BuildingSink;
+        pos.Y = groundY + size.Y / 2f - BuildingSink;
         int seq = _facadeSeq;
         var mi = new MeshInstance3D();
         if (kitHolder != null)
@@ -1188,7 +1215,7 @@ public partial class Titans
             mi.Position = pos;
             AddChild(mi);
             _buildingPts.Add(new Vector2(pos.X, pos.Z));
-            RegisterBuildingShell(pos, size, groundY, Sink, roofTop, pc0, hc0, mi);
+            RegisterBuildingShell(pos, size, groundY, BuildingSink, roofTop, pc0, hc0, mi);
             return;
         }
         float tintJ = 0.94f + (BrickHash(seq, 3, 9) % 13) * 0.01f;
@@ -1218,7 +1245,7 @@ public partial class Titans
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City && seq % 3 == 1 && size.Y >= 12f && size.X >= 8f)
             AddSign(mi, size, seq);
         _buildingPts.Add(new Vector2(pos.X, pos.Z));
-        RegisterBuildingShell(pos, size, groundY, Sink, roofTop, pc0, hc0, mi);
+        RegisterBuildingShell(pos, size, groundY, BuildingSink, roofTop, pc0, hc0, mi);
     }
 
     // Shared by the procedural and kit paths: collision
@@ -1283,9 +1310,9 @@ public partial class Titans
         if (_signTex.TryGetValue(variant, out var t)) return t;
         var neon = SignNeons[variant % SignNeons.Length];
         var img = Image.Create(256, 128, false, Image.Format.Rgba8);
-        img.Fill(new Color(0.03f, 0.03f, 0.045f));
+        img.Fill(SignBackingColor);
         img.FillRect(new Rect2I(4, 4, 248, 120), neon);
-        img.FillRect(new Rect2I(10, 10, 236, 108), new Color(0.03f, 0.03f, 0.045f));
+        img.FillRect(new Rect2I(10, 10, 236, 108), SignBackingColor);
         // Abstract ad: bright bars of seeded widths + one block.
         for (int i = 0; i < 4; i++)
         {
@@ -1360,7 +1387,7 @@ public partial class Titans
                 i * p + (float)(rng.NextDouble() - 0.5) * 2f,
                 j * p + (float)(rng.NextDouble() - 0.5) * 2f);
             if (c.Length() > CityGrid.Radius) continue;
-            if (TerrainGrade(c.X, c.Y) > 0.4f) continue;
+            if (TerrainGrade(c.X, c.Y) > CityGradeMax) continue;
             PlaceCityBlock(rng, c, ref placed);
         }
     }
@@ -1444,7 +1471,7 @@ public partial class Titans
             float fw = 9.8f + (float)rng.NextDouble() * 0.8f;
             var size = new Vector3(fw, heights[k],
                 fw * (0.8f + (float)rng.NextDouble() * 0.2f));
-            if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
+            if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + PitCheckMargin)) continue;
             if (InSkipRect(pt)) continue;
             if (!BlockFree(pt, size)) continue;
             AddBuilding(new Vector3(pt.X, 0f, pt.Y), size, baseY);
@@ -1489,8 +1516,8 @@ public partial class Titans
                     9f + (float)rng.NextDouble() * 8f);
                 if (!ScatterFree(pt, Mathf.Max(size.X, size.Z) / 2f + 2.5f)) continue;
                 if (Main.RoadDistance(pt.X, pt.Y) < 8f) continue;
-                if (TerrainGrade(pt.X, pt.Y) > 0.4f) continue;
-                if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + 6f)) continue;
+                if (TerrainGrade(pt.X, pt.Y) > CityGradeMax) continue;
+                if (TerrainPit(pt, Mathf.Max(size.X, size.Z) / 2f + PitCheckMargin)) continue;
                 if (!WorldConfig.IsMission && Main.HeightAt(pt.X, pt.Y) > 9.5f) continue;
                 bool nearPad = false;
                 foreach (var pad in Main.SpawnPads)
@@ -1689,13 +1716,13 @@ public partial class Titans
         float lvl = t.Y;
         foreach (var wl in Main.Walls)
         {
-            if (lvl + 1.5f >= wl.Top) continue;
+            if (lvl + StepUpClearance >= wl.Top) continue;
             p = PushOutRect(p, FootPad, wl);
         }
         foreach (var c in _props)
         {
             if (c.Pass) continue;
-            if (c.RoofTop > 0f && lvl + 1.5f >= c.RoofTop) continue;
+            if (c.RoofTop > 0f && lvl + StepUpClearance >= c.RoofTop) continue;
             if (c.BaseY > 0f && lvl < c.BaseY - 1.5f) continue;
             p = PushOut(p, FootPad, c, out _);
         }
@@ -1706,7 +1733,7 @@ public partial class Titans
             float perp = -dx * rp.DirZ + dz * rp.DirX;
             if (Mathf.Abs(along) > rp.HalfLen + FootPad || Mathf.Abs(perp) > rp.HalfWid + FootPad) continue;
             float h = Mathf.Lerp(rp.H0, rp.H1, Mathf.Clamp((along + rp.HalfLen) / (2f * rp.HalfLen), 0f, 1f));
-            if (lvl >= h - 2.5f) continue;   // planting on the slope
+            if (lvl >= h - SlopeTopTolerance) continue;   // planting on the slope
             if (lvl <= h - 3.5f) continue;   // planting under the span
             float exP = rp.HalfWid + FootPad - Mathf.Abs(perp);
             float exA = rp.HalfLen + FootPad - Mathf.Abs(along);
@@ -1731,7 +1758,7 @@ public partial class Titans
             // a walker at deck level walks on freely.
             foreach (var wl in Main.Walls)
             {
-                if (w.SoleLevel + 1.5f >= wl.Top) continue;
+                if (w.SoleLevel + StepUpClearance >= wl.Top) continue;
                 p = PushOutRect(p, w.CollisionRadius, wl);
             }
             foreach (var c in _props)
@@ -1739,7 +1766,7 @@ public partial class Titans
                 // A building's walls stop a rider on the ground -
                 // but not one standing on its roof or flying over
                 // it: at roof level the circle is not a wall.
-                if (c.RoofTop > 0f && w.SoleLevel + 1.5f >= c.RoofTop) continue;
+                if (c.RoofTop > 0f && w.SoleLevel + StepUpClearance >= c.RoofTop) continue;
                 // A building standing on a deck does not reach
                 // the ground under it (owner, 2026-11-11 round
                 // 6: 'why does rider sometimes get stuck under
@@ -1770,7 +1797,7 @@ public partial class Titans
                 float rr = w.CollisionRadius;
                 if (Mathf.Abs(along) > rp.HalfLen + rr || Mathf.Abs(perp) > rp.HalfWid + rr) continue;
                 float h = Mathf.Lerp(rp.H0, rp.H1, Mathf.Clamp((along + rp.HalfLen) / (2f * rp.HalfLen), 0f, 1f));
-                if (w.SoleLevel >= h - 2.5f) continue;                 // standing on the slope
+                if (w.SoleLevel >= h - SlopeTopTolerance) continue;                 // standing on the slope
                 if (w.SoleLevel + w.Height <= h - 3.3f) continue;     // fits under the wedge
                 // Shortest exit in ramp space (perp sides or
                 // either end), then back to world XZ.
@@ -2028,14 +2055,14 @@ public partial class Titans
         sun.LightEnergy = 1.1f;
         sun.ShadowOpacity = 0.55f; // real shade depth (owner round 6: rider's shadow was too bright)
         sun.LightColor = new Color(0.62f, 0.72f, 1.0f);
-        env.FogLightColor = new Color(0.10f, 0.14f, 0.24f);
+        env.FogLightColor = NightHazeColor;
         // The painting carries its own atmosphere: distance fog
         // must not wash the sky itself out (at mission far-plane
         // depths the exponential fog would otherwise replace
         // ~80% of the painting with flat fog color). Fog still
         // applies to terrain and buildings normally.
         env.FogSkyAffect = 0f;
-        env.VolumetricFogAlbedo = new Color(0.10f, 0.14f, 0.24f);
+        env.VolumetricFogAlbedo = NightHazeColor;
     }
 
 }
