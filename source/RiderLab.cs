@@ -40,6 +40,110 @@ public partial class RiderLab : Control
     public System.Func<Vector2?> CenterProjector;
     private PaperdollArea _paperdoll;
 
+    // Lab look and layout conventions (owner's refactor rules:
+    // look-and-feel values live in named fields, defined once;
+    // every value below is EXACTLY the value it replaces - this
+    // pass changes names, not the lab's appearance or geometry).
+    private static readonly Color DragPreviewBackground = new(0.1f, 0.13f, 0.17f, 0.95f);
+    private static readonly Color DragPreviewText = new(1f, 0.95f, 0.6f);
+    private static readonly Color PpcAccent = new(0.45f, 0.72f, 1f);
+    private static readonly Color EnergyAccent = new(1f, 0.45f, 0.32f);
+    private static readonly Color BallisticAccent = new(1f, 0.8f, 0.35f);
+    private static readonly Color MissileAccent = new(0.95f, 0.6f, 0.3f);
+    private static readonly Color MissileFlame = new(1f, 0.55f, 0.2f);
+    private static readonly Color IconBackground = new(0.07f, 0.09f, 0.12f, 1f);
+    private static readonly Color IconBand = new(0.04f, 0.05f, 0.07f, 1f);
+    private static readonly Color TileStripBackground = new(0f, 0f, 0f, 0.62f);
+    private static readonly Color TileShadow = new(0f, 0f, 0f, 0.9f);
+    private static readonly Color LabBackground = new(0.012f, 0.02f, 0.035f, 0.55f);
+    private static readonly Color TitleText = new(0.97f, 0.98f, 1f);
+    private static readonly Color TextPrimary = new(0.93f, 0.96f, 0.98f);
+    private static readonly Color TextBright = new(0.95f, 0.97f, 1f);
+    private static readonly Color TextMuted = new(0.62f, 0.68f, 0.75f);
+    private static readonly Color TextSubtle = new(0.82f, 0.88f, 0.94f);
+    private static readonly Color AccentGold = new(1f, 0.85f, 0.5f);
+    private static readonly Color SteelBorder = new(0.42f, 0.48f, 0.56f, 0.8f);
+    private static readonly Color FontShadow = new(0, 0, 0, 0.85f);
+    private static readonly Color HoverBrighten = new(1.3f, 1.3f, 1.3f);
+    private static readonly Color SidebarBackground = new(0.045f, 0.065f, 0.105f, 0.85f);
+    private static readonly Color SlotPanelBackground = new(0.06f, 0.085f, 0.12f, 0.72f);
+    private static readonly Color TileFrameBackground = new(0.10f, 0.12f, 0.16f, 0.95f);
+    private static readonly Color TileFrameBorder = new(0.62f, 0.68f, 0.75f, 0.95f);
+    private static readonly Color SlotHeadText = new(0.8f, 0.86f, 0.92f);
+    private static readonly Color SelectorArrowHover = new(0.98f, 0.80f, 0.35f);
+    private static readonly Color EmptySlotText = new(0.55f, 0.5f, 0.45f);
+    private static readonly Color FittedRowBackground = new(0.10f, 0.12f, 0.15f, 0.55f);
+    private static readonly Color JetsDisabledTint = new(1f, 1f, 1f, 0.45f);
+
+    private const int IconSize = 48;
+    private const int IconLastPixel = IconSize - 1;
+    private const int IconBandTop = 37;
+    private const float IconShadeFactor = 0.55f;
+    private const int DragPreviewMarginX = 8;
+    private const int DragPreviewMarginY = 6;
+    private const int DragPreviewCornerRadius = 4;
+    private const int DragPreviewFontSize = 15;
+    private const float LargeTileThreshold = 44f;
+    private const float TileStripInset = 2f;
+    private const float TileStripLargeHeight = 18f;
+    private const float TileStripSmallHeight = 16f;
+    private const int TileAbbrevLargeFontSize = 12;
+    private const int TileAbbrevSmallFontSize = 10;
+    private const int TileLabelShadowOffset = 1;
+    private const int ThinBorderWidth = 1;
+    private const int PanelCornerRadius = 6;
+    private const int SmallPanelCornerRadius = 4;
+    private const int RootSeparation = 6;
+    private const float RootSideMargin = 40f;
+    private const float RootTopMargin = 28f;
+    private const float RootBottomMargin = 24f;
+    private const int TitleFontSize = 26;
+    private const int MidSeparation = 28;
+    private const float SidebarWidth = 400f;
+    private const float SidebarMinHeight = 280f;
+    private const int SidebarPadding = 10;
+    private const int SidebarWrapMargin = 16;
+    private const int SidebarSeparation = 8;
+    private const int TabSelectorFontSize = 14;
+    private const int RowsSeparation = 3;
+    private const float GroupSpacerHeight = 6f;
+    private const int GroupHeadingFontSize = 12;
+    private const float CatalogRowHeight = 44f;
+    private const int CatalogRowSeparation = 12;
+    private const int RowTextSeparation = 1;
+    private const float CatalogTileSize = 34f;
+    private const int WeaponNameFontSize = 13;
+    private const int WeaponStatsFontSize = 11;
+    private const float FittedTileSize = 40f;
+    private const int FittedRowSeparation = 7;
+    private const float GroupButtonWidth = 38f;
+    private const int GroupButtonFontSize = 12;
+    private const int TileFrameFontSize = 12;
+    private const int SlotHeadFontSize = 13;
+    private const float SlotPanelMinWidth = 215f;
+    private const float SlotPanelMinHeight = 64f;
+    private const int SlotPanelMarginSide = 12;
+    private const int SlotPanelMarginVertical = 10;
+    private const int SlotListSeparation = 4;
+    private const int StatusSeparation = 2;
+    private const int StatusFontSize = 15;
+    private const int ButtonRowSeparation = 12;
+    private const int DeployFontSize = 18;
+    private const float SelectorPanelExtraMargin = 8f;
+    private const int ButtonPaddingSide = 18;
+    private const int ButtonPaddingVertical = 11;
+    private const int LabPanelMarginSide = 6;
+    private const int LabPanelMarginTop = 5;
+    private const int LabPanelMarginBottom = 5;
+    private const int SelectorSeparation = 8;
+    private const float SelectorRoleGap = 22f;
+    private const float SelectorNameWidth = 170f;
+    private const int SelectorFontSize = 18;
+    private const int EmptySlotFontSize = 12;
+    private const int FittedRowMarginSide = 5;
+    private const int FittedRowMarginTop = 4;
+    private const int FittedRowMarginBottom = 4;
+
     public override void _Process(double delta)
     {
         if (_paperdoll != null && AnchorProjector != null)
@@ -60,12 +164,12 @@ public partial class RiderLab : Control
         {
             var w = WeaponCatalog.ById(Weapon);
             var preview = new PanelContainer();
-            var sb = new StyleBoxFlat { BgColor = new Color(0.1f, 0.13f, 0.17f, 0.95f), ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 6, ContentMarginBottom = 6 };
-            sb.SetCornerRadiusAll(4);
+            var sb = new StyleBoxFlat { BgColor = DragPreviewBackground, ContentMarginLeft = DragPreviewMarginX, ContentMarginRight = DragPreviewMarginX, ContentMarginTop = DragPreviewMarginY, ContentMarginBottom = DragPreviewMarginY };
+            sb.SetCornerRadiusAll(DragPreviewCornerRadius);
             preview.AddThemeStyleboxOverride("panel", sb);
             var pl = new Label { Text = Abbrev(w) };
-            pl.AddThemeFontSizeOverride("font_size", 15);
-            pl.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.6f));
+            pl.AddThemeFontSizeOverride("font_size", DragPreviewFontSize);
+            pl.AddThemeColorOverride("font_color", DragPreviewText);
             preview.AddChild(pl);
             SetDragPreview(preview);
             return Weapon.ToString();
@@ -106,17 +210,17 @@ public partial class RiderLab : Control
     public static ImageTexture Icon(WeaponDef w)
     {
         if (_icons.TryGetValue(w.Id, out var cached)) return cached;
-        var accent = w.Beam == BeamKind.Ppc ? new Color(0.45f, 0.72f, 1f)
-            : w.Type == WeaponSlotType.Energy ? new Color(1f, 0.45f, 0.32f)
-            : w.Type == WeaponSlotType.Ballistic ? new Color(1f, 0.8f, 0.35f)
-            : new Color(0.95f, 0.6f, 0.3f);
-        var img = Image.CreateEmpty(48, 48, false, Image.Format.Rgba8);
-        img.Fill(new Color(0.07f, 0.09f, 0.12f, 1f));
-        var border = accent * 0.55f; border.A = 1f;
-        for (int i = 0; i < 48; i++)
+        var accent = w.Beam == BeamKind.Ppc ? PpcAccent
+            : w.Type == WeaponSlotType.Energy ? EnergyAccent
+            : w.Type == WeaponSlotType.Ballistic ? BallisticAccent
+            : MissileAccent;
+        var img = Image.CreateEmpty(IconSize, IconSize, false, Image.Format.Rgba8);
+        img.Fill(IconBackground);
+        var border = accent * IconShadeFactor; border.A = 1f;
+        for (int i = 0; i < IconSize; i++)
         {
-            img.SetPixel(i, 0, border); img.SetPixel(i, 47, border);
-            img.SetPixel(0, i, border); img.SetPixel(47, i, border);
+            img.SetPixel(i, 0, border); img.SetPixel(i, IconLastPixel, border);
+            img.SetPixel(0, i, border); img.SetPixel(IconLastPixel, i, border);
         }
         void Poly(Color c, params Vector2[] pts)
         {
@@ -126,8 +230,8 @@ public partial class RiderLab : Control
             // 'cut image' in the owner's screenshots).
             for (int i = 0; i < pts.Length; i++)
                 pts[i] = new Vector2(24f + (pts[i].X - 24f) * 0.82f, 1f + pts[i].Y * 0.68f);
-            for (int y = 0; y < 48; y++)
-                for (int x = 0; x < 48; x++)
+            for (int y = 0; y < IconSize; y++)
+                for (int x = 0; x < IconSize; x++)
                 {
                     var pt = new Vector2(x + 0.5f, y + 0.5f);
                     bool inside = false;
@@ -148,25 +252,25 @@ public partial class RiderLab : Control
             case WeaponSlotType.Ballistic: // shell: tip + body + base band
                 Poly(accent, new Vector2(19, 16), new Vector2(29, 16), new Vector2(24, 4));
                 Poly(accent, new Vector2(19, 16), new Vector2(29, 16), new Vector2(29, 41), new Vector2(19, 41));
-                Poly(accent * 0.55f, new Vector2(19, 35), new Vector2(29, 35), new Vector2(29, 41), new Vector2(19, 41));
+                Poly(accent * IconShadeFactor, new Vector2(19, 35), new Vector2(29, 35), new Vector2(29, 41), new Vector2(19, 41));
                 break;
             default: // Missile: rocket with fins + flame
                 Poly(accent, new Vector2(24, 3), new Vector2(30, 13), new Vector2(30, 30), new Vector2(18, 30), new Vector2(18, 13));
                 Poly(accent, new Vector2(18, 25), new Vector2(11, 38), new Vector2(18, 38));
                 Poly(accent, new Vector2(30, 25), new Vector2(37, 38), new Vector2(30, 38));
-                Poly(new Color(1f, 0.55f, 0.2f), new Vector2(21, 39), new Vector2(27, 39), new Vector2(24, 45));
+                Poly(MissileFlame, new Vector2(21, 39), new Vector2(27, 39), new Vector2(24, 45));
                 break;
         }
         // Contrast band (owner): the abbreviation sits on this
         // dark strip instead of over the bright silhouette.
-        var band = new Color(0.04f, 0.05f, 0.07f, 1f);
-        for (int y = 37; y < 47; y++)
-            for (int x = 1; x < 47; x++)
+        var band = IconBand;
+        for (int y = IconBandTop; y < IconLastPixel; y++)
+            for (int x = 1; x < IconLastPixel; x++)
                 img.SetPixel(x, y, band);
-        for (int i = 0; i < 48; i++)
+        for (int i = 0; i < IconSize; i++)
         {
-            img.SetPixel(i, 0, border); img.SetPixel(i, 47, border);
-            img.SetPixel(0, i, border); img.SetPixel(47, i, border);
+            img.SetPixel(i, 0, border); img.SetPixel(i, IconLastPixel, border);
+            img.SetPixel(0, i, border); img.SetPixel(IconLastPixel, i, border);
         }
         var tex = ImageTexture.CreateFromImage(img);
         _icons[w.Id] = tex;
@@ -188,26 +292,26 @@ public partial class RiderLab : Control
         root.AddChild(tex);
         // Backdrop strip behind the abbreviation (owner): a real
         // UI element, not just the baked texture band.
-        var strip = new ColorRect { Color = new Color(0f, 0f, 0f, 0.62f), MouseFilter = MouseFilterEnum.Ignore };
+        var strip = new ColorRect { Color = TileStripBackground, MouseFilter = MouseFilterEnum.Ignore };
         strip.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-        strip.OffsetLeft = 2; strip.OffsetRight = -2; // inset: the strip must not cover the tile's border (owner)
-        strip.OffsetTop = -(size >= 44 ? 18 : 16) - 2;
-        strip.OffsetBottom = -2;
+        strip.OffsetLeft = TileStripInset; strip.OffsetRight = -TileStripInset; // inset: the strip must not cover the tile's border (owner)
+        strip.OffsetTop = -(size >= LargeTileThreshold ? TileStripLargeHeight : TileStripSmallHeight) - TileStripInset;
+        strip.OffsetBottom = -TileStripInset;
         root.AddChild(strip);
         var ab = new Label { Text = Abbrev(w), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
-        ab.AddThemeFontSizeOverride("font_size", size >= 44 ? 12 : 10);
-        ab.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
-        ab.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.9f));
-        ab.AddThemeConstantOverride("shadow_offset_x", 1);
-        ab.AddThemeConstantOverride("shadow_offset_y", 1);
+        ab.AddThemeFontSizeOverride("font_size", size >= LargeTileThreshold ? TileAbbrevLargeFontSize : TileAbbrevSmallFontSize);
+        ab.AddThemeColorOverride("font_color", TextBright);
+        ab.AddThemeColorOverride("font_shadow_color", TileShadow);
+        ab.AddThemeConstantOverride("shadow_offset_x", TileLabelShadowOffset);
+        ab.AddThemeConstantOverride("shadow_offset_y", TileLabelShadowOffset);
         // The label fills the STRIP's rect (not the whole tile)
         // with the text centered in it: the abbreviation gets a
         // couple of pixels of breathing room at the top and the
         // bottom (owner). Bottom-aligned in the full tile it sat
         // flush on the tile's bottom edge, below the strip.
         ab.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-        ab.OffsetLeft = 2; ab.OffsetRight = -2;
-        ab.OffsetTop = strip.OffsetTop; ab.OffsetBottom = -2;
+        ab.OffsetLeft = TileStripInset; ab.OffsetRight = -TileStripInset;
+        ab.OffsetTop = strip.OffsetTop; ab.OffsetBottom = -TileStripInset;
         root.AddChild(ab);
         return root;
     }
@@ -235,6 +339,46 @@ public partial class RiderLab : Control
         // set by the duel; null entries fall back to the fractions.
         public System.Func<PartId, Vector2?> Projector;
         public System.Func<Vector2?> CenterProj;
+
+        private static readonly Color ConnectorLineColor = new(0.5f, 0.58f, 0.66f, 0.5f);
+        private static readonly Color AnchorDotColor = new(0.95f, 0.8f, 0.45f, 0.9f);
+        private static readonly Vector2 FallbackBodyCenter = new(0.47f, 0.42f);
+        private static readonly Vector2 FallbackOutwardDirection = new(0.3f, -0.2f);
+        private static readonly Vector2 FallbackPanelCenter = new(0.5f, 0.5f);
+        // Panel centers for slots with no live anchor (the
+        // fractional layout's other half, beside Anchors).
+        private static readonly System.Collections.Generic.Dictionary<PartId, Vector2> FallbackCenters = new()
+        {
+            [PartId.PodL] = new Vector2(0.24f, 0.11f),
+            [PartId.PodR] = new Vector2(0.76f, 0.11f),
+            [PartId.ArmL] = new Vector2(0.15f, 0.60f),
+            [PartId.ArmR] = new Vector2(0.85f, 0.60f),
+            [PartId.Torso] = new Vector2(0.5f, 0.30f),
+            [PartId.Gun] = new Vector2(0.5f, 0.88f),
+        };
+
+        private const float StackGap = 8f;
+        private const float MinLivePanelAreaHeight = 60f;
+        private const float TwoRowPanelHeight = 141f;
+        private const float OneRowPanelHeight = 89f;
+        private const float PaperdollRowPitch = 48f;
+        private const float PaperdollRowGap = 4f;
+        private const float MinScrollHeight = 20f;
+        private const float MinPanelWidth = 200f;
+        private const float PanelWidthMargin = 6f;
+        private const float NearCenterDistance = 14f;
+        private const float PanelOutwardClearance = 14f;
+        private const float DirectionComponentEpsilon = 0.02f;
+        private const float FallbackDirectionLengthSquared = 0.001f;
+        private const int SeparationPasses = 8;
+        private const float PairSeparationPadding = 6f;
+        private const float HorizontalOvershoot = 60f;
+        private const float VerticalOvershoot = 20f;
+        private const float LevelPairGap = 12f;
+        private const float DrawMinWidth = 10f;
+        private const float ConnectorLineWidth = 2f;
+        private const float AnchorDotRadius = 3.5f;
+        private const float RectEdgeEpsilon = 0.001f;
 
         public Vector2? LiveAnchor(PartId id) =>
             _live.TryGetValue(id, out var v) ? v + GetGlobalPosition() : null;
@@ -269,19 +413,10 @@ public partial class RiderLab : Control
 
             // Panels WITHOUT a live anchor keep the fractional
             // layout (fallback for off-screen or missing parts).
-            var centers = new System.Collections.Generic.Dictionary<PartId, Vector2>
-            {
-                [PartId.PodL] = new Vector2(0.24f, 0.11f),
-                [PartId.PodR] = new Vector2(0.76f, 0.11f),
-                [PartId.ArmL] = new Vector2(0.15f, 0.60f),
-                [PartId.ArmR] = new Vector2(0.85f, 0.60f),
-                [PartId.Torso] = new Vector2(0.5f, 0.30f),
-                [PartId.Gun] = new Vector2(0.5f, 0.88f),
-            };
             foreach (var (id, panel) in _panels)
             {
                 if (_live.ContainsKey(id)) continue;
-                if (!centers.TryGetValue(id, out var c)) c = new Vector2(0.5f, 0.5f);
+                if (!FallbackCenters.TryGetValue(id, out var c)) c = FallbackPanelCenter;
                 var want = c * Size - panel.Size * 0.5f;
                 panel.Position = new Vector2(
                     Mathf.Clamp(want.X, 0f, Mathf.Max(0f, Size.X - panel.Size.X)),
@@ -340,15 +475,15 @@ public partial class RiderLab : Control
                             if ((_side.TryGetValue(id, out var sd) ? sd : 0) == 0) l++; else r++;
                     maxSide = Mathf.Max(1, Mathf.Max(l, r));
                 }
-                float avail = Mathf.Max(60f, (Size.Y - (maxSide - 1) * 8f) / maxSide);
-                int rowsVisible = avail >= 141f ? 2 : 1;
-                float scrollH = rowsVisible * 48f + (rowsVisible - 1) * 4f; // a fitted row = the 40px tile + the row panel's margins
-                float panelH = rowsVisible == 2 ? 141f : Mathf.Min(89f, avail);
-                if (rowsVisible == 1 && panelH < 89f) scrollH = Mathf.Max(20f, panelH - 41f);
+                float avail = Mathf.Max(MinLivePanelAreaHeight, (Size.Y - (maxSide - 1) * StackGap) / maxSide);
+                int rowsVisible = avail >= TwoRowPanelHeight ? 2 : 1;
+                float scrollH = rowsVisible * PaperdollRowPitch + (rowsVisible - 1) * PaperdollRowGap; // a fitted row = the 40px tile + the row panel's margins
+                float panelH = rowsVisible == 2 ? TwoRowPanelHeight : Mathf.Min(OneRowPanelHeight, avail);
+                if (rowsVisible == 1 && panelH < OneRowPanelHeight) scrollH = Mathf.Max(MinScrollHeight, panelH - 41f);
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id))
                     {
-                        float capW = Mathf.Max(200f, Size.X * 0.5f - 6f);
+                        float capW = Mathf.Max(MinPanelWidth, Size.X * 0.5f - PanelWidthMargin);
                         float needW = panel.GetCombinedMinimumSize().X;
                         if (panel is SlotPanel spn) needW = Mathf.Max(needW, spn.NeedW);
                         panel.Size = new Vector2(Mathf.Min(needW, capW), panelH);
@@ -359,21 +494,21 @@ public partial class RiderLab : Control
                 {
                     if (!_live.TryGetValue(id, out var an)) continue;
                     var dir = an - center;
-                    if (dir.Length() < 14f)
+                    if (dir.Length() < NearCenterDistance)
                     {
                         // The dot sits (almost) at the center -
                         // the chest: push it out along its
                         // fractional fallback direction instead.
                         dir = Anchors.TryGetValue(id, out var fr)
-                            ? fr - new Vector2(0.47f, 0.42f)
-                            : new Vector2(0.3f, -0.2f);
-                        if (dir.LengthSquared() < 0.001f) dir = new Vector2(0.3f, -0.2f);
+                            ? fr - FallbackBodyCenter
+                            : FallbackOutwardDirection;
+                        if (dir.LengthSquared() < FallbackDirectionLengthSquared) dir = FallbackOutwardDirection;
                     }
                     dir = dir.Normalized();
-                    float tx = Mathf.Abs(dir.X) > 0.02f
-                        ? (panel.Size.X * 0.5f + 14f) / Mathf.Abs(dir.X) : float.MaxValue;
-                    float ty = Mathf.Abs(dir.Y) > 0.02f
-                        ? (panel.Size.Y * 0.5f + 14f) / Mathf.Abs(dir.Y) : float.MaxValue;
+                    float tx = Mathf.Abs(dir.X) > DirectionComponentEpsilon
+                        ? (panel.Size.X * 0.5f + PanelOutwardClearance) / Mathf.Abs(dir.X) : float.MaxValue;
+                    float ty = Mathf.Abs(dir.Y) > DirectionComponentEpsilon
+                        ? (panel.Size.Y * 0.5f + PanelOutwardClearance) / Mathf.Abs(dir.Y) : float.MaxValue;
                     var c = an + dir * Mathf.Min(tx, ty);
                     c = new Vector2(
                         Mathf.Clamp(c.X, panel.Size.X * 0.5f, Mathf.Max(panel.Size.X * 0.5f, Size.X - panel.Size.X * 0.5f)),
@@ -411,12 +546,12 @@ public partial class RiderLab : Control
                     group.Sort((a, b) => yOf[a.Panel].CompareTo(yOf[b.Panel]));
                     groups[side] = group;
                     if (group.Count == 0) continue;
-                    float total = group.Count * panelH + (group.Count - 1) * 8f;
+                    float total = group.Count * panelH + (group.Count - 1) * StackGap;
                     float startY = Mathf.Clamp(yOf[group[0].Panel] - panelH * 0.5f, 0f, Mathf.Max(0f, Size.Y - total));
                     for (int i = 0; i < group.Count; i++)
                     {
                         var pp = group[i].Panel;
-                        pp.Position = new Vector2(pp.Position.X, startY + i * (panelH + 8f));
+                        pp.Position = new Vector2(pp.Position.X, startY + i * (panelH + StackGap));
                     }
                 }
                 // Level-pair spread: at the same stack level the
@@ -445,7 +580,7 @@ public partial class RiderLab : Control
                 {
                     var livePanels = new System.Collections.Generic.List<Control>();
                     foreach (var (pid, p) in placed) livePanels.Add(p);
-                    for (int pass = 0; pass < 8; pass++)
+                    for (int pass = 0; pass < SeparationPasses; pass++)
                     {
                         bool moved = false;
                         for (int i = 0; i < livePanels.Count; i++)
@@ -453,10 +588,10 @@ public partial class RiderLab : Control
                             {
                                 var a = livePanels[i]; var b = livePanels[j];
                                 float ox = Mathf.Min(a.Position.X + a.Size.X, b.Position.X + b.Size.X)
-                                         - Mathf.Max(a.Position.X, b.Position.X) + 6f;
+                                         - Mathf.Max(a.Position.X, b.Position.X) + PairSeparationPadding;
                                 if (ox <= 0f) continue;
                                 float oy = Mathf.Min(a.Position.Y + a.Size.Y, b.Position.Y + b.Size.Y)
-                                         - Mathf.Max(a.Position.Y, b.Position.Y) + 6f;
+                                         - Mathf.Max(a.Position.Y, b.Position.Y) + PairSeparationPadding;
                                 if (oy <= 0f) continue;
                                 moved = true;
                                 if (ox < oy)
@@ -464,13 +599,13 @@ public partial class RiderLab : Control
                                     float push = ox * 0.5f;
                                     if (a.Position.X + a.Size.X * 0.5f <= b.Position.X + b.Size.X * 0.5f)
                                     {
-                                        a.Position = new Vector2(Mathf.Max(a.Position.X - push, -60f), a.Position.Y);
-                                        b.Position = new Vector2(Mathf.Min(b.Position.X + push, Size.X - b.Size.X + 60f), b.Position.Y);
+                                        a.Position = new Vector2(Mathf.Max(a.Position.X - push, -HorizontalOvershoot), a.Position.Y);
+                                        b.Position = new Vector2(Mathf.Min(b.Position.X + push, Size.X - b.Size.X + HorizontalOvershoot), b.Position.Y);
                                     }
                                     else
                                     {
-                                        a.Position = new Vector2(Mathf.Min(a.Position.X + push, Size.X - a.Size.X + 60f), a.Position.Y);
-                                        b.Position = new Vector2(Mathf.Max(b.Position.X - push, -60f), b.Position.Y);
+                                        a.Position = new Vector2(Mathf.Min(a.Position.X + push, Size.X - a.Size.X + HorizontalOvershoot), a.Position.Y);
+                                        b.Position = new Vector2(Mathf.Max(b.Position.X - push, -HorizontalOvershoot), b.Position.Y);
                                     }
                                 }
                                 else
@@ -478,13 +613,13 @@ public partial class RiderLab : Control
                                     float push = oy * 0.5f;
                                     if (a.Position.Y + a.Size.Y * 0.5f <= b.Position.Y + b.Size.Y * 0.5f)
                                     {
-                                        a.Position = new Vector2(a.Position.X, Mathf.Max(a.Position.Y - push, -20f));
-                                        b.Position = new Vector2(b.Position.X, Mathf.Min(b.Position.Y + push, Size.Y - b.Size.Y + 20f));
+                                        a.Position = new Vector2(a.Position.X, Mathf.Max(a.Position.Y - push, -VerticalOvershoot));
+                                        b.Position = new Vector2(b.Position.X, Mathf.Min(b.Position.Y + push, Size.Y - b.Size.Y + VerticalOvershoot));
                                     }
                                     else
                                     {
-                                        a.Position = new Vector2(a.Position.X, Mathf.Min(a.Position.Y + push, Size.Y - a.Size.Y + 20f));
-                                        b.Position = new Vector2(b.Position.X, Mathf.Max(b.Position.Y - push, -20f));
+                                        a.Position = new Vector2(a.Position.X, Mathf.Min(a.Position.Y + push, Size.Y - a.Size.Y + VerticalOvershoot));
+                                        b.Position = new Vector2(b.Position.X, Mathf.Max(b.Position.Y - push, -VerticalOvershoot));
                                     }
                                 }
                             }
@@ -500,12 +635,12 @@ public partial class RiderLab : Control
                         float aC = a.Position.X + a.Size.X * 0.5f;
                         float bC = b.Position.X + b.Size.X * 0.5f;
                         if (bC < aC) (a, b) = (b, a);
-                        float need = (a.Size.X + b.Size.X) * 0.5f + 12f; // + a clear 12px gap: merely touching reads as overlapping
+                        float need = (a.Size.X + b.Size.X) * 0.5f + LevelPairGap; // + a clear 12px gap: merely touching reads as overlapping
                         float dist = (b.Position.X + b.Size.X * 0.5f) - (a.Position.X + a.Size.X * 0.5f);
                         if (dist >= need) continue;
                         float push = (need - dist) * 0.5f;
-                        a.Position = new Vector2(Mathf.Max(a.Position.X - push, -60f), a.Position.Y);
-                        b.Position = new Vector2(Mathf.Min(b.Position.X + push, Size.X - b.Size.X + 60f), b.Position.Y);
+                        a.Position = new Vector2(Mathf.Max(a.Position.X - push, -HorizontalOvershoot), a.Position.Y);
+                        b.Position = new Vector2(Mathf.Min(b.Position.X + push, Size.X - b.Size.X + HorizontalOvershoot), b.Position.Y);
                     }
                 }
             }
@@ -514,9 +649,9 @@ public partial class RiderLab : Control
 
         public override void _Draw()
         {
-            if (Size.X < 10f) return;
-            var line = new Color(0.5f, 0.58f, 0.66f, 0.5f);
-            var dot = new Color(0.95f, 0.8f, 0.45f, 0.9f);
+            if (Size.X < DrawMinWidth) return;
+            var line = ConnectorLineColor;
+            var dot = AnchorDotColor;
             foreach (var (id, panel) in _panels)
             {
                 Vector2 anchor;
@@ -530,10 +665,10 @@ public partial class RiderLab : Control
                 var c = rect.GetCenter();
                 var dir = anchor - c;
                 float t = 1f;
-                if (Mathf.Abs(dir.X) > 0.001f) t = Mathf.Min(t, (rect.Size.X * 0.5f) / Mathf.Abs(dir.X));
-                if (Mathf.Abs(dir.Y) > 0.001f) t = Mathf.Min(t, (rect.Size.Y * 0.5f) / Mathf.Abs(dir.Y));
-                DrawLine(c + dir * t, anchor, line, 2f);
-                DrawCircle(anchor, 3.5f, dot);
+                if (Mathf.Abs(dir.X) > RectEdgeEpsilon) t = Mathf.Min(t, (rect.Size.X * 0.5f) / Mathf.Abs(dir.X));
+                if (Mathf.Abs(dir.Y) > RectEdgeEpsilon) t = Mathf.Min(t, (rect.Size.Y * 0.5f) / Mathf.Abs(dir.Y));
+                DrawLine(c + dir * t, anchor, line, ConnectorLineWidth);
+                DrawCircle(anchor, AnchorDotRadius, dot);
             }
         }
     }
@@ -577,8 +712,8 @@ public partial class RiderLab : Control
         // for the whole lab subtree, with the game's label and
         // button shadow colours kept from game_theme.tres.
         var labTheme = new Theme { DefaultFont = FlowUi.BodyFont };
-        labTheme.SetColor("font_shadow_color", "Label", new Color(0, 0, 0, 0.85f));
-        labTheme.SetColor("font_shadow_color", "Button", new Color(0, 0, 0, 0.85f));
+        labTheme.SetColor("font_shadow_color", "Label", FontShadow);
+        labTheme.SetColor("font_shadow_color", "Button", FontShadow);
         Theme = labTheme;
         // Anchors AND offsets: SetAnchorsPreset alone left this
         // code-created control at a 0x0 rect under its CanvasLayer
@@ -586,23 +721,23 @@ public partial class RiderLab : Control
         // to nothing while the containers overflowed visibly - the
         // lab's text sat directly on the bright scene.
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var bg = new ColorRect { Color = new Color(0.012f, 0.02f, 0.035f, 0.55f) }; // light dim (owner): the rider is the lab's centerpiece and must read clearly through it; panels and rows carry their own opaque backgrounds
+        var bg = new ColorRect { Color = LabBackground }; // light dim (owner): the rider is the lab's centerpiece and must read clearly through it; panels and rows carry their own opaque backgrounds
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
         var root = new VBoxContainer();
         root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        root.AddThemeConstantOverride("separation", 6);
-        root.OffsetLeft = 40; root.OffsetTop = 28; root.OffsetRight = -40; root.OffsetBottom = -24;
+        root.AddThemeConstantOverride("separation", RootSeparation);
+        root.OffsetLeft = RootSideMargin; root.OffsetTop = RootTopMargin; root.OffsetRight = -RootSideMargin; root.OffsetBottom = -RootBottomMargin;
         AddChild(root);
 
         var title = new Label { Text = Spec.Name }; // title is the rider name only (owner, 2026-11-23); tonnage/class/house moved to the status stack below the weapon list
         FlowUi.Heading(title);
-        title.AddThemeFontSizeOverride("font_size", 26);
-        title.AddThemeColorOverride("font_color", new Color(0.97f, 0.98f, 1f));
+        title.AddThemeFontSizeOverride("font_size", TitleFontSize);
+        title.AddThemeColorOverride("font_color", TitleText);
         root.AddChild(title);
         var sub = new Label { Text = "Drag a weapon's icon onto a hardpoint - or click the icon, then click a hardpoint. A hardpoint fits as many weapons of its type as its tonnage allows. Click an occupied hardpoint with nothing selected to remove its last weapon; right-click empties it. The G-button on a fitted weapon sets its firing group (keys 1-6 in the duel)." };
-        sub.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+        sub.AddThemeColorOverride("font_color", TextSubtle);
         sub.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(sub);
 
@@ -611,7 +746,7 @@ public partial class RiderLab : Control
         // 2026-11-14).
 
         var mid = new HBoxContainer();
-        mid.AddThemeConstantOverride("separation", 28);
+        mid.AddThemeConstantOverride("separation", MidSeparation);
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
         root.AddChild(mid);
 
@@ -629,35 +764,35 @@ public partial class RiderLab : Control
         // their first four rows in full. The minimum height
         // below is what guarantees it on a short window; the
         // root's tighter separation above pays for it.
-        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(400, 280) };
+        var sidePanel = new PanelContainer { CustomMinimumSize = new Vector2(SidebarWidth, SidebarMinHeight) };
         sidePanel.SizeFlagsVertical = SizeFlags.ExpandFill; // the list adjusts to the screen height (owner, 2026-11-23)
         var sideSb = new StyleBoxFlat
         {
-            BgColor = new Color(0.045f, 0.065f, 0.105f, 0.85f),
-            BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f),
-            ContentMarginLeft = 10, ContentMarginRight = 10,
-            ContentMarginTop = 10, ContentMarginBottom = 10
+            BgColor = SidebarBackground,
+            BorderColor = SteelBorder,
+            ContentMarginLeft = SidebarPadding, ContentMarginRight = SidebarPadding,
+            ContentMarginTop = SidebarPadding, ContentMarginBottom = SidebarPadding
         };
-        sideSb.SetBorderWidthAll(1); // 1px like Deploy (owner, 2026-11-15: all lab borders thin)
-        sideSb.SetCornerRadiusAll(6);
+        sideSb.SetBorderWidthAll(ThinBorderWidth); // 1px like Deploy (owner, 2026-11-15: all lab borders thin)
+        sideSb.SetCornerRadiusAll(PanelCornerRadius);
         sidePanel.AddThemeStyleboxOverride("panel", sideSb);
         // Air above and below the sidebar (owner, 2026-11-14):
         // it no longer runs flush into the subtitle and the
         // status lines.
         var sideWrap = new MarginContainer();
         sideWrap.SizeFlagsVertical = SizeFlags.ExpandFill;
-        sideWrap.AddThemeConstantOverride("margin_top", 16);
-        sideWrap.AddThemeConstantOverride("margin_bottom", 16);
+        sideWrap.AddThemeConstantOverride("margin_top", SidebarWrapMargin);
+        sideWrap.AddThemeConstantOverride("margin_bottom", SidebarWrapMargin);
         mid.AddChild(sideWrap);
         sideWrap.AddChild(sidePanel);
         var catBox = new VBoxContainer();
-        catBox.AddThemeConstantOverride("separation", 8);
+        catBox.AddThemeConstantOverride("separation", SidebarSeparation);
         sidePanel.AddChild(catBox);
         // The page switch is a slider (owner, 2026-11-14):
         // the front-end's selector row cycling Weapon /
         // Equipment, the same control as the planet and
         // rider selectors. Either arrow flips the page.
-        var tabSlider = FlowUi.SelectorRow(out _tabName, 14, step => ShowLabTab(!_weaponsPage));
+        var tabSlider = FlowUi.SelectorRow(out _tabName, TabSelectorFontSize, step => ShowLabTab(!_weaponsPage));
         // The page name reads in Open Sans (owner, 2026-11-15:
         // the same-day Cinzel pass reverted at his word), and
         // the slider's arrows take the bottom bar's 1px frame.
@@ -676,11 +811,11 @@ public partial class RiderLab : Control
         scroll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         catBox.AddChild(scroll);
         var rowsBox = new VBoxContainer();
-        rowsBox.AddThemeConstantOverride("separation", 3);
+        rowsBox.AddThemeConstantOverride("separation", RowsSeparation);
         rowsBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var rowsMargin = new MarginContainer();
         rowsMargin.SizeFlagsHorizontal = SizeFlags.ExpandFill; // rows take the sidebar's full width, like the equipment page (owner, 2026-11-14): without the expand flag the scroll's child chain kept its content minimum and the rows stopped short
-        rowsMargin.AddThemeConstantOverride("margin_right", 10); // air between the rows and the scrollbar: equal to the panel padding on the scrollbar's other side (owner, 2026-11-14)
+        rowsMargin.AddThemeConstantOverride("margin_right", SidebarPadding); // air between the rows and the scrollbar: equal to the panel padding on the scrollbar's other side (owner, 2026-11-14)
         rowsMargin.AddChild(rowsBox);
         scroll.AddChild(rowsMargin);
         // The catalog is three stacked lists (owner): Lasers,
@@ -698,11 +833,11 @@ public partial class RiderLab : Control
         bool firstGroup = true;
         foreach (var (gTitle, gType) in catalogGroups)
         {
-            if (!firstGroup) rowsBox.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
+            if (!firstGroup) rowsBox.AddChild(new Control { CustomMinimumSize = new Vector2(0, GroupSpacerHeight) });
             firstGroup = false;
             var gh = new Label { Text = gTitle };
-            gh.AddThemeFontSizeOverride("font_size", 12);
-            gh.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
+            gh.AddThemeFontSizeOverride("font_size", GroupHeadingFontSize);
+            gh.AddThemeColorOverride("font_color", AccentGold);
             rowsBox.AddChild(gh);
             foreach (var w in WeaponCatalog.All)
             {
@@ -710,23 +845,23 @@ public partial class RiderLab : Control
             // Row = [draggable tile] + inert text (owner: drag and
             // click live on the square icon, not the text). Rows
             // carry no boxes and no separators (owner, 2026-11-14).
-            var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
-            hb.AddThemeConstantOverride("separation", 12); // clear gap between tile and name (owner); rows compacted (owner, 2026-11-23)
+            var hb = new HBoxContainer { CustomMinimumSize = new Vector2(0, CatalogRowHeight) };
+            hb.AddThemeConstantOverride("separation", CatalogRowSeparation); // clear gap between tile and name (owner); rows compacted (owner, 2026-11-23)
             var drag = new DragTile { Weapon = w.Id, Lab = this };
-            drag.MouseEntered += () => drag.Modulate = new Color(1.3f, 1.3f, 1.3f);
+            drag.MouseEntered += () => drag.Modulate = HoverBrighten;
             drag.MouseExited += () => drag.Modulate = Colors.White;
-            var tileCtl = TileVisual(w, 34, drag);
+            var tileCtl = TileVisual(w, CatalogTileSize, drag);
             tileCtl.SizeFlagsVertical = SizeFlags.ShrinkCenter; // the tile fits INSIDE the row band (owner)
             hb.AddChild(tileCtl);
             var texts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
-            texts.AddThemeConstantOverride("separation", 1);
+            texts.AddThemeConstantOverride("separation", RowTextSeparation);
             var nm = new Label { Text = w.Name, MouseFilter = MouseFilterEnum.Ignore };
-            nm.AddThemeFontSizeOverride("font_size", 13);
-            nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+            nm.AddThemeFontSizeOverride("font_size", WeaponNameFontSize);
+            nm.AddThemeColorOverride("font_color", TextPrimary);
             texts.AddChild(nm);
             var st = new Label { Text = StatsLine(w, full: true), MouseFilter = MouseFilterEnum.Ignore };
-            st.AddThemeFontSizeOverride("font_size", 11);
-            st.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
+            st.AddThemeFontSizeOverride("font_size", WeaponStatsFontSize);
+            st.AddThemeColorOverride("font_color", TextMuted);
             texts.AddChild(st);
             hb.AddChild(texts);
             rowsBox.AddChild(hb);
@@ -743,14 +878,14 @@ public partial class RiderLab : Control
         _pageEquipment = equipBox;
         // A plain row, like the weapons list (owner,
         // 2026-11-14): no box of its own.
-        var jhb = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) };
-        jhb.AddThemeConstantOverride("separation", 12);
+        var jhb = new HBoxContainer { CustomMinimumSize = new Vector2(0, CatalogRowHeight) };
+        jhb.AddThemeConstantOverride("separation", CatalogRowSeparation);
         // The TH tile carries the weapon icons' framed look
         // (owner, 2026-11-14): a bordered square, not a plain
         // button face. The Button itself is faceless - the
         // frame and the 'TH' are children that ignore the
         // mouse, so the press lands on the button.
-        _jetsTileBtn = new Button { CustomMinimumSize = new Vector2(34, 34) };
+        _jetsTileBtn = new Button { CustomMinimumSize = new Vector2(CatalogTileSize, CatalogTileSize) };
         _jetsTileBtn.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         _jetsTileBtn.TooltipText = "Fit or remove the thrusters";
         foreach (var bst in new[] { "normal", "hover", "pressed", "disabled", "focus" })
@@ -759,16 +894,16 @@ public partial class RiderLab : Control
         thFrame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         // Thin and square, like the weapon icons' own frames
         // (owner, 2026-11-14).
-        var thSb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.16f, 0.95f), BorderColor = new Color(0.62f, 0.68f, 0.75f, 0.95f) };
-        thSb.SetBorderWidthAll(1);
+        var thSb = new StyleBoxFlat { BgColor = TileFrameBackground, BorderColor = TileFrameBorder };
+        thSb.SetBorderWidthAll(ThinBorderWidth);
         thSb.SetCornerRadiusAll(0);
         thFrame.AddThemeStyleboxOverride("panel", thSb);
         var thLabel = new Label { Text = "TH", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
-        thLabel.AddThemeFontSizeOverride("font_size", 12);
-        thLabel.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
+        thLabel.AddThemeFontSizeOverride("font_size", TileFrameFontSize);
+        thLabel.AddThemeColorOverride("font_color", TextBright);
         thFrame.AddChild(thLabel);
         _jetsTileBtn.AddChild(thFrame);
-        _jetsTileBtn.MouseEntered += () => thFrame.Modulate = new Color(1.3f, 1.3f, 1.3f);
+        _jetsTileBtn.MouseEntered += () => thFrame.Modulate = HoverBrighten;
         _jetsTileBtn.MouseExited += () => thFrame.Modulate = Colors.White;
         _jetsTileBtn.Pressed += () =>
         {
@@ -778,14 +913,14 @@ public partial class RiderLab : Control
         };
         jhb.AddChild(_jetsTileBtn);
         var jtexts = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        jtexts.AddThemeConstantOverride("separation", 1);
+        jtexts.AddThemeConstantOverride("separation", RowTextSeparation);
         var jnm = new Label { Text = "Thrusters", MouseFilter = MouseFilterEnum.Ignore };
-        jnm.AddThemeFontSizeOverride("font_size", 13);
-        jnm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        jnm.AddThemeFontSizeOverride("font_size", WeaponNameFontSize);
+        jnm.AddThemeColorOverride("font_color", TextPrimary);
         jtexts.AddChild(jnm);
         _jetsLine = new Label { MouseFilter = MouseFilterEnum.Ignore };
-        _jetsLine.AddThemeFontSizeOverride("font_size", 11);
-        _jetsLine.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
+        _jetsLine.AddThemeFontSizeOverride("font_size", WeaponStatsFontSize);
+        _jetsLine.AddThemeColorOverride("font_color", TextMuted);
         jtexts.AddChild(_jetsLine);
         jhb.AddChild(jtexts);
         equipBox.AddChild(jhb);
@@ -799,23 +934,23 @@ public partial class RiderLab : Control
         mid.AddChild(paperdoll);
         foreach (var slot in Spec.Slots)
         {
-            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(215, 64) };
+            var panel = new SlotPanel { SlotId = slot.Id, Lab = this, CustomMinimumSize = new Vector2(SlotPanelMinWidth, SlotPanelMinHeight) };
             var sb = new StyleBoxFlat
             {
-                BgColor = new Color(0.06f, 0.085f, 0.12f, 0.72f), // translucent (owner): the rider shows through the slot backdrops
-                BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f), // Deploy's steel (owner, 2026-11-15)
-                ContentMarginLeft = 12, ContentMarginRight = 12,
-                ContentMarginTop = 10, ContentMarginBottom = 10
+                BgColor = SlotPanelBackground, // translucent (owner): the rider shows through the slot backdrops
+                BorderColor = SteelBorder, // Deploy's steel (owner, 2026-11-15)
+                ContentMarginLeft = SlotPanelMarginSide, ContentMarginRight = SlotPanelMarginSide,
+                ContentMarginTop = SlotPanelMarginVertical, ContentMarginBottom = SlotPanelMarginVertical
             };
-            sb.SetBorderWidthAll(1); // 1px like Deploy (owner, 2026-11-15)
-            sb.SetCornerRadiusAll(6);
+            sb.SetBorderWidthAll(ThinBorderWidth); // 1px like Deploy (owner, 2026-11-15)
+            sb.SetCornerRadiusAll(PanelCornerRadius);
             panel.AddThemeStyleboxOverride("panel", sb);
             var vb = new VBoxContainer();
             panel.AddChild(vb);
             var head = new Label { Text = $"{slot.Type} · max {slot.MaxWeight:F0}t" }; // slot names removed (owner): type + capacity only
             panel.HeadLabel = head;
-            head.AddThemeFontSizeOverride("font_size", 13); // smaller head: the panel's width is no longer forced by its title
-            head.AddThemeColorOverride("font_color", new Color(0.8f, 0.86f, 0.92f));
+            head.AddThemeFontSizeOverride("font_size", SlotHeadFontSize); // smaller head: the panel's width is no longer forced by its title
+            head.AddThemeColorOverride("font_color", SlotHeadText);
             vb.AddChild(head);
             // The weapon list scrolls inside the panel (owner,
             // round 30): the panel's height is fixed by the
@@ -826,7 +961,7 @@ public partial class RiderLab : Control
             panel.Scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
             vb.AddChild(panel.Scroll);
             panel.ListBox = new VBoxContainer();
-            panel.ListBox.AddThemeConstantOverride("separation", 4);
+            panel.ListBox.AddThemeConstantOverride("separation", SlotListSeparation);
             panel.ListBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             panel.Scroll.AddChild(panel.ListBox);
             var capturedSlot = slot;
@@ -868,29 +1003,29 @@ public partial class RiderLab : Control
         // is removed; Deploy sits on the right with the rider
         // selector just before it.
         var statusBox = new VBoxContainer();
-        statusBox.AddThemeConstantOverride("separation", 2);
+        statusBox.AddThemeConstantOverride("separation", StatusSeparation);
         root.AddChild(statusBox);
         // Identity under the list (owner, 2026-11-23): tonnage,
         // class and house, moved out of the title.
         var ident = new Label { Text = $"{Spec.Tonnage:F0}t  ·  {Spec.ClassLabel}  ·  HOUSE {Spec.House?.ToUpperInvariant()}" };
-        ident.AddThemeFontSizeOverride("font_size", 15);
-        ident.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        ident.AddThemeFontSizeOverride("font_size", StatusFontSize);
+        ident.AddThemeColorOverride("font_color", TextPrimary);
         statusBox.AddChild(ident);
         _tonnage = new Label();
-        _tonnage.AddThemeFontSizeOverride("font_size", 15);
-        _tonnage.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        _tonnage.AddThemeFontSizeOverride("font_size", StatusFontSize);
+        _tonnage.AddThemeColorOverride("font_color", TextPrimary);
         statusBox.AddChild(_tonnage);
         _speed = new Label();
-        _speed.AddThemeFontSizeOverride("font_size", 15);
-        _speed.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+        _speed.AddThemeFontSizeOverride("font_size", StatusFontSize);
+        _speed.AddThemeColorOverride("font_color", TextPrimary);
         statusBox.AddChild(_speed);
         // No standing instruction text (owner): the line starts
         // empty - it only speaks as action feedback via SetHint.
         _hint = new Label();
-        _hint.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.5f));
+        _hint.AddThemeColorOverride("font_color", AccentGold);
         root.AddChild(_hint);
         var btnRow = new HBoxContainer();
-        btnRow.AddThemeConstantOverride("separation", 12);
+        btnRow.AddThemeConstantOverride("separation", ButtonRowSeparation);
         root.AddChild(btnRow);
         // Back to the briefing / arena screen (owner) - only
         // when the front-end flow brought the player here; a
@@ -914,7 +1049,7 @@ public partial class RiderLab : Control
         }
         btnRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var start = new Button { Text = "Deploy" };
-        start.AddThemeFontSizeOverride("font_size", 18);
+        start.AddThemeFontSizeOverride("font_size", DeployFontSize);
         start.Pressed += () => OnStart?.Invoke();
         PadButton(start);
         LabBorder(start); // before the selector panel duplicates this face, so it inherits the border
@@ -927,8 +1062,8 @@ public partial class RiderLab : Control
         var selSb = (StyleBox)start.GetThemeStylebox("normal").Duplicate();
         if (selSb is StyleBoxFlat selFlat)
         {
-            selFlat.ContentMarginLeft += 8;
-            selFlat.ContentMarginRight += 8;
+            selFlat.ContentMarginLeft += SelectorPanelExtraMargin;
+            selFlat.ContentMarginRight += SelectorPanelExtraMargin;
         }
         selPanel.AddThemeStyleboxOverride("panel", selSb);
         selPanel.AddChild(RiderSelector("", true));
@@ -954,8 +1089,8 @@ public partial class RiderLab : Control
         {
             if (b.GetThemeStylebox(state).Duplicate() is StyleBoxFlat sb)
             {
-                sb.BorderColor = new Color(0.42f, 0.48f, 0.56f, 0.8f);
-                sb.SetBorderWidthAll(1);
+                sb.BorderColor = SteelBorder;
+                sb.SetBorderWidthAll(ThinBorderWidth);
                 b.AddThemeStyleboxOverride(state, sb);
             }
         }
@@ -984,8 +1119,8 @@ public partial class RiderLab : Control
         {
             if (b.GetThemeStylebox(state).Duplicate() is StyleBox sb)
             {
-                sb.ContentMarginLeft = 18; sb.ContentMarginRight = 18;
-                sb.ContentMarginTop = 11; sb.ContentMarginBottom = 11;
+                sb.ContentMarginLeft = ButtonPaddingSide; sb.ContentMarginRight = ButtonPaddingSide;
+                sb.ContentMarginTop = ButtonPaddingVertical; sb.ContentMarginBottom = ButtonPaddingVertical;
                 b.AddThemeStyleboxOverride(state, sb);
             }
         }
@@ -1001,11 +1136,11 @@ public partial class RiderLab : Control
             BgColor = bg,
             BorderColor = border,
             DrawCenter = drawCenter,
-            ContentMarginLeft = 6, ContentMarginRight = 6,
-            ContentMarginTop = 5, ContentMarginBottom = 5
+            ContentMarginLeft = LabPanelMarginSide, ContentMarginRight = LabPanelMarginSide,
+            ContentMarginTop = LabPanelMarginTop, ContentMarginBottom = LabPanelMarginBottom
         };
-        sb.SetBorderWidthAll(1); // 1px like Deploy (owner, 2026-11-15: all lab borders thin)
-        sb.SetCornerRadiusAll(4);
+        sb.SetBorderWidthAll(ThinBorderWidth); // 1px like Deploy (owner, 2026-11-15: all lab borders thin)
+        sb.SetCornerRadiusAll(SmallPanelCornerRadius);
         return sb;
     }
 
@@ -1014,24 +1149,24 @@ public partial class RiderLab : Control
     private Control RiderSelector(string role, bool playerSide)
     {
         var box = new HBoxContainer();
-        box.AddThemeConstantOverride("separation", 8);
+        box.AddThemeConstantOverride("separation", SelectorSeparation);
         if (!string.IsNullOrEmpty(role))
         {
             var lab = new Label { Text = role + ":", VerticalAlignment = VerticalAlignment.Center };
-            lab.AddThemeColorOverride("font_color", new Color(0.82f, 0.88f, 0.94f));
+            lab.AddThemeColorOverride("font_color", TextSubtle);
             box.AddChild(lab);
             // Wider gap between the role label and the selector
             // (owner, 2026-11-04).
-            box.AddChild(new Control { CustomMinimumSize = new Vector2(22, 0) });
+            box.AddChild(new Control { CustomMinimumSize = new Vector2(SelectorRoleGap, 0) });
         }
         var name = new Label
         {
-            CustomMinimumSize = new Vector2(170, 0),
+            CustomMinimumSize = new Vector2(SelectorNameWidth, 0),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
-        name.AddThemeFontSizeOverride("font_size", 18); // Deploy size (owner, 2026-11-15: the selector read smaller)
-        name.AddThemeColorOverride("font_color", new Color(0.95f, 0.97f, 1f));
+        name.AddThemeFontSizeOverride("font_size", SelectorFontSize); // Deploy size (owner, 2026-11-15: the selector read smaller)
+        name.AddThemeColorOverride("font_color", TextBright);
         int Index()
         {
             var id = playerSide ? PlayerSpecId : EnemySpecId;
@@ -1056,7 +1191,7 @@ public partial class RiderLab : Control
         {
             foreach (var bst in new[] { "normal", "hover", "pressed", "focus" })
                 ab.AddThemeStyleboxOverride(bst, new StyleBoxEmpty());
-            ab.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.80f, 0.35f));
+            ab.AddThemeColorOverride("font_hover_color", SelectorArrowHover);
         }
         name.Text = NameCase(RiderSpecs.All[Index()].Name);
         box.AddChild(prev);
@@ -1096,7 +1231,7 @@ public partial class RiderLab : Control
         if (_jetsTileBtn != null)
         {
             _jetsTileBtn.Disabled = !Spec.JumpCapable;
-            _jetsTileBtn.Modulate = Spec.JumpCapable ? Colors.White : new Color(1f, 1f, 1f, 0.45f);
+            _jetsTileBtn.Modulate = Spec.JumpCapable ? Colors.White : JetsDisabledTint;
             _jetsLine.Text = !Spec.JumpCapable ? "This chassis cannot fit thrusters"
                 : Loadout.JumpJets ? "Fitted - hold Space in the duel to fly" : "Not fitted";
         }
@@ -1123,17 +1258,17 @@ public partial class RiderLab : Control
                 {
                     var d = WeaponCatalog.ById(wid);
                     if (d == null) continue;
-                    textW = Mathf.Max(textW, font.GetStringSize(d.Name, HorizontalAlignment.Left, -1f, 13).X);
-                    textW = Mathf.Max(textW, font.GetStringSize(Metrics(d), HorizontalAlignment.Left, -1f, 11).X);
+                    textW = Mathf.Max(textW, font.GetStringSize(d.Name, HorizontalAlignment.Left, -1f, WeaponNameFontSize).X);
+                    textW = Mathf.Max(textW, font.GetStringSize(Metrics(d), HorizontalAlignment.Left, -1f, WeaponStatsFontSize).X);
                 }
-                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + 40f + 7f + textW + 7f + 38f + 4f;
+                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + FittedTileSize + FittedRowSeparation + textW + FittedRowSeparation + GroupButtonWidth + 4f;
             }
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)
             {
                 var empty = new Label { Text = "- EMPTY -" };
-                empty.AddThemeFontSizeOverride("font_size", 12);
-                empty.AddThemeColorOverride("font_color", new Color(0.55f, 0.5f, 0.45f));
+                empty.AddThemeFontSizeOverride("font_size", EmptySlotFontSize);
+                empty.AddThemeColorOverride("font_color", EmptySlotText);
                 panel.ListBox.AddChild(empty);
             }
             for (int i = 0; i < ids.Count; i++)
@@ -1142,15 +1277,15 @@ public partial class RiderLab : Control
                 if (def == null) continue;
                 int idx = i; PartId sid = id;
                 var rowPanel = new PanelContainer();
-                var rsb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.12f, 0.15f, 0.55f) };
-                rsb.SetCornerRadiusAll(4);
-                rsb.ContentMarginLeft = 5; rsb.ContentMarginRight = 5;
-                rsb.ContentMarginTop = 4; rsb.ContentMarginBottom = 4;
+                var rsb = new StyleBoxFlat { BgColor = FittedRowBackground };
+                rsb.SetCornerRadiusAll(SmallPanelCornerRadius);
+                rsb.ContentMarginLeft = FittedRowMarginSide; rsb.ContentMarginRight = FittedRowMarginSide;
+                rsb.ContentMarginTop = FittedRowMarginTop; rsb.ContentMarginBottom = FittedRowMarginBottom;
                 rowPanel.AddThemeStyleboxOverride("panel", rsb);
                 var rhb = new HBoxContainer();
-                rhb.AddThemeConstantOverride("separation", 7);
+                rhb.AddThemeConstantOverride("separation", FittedRowSeparation);
                 rowPanel.AddChild(rhb);
-                var tile = TileVisual(def, 40); // same size as the catalog tiles (owner: the fitted icons read smaller)
+                var tile = TileVisual(def, FittedTileSize); // same size as the catalog tiles (owner: the fitted icons read smaller)
                 tile.MouseFilter = MouseFilterEnum.Ignore;
                 rhb.AddChild(tile);
                 // ExpandFill is load-bearing: an HBox gives a
@@ -1160,8 +1295,8 @@ public partial class RiderLab : Control
                 // the metrics clipped at ~10 characters (measured).
                 var texts = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
                 var nm = new Label { Text = def.Name };
-                nm.AddThemeFontSizeOverride("font_size", 13);
-                nm.AddThemeColorOverride("font_color", new Color(0.93f, 0.96f, 0.98f));
+                nm.AddThemeFontSizeOverride("font_size", WeaponNameFontSize);
+                nm.AddThemeColorOverride("font_color", TextPrimary);
                 texts.AddChild(nm);
                 // No wrap (owner): a fitted weapon is exactly two
                 // lines - name, metrics. The label's full-width
@@ -1169,8 +1304,8 @@ public partial class RiderLab : Control
                 // ever capped narrower, ClipText shortens the line
                 // instead of wrapping it onto extra lines.
                 var mt = new Label { Text = Metrics(def), ClipText = true };
-                mt.AddThemeFontSizeOverride("font_size", 11);
-                mt.AddThemeColorOverride("font_color", new Color(0.62f, 0.68f, 0.75f));
+                mt.AddThemeFontSizeOverride("font_size", WeaponStatsFontSize);
+                mt.AddThemeColorOverride("font_color", TextMuted);
                 texts.AddChild(mt);
                 rhb.AddChild(texts);
                 // Firing-group pick (owner): the G-button cycles
@@ -1180,10 +1315,10 @@ public partial class RiderLab : Control
                 var grpBtn = new Button
                 {
                     Text = $"G{Loadout.GroupAt(sid, idx)}",
-                    CustomMinimumSize = new Vector2(38, 40),
+                    CustomMinimumSize = new Vector2(GroupButtonWidth, FittedTileSize),
                     TooltipText = "Firing group - click to change"
                 };
-                grpBtn.AddThemeFontSizeOverride("font_size", 12);
+                grpBtn.AddThemeFontSizeOverride("font_size", GroupButtonFontSize);
                 grpBtn.Pressed += () =>
                 {
                     int n = Loadout.GroupAt(sid, idx);
