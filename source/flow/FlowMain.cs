@@ -333,43 +333,43 @@ public partial class FlowMain : Node3D
         // player never picks a map type): the contract's ground
         // on the mission path, the arena's on the tournament
         // path. AOT_BIOME still overrides for harnesses.
-        if (string.IsNullOrEmpty(EnvVars.Biome))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Biome)))
             WorldConfig.Biome = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.Biome
                 : ArenaCatalog.Arenas[ArenaIndex].Biome;
         // The contract's building kit (City contracts only;
         // tournament arenas keep the procedural buildings).
         // AOT_CITYKIT, when set, was already applied at startup.
-        if (string.IsNullOrEmpty(EnvVars.CityKit))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.CityKit)))
             WorldConfig.CityKit = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.CityKit : -1;
-        if (string.IsNullOrEmpty(EnvVars.Flat))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Flat)))
             WorldConfig.FlatWorld = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.FlatTerrain;
-        if (string.IsNullOrEmpty(EnvVars.Snow))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Snow)))
             WorldConfig.SnowGround = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.SnowGround;
-        if (string.IsNullOrEmpty(EnvVars.Terraces))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Terraces)))
             WorldConfig.TerracedCity = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Terraces;
-        if (string.IsNullOrEmpty(EnvVars.Ascent))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Ascent)))
             WorldConfig.Ascent = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Ascent;
-        if (string.IsNullOrEmpty(EnvVars.Photoreal))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Photoreal)))
             WorldConfig.Photoreal = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Photoreal;
-        if (string.IsNullOrEmpty(EnvVars.Hills))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Hills)))
             WorldConfig.Hills = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Hills;
-        if (string.IsNullOrEmpty(EnvVars.Sky))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Sky)))
             WorldConfig.SkyTex = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTex
                 : ArenaCatalog.Arenas[ArenaIndex].SkyTex;
-        if (string.IsNullOrEmpty(EnvVars.SkyTile))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.SkyTile)))
             WorldConfig.SkyTile = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTile
                 : "";
-        if (string.IsNullOrEmpty(EnvVars.Stars))
+        if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Stars)))
             WorldConfig.SkyStars = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.ProceduralStars;
         FromFlow = true;
