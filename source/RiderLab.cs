@@ -24,7 +24,12 @@ public partial class RiderLab : Control
     private Label _hint;
     private Label _tonnage;
     private Label _tabName;
-    private bool _weaponsPage = true;
+    // The sidebar's two tabs (owner, 2026-11-27: an enum and
+    // named labels, not a bool and string literals).
+    private enum LabTab { Weapons, Equipment }
+    private const string WeaponsTabName = "Weapon";
+    private const string EquipmentTabName = "Equipment";
+    private LabTab _tab = LabTab.Weapons;
     private Control _pageWeapons, _pageEquipment;
     private Button _jetsTileBtn;
     private Label _jetsLine;
@@ -805,7 +810,7 @@ public partial class RiderLab : Control
         // the front-end's selector row cycling Weapon /
         // Equipment, the same control as the planet and
         // rider selectors. Either arrow flips the page.
-        var tabSlider = FlowUi.SelectorRow(out _tabName, TabSelectorFontSize, step => ShowLabTab(!_weaponsPage));
+        var tabSlider = FlowUi.SelectorRow(out _tabName, TabSelectorFontSize, step => ShowLabTab(_tab == LabTab.Weapons ? LabTab.Equipment : LabTab.Weapons));
         // The page name reads in Open Sans (owner, 2026-11-15:
         // the same-day Cinzel pass reverted at his word), and
         // the slider's arrows take the bottom bar's 1px frame.
@@ -937,7 +942,7 @@ public partial class RiderLab : Control
         jtexts.AddChild(_jetsLine);
         jhb.AddChild(jtexts);
         equipBox.AddChild(jhb);
-        ShowLabTab(true);
+        ShowLabTab(LabTab.Weapons);
 
         // -- Hardpoints (right): MW4-style paperdoll over the rider --
         var paperdoll = new PaperdollArea();
@@ -1111,16 +1116,16 @@ public partial class RiderLab : Control
 
     // Dev-flag support (--lab-tab=equip): open the sidebar
     // on the Equipment page for captures.
-    public void OpenOnEquipmentTab() => ShowLabTab(false);
+    public void OpenOnEquipmentTab() => ShowLabTab(LabTab.Equipment);
 
     // Sidebar pages (owner, 2026-11-14): Weapon / Equipment,
     // switched by the slider at the sidebar's head.
-    private void ShowLabTab(bool weapons)
+    private void ShowLabTab(LabTab tab)
     {
-        _weaponsPage = weapons;
-        if (_pageWeapons != null) _pageWeapons.Visible = weapons;
-        if (_pageEquipment != null) _pageEquipment.Visible = !weapons;
-        if (_tabName != null) _tabName.Text = weapons ? "Weapon" : "Equipment";
+        _tab = tab;
+        if (_pageWeapons != null) _pageWeapons.Visible = tab == LabTab.Weapons;
+        if (_pageEquipment != null) _pageEquipment.Visible = tab == LabTab.Equipment;
+        if (_tabName != null) _tabName.Text = tab == LabTab.Weapons ? WeaponsTabName : EquipmentTabName;
     }
 
     // Roomier inner padding for the bottom action chips (owner,
