@@ -34,6 +34,42 @@ public partial class MissionScreen : Control
     private const int DioramaWidth = 1152;
     private const int DioramaHeight = 648;
     private const float DioramaCameraFov = 62f;
+    // Diorama lighting: backdrop, ambient and the key light.
+    private static readonly Color DioramaBgColor = new(0.015f, 0.02f, 0.03f);
+    private static readonly Color DioramaAmbientColor = new(0.42f, 0.45f, 0.55f);
+    private const float DioramaAmbientEnergy = 0.85f;
+    private const float DioramaSunEnergy = 0.55f;
+    private static readonly Color DioramaSunColor = new(1f, 0.9f, 0.78f);
+    private const float DioramaDefaultRoughness = 0.9f; // the diorama Mat() helper's default
+    // Bar-scene factory values (the furniture placement is
+    // scene data; these are the shared piece recipes).
+    private const float StoolSeatRadius = 0.30f, StoolSeatHeight = 0.09f;
+    private const int StoolSeatSegments = 12;
+    private const float TableTopRadius = 0.62f, TableTopHeight = 0.06f;
+    private const int TableTopSegments = 14;
+    private const float HoloRadius = 0.42f;
+    private const int HoloSegments = 24, HoloRings = 12;
+    private const int HoloTextureSize = 256;
+    private const float HoloTextureSeed = 3.3f;
+    private static readonly Color HoloEmissionColor = new(0.6f, 0.75f, 1.0f);
+    private const float HoloEmissionEnergy = 0.7f;
+    private const float HoloSpinRate = 0.35f; // rad/s, the holo planet's rotation
+    private static readonly Color PendantLightColor = new(1f, 0.72f, 0.42f);
+    private const float PendantLightEnergy = 2.4f, PendantLightRange = 7f;
+    private const float PatronLabelPixelSize = 0.0042f;
+    private const int PatronLabelFontSize = 52, PatronLabelOutlineSize = 10;
+    private static readonly Color PatronLabelOutlineColor = new(0, 0, 0, 0.85f);
+    private const float PatronRingInnerRadius = 0.44f, PatronRingOuterRadius = 0.56f;
+    private const int PatronRingSegments = 24, PatronRingSegmentSides = 6;
+    private const float PatronRingEmissionEnergy = 1.4f;
+    private const float PatronClickRadius = 1.0f;
+    private const float PatronBodyRadius = 0.30f, PatronBodyHeight = 1.45f;
+    private const int PatronBodySegments = 10;
+    private const float PatronSuitRoughness = 0.9f;
+    private const float PatronHeadRadius = 0.20f;
+    private const int PatronHeadSegments = 12, PatronHeadRings = 8;
+    private static readonly Color PatronSkinColor = new(0.78f, 0.62f, 0.50f);
+    private const float PatronSkinRoughness = 0.7f;
 
     private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];
     private MissionDef Mission => Planet.Missions[FlowMain.MissionIndex];
@@ -279,10 +315,10 @@ public partial class MissionScreen : Control
             Environment = new Environment
             {
                 BackgroundMode = Environment.BGMode.Color,
-                BackgroundColor = new Color(0.015f, 0.02f, 0.03f),
+                BackgroundColor = DioramaBgColor,
                 AmbientLightSource = Environment.AmbientSource.Color,
-                AmbientLightColor = new Color(0.42f, 0.45f, 0.55f),
-                AmbientLightEnergy = 0.85f,
+                AmbientLightColor = DioramaAmbientColor,
+                AmbientLightEnergy = DioramaAmbientEnergy,
                 TonemapMode = Environment.ToneMapper.Aces
             }
         };
@@ -293,13 +329,13 @@ public partial class MissionScreen : Control
         cam.LookAt(new Vector3(0.3f, 1.0f, -2.6f), Vector3.Up);
         sv.AddChild(new DirectionalLight3D
         {
-            LightEnergy = 0.55f, LightColor = new Color(1f, 0.9f, 0.78f),
+            LightEnergy = DioramaSunEnergy, LightColor = DioramaSunColor,
             Rotation = new Vector3(-0.9f, 0.4f, 0f), ShadowEnabled = false
         });
 
         var root = new Node3D();
         sv.AddChild(root);
-        StandardMaterial3D Mat(Color c, float rough = 0.9f, float emis = 0f) => new StandardMaterial3D
+        StandardMaterial3D Mat(Color c, float rough = DioramaDefaultRoughness, float emis = 0f) => new StandardMaterial3D
         {
             AlbedoColor = c, Roughness = rough,
             EmissionEnabled = emis > 0f, Emission = c, EmissionEnergyMultiplier = emis
@@ -349,7 +385,7 @@ public partial class MissionScreen : Control
             Box(new Vector3(x, 0.28f, -1.55f), new Vector3(0.12f, 0.56f, 0.12f), brassMat);
             var seat = new MeshInstance3D
             {
-                Mesh = new CylinderMesh { TopRadius = 0.30f, BottomRadius = 0.30f, Height = 0.09f, RadialSegments = 12 },
+                Mesh = new CylinderMesh { TopRadius = StoolSeatRadius, BottomRadius = StoolSeatRadius, Height = StoolSeatHeight, RadialSegments = StoolSeatSegments },
                 MaterialOverride = Mat(new Color(0.45f, 0.16f, 0.12f), 0.8f),
                 Position = new Vector3(x, 0.60f, -1.55f)
             };
@@ -360,7 +396,7 @@ public partial class MissionScreen : Control
         {
             var top = new MeshInstance3D
             {
-                Mesh = new CylinderMesh { TopRadius = 0.62f, BottomRadius = 0.62f, Height = 0.06f, RadialSegments = 14 },
+                Mesh = new CylinderMesh { TopRadius = TableTopRadius, BottomRadius = TableTopRadius, Height = TableTopHeight, RadialSegments = TableTopSegments },
                 MaterialOverride = woodMat,
                 Position = new Vector3(tx, 0.78f, -0.6f)
             };
@@ -382,16 +418,16 @@ public partial class MissionScreen : Control
         // Holo planet over the right end of the bar.
         var holo = new MeshInstance3D
         {
-            Mesh = new SphereMesh { Radius = 0.42f, Height = 0.84f, RadialSegments = 24, Rings = 12 },
+            Mesh = new SphereMesh { Radius = HoloRadius, Height = HoloRadius * 2f, RadialSegments = HoloSegments, Rings = HoloRings },
             Position = new Vector3(3.6f, 1.75f, -2.6f)
         };
         var holoMat = new StandardMaterial3D
         {
-            AlbedoTexture = FlowUi.PlanetTexture(Planet, 256, 3.3f),
+            AlbedoTexture = FlowUi.PlanetTexture(Planet, HoloTextureSize, HoloTextureSeed),
             EmissionEnabled = true,
-            EmissionTexture = FlowUi.PlanetTexture(Planet, 256, 3.3f),
-            Emission = new Color(0.6f, 0.75f, 1.0f),
-            EmissionEnergyMultiplier = 0.7f,
+            EmissionTexture = FlowUi.PlanetTexture(Planet, HoloTextureSize, HoloTextureSeed),
+            Emission = HoloEmissionColor,
+            EmissionEnergyMultiplier = HoloEmissionEnergy,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
         };
         holo.MaterialOverride = holoMat;
@@ -403,9 +439,9 @@ public partial class MissionScreen : Control
             var omni = new OmniLight3D
             {
                 Position = lp,
-                LightColor = new Color(1f, 0.72f, 0.42f),
-                LightEnergy = 2.4f,
-                OmniRange = 7f
+                LightColor = PendantLightColor,
+                LightEnergy = PendantLightEnergy,
+                OmniRange = PendantLightRange
             };
             root.AddChild(omni);
             Box(lp + new Vector3(0f, 0.35f, 0f), new Vector3(0.3f, 0.12f, 0.3f), brassMat);
@@ -424,13 +460,13 @@ public partial class MissionScreen : Control
             var label = new Label3D
             {
                 Text = "",
-                PixelSize = 0.0042f,
-                FontSize = 52,
+                PixelSize = PatronLabelPixelSize,
+                FontSize = PatronLabelFontSize,
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 Shaded = false,
                 Modulate = FlowUi.Ink,
-                OutlineSize = 10,
-                OutlineModulate = new Color(0, 0, 0, 0.85f),
+                OutlineSize = PatronLabelOutlineSize,
+                OutlineModulate = PatronLabelOutlineColor,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Position = hp + new Vector3(0f, 2.12f, 0f),
                 Visible = false
@@ -438,7 +474,7 @@ public partial class MissionScreen : Control
             root.AddChild(label);
             var ring = new MeshInstance3D
             {
-                Mesh = new TorusMesh { InnerRadius = 0.44f, OuterRadius = 0.56f, Rings = 24, RingSegments = 6 },
+                Mesh = new TorusMesh { InnerRadius = PatronRingInnerRadius, OuterRadius = PatronRingOuterRadius, Rings = PatronRingSegments, RingSegments = PatronRingSegmentSides },
                 Position = new Vector3(hp.X, 0.04f, hp.Z),
                 Visible = false
             };
@@ -447,14 +483,14 @@ public partial class MissionScreen : Control
                 AlbedoColor = FlowUi.Gold,
                 EmissionEnabled = true,
                 Emission = FlowUi.Gold,
-                EmissionEnergyMultiplier = 1.4f,
+                EmissionEnergyMultiplier = PatronRingEmissionEnergy,
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
             };
             root.AddChild(ring);
             var area = new Area3D { Position = hp + new Vector3(0f, 1.15f, 0f) };
             var shape = new CollisionShape3D
             {
-                Shape = new SphereShape3D { Radius = 1.0f }
+                Shape = new SphereShape3D { Radius = PatronClickRadius }
             };
             area.AddChild(shape);
             int slot = _patronUi.Count;
@@ -475,7 +511,7 @@ public partial class MissionScreen : Control
 
     public override void _Process(double delta)
     {
-        if (_holo != null) _holo.RotateY((float)delta * 0.35f);
+        if (_holo != null) _holo.RotateY((float)delta * HoloSpinRate);
     }
 
     private void Patron(Node3D root, Vector3 pos, Color suit, float yaw)
@@ -485,15 +521,15 @@ public partial class MissionScreen : Control
         _figures.Add(holder);
         var body = new MeshInstance3D
         {
-            Mesh = new CapsuleMesh { Radius = 0.30f, Height = 1.45f, RadialSegments = 10 },
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = suit, Roughness = 0.9f },
+            Mesh = new CapsuleMesh { Radius = PatronBodyRadius, Height = PatronBodyHeight, RadialSegments = PatronBodySegments },
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = suit, Roughness = PatronSuitRoughness },
             Position = new Vector3(0f, 0.78f, 0f)
         };
         holder.AddChild(body);
         var head = new MeshInstance3D
         {
-            Mesh = new SphereMesh { Radius = 0.20f, Height = 0.40f, RadialSegments = 12, Rings = 8 },
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.78f, 0.62f, 0.50f), Roughness = 0.7f },
+            Mesh = new SphereMesh { Radius = PatronHeadRadius, Height = PatronHeadRadius * 2f, RadialSegments = PatronHeadSegments, Rings = PatronHeadRings },
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = PatronSkinColor, Roughness = PatronSkinRoughness },
             Position = new Vector3(0f, 1.68f, 0f)
         };
         holder.AddChild(head);

@@ -57,6 +57,9 @@ public partial class MapTypeScreen : Control
     private const int CardColumnSeparation = 14;
     private const int CardHeaderSeparation = 16;
     private const float CardIconSize = 56f;
+    private const float MinLayoutViewportWidth = 200f; // below this the card layout does not run
+    private const float CardRuleAlpha = 0.55f;         // the gold rule under a card's titles
+    private const int CardTitleSeparation = 3;         // title/subtitle stack spacing
     private const int CardTitleFontSize = 34;
     private const int CardSubtitleFontSize = 12;
     private const int CardDescFontSize = 15;
@@ -154,7 +157,7 @@ public partial class MapTypeScreen : Control
     private void Layout()
     {
         var vp = GetViewportRect().Size;
-        if (vp.X < 200f || _cardT == null) return;
+        if (vp.X < MinLayoutViewportWidth || _cardT == null) return;
         float cardW = Mathf.Clamp((vp.X - 2f * PageMarginHorizontal - CardGap) / 2f, CardMinWidth, CardMaxWidth);
         float cardH = Mathf.Clamp(vp.Y - CardVerticalAllowance, CardMinHeight, CardMaxHeight); // 250 while the bottom telemetry row stood; it was removed at the owner's word (2026-11-15)
         var cs = new Vector2(cardW, cardH);
@@ -251,7 +254,7 @@ public partial class MapTypeScreen : Control
             CustomMinimumSize = new Vector2(CardIconSize, CardIconSize)
         });
         var titles = new VBoxContainer();
-        titles.AddThemeConstantOverride("separation", 3);
+        titles.AddThemeConstantOverride("separation", CardTitleSeparation);
         titles.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         head.AddChild(titles);
         titles.AddChild(Serif(title, CardTitleFontSize, featured ? FlowUi.Gold : FlowUi.Ink, CinzelBold));
@@ -259,7 +262,7 @@ public partial class MapTypeScreen : Control
         titles.AddChild(subL);
         var rule = new ColorRect
         {
-            Color = new Color(FlowUi.GoldDim, 0.55f),
+            Color = new Color(FlowUi.GoldDim, CardRuleAlpha),
             CustomMinimumSize = new Vector2(0f, RuleHeight)
         };
         v.AddChild(rule);
@@ -377,6 +380,13 @@ public partial class CutPanel : Control
 // for Mission - the concept's two marks.
 public partial class CardIcon : Control
 {
+    // Stroke recipe shared by both marks (the radius
+    // fractions and dot sizes are each icon's own artwork).
+    private const float IconStrokeWidth = 1.5f;
+    private const float IconThinStrokeWidth = 1.25f;
+    private const int IconArcSegments = 48;
+    private const int IconInnerArcSegments = 32;
+
     public enum Kind { Compass, Target }
     public Kind IconKind;
     public Color Tint = Colors.White;
@@ -387,28 +397,28 @@ public partial class CardIcon : Control
         float r = Mathf.Min(Size.X, Size.Y) * 0.46f;
         if (IconKind == Kind.Compass)
         {
-            DrawArc(c, r, 0f, Mathf.Tau, 48, Tint, 1.5f, true);
+            DrawArc(c, r, 0f, Mathf.Tau, IconArcSegments, Tint, IconStrokeWidth, true);
             // Four long points, four short diagonals.
             for (int i = 0; i < 4; i++)
             {
                 float a = i * Mathf.Pi * 0.5f;
                 var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                DrawLine(c - dir * r * 1.02f, c + dir * r * 1.02f, Tint, 1.5f, true);
+                DrawLine(c - dir * r * 1.02f, c + dir * r * 1.02f, Tint, IconStrokeWidth, true);
                 float b = a + Mathf.Pi * 0.25f;
                 var d2 = new Vector2(Mathf.Cos(b), Mathf.Sin(b));
-                DrawLine(c, c + d2 * r * 0.55f, Tint, 1.25f, true);
+                DrawLine(c, c + d2 * r * 0.55f, Tint, IconThinStrokeWidth, true);
             }
             DrawCircle(c, 2.5f, Tint);
         }
         else
         {
-            DrawArc(c, r * 0.78f, 0f, Mathf.Tau, 48, Tint, 1.5f, true);
-            DrawArc(c, r * 0.30f, 0f, Mathf.Tau, 32, Tint, 1.25f, true);
+            DrawArc(c, r * 0.78f, 0f, Mathf.Tau, IconArcSegments, Tint, IconStrokeWidth, true);
+            DrawArc(c, r * 0.30f, 0f, Mathf.Tau, IconInnerArcSegments, Tint, IconThinStrokeWidth, true);
             for (int i = 0; i < 4; i++)
             {
                 float a = i * Mathf.Pi * 0.5f;
                 var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                DrawLine(c + dir * r * 0.52f, c + dir * r * 1.05f, Tint, 1.5f, true);
+                DrawLine(c + dir * r * 0.52f, c + dir * r * 1.05f, Tint, IconStrokeWidth, true);
             }
             DrawCircle(c, 2f, Tint);
         }

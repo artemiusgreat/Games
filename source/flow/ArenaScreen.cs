@@ -10,6 +10,8 @@ public partial class ArenaScreen : Control
     public FlowMain Flow;
 
     private const float ArenaScrollMinHeight = 132f;
+    private const int ArenaNameFontSize = 16;
+    private const int ArenaSelectorFontSize = 15;
     private const float DescScrollStretchRatio = 1.25f;
     private const float ArenaScrollStretchRatio = 0.8f;
     private const float ViewHolderMinWidth = 386f;
@@ -97,7 +99,7 @@ public partial class ArenaScreen : Control
 
         // Map section: displays the arena.
         sv.AddChild(FlowUi.NavHeading("Map", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
-        _nameLabel = FlowUi.NavHeading("", 16, FlowUi.Gold);
+        _nameLabel = FlowUi.NavHeading("", ArenaNameFontSize, FlowUi.Gold);
         sv.AddChild(_nameLabel);
         _subLabel = FlowUi.MakeLabel("", FlowUi.SubTextFontSize, FlowUi.Dim);
         sv.AddChild(_subLabel);
@@ -118,7 +120,7 @@ public partial class ArenaScreen : Control
 
         // Arena section: the chooser.
         sv.AddChild(FlowUi.NavHeading("Arena", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
-        sv.AddChild(FlowUi.SelectorRow(out _arenaName, 15, StepArena));
+        sv.AddChild(FlowUi.SelectorRow(out _arenaName, ArenaSelectorFontSize, StepArena));
         var arenaScroll = new ScrollContainer
         {
             CustomMinimumSize = new Vector2(0f, ArenaScrollMinHeight),

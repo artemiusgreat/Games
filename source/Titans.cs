@@ -38,6 +38,17 @@ public partial class Titans : Node3D
     private const float MarchRange = 130f; // mission approach distance past which the AI marches at full chassis speed (see PaceFor)
     private const float RunFactor = 3.0f; // SHIFT run mode: walk speed x3 (owner, 2026-10-29; was x1.65)
     private const float TurnRate = 1.35f; // A/D leg turn, rad/s (owner, 2026-11-11: 'keys A and D should rotate rider faster' - was 0.85)
+    private const float ShakeDecayRate = 1.6f; // camera shake bleeds off at this rate
+    private const int FxMinFrames = 3; // an FX node must survive at least this many rendered frames (see the _fx step)
+    private const float MaxSimStepSeconds = 0.09f; // walker substep: the largest simulated step
+    // Lab showroom camera (owner's tuned framing): centre
+    // height, view angle, distance and pan, scaled by the
+    // chassis over ReferenceChassisHeight like the chase cam.
+    private const float LabCamCenterHeight = 5.6f;
+    private const float LabCamViewAngle = 2.72f;
+    private const float LabCamDistance = 14.5f;
+    private const float LabCamHeight = 3.4f;
+    private const float LabCamPanAngle = 0.46f;
     private static float WorldBound => WorldConfig.WorldBound; // arena 115 (260 world); Mission front 915 (1900 world)
 
     // Scene look (owner: look-and-feel values live in named
@@ -56,6 +67,20 @@ public partial class Titans : Node3D
     private static readonly Color FogForestColor = new(0.63f, 0.73f, 0.84f); // matches the sky horizon by design
     private static readonly Color BarTrackColor = new(0.03f, 0.05f, 0.08f, 0.9f);
     private static readonly Color BarBorderColor = new(0.4f, 0.6f, 0.7f, 0.35f);
+
+    // Scene rig numbers (the _Ready build): sun angle/energy/
+    // shadow, the lab and hero fills, sky curves, ambient and
+    // fog, and the staged-build cover's canvas layer.
+    private const float SunPitchDeg = -48f, SunYawDeg = -35f;
+    private const float SunShadowOpacity = 0.55f, SunEnergy = 1.45f;
+    private const float SunShadowMaxDistance = 320f;
+    private const float LabFillEnergy = 0.85f;
+    private const float HeroFillEnergy = 0.30f, HeroFillRange = 24f;
+    private const float DuelSkyCurve = 0.09f, DuelGroundCurve = 0.08f;
+    private const float DuelAmbientEnergy = 0.34f;
+    private const float FogDensityMission = 0.00042f, FogDensityArena = 0.0011f;
+    private const float FogSunScatter = 0.25f;
+    private const int BuildCoverLayer = 10;
 
     private RiderWalker _player;
     private RiderWalker _enemy;
@@ -517,7 +542,7 @@ public partial class Titans : Node3D
 
         var sun = new DirectionalLight3D
         {
-            RotationDegrees = new Vector3(-48f, -35f, 0f),
+            RotationDegrees = new Vector3(SunPitchDeg, SunYawDeg, 0f),
             ShadowEnabled = true,
             // Shadow depth (owner, 2026-11-11 round 6:
             // 'rider's shadow looks too bright and
@@ -527,15 +552,15 @@ public partial class Titans : Node3D
             // fully lit. 0.55 restores real shade; the
             // under-deck stays readable on its ceiling
             // lights and ambient, not on leaked sunlight.
-            ShadowOpacity = 0.55f,
-            LightEnergy = 1.45f,
+            ShadowOpacity = SunShadowOpacity,
+            LightEnergy = SunEnergy,
             LightColor = SunColor
         };
-        sun.DirectionalShadowMaxDistance = 320f;
+        sun.DirectionalShadowMaxDistance = SunShadowMaxDistance;
         AddChild(sun);
         _labLight = new DirectionalLight3D
         {
-            LightEnergy = 0.85f,
+            LightEnergy = LabFillEnergy,
             LightColor = LabFillColor,
             ShadowEnabled = false,
             Visible = false
@@ -547,9 +572,9 @@ public partial class Titans : Node3D
             // shadowless pool flattened the rider - no dark
             // side anywhere. 0.30 keeps him readable in shade
             // while his shadow side can actually go dark.
-            LightEnergy = 0.30f,
+            LightEnergy = HeroFillEnergy,
             LightColor = HeroFillColor,
-            OmniRange = 24f,
+            OmniRange = HeroFillRange,
             ShadowEnabled = false
         };
         AddChild(_heroLight);
@@ -557,11 +582,11 @@ public partial class Titans : Node3D
         {
             SkyTopColor = DuelSkyTopColor,
             SkyHorizonColor = DuelSkyHorizonColor,
-            SkyCurve = 0.09f,
+            SkyCurve = DuelSkyCurve,
             SkyEnergyMultiplier = 1.0f,
             GroundBottomColor = DuelGroundBottomColor,
             GroundHorizonColor = DuelGroundHorizonColor,
-            GroundCurve = 0.08f
+            GroundCurve = DuelGroundCurve
         };
         var duelEnv = new Environment
             {
@@ -572,7 +597,7 @@ public partial class Titans : Node3D
                 // color (owner: 'riders look like solid default material').
                 // Lower ambient + stronger sun lets the texture and normal
                 // maps model the surface again; fog thinned to match.
-                AmbientLightEnergy = 0.34f,
+                AmbientLightEnergy = DuelAmbientEnergy,
                 ReflectedLightSource = Environment.ReflectionSource.Sky,
                 TonemapMode = Environment.ToneMapper.Aces,
                 FogEnabled = true,
@@ -582,8 +607,8 @@ public partial class Titans : Node3D
                     WorldConfig.BiomeKind.City => FogCityColor,
                     _ => FogForestColor
                 },
-                FogDensity = WorldConfig.IsMission ? 0.00042f : 0.0011f,
-                FogSunScatter = 0.25f
+                FogDensity = WorldConfig.IsMission ? FogDensityMission : FogDensityArena,
+                FogSunScatter = FogSunScatter
             };
         // A Photoreal contract takes the photo environment
         // tune in the standard scene too (owner, 2026-11-20,
@@ -602,7 +627,7 @@ public partial class Titans : Node3D
         // keeps sweeping while terrain, dressing and riders
         // stream in. _Process and _Input stay gated on _built
         // until the last chunk lands.
-        _buildCover = new CanvasLayer { Layer = 10 };
+        _buildCover = new CanvasLayer { Layer = BuildCoverLayer };
         var buildBg = new ColorRect { Color = FlowUi.LoadingBg };
         buildBg.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         _buildCover.AddChild(buildBg);
@@ -910,15 +935,15 @@ public partial class Titans : Node3D
             p.Step(dt, _hit);
             if (p.Dead) { _shots.RemoveAt(i); _lastPuff.Remove(p); p.QueueFree(); }
         }
-        _shake = Mathf.Max(_shake - dt * 1.6f, 0f);
+        _shake = Mathf.Max(_shake - dt * ShakeDecayRate, 0f);
         for (int i = _dmgNums.Count - 1; i >= 0; i--)
         {
             var (l, life0) = _dmgNums[i];
             float life = life0 - dt;
             if (life <= 0f) { l.QueueFree(); _dmgNums.RemoveAt(i); continue; }
-            l.GlobalPosition += Vector3.Up * 1.7f * dt;
+            l.GlobalPosition += Vector3.Up * DmgNumberRiseSpeed * dt;
             var m = l.Modulate;
-            m.A = Mathf.Clamp(life / 0.9f, 0f, 1f);
+            m.A = Mathf.Clamp(life / DmgNumberLifeSeconds, 0f, 1f);
             l.Modulate = m;
             _dmgNums[i] = (l, life);
         }
@@ -932,7 +957,7 @@ public partial class Titans : Node3D
                 if (mi.MaterialOverride is StandardMaterial3D sm)
                 {
                     var c = sm.AlbedoColor;
-                    sm.AlbedoColor = new Color(c.R, c.G, c.B, 0.45f * (life / 0.4f));
+                    sm.AlbedoColor = new Color(c.R, c.G, c.B, PuffFadePeakAlpha * (life / PuffLife));
                 }
                 _puffs[i] = (mi, life);
             }
@@ -942,7 +967,7 @@ public partial class Titans : Node3D
             var (mi, vel, life) = _sparks[i];
             life -= dt;
             if (life <= 0f) { mi.QueueFree(); _sparks.RemoveAt(i); continue; }
-            vel.Y -= 3.4f * dt;
+            vel.Y -= SparkGravity * dt;
             mi.GlobalPosition += vel * dt;
             _sparks[i] = (mi, vel, life);
         }
@@ -955,7 +980,7 @@ public partial class Titans : Node3D
             // would be freed before ever being drawn.
             float life = _fx[i].Life - dt;
             int frames = _fx[i].Frames + 1;
-            if (life <= 0f && frames >= 3) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
+            if (life <= 0f && frames >= FxMinFrames) { _fx[i].Node.QueueFree(); _fx.RemoveAt(i); }
             else _fx[i] = (_fx[i].Node, life, frames);
         }
         if (!_test && !_terrainTest && !_photoTest && ((!_weaponsTest && !_breakTest) || _enemyMayFire)) UpdateEnemyGunnery(dt);
@@ -964,7 +989,7 @@ public partial class Titans : Node3D
 
     private static void StepWalker(RiderWalker w, double delta)
     {
-        int n = Mathf.Max(1, Mathf.CeilToInt((float)delta / 0.09f));
+        int n = Mathf.Max(1, Mathf.CeilToInt((float)delta / MaxSimStepSeconds));
         double h = delta / n;
         for (int i = 0; i < n; i++) w.StepFrame(h);
     }
@@ -1130,7 +1155,7 @@ public partial class Titans : Node3D
                 if (_warmStart == 0) _warmStart = Time.GetTicksMsec();
                 _warmPoseFrames++;
                 ulong warmEl = Time.GetTicksMsec() - _warmStart;
-                var wc = _player.RootPos + Vector3.Up * 5.6f;
+                var wc = _player.RootPos + Vector3.Up * LabCamCenterHeight;
                 // The poses ride on the player's position (owner:
                 // "riders are not visible in the lab"): framed on
                 // the arena origin, in a mission world they stared
@@ -1173,17 +1198,17 @@ public partial class Titans : Node3D
                 if (warmEl > sliceEnd && _warmPoseFrames >= 2) { _warmPose++; _warmPoseFrames = 0; }
                 return;
             }
-            float labK = _playerSpec.Height / 13f; // showroom framing scales with the chassis, like the chase cam
-            var center = _player.RootPos + Vector3.Up * (5.6f * labK);
+            float labK = _playerSpec.Height / ReferenceChassisHeight; // showroom framing scales with the chassis, like the chase cam
+            var center = _player.RootPos + Vector3.Up * (LabCamCenterHeight * labK);
             var fwd = new Vector3(Mathf.Sin(_player.LegsYaw), 0f, Mathf.Cos(_player.LegsYaw));
             // Static showroom camera (owner, 2026-11-25): the
             // slow sinusoidal sway that used to ride this angle
             // is gone - the frame is fixed, straight and level
             // with the horizon (LookAt on world Up, no roll).
-            var viewDir = fwd.Rotated(Vector3.Up, 2.72f); // mostly in front of the rider, slightly to its side
-            _cam.GlobalPosition = center + viewDir * (14.5f * labK) + Vector3.Up * (3.4f * labK);
+            var viewDir = fwd.Rotated(Vector3.Up, LabCamViewAngle); // mostly in front of the rider, slightly to its side
+            _cam.GlobalPosition = center + viewDir * (LabCamDistance * labK) + Vector3.Up * (LabCamHeight * labK);
             _cam.LookAt(center, Vector3.Up);
-            _cam.RotateY(0.46f); // pan in camera space: rider right, centered under its slot panels (owner, adjusted twice at his word)
+            _cam.RotateY(LabCamPanAngle); // pan in camera space: rider right, centered under its slot panels (owner, adjusted twice at his word)
             // Deck alignment (owner, 2026-11-25): the lab
             // stand's plate grid keeps its local X parallel
             // to the camera's right vector - the transverse

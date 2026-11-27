@@ -26,6 +26,7 @@ public partial class TeamSelectScreen : Control
     private const float TeamsPanelStretchRatio = 0.85f;
     private const float RidersPanelStretchRatio = 1.15f;
     private const float TeamRowHeight = 46f;
+    private const float TeamRowBorderWidth = 0.95f;
     private const int TeamRowMarginLeft = 14;
     private const int TeamRowMarginRight = 6;
     private const int TeamRowMarginVertical = 4;
@@ -214,7 +215,7 @@ public partial class TeamSelectScreen : Control
             bool selected = t == sel;
             var rowPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, TeamRowHeight) };
             var rowSb = FlowUi.Panel(
-                selected ? SelectedTeamFill : FlowUi.NavySoft, 0.95f);
+                selected ? SelectedTeamFill : FlowUi.NavySoft, TeamRowBorderWidth);
             // Left padding matches the row's effective
             // vertical padding (owner, 2026-11-15): the
             // 46px row centres its ~19px line, leaving

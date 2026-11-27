@@ -12,6 +12,13 @@ public partial class Titans
     // chassis lacks the part or it is off-screen: the lab falls
     // back to its fractional anchors then.
     private const float LabAnchorSlack = 40f; // px past the viewport edge an anchor may sit and still anchor a panel
+    private const float PelvisHeightFraction = 0.45f; // the paperdoll anchors at this fraction of the rider's height (the pelvis)
+    // Lab stand factory: floor plate and sky dome.
+    private const float LabFloorSize = 160f;
+    private const float LabPlateRoughness = 0.75f, LabPlateMetallic = 0.15f;
+    private const float LabPlateUvScale = 4f, LabPlateLift = 0.02f;
+    private const float LabDomeRadius = 120f, LabDomeLift = 2f;
+    private const int LabDomeSegments = 32, LabDomeRings = 16;
 
     private Vector2? ProjectSlotAnchor(PartId slotId)
     {
@@ -32,7 +39,7 @@ public partial class Titans
     private Vector2? ProjectBodyCenter()
     {
         if (_player == null || _cam == null) return null;
-        var w = _player.RootPos + Vector3.Up * (_playerSpec.Height * 0.45f);
+        var w = _player.RootPos + Vector3.Up * (_playerSpec.Height * PelvisHeightFraction);
         if (_cam.IsPositionBehind(w)) return null;
         var sp = _cam.UnprojectPosition(w);
         var vp = GetViewport().GetVisibleRect().Size;
@@ -164,32 +171,32 @@ public partial class Titans
         // colour.
         var disc = new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(160f, 160f) },
+            Mesh = new PlaneMesh { Size = new Vector2(LabFloorSize, LabFloorSize) },
             MaterialOverride = new StandardMaterial3D
             {
-                AlbedoTexture = PlateTexture(), Roughness = 0.75f, Metallic = 0.15f,
+                AlbedoTexture = PlateTexture(), Roughness = LabPlateRoughness, Metallic = LabPlateMetallic,
                 DisableFog = true,
                 // Tiled 4x (owner, 2026-11-25): one stretch of
                 // the plate sheet over 160u read overstretched
                 // and cheap - tiled, the plates are 2.5u and
                 // the texel density is 4x (Uv1Scale alone
                 // tiles here, as on the PhotoEnv materials).
-                Uv1Scale = new Vector3(4f, 4f, 1f)
+                Uv1Scale = new Vector3(LabPlateUvScale, LabPlateUvScale, 1f)
             },
-            Position = new Vector3(c.X, c.Y + 0.02f, c.Z)
+            Position = new Vector3(c.X, c.Y + LabPlateLift, c.Z)
         };
         _labDeck = disc;
         _labStand.AddChild(disc);
         var dome = new MeshInstance3D
         {
-            Mesh = new SphereMesh { Radius = 120f, Height = 240f, RadialSegments = 32, Rings = 16 },
+            Mesh = new SphereMesh { Radius = LabDomeRadius, Height = LabDomeRadius * 2f, RadialSegments = LabDomeSegments, Rings = LabDomeRings },
             MaterialOverride = new StandardMaterial3D
             {
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
                 AlbedoTexture = SkyGradientTexture(), DisableFog = true,
                 CullMode = BaseMaterial3D.CullModeEnum.Back
             },
-            Position = new Vector3(c.X, c.Y + 2f, c.Z),
+            Position = new Vector3(c.X, c.Y + LabDomeLift, c.Z),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         _labStand.AddChild(dome);

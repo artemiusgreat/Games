@@ -37,6 +37,13 @@ public partial class Titans
     private const float RunStepSpeedThreshold = 7f;      // gait speed that counts as running, for step sounds
     private const float PlayerStepDb = -1f, NpcStepDb = -3f, RunStepDbBonus = 2.5f, RunStepPitch = 0.9f;
     private const float ThrusterMaxDistance = 260f, ThrusterVolumeDb = -13f;
+    private const float ThrusterSoundHeight = 2f;        // thruster loop rides this far above the rider's root
+    // Servo-bed activity mix: ground speed and torso yaw rate,
+    // each normalized by its scale and weighted; at or below
+    // the idle threshold the bed drops to the silent floor.
+    private const float ServoSpeedScale = 4.2f, ServoSpeedWeight = 0.75f;
+    private const float ServoYawScale = 1.2f, ServoYawWeight = 0.6f;
+    private const float ServoIdleThreshold = 0.02f;
     private float _windDb = AmbienceSilentDb, _servoDb = AmbienceSilentDb, _prevTorsoYaw;
     private readonly System.Collections.Generic.List<AudioStreamPlayer3D> _sfxPool = new();
     private readonly System.Collections.Generic.List<bool> _sfxProtected = new();
@@ -143,11 +150,11 @@ public partial class Titans
         float activity = 0f;
         if (!_labOpen && _player != null && !_playerDead)
         {
-            activity = Mathf.Clamp(_playerVel.Length() / 4.2f, 0f, 1f) * 0.75f
-                     + Mathf.Clamp(yawRate / 1.2f, 0f, 1f) * 0.6f;
+            activity = Mathf.Clamp(_playerVel.Length() / ServoSpeedScale, 0f, 1f) * ServoSpeedWeight
+                     + Mathf.Clamp(yawRate / ServoYawScale, 0f, 1f) * ServoYawWeight;
             activity = Mathf.Clamp(activity, 0f, 1f);
         }
-        float servoTarget = activity <= 0.02f ? AmbienceSilentDb : ServoBaseDb + activity * ServoActivityDb;
+        float servoTarget = activity <= ServoIdleThreshold ? AmbienceSilentDb : ServoBaseDb + activity * ServoActivityDb;
         _servoDb = Mathf.MoveToward(_servoDb, servoTarget, dt * ServoFadeRate);
         _servoPlayer.VolumeDb = _servoDb;
         _servoPlayer.PitchScale = ServoPitchBase + ServoPitchRange * activity;
@@ -251,7 +258,7 @@ public partial class Titans
                     AddChild(p);
                     _thrusterPlayers[w] = p;
                 }
-                p.GlobalPosition = w.RootPos + Vector3.Up * 2f;
+                p.GlobalPosition = w.RootPos + Vector3.Up * ThrusterSoundHeight;
                 if (!p.Playing) p.Play();
             }
             else if (_thrusterPlayers.TryGetValue(w, out var p) && p.Playing)

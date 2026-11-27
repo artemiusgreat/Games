@@ -14,6 +14,7 @@ public partial class PlanetScreen : Control
 
     private const float MapMinSize = 420f;
     private const float MapPanelStretchRatio = 1.3f;
+    private const int PlanetSelectorFontSize = 16;
 
     private Label _nameLabel, _subLabel, _descLabel;
     private UniverseMap _map;
@@ -80,7 +81,7 @@ public partial class PlanetScreen : Control
         sv.AddThemeConstantOverride("separation", FlowUi.PanelColumnSeparation);
         side.AddChild(sv);
         sv.AddChild(FlowUi.NavHeading("Planet", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
-        sv.AddChild(FlowUi.SelectorRow(out _nameLabel, 16, StepPlanet));
+        sv.AddChild(FlowUi.SelectorRow(out _nameLabel, PlanetSelectorFontSize, StepPlanet));
         _subLabel = FlowUi.MakeLabel("", FlowUi.SubTextFontSize, FlowUi.Dim);
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer

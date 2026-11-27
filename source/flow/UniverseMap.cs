@@ -26,6 +26,13 @@ public partial class UniverseMap : Control
     private const float HitDistanceFraction = 0.035f;
     private const float DecoNodeRadius = 3f;
     private const float RouteWidth = 1.5f;
+    private const float RouteHotAlpha = 0.75f;       // a route touching the selected planet brightens to this
+    private const float SelectedHaloAlpha = 0.16f;
+    private const int RingSegments = 40;             // arc smoothness for every node ring
+    private const float HoverRingAlpha = 0.7f;
+    private const float NodeBodyLerp = 0.55f;        // node body: base colour lerped this far toward the land colour
+    private const float NodeHighlightOffset = 4f;    // the polar highlight sits this far up-left of the centre
+    private const float NodeHighlightAlpha = 0.5f;
     private const float RouteHotWidth = 2f;
     private const float NodeRadius = 12f;
     private const float NodeHighlightRadius = 5f;
@@ -132,7 +139,7 @@ public partial class UniverseMap : Control
         {
             bool hot = i == Selected || j == Selected;
             DrawLine(NodePos(i), NodePos(j),
-                hot ? new Color(FlowUi.Gold, 0.75f) : RouteColor,
+                hot ? new Color(FlowUi.Gold, RouteHotAlpha) : RouteColor,
                 hot ? RouteHotWidth : RouteWidth, true);
         }
         foreach (var (pl, dc) in PlanetLinks)
@@ -147,20 +154,20 @@ public partial class UniverseMap : Control
             bool hov = i == _hover;
             if (sel)
             {
-                DrawCircle(ctr, SelectedHaloRadius, new Color(FlowUi.Gold, 0.16f));
-                DrawArc(ctr, SelectedRingRadius, 0f, Mathf.Tau, 40, FlowUi.Gold, SelectedRingWidth, true);
+                DrawCircle(ctr, SelectedHaloRadius, new Color(FlowUi.Gold, SelectedHaloAlpha));
+                DrawArc(ctr, SelectedRingRadius, 0f, Mathf.Tau, RingSegments, FlowUi.Gold, SelectedRingWidth, true);
             }
             else if (hov)
-                DrawArc(ctr, HoverRingRadius, 0f, Mathf.Tau, 40, new Color(FlowUi.Ink, 0.7f), HoverRingWidth, true);
-            var body = p.BaseColor.Lerp(p.LandColor, 0.55f);
+                DrawArc(ctr, HoverRingRadius, 0f, Mathf.Tau, RingSegments, new Color(FlowUi.Ink, HoverRingAlpha), HoverRingWidth, true);
+            var body = p.BaseColor.Lerp(p.LandColor, NodeBodyLerp);
             DrawCircle(ctr, NodeRadius, body);
-            DrawCircle(ctr + new Vector2(-4f, -4f), NodeHighlightRadius, new Color(p.PolarColor, 0.5f));
+            DrawCircle(ctr + new Vector2(-NodeHighlightOffset, -NodeHighlightOffset), NodeHighlightRadius, new Color(p.PolarColor, NodeHighlightAlpha));
             // Border ring (owner, 2026-11-25, screenshot of a
             // node): the old 1.5px Steel ring (0.5 grey at 0.6
             // alpha) washed out against the photograph - the
             // ring is now thicker and brighter on every planet:
             // near-white Ink at full alpha, Gold when selected.
-            DrawArc(ctr, NodeBorderRadius, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Ink, sel ? NodeSelectedBorderWidth : NodeBorderWidth, true);
+            DrawArc(ctr, NodeBorderRadius, 0f, Mathf.Tau, RingSegments, sel ? FlowUi.Gold : FlowUi.Ink, sel ? NodeSelectedBorderWidth : NodeBorderWidth, true);
             // Text shadow under the name lines (owner,
             // 2026-11-25): over the photograph's bright
             // nebulae the bare labels washed out - a soft

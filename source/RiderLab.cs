@@ -115,6 +115,9 @@ public partial class RiderLab : Control
     private const int WeaponNameFontSize = 13;
     private const int WeaponStatsFontSize = 11;
     private const float FittedTileSize = 40f;
+    // NeedW's fixed parts: panel margins, the scroll's
+    // scrollbar, and a trailing slack.
+    private const float NeedWMargins = 24f, NeedWScrollbar = 14f, NeedWTrailingSlack = 4f;
     private const int FittedRowSeparation = 7;
     private const float GroupButtonWidth = 38f;
     private const int GroupButtonFontSize = 12;
@@ -364,6 +367,7 @@ public partial class RiderLab : Control
         private const float PaperdollRowPitch = 48f;
         private const float PaperdollRowGap = 4f;
         private const float MinScrollHeight = 20f;
+        private const float OneRowPanelOverhead = 41f; // a one-row panel's non-scroll height (head + chrome): the scroll gets the rest
         private const float MinPanelWidth = 200f;
         private const float PanelWidthMargin = 6f;
         private const float NearCenterDistance = 14f;
@@ -479,7 +483,7 @@ public partial class RiderLab : Control
                 int rowsVisible = avail >= TwoRowPanelHeight ? 2 : 1;
                 float scrollH = rowsVisible * PaperdollRowPitch + (rowsVisible - 1) * PaperdollRowGap; // a fitted row = the 40px tile + the row panel's margins
                 float panelH = rowsVisible == 2 ? TwoRowPanelHeight : Mathf.Min(OneRowPanelHeight, avail);
-                if (rowsVisible == 1 && panelH < OneRowPanelHeight) scrollH = Mathf.Max(MinScrollHeight, panelH - 41f);
+                if (rowsVisible == 1 && panelH < OneRowPanelHeight) scrollH = Mathf.Max(MinScrollHeight, panelH - OneRowPanelOverhead);
                 foreach (var (id, panel) in _panels)
                     if (_live.ContainsKey(id))
                     {
@@ -1261,7 +1265,7 @@ public partial class RiderLab : Control
                     textW = Mathf.Max(textW, font.GetStringSize(d.Name, HorizontalAlignment.Left, -1f, WeaponNameFontSize).X);
                     textW = Mathf.Max(textW, font.GetStringSize(Metrics(d), HorizontalAlignment.Left, -1f, WeaponStatsFontSize).X);
                 }
-                panel.NeedW = ids.Count == 0 ? 0f : 24f + 14f + FittedTileSize + FittedRowSeparation + textW + FittedRowSeparation + GroupButtonWidth + 4f;
+                panel.NeedW = ids.Count == 0 ? 0f : NeedWMargins + NeedWScrollbar + FittedTileSize + FittedRowSeparation + textW + FittedRowSeparation + GroupButtonWidth + NeedWTrailingSlack;
             }
             foreach (var child in panel.ListBox.GetChildren()) child.QueueFree();
             if (ids.Count == 0)

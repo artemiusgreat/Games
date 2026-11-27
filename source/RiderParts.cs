@@ -651,7 +651,7 @@ public sealed class RiderParts
                 for (int k = 0; k < 4; k++)
                 {
                     float w = weights[v * 4 + k];
-                    if (w > 0.01f)
+                    if (w > MinBindWeight)
                     {
                         int b = bones[v * 4 + k];
                         tally[b] = (tally.TryGetValue(b, out var c) ? c : 0) + w;
@@ -836,6 +836,43 @@ public sealed class RiderParts
     }
 
     private static readonly Color SocketPlateColor = new(0.05f, 0.05f, 0.06f); // the dark socket plate
+    private const float SocketPlateRoughness = 0.92f, SocketPlateMetallic = 0.25f;
+    // Socket-plug geometry guards and tolerances.
+    private const float RimWeldFraction = 0.002f;    // rim welding quantum, as a fraction of the pod radius
+    private const float RimWeldQuantumMin = 1e-6f;   // ...and its absolute floor
+    private const float RimDedupFraction = 0.015f;   // rim points closer than this fraction of the pod radius merge
+    private const int MinSocketRimPoints = 3;        // a fan needs at least this many rim points
+    private const int MinFanIndices = 3;             // ...and at least one whole triangle
+    private const float SocketAxisEpsilon = 1e-5f;   // plug axis degeneracy guard
+    private const float SocketUpDotMax = 0.9f;       // |axis.Y| below this keeps world up as the fan reference
+    private const float SocketFanEpsilon = 1e-8f;    // fan area-vector degeneracy guard
+    private const float SocketTriEpsilon = 1e-9f;    // single fan-triangle degeneracy guard
+    private const float MinBindWeight = 0.01f;       // skin weights below this don't count toward a mesh's dominant bone
+    // Ray-vs-mesh guards.
+    private const float RayMinT = 0.001f;            // hits at or below this distance are the ray's own origin
+    private const float RayParallelEpsilon = 1e-8f;  // ray/plane parallelism guard
+    // The wreck deformation recipe (crush + tilt, applied
+    // in each mesh's own space) and its audit bound.
+    private const float WreckTiltRad = 0.085f, WreckPitchRad = 0.045f;
+    private const float WreckScaleXZ = 1.07f, WreckScaleY = 0.92f;
+    private const float WreckAuditMaxDisp = 0.3f;    // a wreck may move a mesh's centre at most this far
+    // Debris launch and physics.
+    private const float DebrisMinAwaySq = 0.25f;     // squared distance below which the break direction falls back to facing
+    private const float DebrisLaunchAway = 2.0f, DebrisLaunchUp = 2.8f;
+    private const float DebrisLaunchAngSpeed = 1.6f;
+    private const float DebrisGravity = 20f;
+    private const float DebrisSubstepSeconds = 1f / 120f; // debris integrates at the gait's rate
+    private const float DebrisMinAngSpeed = 0.02f;   // tumble below this is not integrated
+    private const float DebrisContactSkin = 0.002f;  // lowest-corner contact tolerance
+    private const float DebrisBounceMinSpeed = 1.6f; // impacts slower than this settle instead of bouncing
+    private const float DebrisRestitution = 0.22f;
+    private const float DebrisBounceFriction = 0.55f; // horizontal velocity kept through a bounce
+    private const float DebrisBounceAngDamp = 0.45f;  // tumble kept through a bounce
+    private const float FootPitchBand = 0.5f;        // foot verts within this of the ankle plane are neither toe nor heel
+    private const float SlopeSampleStep = 2.0f;      // terrain-normal sampling distance for the slope conform
+    private const float SlopeConformMinNormalY = 0.94f; // normals above this (~20 deg or gentler) keep the corner rest
+    private const float ConformAxisEpsilon = 1e-8f;  // conform rotation-axis degeneracy guard
+    private const float ConformDropEpsilon = 0.001f; // re-seat drops at or below this are skipped
     private static StandardMaterial3D _socketMat;
 
     // Cap the wound a carved pod leaves in the core piece. The cut
@@ -887,7 +924,7 @@ public sealed class RiderParts
         List<(List<int> Comp, Vector3 Cen)> LoopsOf(Godot.Collections.Array arr, int[] idx)
         {
             var vs = arr[(int)Mesh.ArrayType.Vertex].AsVector3Array();
-            float q = Mathf.Max(podR * 0.002f, 1e-6f);
+            float q = Mathf.Max(podR * RimWeldFraction, RimWeldQuantumMin);
             var keyOf = new (int, int, int)[vs.Length];
             var repOf = new Dictionary<(int, int, int), int>();
             for (int i = 0; i < vs.Length; i++)
@@ -972,7 +1009,7 @@ public sealed class RiderParts
         // The two rims pass through nearly the same points; drop
         // near-duplicates or the fan fills with sliver triangles.
         // Threshold relative to the pod's own radius (scale-free).
-        float dd = podR * 0.015f;
+        float dd = podR * RimDedupFraction;
         var dedup = new List<(Vector3 Pos, Godot.Collections.Array Arr, int Src, int VertCount)>();
         foreach (var r in rim)
         {
@@ -981,15 +1018,15 @@ public sealed class RiderParts
             if (!dup) dedup.Add(r);
         }
         rim = dedup;
-        if (rim.Count < 3) { Dbg.Print($"{_riderId} SOCKET skip: rim {rim.Count} after dedupe"); return; }
+        if (rim.Count < MinSocketRimPoints) { Dbg.Print($"{_riderId} SOCKET skip: rim {rim.Count} after dedupe"); return; }
 
         var cen = Vector3.Zero;
         foreach (var r in rim) cen += r.Pos;
         cen /= rim.Count;
         var axis = podC - cen;
-        if (axis.Length() < 1e-5f) { Dbg.Print($"{_riderId} SOCKET skip: degenerate axis"); return; }
+        if (axis.Length() < SocketAxisEpsilon) { Dbg.Print($"{_riderId} SOCKET skip: degenerate axis"); return; }
         axis = axis.Normalized();
-        var u = (Mathf.Abs(axis.Y) < 0.9f ? Vector3.Up : Vector3.Right).Cross(axis).Normalized();
+        var u = (Mathf.Abs(axis.Y) < SocketUpDotMax ? Vector3.Up : Vector3.Right).Cross(axis).Normalized();
         var w = axis.Cross(u);
         rim.Sort((a, b) =>
         {
@@ -1007,7 +1044,7 @@ public sealed class RiderParts
         var area = Vector3.Zero;
         for (int i = 0; i < n; i++)
             area += (verts[i] - cen).Cross(verts[(i + 1) % n] - cen);
-        if (area.Length() < 1e-8f) { Dbg.Print($"{_riderId} SOCKET skip: degenerate fan"); return; }
+        if (area.Length() < SocketFanEpsilon) { Dbg.Print($"{_riderId} SOCKET skip: degenerate fan"); return; }
         var nrm = area.Normalized();
         bool flip = nrm.Dot(axis) < 0f;
         if (flip) nrm = -nrm;
@@ -1016,11 +1053,11 @@ public sealed class RiderParts
         {
             int j = (i + 1) % n;
             var cr = (verts[i] - cen).Cross(verts[j] - cen);
-            if (cr.Length() < 1e-9f) continue;
+            if (cr.Length() < SocketTriEpsilon) continue;
             idxL.Add(n);
             if (flip) { idxL.Add(j); idxL.Add(i); } else { idxL.Add(i); idxL.Add(j); }
         }
-        if (idxL.Count < 3) { Dbg.Print($"{_riderId} SOCKET skip: all fan tris degenerate"); return; }
+        if (idxL.Count < MinFanIndices) { Dbg.Print($"{_riderId} SOCKET skip: all fan tris degenerate"); return; }
         var idx = idxL.ToArray();
         var nrms = new Vector3[n + 1];
         for (int i = 0; i <= n; i++) nrms[i] = nrm;
@@ -1052,8 +1089,8 @@ public sealed class RiderParts
         _socketMat ??= new StandardMaterial3D
         {
             AlbedoColor = SocketPlateColor,
-            Roughness = 0.92f,
-            Metallic = 0.25f,
+            Roughness = SocketPlateRoughness,
+            Metallic = SocketPlateMetallic,
             // The plate is read at glancing angles from either
             // side of the wound - never let it cull away.
             CullMode = BaseMaterial3D.CullModeEnum.Disabled
@@ -1218,7 +1255,7 @@ public sealed class RiderParts
                     poseInv[vol.Bone] = inv;
                 }
                 float t = RayBox(inv * oSk, inv.Basis * dSk, vol);
-                if (t > 0.001f && t <= maxDist && (bestT < 0f || t < bestT))
+                if (t > RayMinT && t <= maxDist && (bestT < 0f || t < bestT))
                 {
                     bestT = t;
                     bestPart = part.Id;
@@ -1235,7 +1272,7 @@ public sealed class RiderParts
         {
             float lo = v.CenterB[i] - v.HalfB[i];
             float hi = v.CenterB[i] + v.HalfB[i];
-            if (Mathf.Abs(d[i]) < 1e-8f)
+            if (Mathf.Abs(d[i]) < RayParallelEpsilon)
             {
                 if (o[i] < lo || o[i] > hi) return -1f;
             }
@@ -1352,9 +1389,9 @@ public sealed class RiderParts
     {
         part.Destroyed = true;
         part.Wrecked = true;
-        float tilt = part.Id == PartId.LegL ? 0.085f : -0.085f;
-        var rs = Basis.FromEuler(new Vector3(0.045f, 0f, tilt))
-            .Scaled(new Vector3(1.07f, 0.92f, 1.07f));
+        float tilt = part.Id == PartId.LegL ? WreckTiltRad : -WreckTiltRad;
+        var rs = Basis.FromEuler(new Vector3(WreckPitchRad, 0f, tilt))
+            .Scaled(new Vector3(WreckScaleXZ, WreckScaleY, WreckScaleXZ));
         foreach (var rec in part.Meshes)
         {
             rec.SavedOverlay = rec.Mi.MaterialOverlay;
@@ -1375,7 +1412,7 @@ public sealed class RiderParts
                 rec.Mi.GlobalTransform.Origin + rec.Mi.GlobalTransform.Basis * (rec.OrigLocal * d).Origin);
             var cAfter = (after * skin) * pivot;
             float disp = cBefore.DistanceTo(cAfter);
-            if (disp > 0.3f)
+            if (disp > WreckAuditMaxDisp)
                 Dbg.Print($"BRK WRECKAUDIT {_riderId} {part.Id} mesh={rec.Mi.Name} disp={disp:F2}u bone={rec.BoneName} origLocalOrigin={rec.OrigLocal.Origin} aabbC={pivot}");
             rec.Mi.Transform = rec.OrigLocal * d;
             rec.Mi.MaterialOverlay = WreckOverlay;
@@ -1438,15 +1475,15 @@ public sealed class RiderParts
         }
         var away = center - _walker.RootPos;
         away.Y = 0f;
-        if (away.LengthSquared() < 0.25f) away = RiderWalker.HeadingVec(_walker.TorsoYawWorld);
+        if (away.LengthSquared() < DebrisMinAwaySq) away = RiderWalker.HeadingVec(_walker.TorsoYawWorld);
         away = away.Normalized();
         var d = new Debris
         {
             Part = part,
             Node = container,
-            Vel = away * 2.0f + Vector3.Up * 2.8f,
+            Vel = away * DebrisLaunchAway + Vector3.Up * DebrisLaunchUp,
             AngAxisW = Vector3.Up.Cross(away).Normalized(),
-            AngSpeed = 1.6f
+            AngSpeed = DebrisLaunchAngSpeed
         };
         _debris.Add(d);
     }
@@ -1475,7 +1512,7 @@ public sealed class RiderParts
         // and never settles (measured: breakable POD phase timing
         // out at slow render rates; the same class of bug as the
         // gait dt clamp found in the terrain stage).
-        int n = Mathf.Max(1, Mathf.CeilToInt(dt / (1f / 120f)));
+        int n = Mathf.Max(1, Mathf.CeilToInt(dt / DebrisSubstepSeconds));
         float h = dt / n;
         for (int i = 0; i < n; i++) StepDebrisStep(h);
     }
@@ -1485,9 +1522,9 @@ public sealed class RiderParts
         foreach (var d in _debris)
         {
             if (d.Settled) continue;
-            d.Vel.Y -= 20f * dt;
+            d.Vel.Y -= DebrisGravity * dt;
             d.Node.GlobalPosition += d.Vel * dt;
-            if (d.AngSpeed > 0.02f)
+            if (d.AngSpeed > DebrisMinAngSpeed)
             {
                 var gt = d.Node.GlobalTransform;
                 var nb = new Basis(new Quaternion(d.AngAxisW, d.AngSpeed * dt)) * gt.Basis;
@@ -1500,16 +1537,16 @@ public sealed class RiderParts
             float groundY = Main.HeightAt(low.X, low.Z);
             d.RestMinY = box.Position.Y;
             d.RestGroundY = Main.HeightAt(box.GetCenter().X, box.GetCenter().Z);
-            if (low.Y <= groundY + 0.002f)
+            if (low.Y <= groundY + DebrisContactSkin)
             {
                 d.Node.GlobalPosition += Vector3.Up * (groundY - low.Y);
                 d.RestMinY = box.Position.Y + (groundY - low.Y);
-                if (d.Vel.Y < -1.6f)
+                if (d.Vel.Y < -DebrisBounceMinSpeed)
                 {
-                    d.Vel.Y = -d.Vel.Y * 0.22f; // one bounce
-                    d.Vel.X *= 0.55f;
-                    d.Vel.Z *= 0.55f;
-                    d.AngSpeed *= 0.45f;
+                    d.Vel.Y = -d.Vel.Y * DebrisRestitution; // one bounce
+                    d.Vel.X *= DebrisBounceFriction;
+                    d.Vel.Z *= DebrisBounceFriction;
+                    d.AngSpeed *= DebrisBounceAngDamp;
                 }
                 else
                 {
@@ -1580,7 +1617,7 @@ public sealed class RiderParts
                 {
                     var w = eff * v;
                     float fwd = (w - ankleW).Dot(fwdW);
-                    if (Mathf.Abs(fwd) < 0.5f) continue;
+                    if (Mathf.Abs(fwd) < FootPitchBand) continue;
                     float gap = w.Y - Main.HeightAt(w.X, w.Z);
                     if (fwd > 0f) { if (gap < toe) toe = gap; }
                     else if (gap < heel) heel = gap;
@@ -1668,14 +1705,14 @@ public sealed class RiderParts
     {
         var box = WorldAabb(d.Node);
         var centre = box.GetCenter();
-        float e = 2.0f;
+        float e = SlopeSampleStep;
         float hx = (Main.HeightAt(centre.X + e, centre.Z) - Main.HeightAt(centre.X - e, centre.Z)) / (2f * e);
         float hz = (Main.HeightAt(centre.X, centre.Z + e) - Main.HeightAt(centre.X, centre.Z - e)) / (2f * e);
         var n = new Vector3(-hx, 1f, -hz).Normalized();
-        if (n.Y > 0.94f) return; // under ~20 degrees the corner rest reads fine
+        if (n.Y > SlopeConformMinNormalY) return; // under ~20 degrees the corner rest reads fine
         var low = LowestCorner(box);
         var axis = Vector3.Up.Cross(n);
-        if (axis.LengthSquared() < 1e-8f) return;
+        if (axis.LengthSquared() < ConformAxisEpsilon) return;
         float ang = Mathf.Acos(Mathf.Clamp(Vector3.Up.Dot(n), -1f, 1f));
         var q = new Quaternion(axis.Normalized(), ang);
         var gt = d.Node.GlobalTransform;
@@ -1690,7 +1727,7 @@ public sealed class RiderParts
         if (lift > 0f) { d.Node.GlobalPosition += Vector3.Up * lift; box = WorldAabb(d.Node); }
         low = LowestCorner(box);
         float drop = low.Y - Main.HeightAt(low.X, low.Z);
-        if (Mathf.Abs(drop) > 0.001f) d.Node.GlobalPosition -= Vector3.Up * drop;
+        if (Mathf.Abs(drop) > ConformDropEpsilon) d.Node.GlobalPosition -= Vector3.Up * drop;
         var fb = WorldAabb(d.Node);
         d.RestMinY = fb.Position.Y;
         d.RestGroundY = Main.HeightAt(fb.GetCenter().X, fb.GetCenter().Z);

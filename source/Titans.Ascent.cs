@@ -16,6 +16,24 @@ public partial class Titans
     // River-bridge deck and dressing conventions (Stage B
     // naming pass, 2026-11-27: names only, exact values).
     private const float RiverBridgeDeckThickness = 1.6f;
+    // River and bridge factory values.
+    private static readonly Color RiverWaterColor = new(0.13f, 0.32f, 0.48f, 0.85f);
+    private const float RiverRoughness = 0.22f, RiverMetallic = 0.15f;
+    private const float RiverPlaneLength = 1900f, RiverPlaneWidth = 46f;
+    private const float WaterDropBelowBank = 5.0f;   // the water plane sits this far under the bank profile
+    private const float BridgeDeckWidth = 34f, BridgeDeckLength = 68f;
+    private const float BridgeTopAboveBank = 0.5f;   // the deck top rides this far above the bank
+    private const float BridgeUnderClearance = 2.1f; // the roof rect's underside below its top
+    private static readonly Color RailColor = new(0.16f, 0.17f, 0.19f);
+    private const float RailMetallic = 0.55f, RailRoughness = 0.5f;
+    private const float RailOffsetX = 16.4f;         // rails sit this far either side of the deck centre
+    private const float RailThickness = 0.5f, RailHeight = 1.1f;
+    private const float BridgePillarHeight = 8f, PillarOffsetZ = 18f, PillarCenterDrop = 4.8f;
+    private const float SummitDeckUnderClearance = 1.6f; // a summit deck's roof underside below its top
+    private const float ColumnInset = 8f;            // deck columns inset this far from the slab edges
+    private const float MinColumnHeight = 3f;        // shorter columns are skipped
+    private const float ColumnFootprint = 5f;
+    private const float RampCorridorSinMax = 0.30f;  // plateau towers skip bearings this close to the south ramp corridor
     private const float DressingRockTint = 0.5f;
 
     private void BuildAscentWorld()
@@ -95,55 +113,55 @@ public partial class Titans
         // where the road crosses.
         var waterMat = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.13f, 0.32f, 0.48f, 0.85f),
+            AlbedoColor = RiverWaterColor,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            Roughness = 0.22f, Metallic = 0.15f
+            Roughness = RiverRoughness, Metallic = RiverMetallic
         };
         foreach (float rz in Ascent.Rivers)
         {
             float bankY = Ascent.Profile(rz);
             var water = new MeshInstance3D
             {
-                Mesh = new PlaneMesh { Size = new Vector2(1900f, 46f) },
+                Mesh = new PlaneMesh { Size = new Vector2(RiverPlaneLength, RiverPlaneWidth) },
                 MaterialOverride = waterMat,
-                Position = new Vector3(0f, bankY - 5.0f, rz)
+                Position = new Vector3(0f, bankY - WaterDropBelowBank, rz)
             };
             AddChild(water);
             float cx = Ascent.RoadX(rz);
-            float top = bankY + 0.5f;
+            float top = bankY + BridgeTopAboveBank;
             Main.Roofs.Add(new Main.RoofRect
             {
-                Cx = cx, Cz = rz, Hx = 17f, Hz = 34f, Top = top, Under = top - 2.1f
+                Cx = cx, Cz = rz, Hx = BridgeDeckWidth / 2f, Hz = BridgeDeckLength / 2f, Top = top, Under = top - BridgeUnderClearance
             });
             var deck = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(34f, RiverBridgeDeckThickness, 68f) },
+                Mesh = new BoxMesh { Size = new Vector3(BridgeDeckWidth, RiverBridgeDeckThickness, BridgeDeckLength) },
                 MaterialOverride = DeckMat(),
                 Position = new Vector3(cx, top - RiverBridgeDeckThickness / 2f, rz)
             };
             AddChild(deck);
             var railMat = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.16f, 0.17f, 0.19f),
-                Metallic = 0.55f, Roughness = 0.5f
+                AlbedoColor = RailColor,
+                Metallic = RailMetallic, Roughness = RailRoughness
             };
-            foreach (float side in new[] { -16.4f, 16.4f })
+            foreach (float side in new[] { -RailOffsetX, RailOffsetX })
             {
                 var rail = new MeshInstance3D
                 {
-                    Mesh = new BoxMesh { Size = new Vector3(0.5f, 1.1f, 68f) },
+                    Mesh = new BoxMesh { Size = new Vector3(RailThickness, RailHeight, BridgeDeckLength) },
                     MaterialOverride = railMat,
-                    Position = new Vector3(cx + side, top + 0.55f, rz)
+                    Position = new Vector3(cx + side, top + RailHeight / 2f, rz)
                 };
                 AddChild(rail);
             }
-            foreach (float pz in new[] { -18f, 18f })
+            foreach (float pz in new[] { -PillarOffsetZ, PillarOffsetZ })
             {
                 var pillar = new MeshInstance3D
                 {
-                    Mesh = new BoxMesh { Size = new Vector3(BridgePillarWidth, 8f, BridgePillarWidth) },
+                    Mesh = new BoxMesh { Size = new Vector3(BridgePillarWidth, BridgePillarHeight, BridgePillarWidth) },
                     MaterialOverride = DeckMat(),
-                    Position = new Vector3(cx, top - 4.8f, rz + pz)
+                    Position = new Vector3(cx, top - PillarCenterDrop, rz + pz)
                 };
                 AddChild(pillar);
             }
@@ -163,7 +181,7 @@ public partial class Titans
         for (int i = 0; i < towerA.Length; i++)
         {
             float a = towerA[i];
-            if (Mathf.Abs(Mathf.Sin(a)) < 0.30f && Mathf.Cos(a) > 0f) continue; // keep the south ramp corridor clear
+            if (Mathf.Abs(Mathf.Sin(a)) < RampCorridorSinMax && Mathf.Cos(a) > 0f) continue; // keep the south ramp corridor clear
             var tp = sc + new Vector2(Mathf.Cos(a) * 132f, Mathf.Sin(a) * 132f);
             float th = 26f + (i % 4) * 6f;
             AddBuilding(new Vector3(tp.X, 0f, tp.Y), new Vector3(14f + (i % 3) * 2f, th, 14f));
@@ -191,7 +209,7 @@ public partial class Titans
     {
         Main.Roofs.Add(new Main.RoofRect
         {
-            Cx = c.X, Cz = c.Y, Hx = hx, Hz = hz, Top = top, Under = top - 1.6f
+            Cx = c.X, Cz = c.Y, Hx = hx, Hz = hz, Top = top, Under = top - SummitDeckUnderClearance
         });
         var slab = new MeshInstance3D
         {
@@ -201,14 +219,14 @@ public partial class Titans
         };
         AddChild(slab);
         float ground = Main.HeightAt(c.X, c.Y);
-        foreach (float ox in new[] { -hx + 8f, 0f, hx - 8f })
-        foreach (float oz in new[] { -hz + 8f, hz - 8f })
+        foreach (float ox in new[] { -hx + ColumnInset, 0f, hx - ColumnInset })
+        foreach (float oz in new[] { -hz + ColumnInset, hz - ColumnInset })
         {
             float colH = top - ground;
-            if (colH < 3f) continue;
+            if (colH < MinColumnHeight) continue;
             var col = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(5f, colH, 5f) },
+                Mesh = new BoxMesh { Size = new Vector3(ColumnFootprint, colH, ColumnFootprint) },
                 MaterialOverride = DeckMat(),
                 Position = new Vector3(c.X + ox, ground + colH / 2f, c.Y + oz)
             };

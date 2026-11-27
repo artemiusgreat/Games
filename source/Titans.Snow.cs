@@ -20,6 +20,19 @@ public partial class Titans
     private const float PrintStampRange = 500f;      // only plants within this of the player stamp
     private const float PrintLift = 0.12f;           // stamp offset along the terrain normal
     private const float SnowfallFollowHeight = 4f;   // snowfall box rides this far above the camera
+    // Snowfall particle recipe (the falling-snow box).
+    private const float SnowEmissionHalfWidth = 55f, SnowEmissionHalfHeight = 26f;
+    private const float SnowDriftX = 0.25f, SnowDriftZ = 0.1f; // fall direction tilt
+    private const float SnowSpreadDeg = 10f;
+    private const float SnowFallSpeedMin = 2.2f, SnowFallSpeedMax = 3.4f;
+    private const float SnowGravityY = -0.55f;
+    private const float SnowFlakeScaleMin = 0.7f, SnowFlakeScaleMax = 1.4f;
+    private const float FlakeQuadSize = 0.11f;
+    private const int SnowAmount = 1400;
+    private const float SnowLifetime = 7f;
+    private const float SnowVisHalfExtent = 70f, SnowVisBelow = 35f; // visibility box around the box
+    private const float PrintGradientStep = 1.5f;    // terrain-normal sampling distance for a print
+    private const float MinPrintForwardSq = 0.01f;   // squared forward length below which a print has no direction
     private static readonly Vector2 PrintPlaneSize = new(1.8f, 2.7f);
     private static readonly Color PrintColor = new(0.40f, 0.48f, 0.68f, 0f); // alpha driven per-frame by the fade
     private static readonly Color FlakeColor = new(1f, 1f, 1f, 0.95f);
@@ -116,18 +129,18 @@ public partial class Titans
         var pm = new ParticleProcessMaterial
         {
             EmissionShape = ParticleProcessMaterial.EmissionShapeEnum.Box,
-            EmissionBoxExtents = new Vector3(55f, 26f, 55f),
-            Direction = new Vector3(0.25f, -1f, 0.1f),
-            Spread = 10f,
-            InitialVelocityMin = 2.2f,
-            InitialVelocityMax = 3.4f,
-            Gravity = new Vector3(0f, -0.55f, 0f),
-            ScaleMin = 0.7f,
-            ScaleMax = 1.4f,
+            EmissionBoxExtents = new Vector3(SnowEmissionHalfWidth, SnowEmissionHalfHeight, SnowEmissionHalfWidth),
+            Direction = new Vector3(SnowDriftX, -1f, SnowDriftZ),
+            Spread = SnowSpreadDeg,
+            InitialVelocityMin = SnowFallSpeedMin,
+            InitialVelocityMax = SnowFallSpeedMax,
+            Gravity = new Vector3(0f, SnowGravityY, 0f),
+            ScaleMin = SnowFlakeScaleMin,
+            ScaleMax = SnowFlakeScaleMax,
         };
         var flake = new QuadMesh
         {
-            Size = new Vector2(0.11f, 0.11f),
+            Size = new Vector2(FlakeQuadSize, FlakeQuadSize),
             Material = new StandardMaterial3D
             {
                 AlbedoTexture = FlakeTexture(),
@@ -139,12 +152,12 @@ public partial class Titans
         };
         _snowfall = new GpuParticles3D
         {
-            Amount = 1400,
-            Lifetime = 7f,
+            Amount = SnowAmount,
+            Lifetime = SnowLifetime,
             LocalCoords = false,
             ProcessMaterial = pm,
             DrawPass1 = flake,
-            VisibilityAabb = new Aabb(-70f, -35f, -70f, 140f, 70f, 140f),
+            VisibilityAabb = new Aabb(-SnowVisHalfExtent, -SnowVisBelow, -SnowVisHalfExtent, SnowVisHalfExtent * 2f, SnowVisBelow * 2f, SnowVisHalfExtent * 2f),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         AddChild(_snowfall);
@@ -155,13 +168,13 @@ public partial class Titans
         Vector3 pos = w.LastPlantPos;
         if (_player != null && pos.DistanceTo(_player.RootPos) > PrintStampRange) return;
         // Terrain normal from the height gradient.
-        float e = 1.5f;
+        float e = PrintGradientStep;
         float hx = Main.HeightAt(pos.X + e, pos.Z) - Main.HeightAt(pos.X - e, pos.Z);
         float hz = Main.HeightAt(pos.X, pos.Z + e) - Main.HeightAt(pos.X, pos.Z - e);
         var n = new Vector3(-hx / (2f * e), 1f, -hz / (2f * e)).Normalized();
         var fwd = -w.LastPlantBasis.Z;
         fwd = (fwd - n * fwd.Dot(n)).Normalized();
-        if (fwd.LengthSquared() < 0.01f) return; // foot pointing straight down - no sane print
+        if (fwd.LengthSquared() < MinPrintForwardSq) return; // foot pointing straight down - no sane print
         var xAxis = n.Cross(-fwd).Normalized();
         var zAxis = xAxis.Cross(n).Normalized();
         var basis = new Basis(xAxis, n, zAxis);

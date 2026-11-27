@@ -58,6 +58,23 @@ public partial class RadarView : Control
     private const float ContactRadius = 4.5f;
     private const float ContactRimInset = 6f;  // contacts clamp this far inside the rim
     private const float ScopeInset = 10f;      // scope disc inset from the panel edge
+    // Scope dressing: grid, rings, ticks and labels.
+    private const int HeightFanSegments = 48;  // heightmap underlay fan resolution
+    private const float GridDivisions = 12f;   // grid cell = Range / this
+    private const float GridMinorAlpha = 0.10f, GridMajorAlpha = 0.20f;
+    private const int RingCount = 3;           // range rings at Range/3 steps
+    private const int RingSegments = 96;
+    private const float RingAlpha = 0.28f, RimRingAlpha = 0.4f, RimAlpha = 0.55f;
+    private const int TickStepDeg = 10, MajorTickDeg = 30;
+    private const float TickLength = 5f, MajorTickLength = 9f;
+    private const float TickAlpha = 0.5f, MajorTickAlpha = 0.85f;
+    private const float MajorTickWidth = 1.5f;
+    private const float MinNorthDirSq = 0.001f; // squared-length guard for the north marker's direction
+    private const float NorthLabelInset = 11f;
+    private const int NorthLabelFontSize = 10;
+    private const float NorthLabelAlpha = 0.95f;
+    private const int RadarLabelFontSize = 9;
+    private const float RadarLabelAlpha = 0.65f;
 
     // Heightmap underlay (owner ask, 2026-11-20): a semi-
     // transparent relief of the current world's heightfield
@@ -180,7 +197,7 @@ public partial class RadarView : Control
             // Godot (only one wedge of it rendered - the layer
             // was effectively invisible in play, 2026-11-20).
             // Triangles always rasterize.
-            const int SEG = 48;
+            const int SEG = HeightFanSegments;
             var tint = HeightTintColor;
             var pw = new Vector2(Player.RootPos.X, Player.RootPos.Z);
             var uvC = WorldUv(pw);
@@ -200,9 +217,9 @@ public partial class RadarView : Control
 
         // Grid clipped to the circle: each line is drawn only
         // across its chord.
-        var minor = new Color(ink, 0.10f);
-        var major = new Color(ink, 0.20f);
-        float cell = Range / 12f;
+        var minor = new Color(ink, GridMinorAlpha);
+        var major = new Color(ink, GridMajorAlpha);
+        float cell = Range / GridDivisions;
         int cells = Mathf.CeilToInt(half / (cell * px)) + 1;
         for (int k = -cells; k <= cells; k++)
         {
@@ -218,21 +235,21 @@ public partial class RadarView : Control
         DrawLine(c + new Vector2(0f, -half), c + new Vector2(0f, half), major, 1f);
 
         // Circular range rings at Range/3 steps (the rim is Range).
-        for (int r = 1; r <= 3; r++)
+        for (int r = 1; r <= RingCount; r++)
         {
-            float o = r * (Range / 3f) * px;
-            DrawArc(c, o, 0f, Mathf.Tau, 96, new Color(ink, r == 3 ? 0.4f : 0.28f), 1f);
+            float o = r * (Range / RingCount) * px;
+            DrawArc(c, o, 0f, Mathf.Tau, RingSegments, new Color(ink, r == RingCount ? RimRingAlpha : RingAlpha), 1f);
         }
 
         // Bearing ticks around the rim every 10 degrees,
         // pointing inward; major at 30.
-        for (int deg = 0; deg < 360; deg += 10)
+        for (int deg = 0; deg < 360; deg += TickStepDeg)
         {
             float a = Mathf.DegToRad(deg);
             var dir = new Vector2(Mathf.Sin(a), -Mathf.Cos(a)); // 0 = north (up)
             var rim = c + dir * half;
-            bool maj = deg % 30 == 0;
-            DrawLine(rim, rim - dir * (maj ? 9f : 5f), new Color(ink, maj ? 0.85f : 0.5f), maj ? 1.5f : 1f);
+            bool maj = deg % MajorTickDeg == 0;
+            DrawLine(rim, rim - dir * (maj ? MajorTickLength : TickLength), new Color(ink, maj ? MajorTickAlpha : TickAlpha), maj ? MajorTickWidth : 1f);
         }
         // N marker just inside the rim (a letter, not a
         // number), riding to wherever north falls under the
@@ -241,18 +258,18 @@ public partial class RadarView : Control
         if (Player != null)
         {
             var nd = ToScope(new Vector2(0f, -1f)); // world north in (X, Z)
-            if (nd.LengthSquared() > 0.001f)
+            if (nd.LengthSquared() > MinNorthDirSq)
             {
-                var np = c + nd.Normalized() * (half - 11f);
+                var np = c + nd.Normalized() * (half - NorthLabelInset);
                 DrawString(font, np + new Vector2(-3f, 3f), "N",
-                    HorizontalAlignment.Left, -1f, 10, new Color(ink, 0.95f));
+                    HorizontalAlignment.Left, -1f, NorthLabelFontSize, new Color(ink, NorthLabelAlpha));
             }
         }
 
         // Thin round rim on top of the dressing (owner,
         // 2026-11-23: the internal border goes thinner and
         // round - a ring on the scope disc, not the square).
-        DrawArc(c, half, 0f, Mathf.Tau, 96, new Color(ink, 0.55f), 1.0f, true);
+        DrawArc(c, half, 0f, Mathf.Tau, RingSegments, new Color(ink, RimAlpha), 1.0f, true);
         if (Player == null) return;
 
         // Enemy contacts, clamped to the rim when out of range.
@@ -273,6 +290,6 @@ public partial class RadarView : Control
         };
         DrawPolygon(pts, new[] { FriendlyColor });
         DrawString(font, new Vector2(6f, H - 5f), "RADAR",
-            HorizontalAlignment.Left, -1f, 9, new Color(ink, 0.65f));
+            HorizontalAlignment.Left, -1f, RadarLabelFontSize, new Color(ink, RadarLabelAlpha));
     }
 }

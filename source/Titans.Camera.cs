@@ -20,6 +20,11 @@ public partial class Titans
     private const float AimPitchCapSin = 0.9757f;    // sin of the +-1.35 rad aim pitch cap
     private const float FovEaseRate = 11f;           // sniper zoom ease
     private const float ShakeAmplitude = 0.3f;       // camera shake offset scale
+    private const float ReferenceChassisHeight = 13f; // boom distances scale with chassis height over this reference
+    private const float BoomShortenPitchMin = 0.05f; // aim pitch (dir Y) past which the boom may shorten
+    private const float ShakeMinAmplitude = 0.002f;  // shake below this is not worth jittering the camera
+    private const float ShakeVerticalJitter = 0.6f;  // vertical shake offset range (+/- this)
+    private const float MinLookStepSq = 0.0001f;     // squared-distance guard: the look target must differ from the camera
 
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
     {
@@ -357,7 +362,7 @@ public partial class Titans
             // the frame - the owner's report.) Centered, no
             // sideways offset (owner, round 12); distances scale
             // with the chassis height, as before.
-            float k = _playerSpec.Height / 13f;
+            float k = _playerSpec.Height / ReferenceChassisHeight;
             var aimDir = AimDirWorld();
             // The anchor rides higher as |pitch| grows (up to
             // +0.22 heights at the +-1.35 cap): the torso pitches
@@ -376,7 +381,7 @@ public partial class Titans
             // the anchor. The floor clamp below stays as a
             // backstop for sloping ground behind the rider.
             float boom = BoomLength * k;
-            if (aimDir.Y > 0.05f)
+            if (aimDir.Y > BoomShortenPitchMin)
             {
                 float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + CameraFloorClearance);
                 boom = Mathf.Min(boom, Mathf.Max(BoomMinLength * k, clearance / aimDir.Y));
@@ -425,7 +430,7 @@ public partial class Titans
             // cannot occur. Pitch is capped at +-1.35 rad, well
             // clear of the vertical LookAt singularity.
             var lookTarget = _cam.GlobalPosition + aimDir;
-            if (_cam.GlobalPosition.DistanceSquaredTo(lookTarget) > 0.0001f)
+            if (_cam.GlobalPosition.DistanceSquaredTo(lookTarget) > MinLookStepSq)
                 _cam.LookAt(lookTarget, Vector3.Up);
             // Sniper view (owner, 2026-11-22, MechWarrior-style):
             // RMB toggles a narrow 16-degree FOV on the same boom -
@@ -436,11 +441,11 @@ public partial class Titans
                 float fovT = _sniper ? SniperFov : BaseFov;
                 _cam.Fov = Mathf.Lerp(_cam.Fov, fovT, 1f - Mathf.Exp(-FovEaseRate * delta));
             }
-            if (delta > 0f && _shake > 0.002f)
+            if (delta > 0f && _shake > ShakeMinAmplitude)
             {
                 _cam.GlobalPosition += new Vector3(
                     (float)_rng.NextDouble() * 2f - 1f,
-                    (float)_rng.NextDouble() * 1.2f - 0.6f,
+                    (float)_rng.NextDouble() * (ShakeVerticalJitter * 2f) - ShakeVerticalJitter,
                     (float)_rng.NextDouble() * 2f - 1f) * (_shake * ShakeAmplitude);
             }
         }

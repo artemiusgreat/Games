@@ -503,6 +503,11 @@ public partial class Main : Node3D
 
 	// The terrain palette (owner: look-and-feel values live in
 	// named fields, not inline at the lerp sites).
+	// Terrain material factory values (the scanned rock
+	// detail set's response on the standard terrain).
+	private const float TerrainRoughness = 0.95f;
+	private const float TerrainUvScale = 0.036f;
+	private const float TerrainNormalScale = 0.7f;
 	private static readonly Color DesertGroundLow = new(0.70f, 0.565f, 0.335f);
 	private static readonly Color DesertGroundHigh = new(0.79f, 0.66f, 0.42f);
 	private static readonly Color CityGroundLow = new(0.345f, 0.35f, 0.36f);
@@ -633,15 +638,15 @@ public partial class Main : Node3D
 		var tmat = new StandardMaterial3D
 		{
 			VertexColorUseAsAlbedo = true,
-			Roughness = 0.95f,
+			Roughness = TerrainRoughness,
 			Uv1Triplanar = true,
 			Uv1WorldTriplanar = true,
-			Uv1Scale = new Vector3(0.036f, 0.036f, 0.036f),
+			Uv1Scale = new Vector3(TerrainUvScale, TerrainUvScale, TerrainUvScale),
 		};
 		if (_rockNor != null)
 		{
 			tmat.NormalTexture = _rockNor;
-			tmat.NormalScale = 0.7f;
+			tmat.NormalScale = TerrainNormalScale;
 		}
 		if (_rockArm != null)
 		{

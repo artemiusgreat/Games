@@ -32,6 +32,9 @@ public partial class SniperScope : Control
     private const float CrossArmOuterScale = 0.66f;  // cross arms end this far out
     private const float CrossArmInner = 16f;         // cross arms start this far from the centre, px
 
+    // Below this size the scope cannot draw (degenerate window guard).
+    private const float MinScopeSize = 10f;
+
     // Line widths and the centre dot.
     private const float RingWidth = 2f;
     private const float InnerRingWidth = 1.25f;
@@ -64,7 +67,7 @@ public partial class SniperScope : Control
     public override void _Draw()
     {
         var size = Size;
-        if (size.X < 10f || size.Y < 10f) return;
+        if (size.X < MinScopeSize || size.Y < MinScopeSize) return;
         var c = size * 0.5f;
         float r = ReticleRadius;
         // Backdrop everywhere EXCEPT inside the reticle

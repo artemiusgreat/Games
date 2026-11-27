@@ -67,19 +67,19 @@ public partial class Titans
         // only; the 2026-11-20 event feed stays removed).
         _feedLabel = MakeLabel(15, FeedTextColor);
         _feedLabel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        _feedLabel.OffsetLeft = 18; _feedLabel.OffsetTop = 14;
-        _feedLabel.OffsetRight = 560; _feedLabel.OffsetBottom = 130;
+        _feedLabel.OffsetLeft = FeedLabelLeft; _feedLabel.OffsetTop = FeedLabelTop;
+        _feedLabel.OffsetRight = FeedLabelRight; _feedLabel.OffsetBottom = FeedLabelBottom;
         layer.AddChild(_feedLabel);
 
         // Loss messages (owner, 2026-11-25): NOT inside the
         // weapons panel - a free label under it, stacked
         // between the panel and the order feed; FitCornerPanels
         // positions it every frame.
-        _lblWeaponStatus = MakeLabel(12, new Color(1f, 0.42f, 0.32f));
+        _lblWeaponStatus = MakeLabel(12, WeaponStatusColor);
         _lblWeaponStatus.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         _lblWeaponStatus.AutowrapMode = TextServer.AutowrapMode.Word;
-        _lblWeaponStatus.OffsetLeft = 18; _lblWeaponStatus.OffsetTop = 14;
-        _lblWeaponStatus.OffsetRight = 560; _lblWeaponStatus.OffsetBottom = 130;
+        _lblWeaponStatus.OffsetLeft = FeedLabelLeft; _lblWeaponStatus.OffsetTop = FeedLabelTop;
+        _lblWeaponStatus.OffsetRight = FeedLabelRight; _lblWeaponStatus.OffsetBottom = FeedLabelBottom;
         layer.AddChild(_lblWeaponStatus);
 
         // Radar, top-right (owner): a SQUARE semi-transparent
@@ -378,6 +378,17 @@ public partial class Titans
     private const float DividerAccentAlpha = 0.35f;  // PanelDivider's hairline
     private const float PanelAccentBorderAlpha = 0.18f; // ChromePanel's hairline
     private const float FeedLifetimeSeconds = 6f;    // an order line's feed life
+    // The feed and weapon-status labels share one rect
+    // under the weapons panel (both are positioned from it).
+    private const int FeedLabelLeft = 18, FeedLabelTop = 14;
+    private const int FeedLabelRight = 560, FeedLabelBottom = 130;
+    private static readonly Color WeaponStatusColor = new(1f, 0.42f, 0.32f); // loss-message red
+    // Target frame: padding around the projected box and
+    // the screen-edge clamps (the top margin clears the
+    // top panels).
+    private const float TargetFramePad = 6f;
+    private const float TargetFrameScreenMargin = 2f;
+    private const float TargetFrameTopMargin = 16f;
     private const int FeedMaxLines = 5;              // the feed keeps at most this many
     private const ulong OpeningKeyGuardMsec = 200;   // a popup ignores its opening key this long
     private const float DenyFlashFrequency = 42f;    // the denied-row strobe rate
@@ -1190,11 +1201,11 @@ public partial class Titans
         const float OffscreenMargin = 40f;
         if (maxX < -OffscreenMargin || minX > vp.X + OffscreenMargin || maxY < -OffscreenMargin || minY > vp.Y + OffscreenMargin)
         { _targetFrame.Show = false; _targetFrame.QueueRedraw(); return; }
-        float pad = 6f;
+        float pad = TargetFramePad;
         _targetFrame.Box = new Rect2(
-            Mathf.Clamp(minX - pad, 2f, vp.X - 2f), Mathf.Clamp(minY - pad, 16f, vp.Y - 2f),
-            Mathf.Clamp(maxX + pad, 2f, vp.X - 2f) - Mathf.Clamp(minX - pad, 2f, vp.X - 2f),
-            Mathf.Clamp(maxY + pad, 2f, vp.Y - 2f) - Mathf.Clamp(minY - pad, 16f, vp.Y - 2f));
+            Mathf.Clamp(minX - pad, TargetFrameScreenMargin, vp.X - TargetFrameScreenMargin), Mathf.Clamp(minY - pad, TargetFrameTopMargin, vp.Y - TargetFrameScreenMargin),
+            Mathf.Clamp(maxX + pad, TargetFrameScreenMargin, vp.X - TargetFrameScreenMargin) - Mathf.Clamp(minX - pad, TargetFrameScreenMargin, vp.X - TargetFrameScreenMargin),
+            Mathf.Clamp(maxY + pad, TargetFrameScreenMargin, vp.Y - TargetFrameScreenMargin) - Mathf.Clamp(minY - pad, TargetFrameTopMargin, vp.Y - TargetFrameScreenMargin));
         _targetFrame.Show = true;
         _targetFrame.QueueRedraw();
     }

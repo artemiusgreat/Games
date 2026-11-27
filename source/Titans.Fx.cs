@@ -47,6 +47,56 @@ public partial class Titans
     private const int FlipbookCell = 128, FlipbookFrameCount = 64, FlipbookColumns = 8;
     private const int DmgNumberFontSize = 128, DmgNumberOutlineSize = 16;
     private const float DmgNumberPixelSize = 0.016f;
+    private const float DmgNumberRise = 0.7f;            // damage number spawns this far above the hit point
+    private const float DmgNumberJitter = 0.9f;          // horizontal spawn scatter around the hit point
+    private const float DmgNumberLifeSeconds = 0.9f;
+    private const float DmgNumberRiseSpeed = 1.7f;       // damage numbers drift upward at this rate
+    private const float SparkGravity = 3.4f;             // spark sprays fall at this rate
+    private const float PuffFadePeakAlpha = 0.45f;       // a trail puff's alpha at spawn (its colour's alpha), fading with life
+    // Particle factory (MakeParticles): emission/damping and
+    // the draw-mesh proportions shared by every burst.
+    private const float ParticleEmissionRadius = 0.45f;
+    private const float ParticleDampingMin = 0.4f, ParticleDampingMax = 1.2f;
+    private const float BurstExplosiveness = 0.88f;      // one-shot bursts only
+    private const float BurstTailSeconds = 0.5f;         // a burst node is freed this long after its lifetime
+    private const float DefaultBurstSpreadDeg = 180f;    // a burst's default emission spread
+    private const float FlameQuadWidthScale = 1.05f, FlameQuadHeightScale = 1.9f; // flames stand taller than wide
+    private const float PuffQuadScale = 1.7f;            // puffs stay square
+    private const int SparkMeshSegments = 6, SparkMeshRings = 4;
+    // Spark spray (SpawnSparks): direction/speed/life jitter.
+    private const float SparkDirYMin = 0.1f;             // sparks spray upward-biased
+    private const float SparkSpeedJitterMin = 0.5f, SparkSpeedJitterMax = 1.15f;
+    private const float SparkLifeMin = 0.3f, SparkLifeMax = 0.55f;
+    // Burn emitter recipe (a wreck keeps burning).
+    private const int BurnAmount = 26;
+    private const float BurnLifetime = 0.9f, BurnVelMin = 2.4f, BurnVelMax = 4.4f;
+    private const float BurnRiseY = 2.5f, BurnMeshRadius = 0.3f;
+    private const float BurnScaleMin = 0.8f, BurnScaleMax = 1.5f, BurnSpread = 35f;
+    // Flipbook fireball: random start frame range and free tail.
+    private const int FlipbookStartFrameMax = 6;
+    private const float FlipbookTailSeconds = 0.1f;
+    // Rocket-impact explosion bundle (SpawnExplosionFx).
+    private const float ExplosionFireballSize = 3.4f, ExplosionFireballSeconds = 0.9f;
+    private const float ExplosionFlashSize = 1.15f, ExplosionFlashLife = 0.22f;
+    private const float ExplosionCoreSize = 0.5f, ExplosionCoreLife = 0.12f;
+    private const int ExplosionSparkCount = 5;
+    private const float ExplosionSparkSpeed = 3.8f;
+    // Hit sound level and the jolt direction guard.
+    private const float HitSfxVolumeDb = -2f;
+    private const float MinJoltPushSq = 0.01f;           // squared push length below which no jolt direction exists
+    // Death bundle (OnDeath): flash sequence heights/sizes,
+    // the big fireball, the fire burst and the burn time.
+    private const float DeathFxHeight = 6.5f;
+    private const float DeathFlashSize = 2.8f, DeathFlashLife = 0.4f;
+    private const float DeathCoreSize = 1.5f, DeathCoreLife = 0.25f;
+    private const float DeathLowHeight = 2.2f, DeathLowSize = 1.9f, DeathLowLife = 0.55f;
+    private const float DeathExplosionHeight = 1.5f;
+    private const float DeathFireballSize = 10f, DeathFireballSeconds = 1.2f;
+    private const float DeathBurnHeight = 1.2f, DeathBurnSeconds = 8f;
+    private const int DeathBurstAmount = 70;
+    private const float DeathBurstLife = 1.6f, DeathBurstVelMin = 5f, DeathBurstVelMax = 12f;
+    private const float DeathBurstGravityY = -6f, DeathBurstMeshRadius = 0.2f;
+    private const float DeathBurstScaleMin = 1f, DeathBurstScaleMax = 2.1f;
 
     private readonly System.Collections.Generic.List<(Node3D Node, float Ttl, bool StopFirst)> _timedFx = new();
     // Round 20 (owner: the fire looked like "a couple of yellow
@@ -109,7 +159,7 @@ public partial class Titans
         var pm = new ParticleProcessMaterial
         {
             EmissionShape = ParticleProcessMaterial.EmissionShapeEnum.Sphere,
-            EmissionSphereRadius = 0.45f,
+            EmissionSphereRadius = ParticleEmissionRadius,
             Direction = Vector3.Up,
             Spread = spread,
             InitialVelocityMin = velMin,
@@ -117,8 +167,8 @@ public partial class Titans
             Gravity = gravity,
             ScaleMin = scaleMin,
             ScaleMax = scaleMax,
-            DampingMin = 0.4f,
-            DampingMax = 1.2f,
+            DampingMin = ParticleDampingMin,
+            DampingMax = ParticleDampingMax,
         };
         if (mat == FireParticleMat)
         {
@@ -134,17 +184,17 @@ public partial class Titans
             // Round 21 (owner): fire still read as bubbles - the
             // particles are notably SMALLER now, bursts denser.
             mesh = new QuadMesh { Size = mat == FireParticleMat
-                ? new Vector2(meshRadius * 1.05f, meshRadius * 1.9f)
-                : new Vector2(meshRadius * 1.7f, meshRadius * 1.7f) };
+                ? new Vector2(meshRadius * FlameQuadWidthScale, meshRadius * FlameQuadHeightScale)
+                : new Vector2(meshRadius * PuffQuadScale, meshRadius * PuffQuadScale) };
         else
-            mesh = new SphereMesh { Radius = meshRadius, Height = meshRadius * 2f, RadialSegments = 6, Rings = 4 };
+            mesh = new SphereMesh { Radius = meshRadius, Height = meshRadius * 2f, RadialSegments = SparkMeshSegments, Rings = SparkMeshRings };
         mesh.Material = mat;
         var p = new GpuParticles3D
         {
             Amount = amount,
             Lifetime = lifetime,
             OneShot = oneShot,
-            Explosiveness = oneShot ? 0.88f : 0f,
+            Explosiveness = oneShot ? BurstExplosiveness : 0f,
             ProcessMaterial = pm,
             DrawPass1 = mesh,
             VisibilityAabb = new Aabb(-ParticleAabbHalf, -ParticleAabbHalf, -ParticleAabbHalf, ParticleAabbHalf * 2f, ParticleAabbHalf * 2f, ParticleAabbHalf * 2f),
@@ -158,10 +208,10 @@ public partial class Titans
 
     // One-shot fire/smoke/spark burst at a point; freed after it ends.
     private void SpawnBurst(Vector3 point, StandardMaterial3D mat, int amount, float lifetime,
-        float velMin, float velMax, Vector3 gravity, float meshRadius, float scaleMin, float scaleMax, float spread = 180f)
+        float velMin, float velMax, Vector3 gravity, float meshRadius, float scaleMin, float scaleMax, float spread = DefaultBurstSpreadDeg)
     {
         var p = MakeParticles(point, mat, amount, lifetime, true, velMin, velMax, gravity, meshRadius, scaleMin, scaleMax, spread);
-        _timedFx.Add((p, lifetime + 0.5f, false));
+        _timedFx.Add((p, lifetime + BurstTailSeconds, false));
     }
 
     // A wreck keeps burning: fire licking up for the given
@@ -172,8 +222,8 @@ public partial class Titans
     // reason; explosions keep fire, flash, sparks and debris.)
     private void SpawnBurnEmitter(Vector3 point, float seconds)
     {
-        var fire = MakeParticles(point, FireParticleMat, 26, 0.9f, false, 2.4f, 4.4f,
-            new Vector3(0f, 2.5f, 0f), 0.3f, 0.8f, 1.5f, 35f);
+        var fire = MakeParticles(point, FireParticleMat, BurnAmount, BurnLifetime, false, BurnVelMin, BurnVelMax,
+            new Vector3(0f, BurnRiseY, 0f), BurnMeshRadius, BurnScaleMin, BurnScaleMax, BurnSpread);
         _timedFx.Add((fire, seconds, true));
     }
 
@@ -252,8 +302,8 @@ public partial class Titans
             var mi = new MeshInstance3D { Mesh = SparkMesh, MaterialOverride = mat };
             AddChild(mi);
             mi.GlobalPosition = point;
-            var dir = new Vector3(_fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(0.1f, 1f), _fxRng.RandfRange(-1f, 1f)).Normalized();
-            _sparks.Add((mi, dir * speed * _fxRng.RandfRange(0.5f, 1.15f), _fxRng.RandfRange(0.3f, 0.55f)));
+            var dir = new Vector3(_fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(SparkDirYMin, 1f), _fxRng.RandfRange(-1f, 1f)).Normalized();
+            _sparks.Add((mi, dir * speed * _fxRng.RandfRange(SparkSpeedJitterMin, SparkSpeedJitterMax), _fxRng.RandfRange(SparkLifeMin, SparkLifeMax)));
         }
     }
 
@@ -302,8 +352,8 @@ public partial class Titans
         AddChild(s);
         s.GlobalPosition = point;
         s.Play();
-        s.SetFrameAndProgress(_fxRng.RandiRange(0, 6), 0f);
-        _timedFx.Add((s, seconds + 0.1f, false));
+        s.SetFrameAndProgress(_fxRng.RandiRange(0, FlipbookStartFrameMax), 0f);
+        _timedFx.Add((s, seconds + FlipbookTailSeconds, false));
     }
 
     // Rocket impact bundle: fireball, core flash and sparks -
@@ -313,10 +363,10 @@ public partial class Titans
     private void SpawnExplosionFx(Vector3 point)
     {
         _fxBooms++;
-        SpawnFlipbookFireball(point, 3.4f, 0.9f);
-        SpawnFlash(point, ExplosionFlashColor, 1.15f, 0.22f);
-        SpawnFlash(point, ExplosionCoreColor, 0.5f, 0.12f);
-        SpawnSparks(point, ExplosionSparkColor, 5, 3.8f);
+        SpawnFlipbookFireball(point, ExplosionFireballSize, ExplosionFireballSeconds);
+        SpawnFlash(point, ExplosionFlashColor, ExplosionFlashSize, ExplosionFlashLife);
+        SpawnFlash(point, ExplosionCoreColor, ExplosionCoreSize, ExplosionCoreLife);
+        SpawnSparks(point, ExplosionSparkColor, ExplosionSparkCount, ExplosionSparkSpeed);
         _fxSparkBursts--; // explosion sparks are not a laser burst; keep the counters honest
     }
 
@@ -362,9 +412,9 @@ public partial class Titans
         // salvos never merge.
         if (kind == "rocket")
         {
-            if (_simT - _lastRocketHitSfxT > RocketHitSfxThrottleSeconds) { _lastRocketHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
+            if (_simT - _lastRocketHitSfxT > RocketHitSfxThrottleSeconds) { _lastRocketHitSfxT = _simT; PlaySfx(_sfxHit, point, HitSfxVolumeDb); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
         }
-        else if (_simT - _lastHitSfxT > HitSfxThrottleSeconds) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, -2f); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
+        else if (_simT - _lastHitSfxT > HitSfxThrottleSeconds) { _lastHitSfxT = _simT; PlaySfx(_sfxHit, point, HitSfxVolumeDb); Dbg.Print($"HITSFX t={_simT:F3} kind={kind}"); }
         if (jolt > 0f)
         {
             RiderWalker shooter = source == Roles.Player ? _player : source == Roles.Enemy ? _enemy : null;
@@ -372,7 +422,7 @@ public partial class Titans
             {
                 var push = target.RootPos - shooter.RootPos;
                 push.Y = 0f;
-                if (push.LengthSquared() > 0.01f) target.Jolt(push.Normalized(), jolt);
+                if (push.LengthSquared() > MinJoltPushSq) target.Jolt(push.Normalized(), jolt);
             }
         }
         bool onEnemy = target == _enemy;
@@ -393,15 +443,15 @@ public partial class Titans
         // apart - every part, torso core included, becomes debris that
         // rains down and settles on the terrain.
         var parts = PartsOf(w);
-        var center = w.RootPos + Vector3.Up * 6.5f;
-        SpawnFlash(center, DeathFlashColor, 2.8f, 0.4f);
-        SpawnFlash(center, DeathCoreColor, 1.5f, 0.25f);
-        SpawnFlash(center + Vector3.Up * 2.2f, DeathLowColor, 1.9f, 0.55f);
-        SpawnExplosionFx(center + Vector3.Up * 1.5f);
-        SpawnFlipbookFireball(center + Vector3.Up * 1.5f, 10f, 1.2f);
+        var center = w.RootPos + Vector3.Up * DeathFxHeight;
+        SpawnFlash(center, DeathFlashColor, DeathFlashSize, DeathFlashLife);
+        SpawnFlash(center, DeathCoreColor, DeathCoreSize, DeathCoreLife);
+        SpawnFlash(center + Vector3.Up * DeathLowHeight, DeathLowColor, DeathLowSize, DeathLowLife);
+        SpawnExplosionFx(center + Vector3.Up * DeathExplosionHeight);
+        SpawnFlipbookFireball(center + Vector3.Up * DeathExplosionHeight, DeathFireballSize, DeathFireballSeconds);
         _fxBooms--; // the death bundle is not a rocket hit; keep counters honest
-        SpawnBurst(center, FireParticleMat, 70, 1.6f, 5f, 12f, new Vector3(0f, -6f, 0f), 0.2f, 1f, 2.1f);
-        SpawnBurnEmitter(w.RootPos + Vector3.Up * 1.2f, 8f);
+        SpawnBurst(center, FireParticleMat, DeathBurstAmount, DeathBurstLife, DeathBurstVelMin, DeathBurstVelMax, new Vector3(0f, DeathBurstGravityY, 0f), DeathBurstMeshRadius, DeathBurstScaleMin, DeathBurstScaleMax);
+        SpawnBurnEmitter(w.RootPos + Vector3.Up * DeathBurnHeight, DeathBurnSeconds);
         _exploding = true;
         parts.ExplodeAll();
         _exploding = false;
@@ -432,9 +482,9 @@ public partial class Titans
             NoDepthTest = true
         };
         AddChild(l);
-        l.GlobalPosition = point + Vector3.Up * 0.7f
-            + new Vector3((float)_rng.NextDouble() - 0.5f, 0f, (float)_rng.NextDouble() - 0.5f) * 0.9f;
-        _dmgNums.Add((l, 0.9f));
+        l.GlobalPosition = point + Vector3.Up * DmgNumberRise
+            + new Vector3((float)_rng.NextDouble() - 0.5f, 0f, (float)_rng.NextDouble() - 0.5f) * DmgNumberJitter;
+        _dmgNums.Add((l, DmgNumberLifeSeconds));
     }
 
 }

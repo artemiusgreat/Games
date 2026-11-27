@@ -121,6 +121,39 @@ public partial class Titans
     // the heavy "cannon" feedback kind, below it "mg".
     private const float HeavyKindWeight = 10f;
 
+    // Impact FX recipes (the Spawn* argument sets at each
+    // hit kind's call site, named per effect).
+    private const float LaserImpactFlashSize = 0.5f, LaserImpactFlashLife = 0.15f;
+    private const int LaserImpactSparkCount = 16;
+    private const float LaserImpactSparkSpeed = 6.0f;
+    private const float LaserImpactLightEnergy = 2.5f, LaserImpactLightRange = 10f, LaserImpactLightLife = 0.3f;
+    private const int LaserImpactBurstCount = 26;
+    private const float LaserImpactBurstLife = 0.6f, LaserImpactBurstVelMin = 6f, LaserImpactBurstVelMax = 11f;
+    private const float LaserImpactBurstGravityY = -12f, LaserImpactBurstMeshRadius = 0.1f;
+    private const float LaserImpactBurstScaleMin = 0.5f, LaserImpactBurstScaleMax = 1f;
+    private const float RocketImpactFlashSize = 1.5f, RocketImpactFlashLife = 0.3f;
+    private const float RocketImpactLightRange = 14f, RocketImpactLightLife = 0.5f;
+    private const int RocketImpactBurstCount = 54;
+    private const float RocketImpactBurstLife = 1f, RocketImpactBurstVelMin = 5f, RocketImpactBurstVelMax = 10f;
+    private const float RocketImpactBurstGravityY = -7f, RocketImpactBurstMeshRadius = 0.15f;
+    private const float RocketImpactBurstScaleMin = 0.8f, RocketImpactBurstScaleMax = 1.5f;
+    private const float CannonImpactFlashSize = 0.6f, CannonImpactFlashLife = 0.2f;
+    private const int CannonImpactSparkCount = 10;
+    private const float CannonImpactSparkSpeed = 5f;
+    private const float CannonImpactLightEnergy = 2.5f, CannonImpactLightRange = 11f, CannonImpactLightLife = 0.35f;
+    private const int CannonImpactBurstCount = 16;
+    private const float CannonImpactBurstLife = 0.7f, CannonImpactBurstVelMin = 4.5f, CannonImpactBurstVelMax = 8.5f;
+    private const float CannonImpactBurstGravityY = -9f, CannonImpactBurstMeshRadius = 0.15f;
+    private const float CannonImpactBurstScaleMin = 0.6f, CannonImpactBurstScaleMax = 1f;
+    private const float BreakFlashSize = 1f, BreakFlashLife = 0.15f;
+    private const float BreakHotFlashSize = 0.5f, BreakHotFlashLife = 0.1f;
+    // Inaccuracy cone: below this |dir Y| the cone is built
+    // around world up, above it around world right.
+    private const float SpreadUpDotLimit = 0.9f;
+    // Launch/death sound levels (PlaySfx volume offsets).
+    private const float RocketLaunchVolumeDb = -1f;
+    private const float ExplosionSoundVolumeDb = 3f;
+
     // Part consequences (owner's rules): one wrecked leg
     // limps at this speed factor with this lean; the head
     // hit flickers the HUD this long; the death explosion
@@ -236,10 +269,10 @@ public partial class Titans
             if (fresh)
             {
                 fxPoints.Add(hit.Point);
-                SpawnFlash(hit.Point, anyPpc ? PpcImpactColor : LaserImpactColor, 0.5f, 0.15f);
-                SpawnSparks(hit.Point, anyPpc ? PpcSparkColor : LaserSparkColor, 16, 6.0f); // electric breaker spray
-                SpawnImpactLight(hit.Point, anyPpc ? PpcLightColor : LaserLightColor, 2.5f, 10f, 0.3f);
-                SpawnBurst(hit.Point, SparkParticleMat, 26, 0.6f, 6f, 11f, new Vector3(0f, -12f, 0f), 0.1f, 0.5f, 1f);
+                SpawnFlash(hit.Point, anyPpc ? PpcImpactColor : LaserImpactColor, LaserImpactFlashSize, LaserImpactFlashLife);
+                SpawnSparks(hit.Point, anyPpc ? PpcSparkColor : LaserSparkColor, LaserImpactSparkCount, LaserImpactSparkSpeed); // electric breaker spray
+                SpawnImpactLight(hit.Point, anyPpc ? PpcLightColor : LaserLightColor, LaserImpactLightEnergy, LaserImpactLightRange, LaserImpactLightLife);
+                SpawnBurst(hit.Point, SparkParticleMat, LaserImpactBurstCount, LaserImpactBurstLife, LaserImpactBurstVelMin, LaserImpactBurstVelMax, new Vector3(0f, LaserImpactBurstGravityY, 0f), LaserImpactBurstMeshRadius, LaserImpactBurstScaleMin, LaserImpactBurstScaleMax);
             }
             Dbg.Print($"WPN LASER hit={hit.Target} t={hit.T:F1} zone={hit.Zone} part={hit.Part} point={hit.Point}");
             if (hit.Target == Roles.Enemy) ApplyDamage(_enemy, fired[i].Def.Damage, hit, Roles.Player, fired[i].Def.Weight, HitKinds.Laser);
@@ -368,7 +401,7 @@ public partial class Titans
         }
         for (int i = 0; i < ordered.Count; i++)
             _lrmQueue.Add((i * SalvoStagger, ordered[i].Left, aimPoint, ordered[i].Def, lockTarget));
-        PlaySfx(_sfxRocket, PodMuzzle(podL), -1f);
+        PlaySfx(_sfxRocket, PodMuzzle(podL), RocketLaunchVolumeDb);
         Dbg.Print($"WPN LRM salvo queued ({ordered.Count} rockets, pods L={podL} R={podR})");
     }
 
@@ -399,7 +432,7 @@ public partial class Titans
     {
         float theta = Mathf.DegToRad(maxDeg) * Mathf.Sqrt((float)_rng.NextDouble());
         float phi = (float)(_rng.NextDouble() * Mathf.Tau);
-        var side = dir.Cross(Mathf.Abs(dir.Y) < 0.9f ? Vector3.Up : Vector3.Right).Normalized();
+        var side = dir.Cross(Mathf.Abs(dir.Y) < SpreadUpDotLimit ? Vector3.Up : Vector3.Right).Normalized();
         var up2 = side.Cross(dir).Normalized();
         var axis = (side * Mathf.Cos(phi) + up2 * Mathf.Sin(phi)).Normalized();
         return dir.Rotated(axis, theta).Normalized();
@@ -622,18 +655,18 @@ public partial class Titans
         if (p.SplashRadius > 0f)
         {
             SpawnExplosionFx(hit.Point); // rockets: mini-explosion
-            SpawnFlash(hit.Point, SplashFlashColor, 1.5f, 0.3f);
-            SpawnImpactLight(hit.Point, RocketColor, SplashLightIntensity, 14f, 0.5f);
-            SpawnBurst(hit.Point, FireParticleMat, 54, 1f, 5f, 10f, new Vector3(0f, -7f, 0f), 0.15f, 0.8f, 1.5f);
+            SpawnFlash(hit.Point, SplashFlashColor, RocketImpactFlashSize, RocketImpactFlashLife);
+            SpawnImpactLight(hit.Point, RocketColor, SplashLightIntensity, RocketImpactLightRange, RocketImpactLightLife);
+            SpawnBurst(hit.Point, FireParticleMat, RocketImpactBurstCount, RocketImpactBurstLife, RocketImpactBurstVelMin, RocketImpactBurstVelMax, new Vector3(0f, RocketImpactBurstGravityY, 0f), RocketImpactBurstMeshRadius, RocketImpactBurstScaleMin, RocketImpactBurstScaleMax);
             ExplodeSplash(hit, p);
             if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
             return;
         }
-        SpawnFlash(hit.Point, CannonImpactColor, 0.6f, 0.2f);
-        SpawnSparks(hit.Point, CannonSparkColor, 10, 5f);
+        SpawnFlash(hit.Point, CannonImpactColor, CannonImpactFlashSize, CannonImpactFlashLife);
+        SpawnSparks(hit.Point, CannonSparkColor, CannonImpactSparkCount, CannonImpactSparkSpeed);
         _fxSparkBursts--; // cannon impact sparks are not a laser burst
-        SpawnBurst(hit.Point, FireParticleMat, 16, 0.7f, 4.5f, 8.5f, new Vector3(0f, -9f, 0f), 0.15f, 0.6f, 1f);
-        SpawnImpactLight(hit.Point, CannonLightColor, 2.5f, 11f, 0.35f);
+        SpawnBurst(hit.Point, FireParticleMat, CannonImpactBurstCount, CannonImpactBurstLife, CannonImpactBurstVelMin, CannonImpactBurstVelMax, new Vector3(0f, CannonImpactBurstGravityY, 0f), CannonImpactBurstMeshRadius, CannonImpactBurstScaleMin, CannonImpactBurstScaleMax);
+        SpawnImpactLight(hit.Point, CannonLightColor, CannonImpactLightEnergy, CannonImpactLightRange, CannonImpactLightLife);
         if (hit.Target == Roles.Prop) DamageProp(hit.Point, p.Damage);
         string kind = p.WeaponWeight >= HeavyKindWeight ? HitKinds.Cannon : HitKinds.Mg;
         if (hit.Target == Roles.Player) ApplyDamage(_player, p.Damage, hit, p.OwnerId, p.WeaponWeight, kind);
@@ -711,8 +744,8 @@ public partial class Titans
         // During a death explosion every part breaks at once: no feed
         // spam, no per-part consequences (leg loss would re-enter Die).
         if (_exploding) return;
-        SpawnFlash(center, BreakFlashColor, 1f, 0.15f);
-        SpawnFlash(center, BreakFlashHotColor, 0.5f, 0.1f);
+        SpawnFlash(center, BreakFlashColor, BreakFlashSize, BreakFlashLife);
+        SpawnFlash(center, BreakFlashHotColor, BreakHotFlashSize, BreakHotFlashLife);
         var part = parts.GetPart(partId);
         ApplyPartConsequences(parts, partId);
     }
@@ -776,7 +809,7 @@ public partial class Titans
         }
         if (!anyAlive)
         {
-            grp.DenyT = 0.5f;
+            grp.DenyT = DenyFlashSeconds;
             Dbg.Print($"WPN DENIED group {grp.Num} (mounting parts destroyed)");
             return;
         }
@@ -834,7 +867,7 @@ public partial class Titans
 
     private void Die(RiderWalker w)
     {
-        PlaySfx(_sfxExplosion, w.RootPos + Vector3.Up * ExplosionSoundHeight, 3f, ExplosionSoundPitch);
+        PlaySfx(_sfxExplosion, w.RootPos + Vector3.Up * ExplosionSoundHeight, ExplosionSoundVolumeDb, ExplosionSoundPitch);
         w.Halted = true;
         w.SetDrive(w.LegsYaw, 0f);
         if (w == _player) { _playerDead = true; Dbg.Print("WPN DEATH PLAYER"); }

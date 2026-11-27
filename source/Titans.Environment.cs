@@ -46,9 +46,65 @@ public partial class Titans
     private readonly System.Collections.Generic.List<EnvChunk> _envChunks = new();
     private int _envFxEvents; // destruction-FX firings (harness-visible)
     private static readonly StandardMaterial3D RubbleMat = new StandardMaterial3D
-    { AlbedoColor = new Color(0.32f, 0.30f, 0.27f), Roughness = 0.95f };
+    { AlbedoColor = RubbleColor, Roughness = RubbleRoughness };
     private static readonly StandardMaterial3D SplinterMat = new StandardMaterial3D
-    { AlbedoColor = new Color(0.23f, 0.16f, 0.09f), Roughness = 1f };
+    { AlbedoColor = SplinterColor, Roughness = SplinterRoughness };
+    private static readonly Color RubbleColor = new(0.32f, 0.30f, 0.27f);
+    private const float RubbleRoughness = 0.95f;
+    private static readonly Color SplinterColor = new(0.23f, 0.16f, 0.09f);
+    private const float SplinterRoughness = 1f;
+    // Environment chunk spawn recipe and physics (the
+    // destruction debris of trees and buildings).
+    private const float ChunkSquashMin = 0.5f, ChunkSquashMax = 0.9f;   // chunk height as a fraction of its size
+    private const float ChunkSpawnRadius = 1.2f;
+    private const float ChunkSpawnHeightMin = 0.5f, ChunkSpawnHeightMax = 2.2f;
+    private const float ChunkSpeedMin = 1.2f, ChunkSpeedMax = 3.8f;
+    private const float ChunkAngSpeedMin = 2f, ChunkAngSpeedMax = 5.5f;
+    private const float ChunkRadiusFactor = 0.55f;  // resting radius as a fraction of size
+    private const float ChunkLifeJitterMin = 0.8f, ChunkLifeJitterMax = 1.25f;
+    private const float ChunkGravity = 20f;
+    private const float ChunkSubstepSeconds = 1f / 120f;
+    private const float ChunkMinAngSpeed = 0.02f;
+    private const float ChunkBounceMinSpeed = 1.6f;
+    private const float ChunkRestitution = 0.22f;
+    private const float ChunkBounceFriction = 0.55f, ChunkBounceAngDamp = 0.45f;
+    private const float PropClearanceMargin = 2.0f; // placement keeps this much extra room around a prop
+    private const float PitRiseMax = 4f;            // ground climbing more than this around a plot reads as a bowl
+    private const float PitDropMax = 9f;            // ...and ground falling more than this reads as a cliff edge
+    // Procedural tree materials.
+    private static readonly Color TrunkColor = new(0.36f, 0.23f, 0.12f);
+    private const float TrunkRoughness = 0.95f;
+    private static readonly Color CrownColorA = new(0.13f, 0.42f, 0.14f);
+    private static readonly Color CrownColorB = new(0.20f, 0.50f, 0.16f);
+    private static readonly Color CrownColorC = new(0.09f, 0.34f, 0.11f);
+    private const float CrownTintWeightA = 0.05f, CrownTintWeightB = 0.05f, CrownTintWeightC = 0.04f; // per-tree tint added to the red channel
+    private const float CrownRoughness = 0.9f;
+    // Building factory materials: glass panes, detail
+    // trim, plain walls/roofs and signs.
+    private static readonly Color PaneFrameColor = new(0.07f, 0.08f, 0.10f);
+    private const float PaneFrameRoughness = 0.9f;
+    private static readonly Color PaneGlassColor = new(0.55f, 0.72f, 0.85f, 0.38f);
+    private const float PaneGlassRoughness = 0.06f, PaneGlassMetallic = 0.35f;
+    private static readonly Color LitWarmAlbedo = new(0.45f, 0.30f, 0.13f);
+    private static readonly Color LitWarmEmission = new(1.0f, 0.72f, 0.38f);
+    private const float LitWarmEnergy = 1.3f;
+    private static readonly Color LitCoolAlbedo = new(0.16f, 0.24f, 0.32f);
+    private static readonly Color LitCoolEmission = new(0.62f, 0.82f, 1.0f);
+    private const float LitCoolEnergy = 1.2f;
+    private const float LitPaneRoughness = 0.4f;
+    private static readonly Color DetailTrimColor = new(0.55f, 0.53f, 0.50f);
+    private const float DetailTrimRoughness = 0.9f;
+    private static readonly Color DetailTrimPhotoTint = new(0.88f, 0.86f, 0.82f);
+    private static readonly Color DetailMetalColor = new(0.15f, 0.16f, 0.18f);
+    private const float DetailMetalMetallic = 0.55f, DetailMetalRoughness = 0.5f;
+    private static readonly Color DetailDarkColor = new(0.05f, 0.06f, 0.07f);
+    private const float DetailDarkMetallic = 0.25f, DetailDarkRoughness = 0.35f;
+    private const float WallRoughness = 0.92f;
+    private static readonly Color RoofColor = new(0.13f, 0.12f, 0.11f);
+    private const float RoofRoughness = 1f;
+    private const float CityLitRatio = 0.34f, TownLitRatio = 0.16f; // lit-pane share by biome
+    private const float SignEmissionEnergy = 1.5f, SignRoughness = 0.6f;
+    private const float SignWidthFraction = 0.72f, SignMaxWidth = 9f;
 
     private void SpawnChunks(Vector3 center, int count, float sizeMin, float sizeMax,
         Material mat, float upMin, float upMax, float life = -1f)
@@ -58,22 +114,22 @@ public partial class Titans
             float size = _fxRng.RandfRange(sizeMin, sizeMax);
             var mi = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(size, size * _fxRng.RandfRange(0.5f, 0.9f), size) },
+                Mesh = new BoxMesh { Size = new Vector3(size, size * _fxRng.RandfRange(ChunkSquashMin, ChunkSquashMax), size) },
                 MaterialOverride = mat,
             };
             float ang = _fxRng.RandfRange(0f, Mathf.Tau);
-            mi.GlobalPosition = center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * _fxRng.RandfRange(0f, 1.2f)
-                   + Vector3.Up * _fxRng.RandfRange(0.5f, 2.2f);
+            mi.GlobalPosition = center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * _fxRng.RandfRange(0f, ChunkSpawnRadius)
+                   + Vector3.Up * _fxRng.RandfRange(ChunkSpawnHeightMin, ChunkSpawnHeightMax);
             AddChild(mi);
             var dir = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
             _envChunks.Add(new EnvChunk
             {
                 Node = mi,
-                Vel = dir * _fxRng.RandfRange(1.2f, 3.8f) + Vector3.Up * _fxRng.RandfRange(upMin, upMax),
+                Vel = dir * _fxRng.RandfRange(ChunkSpeedMin, ChunkSpeedMax) + Vector3.Up * _fxRng.RandfRange(upMin, upMax),
                 AngAxis = new Vector3(_fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(-1f, 1f), _fxRng.RandfRange(-1f, 1f)).Normalized(),
-                AngSpeed = _fxRng.RandfRange(2f, 5.5f),
-                Radius = size * 0.55f,
-                Life = life > 0f ? life * _fxRng.RandfRange(0.8f, 1.25f) : -1f,
+                AngSpeed = _fxRng.RandfRange(ChunkAngSpeedMin, ChunkAngSpeedMax),
+                Radius = size * ChunkRadiusFactor,
+                Life = life > 0f ? life * _fxRng.RandfRange(ChunkLifeJitterMin, ChunkLifeJitterMax) : -1f,
             });
         }
     }
@@ -92,15 +148,15 @@ public partial class Titans
             _envChunks.RemoveAt(i);
         }
         if (_envChunks.Count == 0) return;
-        int n = Mathf.Max(1, Mathf.CeilToInt(dt / (1f / 120f)));
+        int n = Mathf.Max(1, Mathf.CeilToInt(dt / ChunkSubstepSeconds));
         float h = dt / n;
         for (int step = 0; step < n; step++)
             foreach (var c in _envChunks)
             {
                 if (c.Settled) continue;
-                c.Vel.Y -= 20f * h;
+                c.Vel.Y -= ChunkGravity * h;
                 c.Node.GlobalPosition += c.Vel * h;
-                if (c.AngSpeed > 0.02f)
+                if (c.AngSpeed > ChunkMinAngSpeed)
                 {
                     var gt = c.Node.GlobalTransform;
                     var nb = new Basis(new Quaternion(c.AngAxis, c.AngSpeed * h)) * gt.Basis;
@@ -111,7 +167,7 @@ public partial class Titans
                 if (pos.Y <= groundY)
                 {
                     c.Node.GlobalPosition = new Vector3(pos.X, groundY, pos.Z);
-                    if (c.Vel.Y < -1.6f) { c.Vel.Y = -c.Vel.Y * 0.22f; c.Vel.X *= 0.55f; c.Vel.Z *= 0.55f; c.AngSpeed *= 0.45f; }
+                    if (c.Vel.Y < -ChunkBounceMinSpeed) { c.Vel.Y = -c.Vel.Y * ChunkRestitution; c.Vel.X *= ChunkBounceFriction; c.Vel.Z *= ChunkBounceFriction; c.AngSpeed *= ChunkBounceAngDamp; }
                     else { c.Settled = true; c.Vel = Vector3.Zero; c.AngSpeed = 0f; }
                 }
             }
@@ -312,12 +368,12 @@ public partial class Titans
         var tree = new Node3D { Position = pos, Scale = Vector3.One * scale };
         var rng = new RandomNumberGenerator
         { Seed = (ulong)(pos.X * 131.7f + pos.Z * 57.3f + 9001f) };
-        var trunkMat = new StandardMaterial3D { AlbedoColor = new Color(0.36f, 0.23f, 0.12f), Roughness = 0.95f };
+        var trunkMat = new StandardMaterial3D { AlbedoColor = TrunkColor, Roughness = TrunkRoughness };
         var leafMats = new[]
         {
-            new StandardMaterial3D { AlbedoColor = new Color(0.13f + tint * 0.05f, 0.42f, 0.14f), Roughness = 0.9f },
-            new StandardMaterial3D { AlbedoColor = new Color(0.20f + tint * 0.05f, 0.50f, 0.16f), Roughness = 0.9f },
-            new StandardMaterial3D { AlbedoColor = new Color(0.09f + tint * 0.04f, 0.34f, 0.11f), Roughness = 0.9f }
+            new StandardMaterial3D { AlbedoColor = new Color(CrownColorA.R + tint * CrownTintWeightA, CrownColorA.G, CrownColorA.B), Roughness = CrownRoughness },
+            new StandardMaterial3D { AlbedoColor = new Color(CrownColorB.R + tint * CrownTintWeightB, CrownColorB.G, CrownColorB.B), Roughness = CrownRoughness },
+            new StandardMaterial3D { AlbedoColor = new Color(CrownColorC.R + tint * CrownTintWeightC, CrownColorC.G, CrownColorC.B), Roughness = CrownRoughness }
         };
         float totalH;
         if (_photo || WorldConfig.Photoreal)
@@ -539,7 +595,7 @@ public partial class Titans
                 if (p.DistanceTo(new Vector2(pad.X, pad.Z)) < pad.R + clearR) return false;
         }
         foreach (var c in _props)
-            if (p.DistanceTo(c.P) < c.R + clearR + 2.0f) return false;
+            if (p.DistanceTo(c.P) < c.R + clearR + PropClearanceMargin) return false;
         return true;
     }
 
@@ -556,8 +612,8 @@ public partial class Titans
         {
             float a = k * Mathf.Pi / 4f;
             float rh = Main.HeightAt(p.X + Mathf.Cos(a) * r, p.Y + Mathf.Sin(a) * r);
-            if (rh - h > 4f) return true;
-            if (h - rh > 9f) return true;
+            if (rh - h > PitRiseMax) return true;
+            if (h - rh > PitDropMax) return true;
         }
         return false;
     }
@@ -711,28 +767,28 @@ public partial class Titans
         var verts = new System.Collections.Generic.List<Vector3>();
         var norms = new System.Collections.Generic.List<Vector3>();
         var idx = new System.Collections.Generic.List<int>();
-        var frameMat = new StandardMaterial3D { AlbedoColor = new Color(0.07f, 0.08f, 0.10f), Roughness = 0.9f };
+        var frameMat = new StandardMaterial3D { AlbedoColor = PaneFrameColor, Roughness = PaneFrameRoughness };
         var glassMat = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.55f, 0.72f, 0.85f, 0.38f),
+            AlbedoColor = PaneGlassColor,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            Roughness = 0.06f, Metallic = 0.35f
+            Roughness = PaneGlassRoughness, Metallic = PaneGlassMetallic
         };
         // Lit panes (owner's city references: no two facades
         // alike) - a seeded share of the panes glow warm or cool
         // on a third, emissive surface of the same mesh.
         var litWarm = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.45f, 0.30f, 0.13f),
-            EmissionEnabled = true, Emission = new Color(1.0f, 0.72f, 0.38f), EmissionEnergyMultiplier = 1.3f,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.4f
+            AlbedoColor = LitWarmAlbedo,
+            EmissionEnabled = true, Emission = LitWarmEmission, EmissionEnergyMultiplier = LitWarmEnergy,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = LitPaneRoughness
         };
         var litCool = new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.16f, 0.24f, 0.32f),
-            EmissionEnabled = true, Emission = new Color(0.62f, 0.82f, 1.0f), EmissionEnergyMultiplier = 1.2f,
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.4f
+            AlbedoColor = LitCoolAlbedo,
+            EmissionEnabled = true, Emission = LitCoolEmission, EmissionEnergyMultiplier = LitCoolEnergy,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = LitPaneRoughness
         };
         // face: outward normal, right axis, half extents (w = face width, h = height)
         var faces = new (Vector3 N, Vector3 R, float W)[]
@@ -899,10 +955,10 @@ public partial class Titans
     {
         if (_detailMats.TryGetValue(photo, out var m)) return m;
         var trim = photo
-            ? PhotoEnv.BuildingMaterial(new Vector3(3f, 3f, 3f), new Color(0.88f, 0.86f, 0.82f))
-            : (Material)new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.53f, 0.50f), Roughness = 0.9f };
-        var metal = new StandardMaterial3D { AlbedoColor = new Color(0.15f, 0.16f, 0.18f), Metallic = 0.55f, Roughness = 0.5f };
-        var dark = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.06f, 0.07f), Metallic = 0.25f, Roughness = 0.35f };
+            ? PhotoEnv.BuildingMaterial(new Vector3(3f, 3f, 3f), DetailTrimPhotoTint)
+            : (Material)new StandardMaterial3D { AlbedoColor = DetailTrimColor, Roughness = DetailTrimRoughness };
+        var metal = new StandardMaterial3D { AlbedoColor = DetailMetalColor, Metallic = DetailMetalMetallic, Roughness = DetailMetalRoughness };
+        var dark = new StandardMaterial3D { AlbedoColor = DetailDarkColor, Metallic = DetailDarkMetallic, Roughness = DetailDarkRoughness };
         m = new[] { trim, metal, dark };
         _detailMats[photo] = m;
         return m;
@@ -1228,18 +1284,18 @@ public partial class Titans
             : new StandardMaterial3D
             {
                 AlbedoTexture = MakeFacadeTexture(seq, FacadeBases[seq % FacadeBases.Length]),
-                Roughness = 0.92f
+                Roughness = WallRoughness
             };
         var roofMat = _photo
             ? PhotoEnv.RoofMaterial(size)
-            : new StandardMaterial3D { AlbedoColor = new Color(0.13f, 0.12f, 0.11f), Roughness = 1f };
+            : new StandardMaterial3D { AlbedoColor = RoofColor, Roughness = RoofRoughness };
         mi.Mesh = BuildingBoxMesh(size, wallMat, roofMat);
         _procBuilt++;
         _facadeSeq++;
         mi.Position = pos;
         AddChild(mi);
         mi.AddChild(MakeGlassPanes(size, seq,
-            WorldConfig.Biome == WorldConfig.BiomeKind.City ? 0.34f : 0.16f));
+            WorldConfig.Biome == WorldConfig.BiomeKind.City ? CityLitRatio : TownLitRatio));
         var detailNode = MakeBuildingDetail(size, seq, _photo);
         if (detailNode != null) mi.AddChild(detailNode);
         if (WorldConfig.Biome == WorldConfig.BiomeKind.City && seq % 3 == 1 && size.Y >= 12f && size.X >= 8f)
@@ -1334,10 +1390,10 @@ public partial class Titans
         {
             AlbedoTexture = tex,
             EmissionEnabled = true, EmissionTexture = tex,
-            Emission = new Color(1f, 1f, 1f), EmissionEnergyMultiplier = 1.5f,
-            Roughness = 0.6f
+            Emission = new Color(1f, 1f, 1f), EmissionEnergyMultiplier = SignEmissionEnergy,
+            Roughness = SignRoughness
         };
-        float w = Mathf.Min(size.X * 0.72f, 9f);
+        float w = Mathf.Min(size.X * SignWidthFraction, SignMaxWidth);
         var sign = new MeshInstance3D
         {
             Mesh = new PlaneMesh { Size = new Vector2(w, w * 0.5f) },

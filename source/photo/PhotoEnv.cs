@@ -51,6 +51,28 @@ public static class PhotoEnv
     private const float PineStandInHeight = 7.6f, IslandTreeHeight = 5.9f;
     private const int BackdropTreeCount = 44;
     private const int HeroClumpCap = 320;
+    // Grass scatter: spot acceptance rules and placement.
+    private const int GrassSpotTarget = 6000;
+    private const int GrassScatterMaxAttempts = 120000;
+    private const float GrassScatterBound = 84f;   // spots sample within +/- this
+    private const float GrassRoadClearance = 2.9f;
+    private const float GrassMaxHeight = 10f, GrassMinHeight = 0.3f;
+    private const float GrassSlopeSampleStep = 0.4f, GrassMaxSlope = 0.45f;
+    private const float GrassBuildingClearance = 7f;
+    private const float GrassPropClearanceMargin = 0.5f; // added to a prop's own radius
+    private const float GrassSpotSink = 0.04f;       // spots sit this far into the ground
+    private const float GrassSpotScaleMin = 0.75f, GrassSpotScaleMax = 1.5f;
+    private const int HeroSpotStride = 37;         // hero clumps pick spots at this stride through the list
+    private const float HeroClumpScaleMin = 1.1f, HeroClumpScaleMax = 1.9f;
+    // Backdrop: apron and ring placement.
+    private const float BackdropArenaReference = 260f; // backdrop scale is relative to the arena's size
+    private const float ApronUvScale = 220f;
+    private const float BackdropPlaneSize = 1700f;
+    private const float RingMissionInnerMargin = 18f, RingMissionOuterMargin = 95f; // past the terrain half-size
+    private const float RingArenaDistMin = 124f, RingArenaDistMax = 175f;
+    private const float RingClampInset = 4f, RingArenaClamp = 84f; // height-sample clamp bounds
+    private const float RingTreeSink = 0.3f;
+    private const float BackdropTreeScaleMin = 1.15f, BackdropTreeScaleMax = 1.6f;
 
     private static Texture2D Tex(string set, string kind)
     {
@@ -569,27 +591,27 @@ void fragment() {
         var spots = new List<(Vector3 Pos, float Yaw, float S)>();
         var rng = new RandomNumberGenerator { Seed = 424242 };
         int attempts = 0;
-        while (spots.Count < 6000 && attempts++ < 120000)
+        while (spots.Count < GrassSpotTarget && attempts++ < GrassScatterMaxAttempts)
         {
-            float x = rng.RandfRange(-84f, 84f), z = rng.RandfRange(-84f, 84f);
-            if (Main.RoadDistance(x, z) < 2.9f) continue;
+            float x = rng.RandfRange(-GrassScatterBound, GrassScatterBound), z = rng.RandfRange(-GrassScatterBound, GrassScatterBound);
+            if (Main.RoadDistance(x, z) < GrassRoadClearance) continue;
             float h = Main.HeightAt(x, z);
-            if (h > 10f) continue;
-            if (h < 0.3f) continue; // dry land only: scatter stood in the sea/lake shallows (owner)
-            float e = 0.4f;
+            if (h > GrassMaxHeight) continue;
+            if (h < GrassMinHeight) continue; // dry land only: scatter stood in the sea/lake shallows (owner)
+            float e = GrassSlopeSampleStep;
             float slope = Mathf.Max(
                 Mathf.Abs(Main.HeightAt(x + e, z) - h),
                 Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e;
-            if (slope > 0.45f) continue;
+            if (slope > GrassMaxSlope) continue;
             bool bad = false;
             foreach (var bp in buildingPts)
-                if (new Vector2(x, z).DistanceTo(bp) < 7f) { bad = true; break; }
+                if (new Vector2(x, z).DistanceTo(bp) < GrassBuildingClearance) { bad = true; break; }
             if (bad) continue;
             foreach (var (cp, cr) in props)
-                if (new Vector2(x, z).DistanceTo(cp) < cr + 0.5f) { bad = true; break; }
+                if (new Vector2(x, z).DistanceTo(cp) < cr + GrassPropClearanceMargin) { bad = true; break; }
             if (bad) continue;
-            spots.Add((new Vector3(x, h - 0.04f, z),
-                rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(0.75f, 1.5f)));
+            spots.Add((new Vector3(x, h - GrassSpotSink, z),
+                rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(GrassSpotScaleMin, GrassSpotScaleMax)));
         }
 
         // Hero clumps from the scanned patch.
@@ -615,8 +637,8 @@ void fragment() {
             };
             for (int i = 0; i < heroes; i++)
             {
-                var (pos, yaw, _) = spots[i * 37 % spots.Count];
-                float sc = rng.RandfRange(1.1f, 1.9f);
+                var (pos, yaw, _) = spots[i * HeroSpotStride % spots.Count];
+                float sc = rng.RandfRange(HeroClumpScaleMin, HeroClumpScaleMax);
                 hmm.SetInstanceTransform(i, new Transform3D(
                     new Basis(Vector3.Up, yaw).Scaled(new Vector3(sc, sc, sc)), pos));
             }
@@ -636,18 +658,18 @@ void fragment() {
     public static void AddBackdrop(Node3D parent)
     {
         bool mission = WorldConfig.IsMission;
-        float bs = Main.TerrainSize / 260f; // backdrop scale vs the arena
+        float bs = Main.TerrainSize / BackdropArenaReference; // backdrop scale vs the arena
         // Apron closing the horizon under the rim.
         var apronMat = new StandardMaterial3D
         {
             AlbedoTexture = Tex("leafy_grass", "diff"),
             AlbedoColor = WorldConfig.SnowGround ? SnowGroundTint : ApronFieldTint,
             Roughness = 1f,
-            Uv1Scale = new Vector3(220f, 220f, 1f)
+            Uv1Scale = new Vector3(ApronUvScale, ApronUvScale, 1f)
         };
         var apron = new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(1700f * bs, 1700f * bs) },
+            Mesh = new PlaneMesh { Size = new Vector2(BackdropPlaneSize * bs, BackdropPlaneSize * bs) },
             MaterialOverride = apronMat,
             Position = new Vector3(0f, -ApronDrop, 0f),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
@@ -683,13 +705,13 @@ void fragment() {
         {
             float a = rng.RandfRange(0f, Mathf.Tau);
             float half = Main.TerrainSize / 2f;
-            float dist = mission ? rng.RandfRange(half + 18f, half + 95f) : rng.RandfRange(124f, 175f);
+            float dist = mission ? rng.RandfRange(half + RingMissionInnerMargin, half + RingMissionOuterMargin) : rng.RandfRange(RingArenaDistMin, RingArenaDistMax);
             var pos = new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist);
-            float cl = mission ? half - 4f : 84f;
-            pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -cl, cl), Mathf.Clamp(pos.Z, -cl, cl)) - 0.3f;
+            float cl = mission ? half - RingClampInset : RingArenaClamp;
+            pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -cl, cl), Mathf.Clamp(pos.Z, -cl, cl)) - RingTreeSink;
             var holder = new Node3D { Position = pos };
             AddTreeModel(holder, rng.RandiRange(0, 2), rng);
-            holder.Scale = Vector3.One * rng.RandfRange(1.15f, 1.6f);
+            holder.Scale = Vector3.One * rng.RandfRange(BackdropTreeScaleMin, BackdropTreeScaleMax);
             parent.AddChild(holder);
         }
         Dbg.Print($"PHOTO backdrop: apron + {BackdropTreeCount} ring trees");

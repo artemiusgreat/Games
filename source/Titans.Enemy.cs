@@ -42,6 +42,19 @@ public partial class Titans
     private const float PatrolArriveDist = 8f; // a patrol point counts as reached inside this
     private const float LosChestHeight = 8f; // chest height for the sight line's endpoints
     private const float ThinkSeconds = 0.75f; // target re-pick cadence
+    private const float LosSampleStep = 6f; // terrain sampling step along the sight line
+    private const float LosTerrainClearance = 0.75f; // terrain this close under the sight line blocks it
+    private const float PatrolPointSeconds = 16f; // a patrol point expires after this; a fresh one is picked
+    private const float PatrolStopDist = 0.6f; // patrol halts this close to its point
+    private const float RetreatSpeedFactor = 0.5f; // the range game: walk-out pace vs full pace
+    private const float OrbitSpeedFactor = 0.7f; // the range game: in-band orbit pace vs full pace
+    private const float OrbitFlipSeconds = 6f; // the orbit reverses direction this often
+    private const float FoeFallbackCooldown = 0.85f; // the second foe seat's own no-def cooldown (differs from NpcFallbackCooldown by design)
+    private const float GunneryAimHeight = 7.6f; // gunnery aims this far above the target's root (chest)
+    private const float FallbackMuzzleSpeed = 420f; // shell speed when the shooter has no weapon def
+    private const float FallbackShellDamage = 18f, FallbackShellWeight = 16f; // shell payload when there is no def
+    private const float NpcCannonSfxRate = 0.78f; // NPC cannon report playback rate
+    private const float NpcCannonFlashSize = 0.5f, NpcCannonFlashLife = 0.08f; // NPC muzzle flash
     private bool _foe0Engaged;
     private bool _foe0Alerted;
     private Vector3 _foe0Patrol;
@@ -80,11 +93,11 @@ public partial class Titans
         var pa = a.RootPos + Vector3.Up * LosChestHeight;
         var pb = b.RootPos + Vector3.Up * LosChestHeight;
         float dist = pa.DistanceTo(pb);
-        int steps = Mathf.Max(2, (int)(dist / 6f));
+        int steps = Mathf.Max(2, (int)(dist / LosSampleStep));
         for (int i = 1; i < steps; i++)
         {
             var p = pa.Lerp(pb, (float)i / steps);
-            if (Main.HeightAt(p.X, p.Z) > p.Y - 0.75f) return false;
+            if (Main.HeightAt(p.X, p.Z) > p.Y - LosTerrainClearance) return false;
         }
         return true;
     }
@@ -141,12 +154,12 @@ public partial class Titans
             float r = PatrolRadius * Mathf.Sqrt((float)_rng.NextDouble());
             point = home + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
             point.Y = Main.HeightAt(point.X, point.Z);
-            timer = 16f;
+            timer = PatrolPointSeconds;
             tgt = new Vector2(point.X, point.Z);
         }
         var to = new Vector3(tgt.X - flat.X, 0f, tgt.Y - flat.Y);
         float dist = to.Length();
-        if (dist < 0.6f) { w.SetDrive(yaw, 0f); return; }
+        if (dist < PatrolStopDist) { w.SetDrive(yaw, 0f); return; }
         float yawTo = RiderWalker.YawOf(to.Normalized());
         float dy = RiderWalker.WrapAngle(yawTo - yaw);
         yaw += Mathf.Clamp(dy, -NpcTurnRate * delta, NpcTurnRate * delta);
@@ -292,13 +305,13 @@ public partial class Titans
         // backward (owner, 2026-11-23). Now the legs turn away
         // and WALK out of the bubble at the same half pace; the
         // torso keeps tracking the target on its own twist.
-        else if (dist < RetreatRange) { desiredYaw = yawTo + Mathf.Pi; spd = pace * 0.5f; }
+        else if (dist < RetreatRange) { desiredYaw = yawTo + Mathf.Pi; spd = pace * RetreatSpeedFactor; }
         else
         {
             orbitTimer += delta;
-            if (orbitTimer > 6f) { orbitTimer = 0f; orbitDir = -orbitDir; }
+            if (orbitTimer > OrbitFlipSeconds) { orbitTimer = 0f; orbitDir = -orbitDir; }
             desiredYaw = yawTo + orbitDir * Mathf.Pi / 2f;
-            spd = pace * 0.7f;
+            spd = pace * OrbitSpeedFactor;
         }
         float dy = RiderWalker.WrapAngle(desiredYaw - yaw);
         float maxTurn = NpcTurnRate * delta;
@@ -380,7 +393,7 @@ public partial class Titans
             (target, vel, tag) = t;
         }
         UpdateFoeGunnery(_foe.Walker, _foe.Parts, _foe.DefBallistic, _foe.BallisticSlot,
-            Roles.Foe, tag, target, vel, () => { _foe.Cd = _foe.DefBallistic?.Cooldown ?? 0.85f; _foeShots++; });
+            Roles.Foe, tag, target, vel, () => { _foe.Cd = _foe.DefBallistic?.Cooldown ?? FoeFallbackCooldown; _foeShots++; });
     }
 
     // Cannon gunnery, shared: range + line-of-sight gated, leads
@@ -394,20 +407,20 @@ public partial class Titans
     {
         if (parts == null || !parts.Alive(slot ?? PartId.ArmR)) return; // the mount is gone with its part
         var muzzle = MuzzleFor(w, slot ?? PartId.ArmR);
-        var tp = target.RootPos + Vector3.Up * 7.6f;
+        var tp = target.RootPos + Vector3.Up * GunneryAimHeight;
         float dist = muzzle.DistanceTo(tp);
         if (dist > NpcGunneryRange) return;
         var los = _hit.Ray(muzzle, (tp - muzzle).Normalized(), dist, tag);
         if (los.Hit && los.Target != targetTag) return; // blocked: building/terrain
-        float speed = def?.MuzzleSpeed ?? 420f;
+        float speed = def?.MuzzleSpeed ?? FallbackMuzzleSpeed;
         float tof = dist / speed;
         var aim = tp + targetVel * tof;
         var dir = ApplyInaccuracy((aim - muzzle).Normalized(),
             parts.Alive(PartId.Head) ? InaccuracySensedDeg : InaccuracyHeadlessDeg);
-        var shell = SpawnProjectile(muzzle, dir * speed, 0f, def?.Damage ?? 18f, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? 16f); // shells fly straight (owner)
+        var shell = SpawnProjectile(muzzle, dir * speed, 0f, def?.Damage ?? FallbackShellDamage, 0f, tag, rocket: false, weaponWeight: def?.Weight ?? FallbackShellWeight); // shells fly straight (owner)
         if (def != null && speed > 0f) shell.Life = def.Range / speed; // and burn out at the weapon's range
-        PlaySfx(_sfxCannon, muzzle, 0f, 0.78f);
-        SpawnFlash(muzzle, CannonMuzzleColor, 0.5f, 0.08f); // the player's cannon flash colour - same shot, same look
+        PlaySfx(_sfxCannon, muzzle, 0f, NpcCannonSfxRate);
+        SpawnFlash(muzzle, CannonMuzzleColor, NpcCannonFlashSize, NpcCannonFlashLife); // the player's cannon flash colour - same shot, same look
         onFired?.Invoke();
         Dbg.Print($"WPN FOEFIRE {tag} dist={dist:F1} tof={tof:F2} targetVel={targetVel.Length():F1}");
     }

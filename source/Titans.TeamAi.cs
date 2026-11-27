@@ -34,6 +34,14 @@ public partial class Titans
     private const float AttackEngageRange = 450f;
     private const float ProtectEngageRange = 170f;
 
+    // Follow formation (FormationPoint / MoveToward): the
+    // echelon's lateral spread and depth behind the leader,
+    // and the approach stop distance.
+    private const float FormationSideOffset = 17f;
+    private const float FormationBackOffset = 20f;
+    private const float FormationBackOffsetRear = 31f; // the third follower rides deeper
+    private const float FormationStopDist = 7f;
+
     private TeamOrder _teamOrder = TeamOrder.Follow;
     private int _allyShots; // harness counter (the team test reads it)
 
@@ -120,8 +128,8 @@ public partial class Titans
         var f = new Vector3(-Mathf.Sin(_playerYaw), 0f, -Mathf.Cos(_playerYaw)); // leader forward
         var r = new Vector3(-f.Z, 0f, f.X);                                       // leader right
         int idx = _allies.IndexOf(a);
-        float side = idx == 0 ? -17f : idx == 1 ? 17f : 0f;
-        float back = idx == 2 ? 31f : 20f;
+        float side = idx == 0 ? -FormationSideOffset : idx == 1 ? FormationSideOffset : 0f;
+        float back = idx == 2 ? FormationBackOffsetRear : FormationBackOffset;
         return _player.RootPos + r * side - f * back;
     }
 
@@ -132,7 +140,7 @@ public partial class Titans
         var w = a.Walker;
         var to = new Vector3(point.X - w.RootPos.X, 0f, point.Z - w.RootPos.Z);
         float dist = to.Length();
-        if (dist < 7f) { w.SetDrive(a.Yaw, 0f); return; }
+        if (dist < FormationStopDist) { w.SetDrive(a.Yaw, 0f); return; }
         float yawTo = RiderWalker.YawOf(to.Normalized());
         float dy = RiderWalker.WrapAngle(yawTo - a.Yaw);
         float yaw = a.Yaw + Mathf.Clamp(dy, -NpcTurnRate * dt, NpcTurnRate * dt);

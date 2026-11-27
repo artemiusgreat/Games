@@ -78,6 +78,48 @@ public partial class Titans
 
     // Snow-dusted deck tone over the stone texture.
     private static readonly Color DeckCol = new(0.62f, 0.66f, 0.78f);
+    // Terrace material factory values.
+    private const float DeckNormalScale = 0.8f, DeckRoughness = 0.95f, DeckMetallic = 0.05f;
+    private const float PlateNormalScale = 0.9f, PlateRoughness = 0.5f, PlateMetallic = 0.7f, PlateUvScale = 0.14f;
+    private static readonly Color ColumnColor = new(0.45f, 0.48f, 0.58f);
+    private const float ColumnNormalScale = 0.9f, ColumnRoughness = 1f, ColumnMetallic = 0.02f;
+    private static readonly Color TrimBaseColor = new(0.05f, 0.08f, 0.10f);
+    private static readonly Color TrimLevel1Color = new(0.25f, 0.75f, 1.0f);
+    private static readonly Color TrimLevel2Color = new(0.62f, 0.45f, 1.0f);
+    private static readonly Color TrimLevel3Color = new(1.0f, 0.75f, 0.30f);
+    private const float TrimEmissionEnergy = 1.6f, TrimRoughness = 0.6f;
+    private const float LevelBandTolerance = 1f;   // a deck top within this of a level height takes that level
+    private const float PlazaClearanceRadius = 62f; // no platforms inside this of the valley centre (the base plaza)
+    private const float MinDirLengthSq = 0.01f;    // squared length below which a direction is unusable
+    // Ceiling light fixture factory.
+    private const float CeilingFixtureLength = 6f, CeilingFixtureHeight = 0.3f, CeilingFixtureWidth = 1.2f;
+    private static readonly Color CeilingFixtureColor = new(0.10f, 0.13f, 0.14f);
+    private static readonly Color CeilingEmissionColor = new(0.55f, 0.80f, 0.95f);
+    private static readonly Color CeilingLightColor = new(0.55f, 0.75f, 0.95f);
+    private const float CeilingEmissionEnergy = 2.2f, CeilingFixtureRoughness = 0.5f, CeilingLightEnergy = 1.15f;
+    // Blob deck sampling: shot discs and the outline loop.
+    private const int BlobDiscCount = 32;
+    private const float DiscCentreFactor = 0.50f, DiscRadiusFactor = 0.53f;
+    private const int BlobOutlinePoints = 72;
+    // Ramp registration.
+    private const float RampEndInset = 2f;         // the ramp surface stops this far inside both ends
+    private const float RampAxisDominance = 0.5f;  // |direction component| above this makes that axis the run axis
+    private const float RampSkipMargin = 0.5f, RampSkipCrossHalf = 7.5f;
+    // Lift factory and shuttle tuning.
+    private const float LiftPadSize = 8.4f, LiftPadOutset = 4.6f;
+    private const float LiftSkipHalfExtent = 5.4f;
+    private const float LiftTrimSize = 8.9f, LiftTrimThickness = 0.3f, LiftTrimRise = 0.18f, LiftTrimDrop = 0.12f;
+    private const float LiftPostOffset = 4f, LiftPostThickness = 0.35f, LiftPostExtraHeight = 2f;
+    private const float LiftPadHalfExtent = 4.6f;  // occupancy test half-extent around the pad centre
+    private const float LiftBoardingTolerance = 2.4f; // a rider's sole level within this of the pad counts as aboard
+    private const float LiftSpeed = 7f;
+    private const float LiftBoardDwellSeconds = 0.5f;  // aboard at the bottom this long -> depart up
+    private const float LiftReturnDwellSeconds = 1.0f; // aboard at the top this long -> depart down
+    private const float LiftEmptyReturnSeconds = 5f;   // an empty pad at the top returns after this
+    private static readonly Color TierFallbackColor = new(0.4f, 0.42f, 0.48f);
+    private static readonly Color BannerColor = new(0.45f, 0.08f, 0.10f); // the landmark's banner cloth
+    private const float BannerRoughness = 0.85f;
+    private const float TierFallbackRoughness = 0.9f;
 
     // Procedural stone (owner: platforms and ramps should
     // look like stone): tileable value-noise blotches and
@@ -125,8 +167,8 @@ public partial class Titans
     private static StandardMaterial3D DeckMat() => new()
     {
         AlbedoColor = DeckCol, AlbedoTexture = StoneTexture(),
-        NormalTexture = StoneNormalTexture(), NormalScale = 0.8f,
-        Roughness = 0.95f, Metallic = 0.05f
+        NormalTexture = StoneNormalTexture(), NormalScale = DeckNormalScale,
+        Roughness = DeckRoughness, Metallic = DeckMetallic
     };
 
     // Bumpy stone (owner, 2026-11-11: 'apply bevel and
@@ -206,19 +248,19 @@ public partial class Titans
         PlateTextures();
         return new StandardMaterial3D
         {
-            AlbedoTexture = _plateTex, NormalTexture = _plateNrm, NormalScale = 0.9f,
-            Roughness = 0.5f, Metallic = 0.7f,
+            AlbedoTexture = _plateTex, NormalTexture = _plateNrm, NormalScale = PlateNormalScale,
+            Roughness = PlateRoughness, Metallic = PlateMetallic,
             Uv1Triplanar = true, // world-space tiling: the plate pattern repeats ~7u on every face
-            Uv1Scale = new Vector3(0.14f, 0.14f, 0.14f)
+            Uv1Scale = new Vector3(PlateUvScale, PlateUvScale, PlateUvScale)
         };
     }
     // Darker stone for the columns (owner: round, bevelled,
     // rough) - same rock, deeper tint, full roughness.
     private static StandardMaterial3D ColumnMat() => new()
     {
-        AlbedoColor = new Color(0.45f, 0.48f, 0.58f), AlbedoTexture = StoneTexture(),
-        NormalTexture = StoneNormalTexture(), NormalScale = 0.9f,
-        Roughness = 1f, Metallic = 0.02f
+        AlbedoColor = ColumnColor, AlbedoTexture = StoneTexture(),
+        NormalTexture = StoneNormalTexture(), NormalScale = ColumnNormalScale,
+        Roughness = ColumnRoughness, Metallic = ColumnMetallic
     };
     // Blob-deck material: the generated cap/side mesh is
     // single-sided by construction order; cull off so the
@@ -226,25 +268,25 @@ public partial class Titans
     private static StandardMaterial3D BlobMat() => new()
     {
         AlbedoColor = DeckCol, AlbedoTexture = StoneTexture(),
-        NormalTexture = StoneNormalTexture(), NormalScale = 0.8f,
-        Roughness = 0.95f, Metallic = 0.05f,
+        NormalTexture = StoneNormalTexture(), NormalScale = DeckNormalScale,
+        Roughness = DeckRoughness, Metallic = DeckMetallic,
         CullMode = BaseMaterial3D.CullModeEnum.Disabled
     };
     // One trim colour per level (the reference model's
     // level coding): cyan, violet, gold.
     private static StandardMaterial3D TrimMat(int lvl = 1)
     {
-        var em = lvl >= 3 ? new Color(1.0f, 0.75f, 0.30f)
-               : lvl == 2 ? new Color(0.62f, 0.45f, 1.0f)
-               : new Color(0.25f, 0.75f, 1.0f);
+        var em = lvl >= 3 ? TrimLevel3Color
+               : lvl == 2 ? TrimLevel2Color
+               : TrimLevel1Color;
         return new StandardMaterial3D
         {
-            AlbedoColor = new Color(0.05f, 0.08f, 0.10f),
+            AlbedoColor = TrimBaseColor,
             EmissionEnabled = true, Emission = em,
-            EmissionEnergyMultiplier = 1.6f, Roughness = 0.6f
+            EmissionEnergyMultiplier = TrimEmissionEnergy, Roughness = TrimRoughness
         };
     }
-    private static int LevelIndex(float top) => top >= TerraceL3 - 1f ? 3 : top >= TerraceL2 - 1f ? 2 : 1;
+    private static int LevelIndex(float top) => top >= TerraceL3 - LevelBandTolerance ? 3 : top >= TerraceL2 - LevelBandTolerance ? 2 : 1;
 
     private void BuildTerracedCity(System.Random rng, ref int placed)
     {
@@ -326,7 +368,7 @@ public partial class Titans
             // The base plaza at the valley centre stays clear
             // (spawn + base structures live there), wide
             // enough for the defenders' 55u patrol disc.
-            if (l == 0f && (c - ctr).Length() < 62f) continue;
+            if (l == 0f && (c - ctr).Length() < PlazaClearanceRadius) continue;
             // Home valley: no buildings at all (owner,
             // 2026-11-11 round 4: 'home base should be a
             // flat area, no buildings') - the whole valley
@@ -396,12 +438,12 @@ public partial class Titans
     {
         var fix = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(6f, 0.3f, 1.2f) },
+            Mesh = new BoxMesh { Size = new Vector3(CeilingFixtureLength, CeilingFixtureHeight, CeilingFixtureWidth) },
             MaterialOverride = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.10f, 0.13f, 0.14f),
-                EmissionEnabled = true, Emission = new Color(0.55f, 0.80f, 0.95f),
-                EmissionEnergyMultiplier = 2.2f, Roughness = 0.5f
+                AlbedoColor = CeilingFixtureColor,
+                EmissionEnabled = true, Emission = CeilingEmissionColor,
+                EmissionEnergyMultiplier = CeilingEmissionEnergy, Roughness = CeilingFixtureRoughness
             },
             Position = centre,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
@@ -409,8 +451,8 @@ public partial class Titans
         AddChild(fix);
         var omni = new OmniLight3D
         {
-            LightColor = new Color(0.55f, 0.75f, 0.95f),
-            LightEnergy = 1.15f,
+            LightColor = CeilingLightColor,
+            LightEnergy = CeilingLightEnergy,
             OmniRange = range,
             ShadowEnabled = false,
             Position = centre + new Vector3(0f, -1.2f, 0f)
@@ -451,7 +493,7 @@ public partial class Titans
             AddChild(ring);
         }
         var dir = face - p;
-        if (dir.LengthSquared() > 0.01f)
+        if (dir.LengthSquared() > MinDirLengthSq)
         {
             dir = dir.Normalized();
             var strip = new MeshInstance3D
@@ -616,13 +658,13 @@ public partial class Titans
         // height over the ramp heads). The 32 discs remain
         // only as the shot-collision approximation.
         float rMax = 0f;
-        for (int k = 0; k < 32; k++)
+        for (int k = 0; k < BlobDiscCount; k++)
         {
-            float th = k / 32f * Mathf.Tau;
+            float th = k / (float)BlobDiscCount * Mathf.Tau;
             float r = Main.BlobRadius(hx, hz, th, seed, secs);
             rMax = Mathf.Max(rMax, r);
-            var dc = centre + new Vector2(Mathf.Cos(th), Mathf.Sin(th)) * (r * 0.50f);
-            Main.DiscRoofs.Add(new Main.DiscRoof { Cx = dc.X, Cz = dc.Y, R = r * 0.53f, Top = lvlTop, Under = lvlTop - DeckThickness });
+            var dc = centre + new Vector2(Mathf.Cos(th), Mathf.Sin(th)) * (r * DiscCentreFactor);
+            Main.DiscRoofs.Add(new Main.DiscRoof { Cx = dc.X, Cz = dc.Y, R = r * DiscRadiusFactor, Top = lvlTop, Under = lvlTop - DeckThickness });
         }
         Main.BlobDecks.Add(new Main.BlobDeck
         {
@@ -649,9 +691,9 @@ public partial class Titans
         float seed = Mathf.Abs(centre.X * BlobSeedWeightX + centre.Y * BlobSeedWeightY) % BlobSeedTurn;
         var loop = new List<Vector2>();
         var dir = new List<Vector2>();
-        for (int k = 0; k < 72; k++)
+        for (int k = 0; k < BlobOutlinePoints; k++)
         {
-            float th = k / 72f * Mathf.Tau;
+            float th = k / (float)BlobOutlinePoints * Mathf.Tau;
             var d = new Vector2(Mathf.Cos(th), Mathf.Sin(th));
             dir.Add(d);
             loop.Add(centre + d * Main.BlobRadius(hx, hz, th, seed, secs));
@@ -778,8 +820,8 @@ public partial class Titans
 
     private void BuildRamp(Vector2 edgeMid, Vector2 dirOut, float lo, float hi, float run)
     {
-        var s0 = edgeMid + dirOut * (run - 2f); // foot, on the lower surface
-        var s1 = edgeMid - dirOut * 2f;         // lip, at the upper deck's edge
+        var s0 = edgeMid + dirOut * (run - RampEndInset); // foot, on the lower surface
+        var s1 = edgeMid - dirOut * RampEndInset;         // lip, at the upper deck's edge
         // Corridor 13 wide (owner fell "through" the 9-wide
         // ramps: a turning rider's stepping foot left the
         // corridor and grounded on the surface far below,
@@ -795,8 +837,8 @@ public partial class Titans
         _skipRects.Add(new Main.RoofRect
         {
             Cx = (s0.X + s1.X) / 2f, Cz = (s0.Y + s1.Y) / 2f,
-            Hx = Mathf.Abs(dirOut.X) > 0.5f ? run / 2f + 0.5f : 7.5f,
-            Hz = Mathf.Abs(dirOut.Y) > 0.5f ? run / 2f + 0.5f : 7.5f, Top = 0f
+            Hx = Mathf.Abs(dirOut.X) > RampAxisDominance ? run / 2f + RampSkipMargin : RampSkipCrossHalf,
+            Hz = Mathf.Abs(dirOut.Y) > RampAxisDominance ? run / 2f + RampSkipMargin : RampSkipCrossHalf, Top = 0f
         });
         if (!HasTestRamp)
         {
@@ -809,36 +851,36 @@ public partial class Titans
 
     private void BuildLift(Vector2 edgeMid, Vector2 dirOut, float lo, float hi)
     {
-        var pc = edgeMid + dirOut * 4.6f;
+        var pc = edgeMid + dirOut * LiftPadOutset;
         var pad = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(8.4f, LiftPadThickness, 8.4f) },
+            Mesh = new BoxMesh { Size = new Vector3(LiftPadSize, LiftPadThickness, LiftPadSize) },
             MaterialOverride = DeckMat(),
             Position = new Vector3(pc.X, lo - LiftPadThickness / 2f, pc.Y)
         };
         AddChild(pad);
         var trim = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(8.9f, 0.3f, 8.9f) },
+            Mesh = new BoxMesh { Size = new Vector3(LiftTrimSize, LiftTrimThickness, LiftTrimSize) },
             MaterialOverride = TrimMat(LevelIndex(hi)),
-            Position = new Vector3(pc.X, lo - 0.12f, pc.Y),
+            Position = new Vector3(pc.X, lo - LiftTrimDrop, pc.Y),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
-        pad.AddChild(trim); trim.Position = new Vector3(0f, 0.18f, 0f);
+        pad.AddChild(trim); trim.Position = new Vector3(0f, LiftTrimRise, 0f);
         // Guide posts on the pad's outer corners, full travel.
-        foreach (var s in new[] { new Vector2(4f, 4f), new Vector2(-4f, 4f), new Vector2(4f, -4f), new Vector2(-4f, -4f) })
+        foreach (var s in new[] { new Vector2(LiftPostOffset, LiftPostOffset), new Vector2(-LiftPostOffset, LiftPostOffset), new Vector2(LiftPostOffset, -LiftPostOffset), new Vector2(-LiftPostOffset, -LiftPostOffset) })
         {
             var post = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(0.35f, hi - lo + 2f, 0.35f) },
+                Mesh = new BoxMesh { Size = new Vector3(LiftPostThickness, hi - lo + LiftPostExtraHeight, LiftPostThickness) },
                 MaterialOverride = DeckMat(),
-                Position = new Vector3(pc.X + s.X, (lo + hi) / 2f + 1f, pc.Y + s.Y)
+                Position = new Vector3(pc.X + s.X, (lo + hi) / 2f + LiftPostExtraHeight / 2f, pc.Y + s.Y)
             };
             AddChild(post);
         }
         int roofIdx = Main.Roofs.Count;
-        Main.Roofs.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = 4.2f, Hz = 4.2f, Top = lo, Under = lo - LiftPadThickness });
-        _skipRects.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = 5.4f, Hz = 5.4f, Top = 0f });
+        Main.Roofs.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = LiftPadSize / 2f, Hz = LiftPadSize / 2f, Top = lo, Under = lo - LiftPadThickness });
+        _skipRects.Add(new Main.RoofRect { Cx = pc.X, Cz = pc.Y, Hx = LiftSkipHalfExtent, Hz = LiftSkipHalfExtent, Top = 0f });
         _lifts.Add(new Lift
         {
             C = pc, Lo = lo, Hi = hi, Top = lo, Target = lo,
@@ -861,14 +903,14 @@ public partial class Titans
             foreach (var w in new[] { _player, _enemy, _foe?.Walker })
             {
                 if (w == null || !w.IsReady) continue;
-                if (Mathf.Abs(w.RootPos.X - lf.C.X) <= 4.6f &&
-                    Mathf.Abs(w.RootPos.Z - lf.C.Y) <= 4.6f &&
-                    Mathf.Abs(w.SoleLevel - lf.Top) <= 2.4f) { occ = w; break; }
+                if (Mathf.Abs(w.RootPos.X - lf.C.X) <= LiftPadHalfExtent &&
+                    Mathf.Abs(w.RootPos.Z - lf.C.Y) <= LiftPadHalfExtent &&
+                    Mathf.Abs(w.SoleLevel - lf.Top) <= LiftBoardingTolerance) { occ = w; break; }
             }
             if (lf.State == 1)
             {
                 float dir = Mathf.Sign(lf.Target - lf.Top);
-                lf.Top += dir * 7f * dt;
+                lf.Top += dir * LiftSpeed * dt;
                 if ((dir > 0 && lf.Top >= lf.Target) || (dir < 0 && lf.Top <= lf.Target))
                 {
                     lf.Top = lf.Target;
@@ -880,7 +922,7 @@ public partial class Titans
             }
             else if (lf.State == 0)
             {
-                if (occ != null) { lf.Dwell += dt; if (lf.Dwell > 0.5f) { lf.State = 1; lf.Target = lf.Hi; } }
+                if (occ != null) { lf.Dwell += dt; if (lf.Dwell > LiftBoardDwellSeconds) { lf.State = 1; lf.Target = lf.Hi; } }
                 else lf.Dwell = 0f;
             }
             else
@@ -888,12 +930,12 @@ public partial class Titans
                 if (occ != null)
                 {
                     lf.Empty = 0f; lf.Dwell += dt;
-                    if (lf.Dwell > 1.0f) { lf.State = 1; lf.Target = lf.Lo; }
+                    if (lf.Dwell > LiftReturnDwellSeconds) { lf.State = 1; lf.Target = lf.Lo; }
                 }
                 else
                 {
                     lf.Dwell = 0f; lf.Empty += dt;
-                    if (lf.Empty > 5f) { lf.State = 1; lf.Target = lf.Lo; }
+                    if (lf.Empty > LiftEmptyReturnSeconds) { lf.State = 1; lf.Target = lf.Lo; }
                 }
             }
         }
@@ -901,7 +943,7 @@ public partial class Titans
 
     private Material TierMat(Vector3 size, int seq) => _photo
         ? PhotoEnv.BuildingMaterial(size, BuildingTints[seq % BuildingTints.Length], seq)
-        : new StandardMaterial3D { AlbedoColor = new Color(0.4f, 0.42f, 0.48f), Roughness = 0.9f };
+        : new StandardMaterial3D { AlbedoColor = TierFallbackColor, Roughness = TierFallbackRoughness };
 
     // A composed landmark (owner: the seat of leadership):
     // stacked tiers with lit rings, corner spires and a
@@ -953,7 +995,7 @@ public partial class Titans
         }
         if (banners)
         {
-            var bmat = new StandardMaterial3D { AlbedoColor = new Color(0.45f, 0.08f, 0.10f), Roughness = 0.85f };
+            var bmat = new StandardMaterial3D { AlbedoColor = BannerColor, Roughness = BannerRoughness };
             foreach (float f in new[] { 1f, -1f })
             {
                 var bp = new MeshInstance3D

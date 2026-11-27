@@ -552,13 +552,20 @@ public static class FlowUi
     // animated ripple bar instead of a 'Loading...' line
     // (owner, 2026-11-13). Every loading cover in the game
     // builds this.
+    // Loading-art placement: the reticle art's anchor box
+    // and the ripple bar's anchor line and half-extents.
+    private const float LoadingArtAnchorLeft = 0.06f, LoadingArtAnchorTop = 0.04f;
+    private const float LoadingArtAnchorRight = 0.94f, LoadingArtAnchorBottom = 0.87f;
+    private const float LoadingBarAnchorY = 0.90f;
+    private const float LoadingBarHalfWidth = 230f, LoadingBarHalfHeight = 11f;
+
     public static Control MakeLoadingArt()
     {
         _loadingTex ??= GD.Load<Texture2D>("res://assets/ui/loading_target.png");
         var root = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         root.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         var arc = new AspectRatioContainer { Ratio = 1f, StretchMode = AspectRatioContainer.StretchModeEnum.Fit };
-        arc.AnchorLeft = 0.06f; arc.AnchorTop = 0.04f; arc.AnchorRight = 0.94f; arc.AnchorBottom = 0.87f;
+        arc.AnchorLeft = LoadingArtAnchorLeft; arc.AnchorTop = LoadingArtAnchorTop; arc.AnchorRight = LoadingArtAnchorRight; arc.AnchorBottom = LoadingArtAnchorBottom;
         arc.OffsetLeft = 0f; arc.OffsetTop = 0f; arc.OffsetRight = 0f; arc.OffsetBottom = 0f;
         arc.MouseFilter = Control.MouseFilterEnum.Ignore;
         root.AddChild(arc);
@@ -571,9 +578,9 @@ public static class FlowUi
         });
         var bar = new RippleBar();
         bar.AnchorLeft = 0.5f; bar.AnchorRight = 0.5f;
-        bar.AnchorTop = 0.90f; bar.AnchorBottom = 0.90f;
-        bar.OffsetLeft = -230f; bar.OffsetRight = 230f;
-        bar.OffsetTop = -11f; bar.OffsetBottom = 11f;
+        bar.AnchorTop = LoadingBarAnchorY; bar.AnchorBottom = LoadingBarAnchorY;
+        bar.OffsetLeft = -LoadingBarHalfWidth; bar.OffsetRight = LoadingBarHalfWidth;
+        bar.OffsetTop = -LoadingBarHalfHeight; bar.OffsetBottom = LoadingBarHalfHeight;
         root.AddChild(bar);
         return root;
     }

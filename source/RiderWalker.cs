@@ -76,6 +76,51 @@ public partial class RiderWalker : Node3D
     private const float FallGravity = 24f;
     private const float FallTerminalSpeed = -18f;
     private const float JoltAngleScale = 0.055f; // impact jolt: push strength to rock angle
+    // Gait and body tuning (single-use values included, per
+    // the owner's tightened standard).
+    private const float AirborneHeightEpsilon = 0.02f; // jump height above which the rider counts as airborne
+    private const float SoleDropEngageHeight = 0.05f;  // jump height at which the sole level switches to the hang drop
+    private const float LedgeSlack = 4.0f;             // GroundAt: a ledge this far above the root may still ground the feet
+    private const float TorsoPitchMin = -0.32f, TorsoPitchMax = 0.48f;   // the torso bone's pitch stops
+    private const float TorsoRenderPitchMin = -0.85f, TorsoRenderPitchMax = 0.32f; // rendered pitch clamp (droop included)
+    private const float MinDirLengthSq = 0.01f;        // squared length below which a direction is unusable
+    private const float MinHipRiseSq = 0.25f;          // hip-rise radicand floor
+    private const float StrideBudgetReserve = 0.97f;   // stride budget keeps this fraction of full reach (a whisker of bend)
+    private const float MinStrideBudgetSq = 0.42f;     // stride-budget radicand floor
+    private const float MinPushLengthSq = 1e-10f;      // push-out deltas below this are no-ops
+    private const double MaxFrameDelta = 0.1;          // a frame's simulated time is capped here
+    private const int MaxGaitSubsteps = 40;            // substep guard per frame
+    private const float MinDriveSpeed = 0.01f;         // speeds at or below this read as stopped
+    private const float MinStepDuration = 0.01f;       // step-duration divisor guard
+    private const float FootClampEpsilon = 0.001f;     // a foot clamp counts as moved past this
+    private const float StrideCapSlack = 0.001f;       // trail-vs-demand slack that detects the stride budget capping
+    private const float CeilingProbeAboveGround = 0.5f; // ceiling probe starts this far above the ground reference
+    private const float HeadRoomMargin = 0.5f;         // head room charged above the chassis height at a ceiling
+    private const float BrakeDetectEpsilon = 0.001f;   // target-vs-speed slack in the braking test
+    private const float BrakeOvershootFactor = 1.15f;  // brake rate overshoot (stop inside one second incl. detection lag)
+    private const float CohesionWindowSeconds = 0.25f; // blocked-coherence sampling window
+    private const float CohesionBlockedSeconds = 0.25f; // blocked must persist this long to read Blocked
+    private const float CohesionMinWant = 0.02f;       // asked-for travel below this leaves the ratio at 1
+    private const float CohesionBlockedRatio = 0.35f;  // progress ratio below which the way reads blocked
+    private const float SettleSpeedThreshold = 0.15f;  // settling: live speed below this
+    private const float SettleYawRateThreshold = 0.05f; // settling: yaw rate below this
+    private const float SettleStepThreshold = 0.10f;   // settling: step-lift lag threshold
+    private const float TrailFloor = 0.65f;            // the trail threshold never drops below this
+    private const float GroundCarryEpsilon = 0.01f;    // a planted foot re-seats past this ground delta
+    private const float GroundCarryDropMax = 2.0f;     // ...and follows a descending surface down at most this far
+    private const float HangDropExtra = 0.5f;          // flight hang: soles sit this far past full leg extension
+    private const float BobDoubleSupport = -0.09f, BobSingleSupport = -0.02f;
+    private const float BobEaseRate = 6f, GroundFollowRate = 8f, SwayEaseRate = 5f;
+    private const float FallRestHeight = 2.0f;         // knocked down: hips rest this far above the lower sole
+    private const float FallAmountEpsilon = 0.001f;    // fall amount above which the fall pose applies
+    private const float FallTipAngle = 1.32f;          // rad (~76 deg): the fall's full tip
+    private const float FallUpEaseRate = 10f, UpEaseRate = 3.5f;
+    private const float MinFootSpan = 0.5f;            // lateral foot-span floor for the roll estimate
+    private const float MinJoltEnvelope = 0.002f;      // jolt envelope below which the rock is dropped
+    private const float JoltDecayRate = 2.4f;          // jolt envelope decay per second
+    private const float IkMinReachFraction = 0.05f, IkMaxReachFraction = 0.999f; // IK target distance clamp, as reach fractions
+    private const float MinPoleLengthSq = 1e-6f;       // IK pole-vector degeneracy guard
+    private const float MinBindWeight = 0.01f;         // skin weights below this don't count toward a mesh's dominant bone
     // Torso twist was clamped to ±135° (a 270° arc) until 2026-10-29,
     // when the owner removed the clamp: the torso rotates the full
     // 360°, including fully backward. The setter below no longer
@@ -112,7 +157,7 @@ public partial class RiderWalker : Node3D
     public bool JumpJets; // thrusters fitted AND chassis capable (set by the duel from spec+loadout)
     public float JumpCharge = 1f; // thruster load 0..1: burning drains it (~2.2s of flight); recharges whenever not burning (~5s), even mid-air (owner round 22)
     public float JumpHeight => _jumpH;
-    public bool Airborne => _jumpH > 0.02f;
+    public bool Airborne => _jumpH > AirborneHeightEpsilon;
 
     private bool _thrustHeld;
     public bool Thrusting { get; private set; }
@@ -153,7 +198,7 @@ public partial class RiderWalker : Node3D
     private Vector2 _cohPrev; private bool _cohInit;
     private float _cohWinNet; private float _cohWinWant; private float _cohWinT;
     private float _cohRatio = 1f; private float _cohBlockT;
-    public bool Blocked => _cohBlockT > 0.25f;
+    public bool Blocked => _cohBlockT > CohesionBlockedSeconds;
     private bool _freezeLegs; // thruster flight: legs held (owner, 2026-11-11 round 4)
     private int _plantedFrames;
     private float _hipRiseW;
@@ -188,7 +233,7 @@ public partial class RiderWalker : Node3D
             if (_legL.Planted) s = Mathf.Max(s, _legL.SoleTarget.Y);
             if (_legR.Planted) s = Mathf.Max(s, _legR.SoleTarget.Y);
             if (s == float.MinValue) s = _rootPos.Y - AirborneSoleDrop;
-            if (_jumpH > 0.05f) s = Mathf.Max(s, _rootPos.Y - AirborneSoleDrop);
+            if (_jumpH > SoleDropEngageHeight) s = Mathf.Max(s, _rootPos.Y - AirborneSoleDrop);
             return s;
         }
     }
@@ -196,7 +241,7 @@ public partial class RiderWalker : Node3D
     // Foot ground: terrain, or a building roof the soles are
     // already level with (standing on it, falling onto it).
     private float GroundHere(float x, float z) => Airborne
-        ? Main.GroundAt(x, z, SoleLevel + GroundStepTolerance, _rootPos.Y, 4.0f)
+        ? Main.GroundAt(x, z, SoleLevel + GroundStepTolerance, _rootPos.Y, LedgeSlack)
         : Main.GroundAt(x, z, SoleLevel + GroundStepTolerance);
     public float LegsYaw => _legsYaw;
     public float CollisionRadius => _cfg.CollisionRadius;
@@ -219,7 +264,7 @@ public partial class RiderWalker : Node3D
     public float TorsoPitch
     {
         get => _torsoPitch;
-        set => _torsoPitch = Mathf.Clamp(value, -0.32f, 0.48f);
+        set => _torsoPitch = Mathf.Clamp(value, TorsoPitchMin, TorsoPitchMax);
     }
     // The AIM pitch (owner, round 13): the mouse target is NOT bound
     // by the torso's clamp - the reticle must reach the
@@ -260,7 +305,7 @@ public partial class RiderWalker : Node3D
     {
         if (_fallT >= 0f || Halted) return false;
         var d = new Vector3(awayDirW.X, 0f, awayDirW.Z);
-        _fallDirW = d.LengthSquared() > 0.01f ? d.Normalized() : Vector3.Forward;
+        _fallDirW = d.LengthSquared() > MinDirLengthSq ? d.Normalized() : Vector3.Forward;
         _fallT = 0f;
         _fallAmt = 0f;
         return true;
@@ -444,7 +489,7 @@ public partial class RiderWalker : Node3D
         }
         horizHipAnkle /= 2f;
         float dStand = StandReachFactor * reachW;
-        _hipRiseW = Mathf.Sqrt(Mathf.Max(dStand * dStand - horizHipAnkle * horizHipAnkle, 0.25f));
+        _hipRiseW = Mathf.Sqrt(Mathf.Max(dStand * dStand - horizHipAnkle * horizHipAnkle, MinHipRiseSq));
         var hipWL = skelG * _legL.Hrest;
         var hipWR = skelG * _legR.Hrest;
         _hipAboveHolderW = 0.5f * ((hipWL.Y - Position.Y) + (hipWR.Y - Position.Y));
@@ -456,7 +501,7 @@ public partial class RiderWalker : Node3D
         // blow this budget at run speed under the pendulum stride -
         // both feet at the extremes, neither touching (owner report,
         // 2026-11-16). The 0.97 keeps a whisker of bend in reserve.
-        _strideBudgetW = 0.97f * Mathf.Sqrt(Mathf.Max(reachW * reachW - _hipRiseW * _hipRiseW, 0.42f));
+        _strideBudgetW = StrideBudgetReserve * Mathf.Sqrt(Mathf.Max(reachW * reachW - _hipRiseW * _hipRiseW, MinStrideBudgetSq));
         Dbg.Print($"{_cfg.Label} reachW={reachW:F3} dStand={dStand:F3} hipRiseW={_hipRiseW:F3} hipAboveHolderW={_hipAboveHolderW:F3}");
     }
 
@@ -564,7 +609,7 @@ public partial class RiderWalker : Node3D
     public void ApplyRootXZ(Vector2 xz)
     {
         var delta = new Vector3(xz.X - _rootPos.X, 0f, xz.Y - _rootPos.Z);
-        if (delta.LengthSquared() < 1e-10f) return;
+        if (delta.LengthSquared() < MinPushLengthSq) return;
         _rootPos += delta;
         _holderXf = new Transform3D(_holderXf.Basis, _holderXf.Origin + delta);
         Transform = _holderXf;
@@ -584,10 +629,10 @@ public partial class RiderWalker : Node3D
             if (t < FallSeconds) { float u = t / FallSeconds; _fallAmt = u * u; }
             else _fallAmt = 1f; // down for good - no rise, ever
         }
-        _acc += Mathf.Min(delta, 0.1);
+        _acc += Mathf.Min(delta, MaxFrameDelta);
         const float h = 1f / 120f;
         int guard = 0;
-        while (_acc >= h && guard++ < 40)
+        while (_acc >= h && guard++ < MaxGaitSubsteps)
         {
             GaitStep(h);
             _acc -= h;
@@ -678,10 +723,10 @@ public partial class RiderWalker : Node3D
         // speed, like a runner's - restoring the symmetric
         // pendulum. Uncapped (walk, crawl, turns): StepTime
         // exactly as before.
-        leg.StepDur = (trail < demand - 0.001f && Mathf.Abs(_speed) > 0.01f)
+        leg.StepDur = (trail < demand - StrideCapSlack && Mathf.Abs(_speed) > MinDriveSpeed)
             ? Mathf.Min(_cfg.StepTime, 2f * trail / Mathf.Abs(_speed))
             : _cfg.StepTime;
-        float predT = leg.StepDur + (Mathf.Abs(_speed) > 0.01f ? trail / Mathf.Abs(_speed) : 0f);
+        float predT = leg.StepDur + (Mathf.Abs(_speed) > MinDriveSpeed ? trail / Mathf.Abs(_speed) : 0f);
         var predRoot = _rootPos + vel * predT;
         var home = HomeSlot(leg, predRoot);
         leg.StepFrom = leg.SoleTarget;
@@ -693,7 +738,7 @@ public partial class RiderWalker : Node3D
             // ground there is the surrounding level, not
             // whatever the unclamped point sampled).
             var ct = FootClamp(leg.StepTo);
-            if (Mathf.Abs(ct.X - leg.StepTo.X) > 0.001f || Mathf.Abs(ct.Z - leg.StepTo.Z) > 0.001f)
+            if (Mathf.Abs(ct.X - leg.StepTo.X) > FootClampEpsilon || Mathf.Abs(ct.Z - leg.StepTo.Z) > FootClampEpsilon)
                 leg.StepTo = new Vector3(ct.X, GroundHere(ct.X, ct.Z), ct.Z);
         }
         // Swing endpoints in the FACING frame (owner: leg motion
@@ -716,7 +761,7 @@ public partial class RiderWalker : Node3D
     {
         if (leg.StepT < 0f) return;
         float prev = leg.StepT;
-        leg.StepT += h / (leg.StepDur > 0.01f ? leg.StepDur : _cfg.StepTime);
+        leg.StepT += h / (leg.StepDur > MinStepDuration ? leg.StepDur : _cfg.StepTime);
         float t = Mathf.Clamp(leg.StepT, 0f, 1f);
         float e = t * t * (3f - 2f * t);
         // Swing path: forward and vertical ride the original
@@ -804,10 +849,10 @@ public partial class RiderWalker : Node3D
         // by the same wrong allowance instead of the head.)
         if (_jumpH > 0f)
         {
-            float ceil = Main.CeilingAt(_rootPos.X, _rootPos.Z, _groundY + 0.5f);
+            float ceil = Main.CeilingAt(_rootPos.X, _rootPos.Z, _groundY + CeilingProbeAboveGround);
             if (ceil < float.MaxValue)
             {
-                float headRoom = _cfg.TargetHeight + 0.5f;
+                float headRoom = _cfg.TargetHeight + HeadRoomMargin;
                 float maxH = ceil - headRoom - _groundY;
                 if (_jumpH > maxH)
                 {
@@ -823,7 +868,7 @@ public partial class RiderWalker : Node3D
 
         float tgt = _fallT >= 0f ? 0f : _targetSpeed * SpeedFactor;
         float dv = _cfg.Accel * h;
-        if (Mathf.Abs(tgt) < Mathf.Abs(_speed) - 0.001f)
+        if (Mathf.Abs(tgt) < Mathf.Abs(_speed) - BrakeDetectEpsilon)
         {
             // Braking (owner, 2026-10-31): no inertia - a stop from
             // ANY speed completes within one second, whatever the
@@ -839,7 +884,7 @@ public partial class RiderWalker : Node3D
             // mech used to accelerate (the duel's limp-reverse
             // phase caught exactly that).
             // Acceleration still uses the spec's Accel.
-            _brakeV = Mathf.Max(_brakeV, Mathf.Max(Mathf.Abs(_speed) * 1.15f, _cfg.Accel));
+            _brakeV = Mathf.Max(_brakeV, Mathf.Max(Mathf.Abs(_speed) * BrakeOvershootFactor, _cfg.Accel));
             dv = _brakeV * h;
         }
         else _brakeV = 0f;
@@ -849,27 +894,27 @@ public partial class RiderWalker : Node3D
         if (_cohInit)
         {
             float spd = vel.Length();
-            if (spd > 0.01f)
+            if (spd > MinDriveSpeed)
             {
                 _cohWinNet += (rootXZ - _cohPrev).Dot(new Vector2(vel.X, vel.Z) / spd); // signed: snap-back subtracts
                 _cohWinWant += spd * h;
             }
             _cohWinT += h;
-            if (_cohWinT >= 0.25f)
+            if (_cohWinT >= CohesionWindowSeconds)
             {
-                _cohRatio = _cohWinWant > 0.02f ? Mathf.Clamp(_cohWinNet / _cohWinWant, 0f, 1f) : 1f;
+                _cohRatio = _cohWinWant > CohesionMinWant ? Mathf.Clamp(_cohWinNet / _cohWinWant, 0f, 1f) : 1f;
                 _cohWinNet = 0f; _cohWinWant = 0f; _cohWinT = 0f;
             }
         }
         _cohPrev = rootXZ; _cohInit = true;
-        bool cohBlocked = _cohRatio < 0.35f && Mathf.Abs(_targetSpeed) > 0.01f && _fallT < 0f;
+        bool cohBlocked = _cohRatio < CohesionBlockedRatio && Mathf.Abs(_targetSpeed) > MinDriveSpeed && _fallT < 0f;
         _cohBlockT = cohBlocked ? _cohBlockT + h : 0f;
         _rootPos += vel * h;
 
         var stepping = _legL.StepT >= 0f ? _legL : _legR.StepT >= 0f ? _legR : null;
         if (stepping == null && _fallT < 0f && !_freezeLegs)
         {
-            bool settling = Mathf.Abs(_targetSpeed) < 0.01f && Mathf.Abs(_speed) < 0.15f && _yawRate < 0.05f;
+            bool settling = Mathf.Abs(_targetSpeed) < MinDriveSpeed && Mathf.Abs(_speed) < SettleSpeedThreshold && _yawRate < SettleYawRateThreshold;
             // Pendulum pair to BeginStep's plant lead: a planted
             // foot lifts once it trails half a stride cycle
             // behind its home (lag measured against the CURRENT
@@ -877,7 +922,7 @@ public partial class RiderWalker : Node3D
             // StepThreshold made the trail speed-independent).
             // The 0.65 floor keeps crawl and turn-in-place steps
             // from shrinking to shuffles.
-            float threshold = settling ? 0.10f : Mathf.Min(Mathf.Max(0.65f, _speed * _cfg.StepTime * 0.5f), Mathf.Max(_strideBudgetW, 0.65f));
+            float threshold = settling ? SettleStepThreshold : Mathf.Min(Mathf.Max(TrailFloor, _speed * _cfg.StepTime * 0.5f), Mathf.Max(_strideBudgetW, TrailFloor));
             Leg best = null; float bestLag = threshold;
             foreach (var leg in new[] { _legL, _legR })
             {
@@ -906,7 +951,7 @@ public partial class RiderWalker : Node3D
             if (!leg.Planted) continue;
             float g = GroundHere(leg.SoleTarget.X, leg.SoleTarget.Z);
             float diff = g - leg.SoleTarget.Y;
-            if (diff > 0.01f || diff < -0.01f && diff > -2.0f)
+            if (diff > GroundCarryEpsilon || diff < -GroundCarryEpsilon && diff > -GroundCarryDropMax)
                 leg.SoleTarget = new Vector3(leg.SoleTarget.X, g, leg.SoleTarget.Z);
         }
         // A wrecked leg steps like any other (see the state comment
@@ -931,7 +976,7 @@ public partial class RiderWalker : Node3D
             foreach (var leg in new[] { _legL, _legR })
             {
                 var hipW = _skelGlobal * leg.Hrest;
-                float drop = (leg.L1 + leg.L2) * st + leg.AnkleAboveSoleW + 0.5f;
+                float drop = (leg.L1 + leg.L2) * st + leg.AnkleAboveSoleW + HangDropExtra;
                 leg.SoleTarget = new Vector3(hipW.X, hipW.Y - drop, hipW.Z);
                 leg.PlantBasisW = FlatFootBasis(_legsYaw);
                 leg.CurBasisW = leg.PlantBasisW;
@@ -951,8 +996,8 @@ public partial class RiderWalker : Node3D
     private void UpdateRoot(float h)
     {
         bool doubleSupport = _legL.Planted && _legR.Planted;
-        float bobT = doubleSupport ? -0.09f : -0.02f;
-        _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-6f * h));
+        float bobT = doubleSupport ? BobDoubleSupport : BobSingleSupport;
+        _bob = Mathf.Lerp(_bob, bobT, 1f - Mathf.Exp(-BobEaseRate * h));
         // In thruster flight the root's ground reference is
         // the surface under the ROOT, never the feet (owner
         // round 5: with the feet feeding DesiredRootY, the
@@ -963,12 +1008,12 @@ public partial class RiderWalker : Node3D
             ? GroundHere(_rootPos.X, _rootPos.Z) + 0.5f * (_legL.AnkleAboveSoleW + _legR.AnkleAboveSoleW) + _hipRiseW - _hipAboveHolderW + _bob
             : DesiredRootY();
         // Knocked down: the hips drop to rest height (body on the ground).
-        if (_fallAmt > 0.001f)
+        if (_fallAmt > FallAmountEpsilon)
         {
-            float restY = Mathf.Min(_legL.SoleTarget.Y, _legR.SoleTarget.Y) + 2.0f;
+            float restY = Mathf.Min(_legL.SoleTarget.Y, _legR.SoleTarget.Y) + FallRestHeight;
             yT = Mathf.Lerp(yT, restY, _fallAmt);
         }
-        _groundY = Mathf.Lerp(_groundY, yT, 1f - Mathf.Exp(-8f * h));
+        _groundY = Mathf.Lerp(_groundY, yT, 1f - Mathf.Exp(-GroundFollowRate * h));
         _rootPos.Y = _groundY + _jumpH; // the arc itself is NOT smoothed - full ballistic height
 
         // Lateral pelvis sway REMOVED (owner, round 22 follow-up):
@@ -979,7 +1024,7 @@ public partial class RiderWalker : Node3D
         // bob remains. (GAITDBG audit: sway displaced the hips
         // 0.23u against ankles planted exactly at home +-1.956.)
         var swayT = Vector3.Zero;
-        _sway = _sway.Lerp(swayT, 1f - Mathf.Exp(-5f * h));
+        _sway = _sway.Lerp(swayT, 1f - Mathf.Exp(-SwayEaseRate * h));
 
         // Up vector: roll from the two feet heights across the lateral axis,
         // pitch from the terrain gradient along the heading.
@@ -990,7 +1035,7 @@ public partial class RiderWalker : Node3D
         float latR = (sR - _rootPos).Dot(right);
         var sHi = latR > latL ? sR : sL;
         var sLo = latR > latL ? sL : sR;
-        float span = Mathf.Max(Mathf.Abs(latR - latL), 0.5f);
+        float span = Mathf.Max(Mathf.Abs(latR - latL), MinFootSpan);
         float dhLat = (sHi.Y - sLo.Y) / span;
         var fwd = HeadingVec(_legsYaw);
         const float ge = 1.5f;
@@ -1006,22 +1051,22 @@ public partial class RiderWalker : Node3D
             upT = (upT - right * Mathf.Sin(LimpRoll)).Normalized();
         // Knockdown: the up vector tips toward the fall direction by up
         // to ~76 degrees, scaled by the fall amount.
-        if (_fallAmt > 0.001f)
+        if (_fallAmt > FallAmountEpsilon)
         {
-            float ang = 1.32f * _fallAmt;
+            float ang = FallTipAngle * _fallAmt;
             var fallUp = (Vector3.Up * Mathf.Cos(ang) + _fallDirW * Mathf.Sin(ang)).Normalized();
             upT = (upT * (1f - _fallAmt) + fallUp * _fallAmt).Normalized();
         }
-        _upEased = _upEased.Lerp(upT, 1f - Mathf.Exp(-(_fallAmt > 0.001f ? 10f : 3.5f) * h)).Normalized();
+        _upEased = _upEased.Lerp(upT, 1f - Mathf.Exp(-(_fallAmt > FallAmountEpsilon ? FallUpEaseRate : UpEaseRate) * h)).Normalized();
 
         var q = new Quaternion(Vector3.Up, _upEased);
         _rootBasis = new Basis(q) * Basis.Identity.Rotated(Vector3.Up, _legsYaw + Mathf.Pi);
-        if (_joltEnv > 0.002f)
+        if (_joltEnv > MinJoltEnvelope)
         {
             _rootBasis = _rootBasis
                 * Basis.Identity.Rotated(Vector3.Right, _joltPitch * _joltEnv)
                 * Basis.Identity.Rotated(Vector3.Forward, _joltRoll * _joltEnv);
-            _joltEnv = Mathf.Max(_joltEnv - h * 2.4f, 0f);
+            _joltEnv = Mathf.Max(_joltEnv - h * JoltDecayRate, 0f);
         }
 
         RefreshPose();
@@ -1062,7 +1107,7 @@ public partial class RiderWalker : Node3D
         // droop still slumps it nose-down, up to ~49 deg.
         var f = _rootBasis.Orthonormalized()
             * Basis.Identity.Rotated(Vector3.Up, _torsoTwist)
-            * Basis.Identity.Rotated(Vector3.Right, Mathf.Clamp(Droop - _torsoPitch, -0.85f, 0.32f))
+            * Basis.Identity.Rotated(Vector3.Right, Mathf.Clamp(Droop - _torsoPitch, TorsoRenderPitchMin, TorsoRenderPitchMax))
             * Basis.Identity.Rotated(Vector3.Up, Mathf.Pi);
         var basisSk = _skelGlobal.Basis.Orthonormalized().Transposed() * (f * _torsoM0);
         _skel.SetBoneGlobalPoseOverride(_torsoBone,
@@ -1099,13 +1144,13 @@ public partial class RiderWalker : Node3D
         var H = leg.Hrest;
         var toA = A - H;
         float reach = leg.L1 + leg.L2;
-        float d = Mathf.Clamp(toA.Length(), reach * 0.05f, reach * 0.999f);
+        float d = Mathf.Clamp(toA.Length(), reach * IkMinReachFraction, reach * IkMaxReachFraction);
         var dir = toA.Normalized();
         A = H + dir * d;
         float a = (leg.L1 * leg.L1 - leg.L2 * leg.L2 + d * d) / (2f * d);
         float hh = Mathf.Sqrt(Mathf.Max(leg.L1 * leg.L1 - a * a, 0f));
         var pole = leg.PoleSk - dir * leg.PoleSk.Dot(dir);
-        if (pole.LengthSquared() < 1e-6f) pole = dir.Cross(Vector3.Right).Normalized();
+        if (pole.LengthSquared() < MinPoleLengthSq) pole = dir.Cross(Vector3.Right).Normalized();
         else pole = pole.Normalized();
         var K = H + dir * a + pole * hh;
 
@@ -1206,7 +1251,7 @@ public partial class RiderWalker : Node3D
     public float JoltEnv => _joltEnv;
     public void Jolt(Vector3 worldPushDir, float strength)
     {
-        if (worldPushDir.LengthSquared() < 0.01f || strength <= 0f) return;
+        if (worldPushDir.LengthSquared() < MinDirLengthSq || strength <= 0f) return;
         var fwd = HeadingVec(_legsYaw);
         var right = new Vector3(-fwd.Z, 0f, fwd.X);
         _joltPitch = -worldPushDir.Dot(fwd) * strength * JoltAngleScale;
@@ -1285,7 +1330,7 @@ public partial class RiderWalker : Node3D
                 for (int k = 0; k < 4; k++)
                 {
                     float w = weights[v * 4 + k];
-                    if (w > 0.01f)
+                    if (w > MinBindWeight)
                     {
                         int b = bones[v * 4 + k];
                         tally[b] = (tally.TryGetValue(b, out var c) ? c : 0) + w;
