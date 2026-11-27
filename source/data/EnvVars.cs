@@ -12,6 +12,11 @@ public static class EnvVars
     public const string Arena = "AOT_ARENA";
     public const string FromFlow = "AOT_FROMFLOW";
     public const string Mode = "AOT_MODE";
+    // The AOT_MODE texts the harness boots with (external data,
+    // set by the run scripts - the MapMode enum is what the
+    // parse in WorldConfig produces from them).
+    public const string ModeMission = "mission";
+    public const string ModeTournament = "tournament";
     public const string Biome = "AOT_BIOME";
     public const string CityKit = "AOT_CITYKIT";
     public const string Sky = "AOT_SKY";

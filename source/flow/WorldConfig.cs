@@ -58,7 +58,7 @@ public static class WorldConfig
     public static bool SkyStars = InitStars();
 
     private static bool InitStars() =>
-        EnvVars.Value(EnvVars.Stars) == "1";
+        EnvVars.Flag(EnvVars.Stars);
 
     // Snow-covered ground (owner): the terrain wears snow
     // where the map's painted sky is a snowscape. EnterLab
@@ -85,19 +85,19 @@ public static class WorldConfig
     public static bool Photoreal = InitPhotoreal();
 
     private static bool InitPhotoreal() =>
-        EnvVars.Value(EnvVars.Photoreal) == "1";
+        EnvVars.Flag(EnvVars.Photoreal);
 
     private static bool InitAscent() =>
-        EnvVars.Value(EnvVars.Ascent) == "1";
+        EnvVars.Flag(EnvVars.Ascent);
 
     private static bool InitHills() =>
-        EnvVars.Value(EnvVars.Hills) == "1";
+        EnvVars.Flag(EnvVars.Hills);
 
     private static bool InitTerraces() =>
-        EnvVars.Value(EnvVars.Terraces) == "1";
+        EnvVars.Flag(EnvVars.Terraces);
 
     private static bool InitSnow() =>
-        EnvVars.Value(EnvVars.Snow) == "1";
+        EnvVars.Flag(EnvVars.Snow);
 
     private static string InitSky()
     {
@@ -124,10 +124,10 @@ public static class WorldConfig
     public static bool FlatWorld = InitFlat();
 
     private static bool InitFlat() =>
-        EnvVars.Value(EnvVars.Flat) == "1";
+        EnvVars.Flag(EnvVars.Flat);
 
     private static MapMode InitMode() =>
-        EnvVars.Value(EnvVars.Mode) == "mission"
+        EnvVars.Value(EnvVars.Mode) == EnvVars.ModeMission
             ? MapMode.Mission : MapMode.Tournament;
 
     public static bool IsMission => Mode == MapMode.Mission;
