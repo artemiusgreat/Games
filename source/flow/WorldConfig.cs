@@ -171,7 +171,7 @@ public static class WorldConfig
     public static float WorldBound => IsMission ? MissionWorldBound : TournamentWorldBound;
     public static float PadFlattenRadius => IsMission ? MissionPadFlattenRadius : TournamentPadFlattenRadius;
 
-    public static Vector2[] Pads => IsMission && Ascent ? global::Ascent.Pads
+    public static Vector2[] Pads => IsMission && Ascent ? global::Babylon.Pads
         : IsMission ? MissionPads : TournamentPads;
 
     private static readonly Vector2[] TournamentPads =

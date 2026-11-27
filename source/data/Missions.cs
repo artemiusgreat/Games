@@ -59,7 +59,7 @@ public sealed class MissionDef
     // island district on a bridge (owner: Harbor rebuild).
     public bool Terraces;
     // The Ascent campaign map (owner, 2026-11-20): the
-    // valley-to-summit world with village guard groups (Ascent.cs).
+    // valley-to-summit world with village guard groups (maps/Babylon.cs).
     public bool Ascent;
     // Always on the offers list, regardless of story
     // progression (owner, 2026-11-20: Anabasis, so he can

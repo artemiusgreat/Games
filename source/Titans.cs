@@ -662,7 +662,7 @@ public partial class Titans : Node3D
         }
         if (WorldConfig.IsMission)
         {
-            if (WorldConfig.Ascent) BuildAscentWorld();
+            if (WorldConfig.Ascent) BuildBabylonWorld();
         }
         await BuildFrame(); // staged build: built ground in, nature next
         ScatterNature();

@@ -156,8 +156,8 @@ public partial class Main : Node3D
 	private static float RawHeight(float x, float z)
 	{
 		// The Ascent contract (owner, 2026-11-20) gets its own
-		// valley-to-summit heightfield (Ascent.cs holds the math).
-		if (WorldConfig.Ascent) return Ascent.Height(x, z);
+		// valley-to-summit heightfield (maps/Babylon.cs holds the math).
+		if (WorldConfig.Ascent) return Babylon.Height(x, z);
 		// The terraced-city contract gets the canyon/valley
 		// terrain (basins at the bases, passes on the roads).
 		if (WorldConfig.TerracedCity) return ValleyHeight(x, z);

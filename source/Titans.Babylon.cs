@@ -1,12 +1,10 @@
 using Godot;
 
-// Titans module: the Ascent campaign world's dressing
-// (owner, 2026-11-20) - the villages, river bridges and the
-// layered summit city for the Brisbane contract (the Ascent map). All positions
-// come from Ascent.cs, the same table the heightfield and the
-// guard spawner read. The higher the site, the taller and more
-// advanced its buildings: mud-flat shanties at the valley
-// mouth, towers and stacked platforms at the citadel.
+// Titans module: the Babylon campaign world's dressing
+// (owner, 2026-11-20) - the river bridges and the layered
+// summit city for the Babylon contract. All positions come
+// from maps/Babylon.cs, the same table the heightfield and
+// the guard spawner read.
 public partial class Titans
 {
     // Bridge pillar cross-section (the deck pillars are
@@ -35,7 +33,7 @@ public partial class Titans
     private const float ColumnFootprint = 5f;
     private const float RampCorridorSinMax = 0.30f;  // plateau towers skip bearings this close to the south ramp corridor
 
-    private void BuildAscentWorld()
+    private void BuildBabylonWorld()
     {
         // ---- Rivers: water in the channel and a deck bridge
         // where the road crosses.
@@ -45,9 +43,9 @@ public partial class Titans
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             Roughness = RiverRoughness, Metallic = RiverMetallic
         };
-        foreach (float rz in Ascent.Rivers)
+        foreach (float rz in Babylon.Rivers)
         {
-            float bankY = Ascent.Profile(rz);
+            float bankY = Babylon.Profile(rz);
             var water = new MeshInstance3D
             {
                 Mesh = new PlaneMesh { Size = new Vector2(RiverPlaneLength, RiverPlaneWidth) },
@@ -55,7 +53,7 @@ public partial class Titans
                 Position = new Vector3(0f, bankY - WaterDropBelowBank, rz)
             };
             AddChild(water);
-            float cx = Ascent.RoadX(rz);
+            float cx = Babylon.RoadX(rz);
             float top = bankY + BridgeTopAboveBank;
             Main.Roofs.Add(new Main.RoofRect
             {
@@ -98,13 +96,13 @@ public partial class Titans
         // ---- The summit city: two stacked platform levels
         // over the plateau, ramps between them, towers on every
         // level and the citadel keep on top.
-        var sc = Ascent.Summit;
-        float h0 = Ascent.SummitH;
+        var sc = Babylon.Summit;
+        float h0 = Babylon.SummitH;
         AddSummitDeck(sc + new Vector2(0f, 8f), 104f, 66f, h0 + 15f);
         AddSummitDeck(sc + new Vector2(0f, -30f), 58f, 40f, h0 + 30f);
         AddSummitRamp(new Vector2(sc.X, sc.Y + 89f), h0, h0 + 15f, 13f);
         AddSummitRamp(new Vector2(sc.X, sc.Y + 25f), h0 + 15f, h0 + 30f, 11f);
-        Dbg.Print($"ASCENT world built: {Ascent.Sites.Length} villages, {Ascent.Rivers.Length} bridged rivers, summit city at h={h0:F0}");
+        Dbg.Print($"BABYLON world built: {Babylon.Sites.Length} villages, {Babylon.Rivers.Length} bridged rivers, summit city at h={h0:F0}");
     }
 
     // One stacked platform: the walkable RoofRect registration,

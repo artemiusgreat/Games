@@ -336,7 +336,7 @@ public partial class Titans
 
     // The Ascent's defenders (owner, 2026-11-20): one guard
     // group per village plus the summit's eight, each an NPC
-    // record on team 1 with its own patrol ground (Ascent.cs).
+    // record on team 1 with its own patrol ground (maps/Babylon.cs).
     // Specs rotate through the roster deterministically so
     // every site fields a different mix. The mission is won
     // only when the seats AND every guard are down
@@ -362,10 +362,10 @@ public partial class Titans
                 n++;
             }
         }
-        for (int s = 0; s < Ascent.Sites.Length; s++)
-            Muster(Ascent.Sites[s].C, Ascent.Sites[s].Guards, s * 3);
-        Muster(Ascent.SummitApron, Ascent.SummitGuards, 40);
-        Dbg.Print($"ASCENT guards built: {n} defenders across {Ascent.Sites.Length} villages and the summit");
+        for (int s = 0; s < Babylon.Sites.Length; s++)
+            Muster(Babylon.Sites[s].C, Babylon.Sites[s].Guards, s * 3);
+        Muster(Babylon.SummitApron, Babylon.SummitGuards, 40);
+        Dbg.Print($"BABYLON guards built: {n} defenders across {Babylon.Sites.Length} villages and the summit");
     }
 
     // A team's muster point in the arena: its pad for the
