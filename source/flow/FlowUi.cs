@@ -15,6 +15,70 @@ public static class FlowUi
     public static readonly Color Good = new(0.55f, 0.95f, 0.60f);
     public static readonly Color Bad = new(1.0f, 0.55f, 0.45f);
 
+    // Button state faces (MakeButton's box family).
+    public static readonly Color ButtonNormal = new(0.10f, 0.14f, 0.20f, 0.95f);
+    public static readonly Color ButtonHover = new(0.16f, 0.21f, 0.30f, 0.98f);
+    public static readonly Color ButtonPressed = new(0.23f, 0.19f, 0.08f, 0.98f);
+    public static readonly Color ButtonDisabled = new(0.07f, 0.08f, 0.10f, 0.9f);
+    public static readonly Color ButtonFontDisabled = new(0.4f, 0.44f, 0.5f);
+    public static readonly Color Transparent = new(0, 0, 0, 0);
+
+    // Panel-button state faces: the compact +/-/- buttons on
+    // the team screens, drawn with Panel boxes (a slightly
+    // different face family from MakeButton's).
+    public static readonly Color PanelButtonNormal = new(0.10f, 0.13f, 0.19f, 0.98f);
+    public static readonly Color PanelButtonHover = new(0.16f, 0.20f, 0.28f, 0.98f);
+    public static readonly Color PanelButtonPressed = new(0.20f, 0.17f, 0.08f, 0.98f);
+    public static readonly Color PanelButtonDisabled = new(0.06f, 0.07f, 0.09f, 0.9f);
+    public static readonly Color PanelButtonFontDisabled = new(0.45f, 0.48f, 0.52f);
+
+    // Monitor palette (the desk-monitor description boxes).
+    public static readonly Color MonitorBezelBg = new(0.05f, 0.06f, 0.075f, 0.98f);
+    public static readonly Color MonitorBezelBorder = new(0.30f, 0.33f, 0.38f);
+    public static readonly Color MonitorScreenBg = new(0.010f, 0.032f, 0.026f, 1f);
+    public static readonly Color MonitorScreenBorder = new(0.10f, 0.24f, 0.19f);
+
+    // Shared screen geometry: every wizard screen wears the
+    // same frame (margins, separations, menu font sizes), so
+    // the values live here once and the screens name them.
+    public const int PanelMarginHorizontal = 18;
+    public const int PanelMarginVertical = 12;
+    public const int PanelBorderWidth = 2;
+    public const int PanelCornerRadius = 8;
+    public const int ButtonMarginHorizontal = 18;
+    public const int ButtonMarginVertical = 11;
+    public const int ButtonBorderWidth = 2;
+    public const int ButtonCornerRadius = 6;
+    public const int ButtonFocusBorderWidth = 3;
+    public const int DefaultButtonFontSize = 15;
+    public const int ScreenMarginHorizontal = 18;
+    public const int ScreenMarginVertical = 14;
+    public const int ScreenSeparation = 10;
+    public const int MenuSeparation = 10;
+    public const int MidSeparation = 12;
+    public const int PanelColumnSeparation = 7;
+    public const int RowSeparation = 8;
+    public const int MenuButtonFontSize = 14;
+    public const int SectionHeadingFontSize = 13;
+    public const int BodyTextFontSize = 13;
+    public const int SmallTextFontSize = 12;
+    public const int SubTextFontSize = 11;
+    public const float DescriptionScrollMinHeight = 150f;
+    public const float VisualPanelAlpha = 0.75f;
+    public const int SelectorSeparation = 8;
+    public const int SelectorArrowFontSize = 17;
+    public const float SelectorArrowWidth = 42f;
+    public const float AddButtonSize = 46f;
+    public const int AddButtonFontSize = 18;
+    public const float RemoveButtonSize = 30f;
+    public const int RemoveButtonFontSize = 15;
+    public const int RowButtonMargin = 2;
+    public const int RiderCardPadding = 10;
+    public const float RiderCardAlpha = 0.9f;
+    public const float RiderSliderExtraWidth = 100f;
+    public const int ThreatPipCount = 5;
+    public const int RiderSelectorFontSize = 16;
+
     public static StyleBoxFlat Panel(Color bg, float alpha = -1f)
     {
         var c = bg; if (alpha >= 0f) c.A = alpha;
@@ -22,11 +86,11 @@ public static class FlowUi
         {
             BgColor = c,
             BorderColor = Steel,
-            ContentMarginLeft = 18, ContentMarginRight = 18,
-            ContentMarginTop = 12, ContentMarginBottom = 12
+            ContentMarginLeft = PanelMarginHorizontal, ContentMarginRight = PanelMarginHorizontal,
+            ContentMarginTop = PanelMarginVertical, ContentMarginBottom = PanelMarginVertical
         };
-        sb.SetBorderWidthAll(2);
-        sb.SetCornerRadiusAll(8);
+        sb.SetBorderWidthAll(PanelBorderWidth);
+        sb.SetCornerRadiusAll(PanelCornerRadius);
         return sb;
     }
 
@@ -36,11 +100,11 @@ public static class FlowUi
         {
             BgColor = bg,
             BorderColor = Steel,
-            ContentMarginLeft = 18, ContentMarginRight = 18,
-            ContentMarginTop = 11, ContentMarginBottom = 11
+            ContentMarginLeft = ButtonMarginHorizontal, ContentMarginRight = ButtonMarginHorizontal,
+            ContentMarginTop = ButtonMarginVertical, ContentMarginBottom = ButtonMarginVertical
         };
-        sb.SetBorderWidthAll(2);
-        sb.SetCornerRadiusAll(6);
+        sb.SetBorderWidthAll(ButtonBorderWidth);
+        sb.SetCornerRadiusAll(ButtonCornerRadius);
         return sb;
     }
 
@@ -51,23 +115,23 @@ public static class FlowUi
     // cache can never bring the mono back).
     public static FontFile BodyFont => _bodyFont ??= GD.Load<FontFile>("res://assets/fonts/OpenSans-Regular.ttf");
 
-    public static Button MakeButton(string text, int fontSize = 15)
+    public static Button MakeButton(string text, int fontSize = DefaultButtonFontSize)
     {
         var b = new Button { Text = text };
         b.AddThemeFontOverride("font", BodyFont);
         b.AddThemeFontSizeOverride("font_size", fontSize);
         b.AddThemeColorOverride("font_color", Ink);
         b.AddThemeColorOverride("font_hover_color", Gold);
-        b.AddThemeColorOverride("font_disabled_color", new Color(0.4f, 0.44f, 0.5f));
-        b.AddThemeStyleboxOverride("normal", ButtonBox(new Color(0.10f, 0.14f, 0.20f, 0.95f)));
-        b.AddThemeStyleboxOverride("hover", ButtonBox(new Color(0.16f, 0.21f, 0.30f, 0.98f)));
-        b.AddThemeStyleboxOverride("pressed", ButtonBox(new Color(0.23f, 0.19f, 0.08f, 0.98f)));
-        b.AddThemeStyleboxOverride("disabled", ButtonBox(new Color(0.07f, 0.08f, 0.10f, 0.9f)));
+        b.AddThemeColorOverride("font_disabled_color", ButtonFontDisabled);
+        b.AddThemeStyleboxOverride("normal", ButtonBox(ButtonNormal));
+        b.AddThemeStyleboxOverride("hover", ButtonBox(ButtonHover));
+        b.AddThemeStyleboxOverride("pressed", ButtonBox(ButtonPressed));
+        b.AddThemeStyleboxOverride("disabled", ButtonBox(ButtonDisabled));
         // Keyboard focus must be VISIBLE: a gold frame, no fill.
-        var focus = ButtonBox(new Color(0, 0, 0, 0));
+        var focus = ButtonBox(Transparent);
         focus.DrawCenter = false;
         focus.BorderColor = Gold;
-        focus.SetBorderWidthAll(3);
+        focus.SetBorderWidthAll(ButtonFocusBorderWidth);
         b.AddThemeStyleboxOverride("focus", focus);
         b.AddThemeColorOverride("font_focus_color", Gold);
         return b;
@@ -92,17 +156,25 @@ public static class FlowUi
     // A desk-monitor look for description text: a heavy bezel
     // around a dark green-black screen, so the player reads the
     // planet (or the contract) off a computer, not a panel.
+    public const int MonitorBezelMargin = 8;
+    public const int MonitorBezelBorderWidth = 3;
+    public const int MonitorBezelCornerRadius = 10;
+    public const int MonitorScreenMarginHorizontal = 10;
+    public const int MonitorScreenMarginVertical = 8;
+    public const int MonitorScreenBorderWidth = 1;
+    public const int MonitorScreenCornerRadius = 4;
+
     public static StyleBoxFlat MonitorBezel()
     {
         var sb = new StyleBoxFlat
         {
-            BgColor = new Color(0.05f, 0.06f, 0.075f, 0.98f),
-            BorderColor = new Color(0.30f, 0.33f, 0.38f),
-            ContentMarginLeft = 8, ContentMarginRight = 8,
-            ContentMarginTop = 8, ContentMarginBottom = 8
+            BgColor = MonitorBezelBg,
+            BorderColor = MonitorBezelBorder,
+            ContentMarginLeft = MonitorBezelMargin, ContentMarginRight = MonitorBezelMargin,
+            ContentMarginTop = MonitorBezelMargin, ContentMarginBottom = MonitorBezelMargin
         };
-        sb.SetBorderWidthAll(3);
-        sb.SetCornerRadiusAll(10);
+        sb.SetBorderWidthAll(MonitorBezelBorderWidth);
+        sb.SetCornerRadiusAll(MonitorBezelCornerRadius);
         return sb;
     }
 
@@ -110,13 +182,13 @@ public static class FlowUi
     {
         var sb = new StyleBoxFlat
         {
-            BgColor = new Color(0.010f, 0.032f, 0.026f, 1f),
-            BorderColor = new Color(0.10f, 0.24f, 0.19f),
-            ContentMarginLeft = 10, ContentMarginRight = 10,
-            ContentMarginTop = 8, ContentMarginBottom = 8
+            BgColor = MonitorScreenBg,
+            BorderColor = MonitorScreenBorder,
+            ContentMarginLeft = MonitorScreenMarginHorizontal, ContentMarginRight = MonitorScreenMarginHorizontal,
+            ContentMarginTop = MonitorScreenMarginVertical, ContentMarginBottom = MonitorScreenMarginVertical
         };
-        sb.SetBorderWidthAll(1);
-        sb.SetCornerRadiusAll(4);
+        sb.SetBorderWidthAll(MonitorScreenBorderWidth);
+        sb.SetCornerRadiusAll(MonitorScreenCornerRadius);
         return sb;
     }
 
@@ -124,15 +196,22 @@ public static class FlowUi
 
     // CRT dressing for the monitor screens: faint green scanlines
     // and a soft glow at the top, drawn as an overlay texture.
-    public static ImageTexture ScanlineTexture(int w = 256, int h = 256)
+    public const int ScanlineDefaultSize = 256;
+    public const int ScanlinePeriod = 3;
+    public const float ScanlineRowAlpha = 0.05f;
+    public const float ScanlineGlowStrength = 0.03f;
+    public const float ScanlineGlowTintFactor = 0.3f;
+    public static readonly Color ScanlineTint = new(0.4f, 1f, 0.8f);
+
+    public static ImageTexture ScanlineTexture(int w = ScanlineDefaultSize, int h = ScanlineDefaultSize)
     {
         var img = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
         for (int j = 0; j < h; j++)
         for (int i = 0; i < w; i++)
         {
-            float a = (j % 3 == 2) ? 0.05f : 0f;
-            float glow = 0.03f * (1f - j / (float)h);
-            img.SetPixel(i, j, new Color(0.4f, 1f, 0.8f, a + glow * 0.3f));
+            float a = (j % ScanlinePeriod == 2) ? ScanlineRowAlpha : 0f;
+            float glow = ScanlineGlowStrength * (1f - j / (float)h);
+            img.SetPixel(i, j, new Color(ScanlineTint, a + glow * ScanlineGlowTintFactor));
         }
         return ImageTexture.CreateFromImage(img);
     }
@@ -183,19 +262,72 @@ public static class FlowUi
     public static HBoxContainer SelectorRow(out Label name, int fontSize, System.Action<int> step)
     {
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        var prev = MakeButton("‹", 17);
-        prev.CustomMinimumSize = new Vector2(42f, 0f);
+        row.AddThemeConstantOverride("separation", SelectorSeparation);
+        var prev = MakeButton("‹", SelectorArrowFontSize);
+        prev.CustomMinimumSize = new Vector2(SelectorArrowWidth, 0f);
         prev.Pressed += () => step(-1);
         row.AddChild(prev);
         name = NavHeading("", fontSize, Gold, HorizontalAlignment.Center);
         name.SizeFlagsHorizontal = Control.SizeFlags.Expand;
         row.AddChild(name);
-        var next = MakeButton("›", 17);
-        next.CustomMinimumSize = new Vector2(42f, 0f);
+        var next = MakeButton("›", SelectorArrowFontSize);
+        next.CustomMinimumSize = new Vector2(SelectorArrowWidth, 0f);
         next.Pressed += () => step(1);
         row.AddChild(next);
         return row;
+    }
+
+    // Panel boxes for buttons that must fit inside a row wear
+    // near-zero margins (FlowUi.Panel's own margins would give
+    // the button a ~44px minimum height whatever its rect says).
+    public static StyleBoxFlat RowButtonBox(Color bg)
+    {
+        var sb = Panel(bg);
+        sb.ContentMarginLeft = RowButtonMargin; sb.ContentMarginRight = RowButtonMargin;
+        sb.ContentMarginTop = RowButtonMargin; sb.ContentMarginBottom = RowButtonMargin;
+        return sb;
+    }
+
+    // The team screens' add control: a compact '+' button,
+    // right-aligned below the last row - never stretched
+    // across the list.
+    public static Control AddRow(System.Action add, bool disabled)
+    {
+        var row = new HBoxContainer();
+        row.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        var b = new Button { Text = "+", CustomMinimumSize = new Vector2(AddButtonSize, AddButtonSize) };
+        b.AddThemeFontSizeOverride("font_size", AddButtonFontSize);
+        b.AddThemeStyleboxOverride("normal", Panel(PanelButtonNormal));
+        b.AddThemeStyleboxOverride("hover", Panel(PanelButtonHover));
+        b.AddThemeStyleboxOverride("pressed", Panel(PanelButtonPressed));
+        b.AddThemeStyleboxOverride("disabled", Panel(PanelButtonDisabled));
+        b.AddThemeColorOverride("font_color", Ink);
+        b.AddThemeColorOverride("font_hover_color", Gold);
+        b.AddThemeColorOverride("font_disabled_color", PanelButtonFontDisabled);
+        b.Disabled = disabled;
+        b.Pressed += () => add();
+        row.AddChild(b);
+        return row;
+    }
+
+    // One shared slider minimum for every rider row (owner,
+    // 2026-11-15): the widest label the selector can show -
+    // the longest rider name with the active suffix - plus
+    // the two 42px arrows and separations. With one minimum
+    // (and the remove slot reserved on rows without a
+    // button), the half-width split lands identical on
+    // every row instead of drifting with the name length.
+    public static float RiderSliderMin()
+    {
+        var probe = NavHeading("", RiderSelectorFontSize, Gold, HorizontalAlignment.Center);
+        var font = probe.GetThemeFont("font");
+        float w = 0f;
+        foreach (var s in RiderSpecs.All)
+        {
+            var t = $"{NameCase(s.Name)} - {s.Tonnage:F0}T - {NameCase(s.ClassLabel)} - Active";
+            w = Mathf.Max(w, font.GetStringSize(t, HorizontalAlignment.Left, -1f, RiderSelectorFontSize).X);
+        }
+        return w + RiderSliderExtraWidth;
     }
 
     // A description on a desk monitor: bezel, dark screen,
@@ -225,17 +357,20 @@ public static class FlowUi
     // Keep a monitor label exactly as wide as its scroll
     // viewport (minus the scrollbar), so the text reflows to
     // the full screen width whenever the window changes size.
+    public const float ScrollbarAllowance = 14f;
+    public const float MinFitTextWidth = 40f;
+
     public static void FitTextWidth(ScrollContainer scroll, Label label)
     {
         if (scroll == null || label == null) return;
-        float w = scroll.Size.X - 14f;
-        if (w > 40f) label.CustomMinimumSize = new Vector2(w, label.CustomMinimumSize.Y);
+        float w = scroll.Size.X - ScrollbarAllowance;
+        if (w > MinFitTextWidth) label.CustomMinimumSize = new Vector2(w, label.CustomMinimumSize.Y);
     }
 
     public static string ThreatPips(int threat)
     {
         var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < 5; i++) sb.Append(i < threat ? "●" : "○");
+        for (int i = 0; i < ThreatPipCount; i++) sb.Append(i < threat ? "●" : "○");
         return sb.ToString();
     }
 
@@ -268,10 +403,14 @@ public static class FlowUi
         return sum / tot;
     }
 
+    public static readonly Color CloudColor = new(0.95f, 0.97f, 1.0f);
+
     // A shaded planet disc: fbm continents over a deep base, polar
     // caps, and a baked terminator (light from the upper left), so
     // the flat texture reads as a globe on the orbital screen.
-    public static ImageTexture PlanetTexture(PlanetDef p, int size = 512, float seed = 0f)
+    public const int PlanetTextureSize = 512;
+
+    public static ImageTexture PlanetTexture(PlanetDef p, int size = PlanetTextureSize, float seed = 0f)
     {
         var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         var light = new Vector2(-0.55f, -0.62f).Normalized();
@@ -281,7 +420,7 @@ public static class FlowUi
             float u = (i / (float)(size - 1)) * 2f - 1f;
             float v = (j / (float)(size - 1)) * 2f - 1f;
             float r2 = u * u + v * v;
-            if (r2 > 1f) { img.SetPixel(i, j, new Color(0, 0, 0, 0)); continue; }
+            if (r2 > 1f) { img.SetPixel(i, j, Transparent); continue; }
             float nz = Mathf.Sqrt(1f - r2);
             float n = Fbm(u * 3.1f + seed * 13.7f, v * 3.1f - seed * 7.3f, 5);
             float detail = Fbm(u * 9f - seed * 3f, v * 9f + seed * 5f, 4);
@@ -293,7 +432,7 @@ public static class FlowUi
             col = col.Lerp(p.PolarColor, cap * 0.85f);
             // Wispy cloud bands.
             float cloud = Fbm(u * 2.2f + 40f + seed, v * 6.5f, 3);
-            col = col.Lerp(new Color(0.95f, 0.97f, 1.0f), Mathf.Clamp((cloud - 0.60f) * 1.5f, 0f, 0.4f));
+            col = col.Lerp(CloudColor, Mathf.Clamp((cloud - 0.60f) * 1.5f, 0f, 0.4f));
             // Sphere shading: diffuse from the light dir + limb darkening.
             float diff = Mathf.Clamp(new Vector2(u, v).Dot(light) * 0.5f + nz * 0.85f, 0.06f, 1.12f);
             float limb = 0.72f + 0.28f * nz;
@@ -306,7 +445,12 @@ public static class FlowUi
     // Stylized top-down of the tournament arena for the map card:
     // dry-grass mottling, the flat mesa disc at the center, and the
     // three spawn pads on their triangle.
-    public static ImageTexture ArenaTexture(int size = 512, int biome = 1)
+    public const int ArenaTextureSize = 512;
+    public const float ArenaWorldHalfExtent = 130f;
+    public static readonly Color PadSurfaceColor = new(0.72f, 0.74f, 0.78f);
+    public static readonly Color PadRingColor = new(0.20f, 0.21f, 0.24f);
+
+    public static ImageTexture ArenaTexture(int size = ArenaTextureSize, int biome = 1)
     {
         var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         var grass = biome == 0 ? new Color(0.72f, 0.58f, 0.34f)
@@ -327,8 +471,8 @@ public static class FlowUi
         for (int j = 0; j < size; j++)
         for (int i = 0; i < size; i++)
         {
-            float wx = (i - half) / half * 130f;
-            float wz = (j - half) / half * 130f;
+            float wx = (i - half) / half * ArenaWorldHalfExtent;
+            float wz = (j - half) / half * ArenaWorldHalfExtent;
             float r = Mathf.Sqrt(wx * wx + wz * wz);
             float n = Fbm(wx * 0.045f + 7f, wz * 0.045f, 4);
             Color col = grass.Lerp(dry, Mathf.Clamp((n - 0.3f) * 1.8f, 0f, 1f));
@@ -345,8 +489,8 @@ public static class FlowUi
             foreach (var p in pads)
             {
                 float d = new Vector2(wx - p.X, wz - p.Y).Length();
-                if (d < 5.5f) col = new Color(0.72f, 0.74f, 0.78f);
-                else if (d < 7.5f) col = new Color(0.20f, 0.21f, 0.24f);
+                if (d < 5.5f) col = PadSurfaceColor;
+                else if (d < 7.5f) col = PadRingColor;
             }
             float vig = 1f - 0.25f * Mathf.SmoothStep(90f, 130f, r);
             img.SetPixel(i, j, new Color(col.R * vig, col.G * vig, col.B * vig, 1f));
@@ -356,7 +500,17 @@ public static class FlowUi
 
     // Deep-space panorama for the flow backdrop: near-black gradient,
     // star field, two faint nebula washes.
-    public static ImageTexture StarTexture(int w = 1024, int h = 512, ulong seed = 4242)
+    public const int StarTextureWidth = 1024;
+    public const int StarTextureHeight = 512;
+    public const int StarCount = 1500;
+    public static readonly Color SpaceTopColor = new(0.012f, 0.018f, 0.035f);
+    public static readonly Color SpaceBottomColor = new(0.03f, 0.045f, 0.08f);
+    public static readonly Color NebulaBlueColor = new(0.10f, 0.13f, 0.22f);
+    public static readonly Color NebulaBrownColor = new(0.16f, 0.09f, 0.05f);
+    public static readonly Color StarWarmColor = new(1f, 0.85f, 0.65f);
+    public static readonly Color StarCoolColor = new(0.85f, 0.92f, 1f);
+
+    public static ImageTexture StarTexture(int w = StarTextureWidth, int h = StarTextureHeight, ulong seed = 4242)
     {
         var img = Image.CreateEmpty(w, h, false, Image.Format.Rgb8);
         var rng = new RandomNumberGenerator { Seed = seed };
@@ -364,18 +518,18 @@ public static class FlowUi
         for (int i = 0; i < w; i++)
         {
             float t = j / (float)h;
-            var col = new Color(0.012f, 0.018f, 0.035f).Lerp(new Color(0.03f, 0.045f, 0.08f), 1f - t);
+            var col = SpaceTopColor.Lerp(SpaceBottomColor, 1f - t);
             float neb = Fbm(i * 0.006f, j * 0.006f, 3);
-            if (neb > 0.58f) col = col.Lerp(new Color(0.10f, 0.13f, 0.22f), (neb - 0.58f) * 1.2f);
+            if (neb > 0.58f) col = col.Lerp(NebulaBlueColor, (neb - 0.58f) * 1.2f);
             float neb2 = Fbm(i * 0.004f + 31f, j * 0.004f, 3);
-            if (neb2 > 0.62f) col = col.Lerp(new Color(0.16f, 0.09f, 0.05f), (neb2 - 0.62f) * 0.9f);
+            if (neb2 > 0.62f) col = col.Lerp(NebulaBrownColor, (neb2 - 0.62f) * 0.9f);
             img.SetPixel(i, j, col);
         }
-        for (int s = 0; s < 1500; s++)
+        for (int s = 0; s < StarCount; s++)
         {
             int x = rng.RandiRange(0, w - 1), y = rng.RandiRange(0, h - 1);
             float b = rng.RandfRange(0.35f, 1f);
-            var tint = rng.Randf() < 0.12f ? new Color(1f, 0.85f, 0.65f) : new Color(0.85f, 0.92f, 1f);
+            var tint = rng.Randf() < 0.12f ? StarWarmColor : StarCoolColor;
             img.SetPixel(x, y, tint * b);
             if (b > 0.9f && x + 1 < w) img.SetPixel(x + 1, y, tint * b * 0.5f);
         }
@@ -431,6 +585,15 @@ public static class FlowUi
 // Redraws only while actually on screen.
 public partial class RippleBar : Control
 {
+    public const float TrackWidth = 2f;
+    public const float TickHalfHeight = 5f;
+    public const float GlowWidth = 7f;
+    public const float GlowAlpha = 0.22f;
+    public const float CoreWidth = 2.5f;
+    public const float SegmentFraction = 0.34f;
+    public const float SweepSpeed = 1.9f;
+    public static readonly Color TrackColor = new(0.45f, 0.52f, 0.60f, 0.35f);
+
     private double _t;
 
     public RippleBar()
@@ -448,17 +611,17 @@ public partial class RippleBar : Control
     public override void _Draw()
     {
         float w = Size.X, midY = Size.Y * 0.5f;
-        var track = new Color(0.45f, 0.52f, 0.60f, 0.35f);
-        DrawLine(new Vector2(0, midY), new Vector2(w, midY), track, 2f, true);
-        DrawLine(new Vector2(0, midY - 5), new Vector2(0, midY + 5), track, 2f, true);
-        DrawLine(new Vector2(w, midY - 5), new Vector2(w, midY + 5), track, 2f, true);
+        var track = TrackColor;
+        DrawLine(new Vector2(0, midY), new Vector2(w, midY), track, TrackWidth, true);
+        DrawLine(new Vector2(0, midY - TickHalfHeight), new Vector2(0, midY + TickHalfHeight), track, TrackWidth, true);
+        DrawLine(new Vector2(w, midY - TickHalfHeight), new Vector2(w, midY + TickHalfHeight), track, TrackWidth, true);
         // Ping-pong phase with eased ends (smoothstep of a sine).
-        float ph = (Mathf.Sin((float)_t * 1.9f) + 1f) * 0.5f;
+        float ph = (Mathf.Sin((float)_t * SweepSpeed) + 1f) * 0.5f;
         ph = ph * ph * (3f - 2f * ph);
-        float segW = w * 0.34f;
+        float segW = w * SegmentFraction;
         float x = ph * (w - segW);
         var gold = FlowUi.Gold;
-        DrawLine(new Vector2(x, midY), new Vector2(x + segW, midY), new Color(gold, 0.22f), 7f, true);
-        DrawLine(new Vector2(x, midY), new Vector2(x + segW, midY), gold, 2.5f, true);
+        DrawLine(new Vector2(x, midY), new Vector2(x + segW, midY), new Color(gold, GlowAlpha), GlowWidth, true);
+        DrawLine(new Vector2(x, midY), new Vector2(x + segW, midY), gold, CoreWidth, true);
     }
 }

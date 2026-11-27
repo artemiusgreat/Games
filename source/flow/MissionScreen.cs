@@ -24,6 +24,17 @@ public partial class MissionScreen : Control
     // table guest, the counter end, and the bartender last.
     private static readonly int[] FigureOrder = { 1, 2, 3, 4, 0 };
 
+    private const float BriefScrollMinHeight = 120f;
+    private const float BriefScrollStretchRatio = 0.8f;
+    private const float OffersStretchRatio = 1.2f;
+    private const float BarPanelStretchRatio = 1.25f;
+    private const float AcceptButtonWidth = 124f;
+    private const int OfferTitleFontSize = 14;
+    private const int OfferRowSeparation = 12;
+    private const int DioramaWidth = 1152;
+    private const int DioramaHeight = 648;
+    private const float DioramaCameraFov = 62f;
+
     private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];
     private MissionDef Mission => Planet.Missions[FlowMain.MissionIndex];
 
@@ -32,36 +43,36 @@ public partial class MissionScreen : Control
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 18);
-        margin.AddThemeConstantOverride("margin_right", 18);
-        margin.AddThemeConstantOverride("margin_top", 14);
-        margin.AddThemeConstantOverride("margin_bottom", 14);
+        margin.AddThemeConstantOverride("margin_left", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_right", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_top", FlowUi.ScreenMarginVertical);
+        margin.AddThemeConstantOverride("margin_bottom", FlowUi.ScreenMarginVertical);
         AddChild(margin);
         var root = new VBoxContainer();
-        root.AddThemeConstantOverride("separation", 10);
+        root.AddThemeConstantOverride("separation", FlowUi.ScreenSeparation);
         margin.AddChild(root);
 
         // ---- menu bar: Back on the left; Rider Lab (once a
         // mission is signed on this planet) on the right -
         // the owner's standing button rule ----
         var menu = new HBoxContainer();
-        menu.AddThemeConstantOverride("separation", 10);
+        menu.AddThemeConstantOverride("separation", FlowUi.MenuSeparation);
         root.AddChild(menu);
-        var back = FlowUi.MakeButton("Back", 14);
+        var back = FlowUi.MakeButton("Back", FlowUi.MenuButtonFontSize);
         back.Pressed += () => Flow.GoPlanet();
         menu.AddChild(back);
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var signed = WorldConfig.SelectedMission;
         if (signed != null && signed.Planet == Planet)
         {
-            var toLab = FlowUi.MakeButton("Continue", 14);
+            var toLab = FlowUi.MakeButton("Continue", FlowUi.MenuButtonFontSize);
             toLab.Pressed += () => Flow.GoStoryTeam();
             menu.AddChild(toLab);
         }
 
         // ---- middle: contracts | bar ----
         var mid = new HBoxContainer();
-        mid.AddThemeConstantOverride("separation", 12);
+        mid.AddThemeConstantOverride("separation", FlowUi.MidSeparation);
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
         root.AddChild(mid);
 
@@ -69,40 +80,40 @@ public partial class MissionScreen : Control
         side.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
         mid.AddChild(side);
         var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        sv.AddThemeConstantOverride("separation", 7);
+        sv.AddThemeConstantOverride("separation", FlowUi.PanelColumnSeparation);
         side.AddChild(sv);
-        sv.AddChild(FlowUi.NavHeading("Mission", 13, FlowUi.Gold));
+        sv.AddChild(FlowUi.NavHeading("Mission", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
         sv.AddChild(FlowUi.SelectorRow(out _selName, 15, StepMission));
         var briefScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0f, 120f),
+            CustomMinimumSize = new Vector2(0f, BriefScrollMinHeight),
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 0.8f,
+            SizeFlagsStretchRatio = BriefScrollStretchRatio,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
         _briefScroll = briefScroll;
-        _briefBody = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+        _briefBody = FlowUi.MakeLabel("", FlowUi.BodyTextFontSize, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
         _briefBody.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         briefScroll.AddChild(_briefBody);
         briefScroll.Resized += () => FlowUi.FitTextWidth(briefScroll, _briefBody);
         var briefMonitor = FlowUi.Monitor(briefScroll);
         briefMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
         sv.AddChild(briefMonitor);
-        _status = FlowUi.MakeLabel("", 12, FlowUi.Dim, HorizontalAlignment.Left, wrap: true);
+        _status = FlowUi.MakeLabel("", FlowUi.SmallTextFontSize, FlowUi.Dim, HorizontalAlignment.Left, wrap: true);
         sv.AddChild(_status);
         var offersScroll = new ScrollContainer
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 1.2f,
+            SizeFlagsStretchRatio = OffersStretchRatio,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
         sv.AddChild(offersScroll);
         _offers = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _offers.AddThemeConstantOverride("separation", 8);
+        _offers.AddThemeConstantOverride("separation", FlowUi.RowSeparation);
         offersScroll.AddChild(_offers);
 
-        var barPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.25f };
-        barPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.75f));
+        var barPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = BarPanelStretchRatio };
+        barPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, FlowUi.VisualPanelAlpha));
         mid.AddChild(barPanel);
         BuildDiorama(barPanel);
 
@@ -188,26 +199,26 @@ public partial class MissionScreen : Control
                 { UiSfx.Play(); Select(idx); }
             };
             var h = new HBoxContainer();
-            h.AddThemeConstantOverride("separation", 12);
+            h.AddThemeConstantOverride("separation", OfferRowSeparation);
             row.AddChild(h);
             var tx = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.Expand, MouseFilter = MouseFilterEnum.Ignore };
             tx.AddThemeConstantOverride("separation", 2);
             h.AddChild(tx);
             bool doneRow = StoryProgress.IsCompleted(FlowMain.PlanetIndex, idx);
-            var patron = FlowUi.NavHeading(mm.Patron, 14,
+            var patron = FlowUi.NavHeading(mm.Patron, OfferTitleFontSize,
                 doneRow ? FlowUi.Dim : mi == FlowMain.MissionIndex ? FlowUi.Gold : FlowUi.Ink);
             patron.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(patron);
-            var pitch = FlowUi.MakeLabel($"“{mm.Pitch}”", 12, doneRow ? FlowUi.Dim : FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
+            var pitch = FlowUi.MakeLabel($"“{mm.Pitch}”", FlowUi.SmallTextFontSize, doneRow ? FlowUi.Dim : FlowUi.Ink, HorizontalAlignment.Left, wrap: true);
             pitch.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(pitch);
-            var meta = FlowUi.MakeLabel($"{mm.Name} · {mm.Type} · {mm.Payment:N0} credits · Threat {FlowUi.ThreatPips(mm.Threat)}", 11, FlowUi.Dim);
+            var meta = FlowUi.MakeLabel($"{mm.Name} · {mm.Type} · {mm.Payment:N0} credits · Threat {FlowUi.ThreatPips(mm.Threat)}", FlowUi.SubTextFontSize, FlowUi.Dim);
             meta.MouseFilter = MouseFilterEnum.Ignore;
             tx.AddChild(meta);
             bool isSigned = signed == mm;
             bool isDone = StoryProgress.IsCompleted(FlowMain.PlanetIndex, idx);
-            var b = FlowUi.MakeButton(isDone ? "Completed" : isSigned ? "Signed" : "Accept", 13);
-            b.CustomMinimumSize = new Vector2(124f, 0f);
+            var b = FlowUi.MakeButton(isDone ? "Completed" : isSigned ? "Signed" : "Accept", FlowUi.BodyTextFontSize);
+            b.CustomMinimumSize = new Vector2(AcceptButtonWidth, 0f);
             b.SizeFlagsVertical = SizeFlags.ShrinkCenter;
             b.Disabled = isSigned || isDone;
             b.Pressed += () => Accept(idx);
@@ -256,7 +267,7 @@ public partial class MissionScreen : Control
         hostPanel.AddChild(svc);
         var sv = new SubViewport
         {
-            Size = new Vector2I(1152, 648),
+            Size = new Vector2I(DioramaWidth, DioramaHeight),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             OwnWorld3D = true,
             PhysicsObjectPicking = true
@@ -277,7 +288,7 @@ public partial class MissionScreen : Control
         };
         sv.AddChild(we);
 
-        var cam = new Camera3D { Position = new Vector3(0f, 2.3f, 6.2f), Fov = 62f };
+        var cam = new Camera3D { Position = new Vector3(0f, 2.3f, 6.2f), Fov = DioramaCameraFov };
         sv.AddChild(cam);
         cam.LookAt(new Vector3(0.3f, 1.0f, -2.6f), Vector3.Up);
         sv.AddChild(new DirectionalLight3D

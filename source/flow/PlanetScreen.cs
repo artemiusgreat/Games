@@ -12,6 +12,9 @@ public partial class PlanetScreen : Control
 {
     public FlowMain Flow;
 
+    private const float MapMinSize = 420f;
+    private const float MapPanelStretchRatio = 1.3f;
+
     private Label _nameLabel, _subLabel, _descLabel;
     private UniverseMap _map;
 
@@ -39,20 +42,20 @@ public partial class PlanetScreen : Control
         AddChild(bg);
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 18);
-        margin.AddThemeConstantOverride("margin_right", 18);
-        margin.AddThemeConstantOverride("margin_top", 14);
-        margin.AddThemeConstantOverride("margin_bottom", 14);
+        margin.AddThemeConstantOverride("margin_left", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_right", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_top", FlowUi.ScreenMarginVertical);
+        margin.AddThemeConstantOverride("margin_bottom", FlowUi.ScreenMarginVertical);
         AddChild(margin);
         var root = new VBoxContainer();
-        root.AddThemeConstantOverride("separation", 10);
+        root.AddThemeConstantOverride("separation", FlowUi.ScreenSeparation);
         margin.AddChild(root);
 
         // ---- menu bar ----
         var menu = new HBoxContainer();
-        menu.AddThemeConstantOverride("separation", 10);
+        menu.AddThemeConstantOverride("separation", FlowUi.MenuSeparation);
         root.AddChild(menu);
-        var back = FlowUi.MakeButton("Back", 14);
+        var back = FlowUi.MakeButton("Back", FlowUi.MenuButtonFontSize);
         back.Pressed += () => Flow.GoMapType();
         menu.AddChild(back);
         // Back on the left, Continue on the right (owner's
@@ -60,13 +63,13 @@ public partial class PlanetScreen : Control
         // removed at the owner's word - he sees no purpose
         // for it; StoryProgress.Reset stays as data API.
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var next = FlowUi.MakeButton("Continue", 14);
+        var next = FlowUi.MakeButton("Continue", FlowUi.MenuButtonFontSize);
         next.Pressed += () => { if (IsMission) Flow.GoMissions(); else Flow.GoArena(); };
         menu.AddChild(next);
 
         // ---- middle: selector | universe map ----
         var mid = new HBoxContainer();
-        mid.AddThemeConstantOverride("separation", 12);
+        mid.AddThemeConstantOverride("separation", FlowUi.MidSeparation);
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
         root.AddChild(mid);
 
@@ -74,35 +77,35 @@ public partial class PlanetScreen : Control
         side.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
         mid.AddChild(side);
         var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        sv.AddThemeConstantOverride("separation", 7);
+        sv.AddThemeConstantOverride("separation", FlowUi.PanelColumnSeparation);
         side.AddChild(sv);
-        sv.AddChild(FlowUi.NavHeading("Planet", 13, FlowUi.Gold));
+        sv.AddChild(FlowUi.NavHeading("Planet", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
         sv.AddChild(FlowUi.SelectorRow(out _nameLabel, 16, StepPlanet));
-        _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
+        _subLabel = FlowUi.MakeLabel("", FlowUi.SubTextFontSize, FlowUi.Dim);
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0f, 150f),
+            CustomMinimumSize = new Vector2(0f, FlowUi.DescriptionScrollMinHeight),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
-        _descLabel = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+        _descLabel = FlowUi.MakeLabel("", FlowUi.BodyTextFontSize, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
         _descLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         descScroll.AddChild(_descLabel);
         descScroll.Resized += () => FlowUi.FitTextWidth(descScroll, _descLabel);
         var descMonitor = FlowUi.Monitor(descScroll);
         descMonitor.SizeFlagsVertical = SizeFlags.ExpandFill;
         sv.AddChild(descMonitor);
-        sv.AddChild(FlowUi.MakeLabel("Select a planet with the selector, or click its node on the star chart.", 11, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
+        sv.AddChild(FlowUi.MakeLabel("Select a planet with the selector, or click its node on the star chart.", FlowUi.SubTextFontSize, FlowUi.Dim, HorizontalAlignment.Left, wrap: true));
 
-        var mapPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.3f };
+        var mapPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = MapPanelStretchRatio };
         // Frame only, no fill: the screen's photograph is the
         // chart's background too (owner, 2026-11-25).
         mapPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0f));
         mid.AddChild(mapPanel);
         _map = new UniverseMap
         {
-            CustomMinimumSize = new Vector2(420f, 420f),
+            CustomMinimumSize = new Vector2(MapMinSize, MapMinSize),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };

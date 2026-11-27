@@ -40,6 +40,16 @@ public partial class FlowMain : Node3D
         System.Environment.GetEnvironmentVariable("AOT_FROMFLOW") == "1"; // harness seed
     public static string StartScreen;
 
+    private const int BackdropLayer = -2;
+    private const int LoadingLayer = 5;
+    // Harness clocks (--flowtest-nav / --flowfocus / --flowshot).
+    private const double NavPlanetTime = 1.0;
+    private const double NavMissionsTime = 1.8;
+    private const double NavAcceptTime = 2.6;
+    private const double FocusStartDelay = 0.5;
+    private const double FocusStepInterval = 0.3;
+    private const double FlowshotCaptureDelay = 2.2;
+
     private CanvasLayer _layer;
     private Control _host;
     private Control _screen;
@@ -155,18 +165,18 @@ public partial class FlowMain : Node3D
         if (_navTest)
         {
             _shotT += delta;
-            if (_navStep == 0 && _shotT > 1.0)
+            if (_navStep == 0 && _shotT > NavPlanetTime)
             {
                 _navStep = 1;
                 WorldConfig.Mode = WorldConfig.MapMode.Mission;
                 GoPlanet();
             }
-            else if (_navStep == 1 && _shotT > 1.8)
+            else if (_navStep == 1 && _shotT > NavMissionsTime)
             {
                 _navStep = 2;
                 GoMissions();
             }
-            else if (_navStep == 2 && _shotT > 2.6)
+            else if (_navStep == 2 && _shotT > NavAcceptTime)
             {
                 _navStep = 3;
                 (_screen as MissionScreen)?.HarnessAcceptFirst();
@@ -175,7 +185,7 @@ public partial class FlowMain : Node3D
         if (_focusTarget > 0)
         {
             _shotT += 0; // (timing shares _shotT below via flowshot clock)
-            if (_focusDone < _focusTarget && _shotT > 0.5 + _focusDone * 0.3)
+            if (_focusDone < _focusTarget && _shotT > FocusStartDelay + _focusDone * FocusStepInterval)
             {
                 Input.ParseInputEvent(new InputEventAction { Action = "ui_down", Pressed = true });
                 Input.ParseInputEvent(new InputEventAction { Action = "ui_down", Pressed = false });
@@ -185,7 +195,7 @@ public partial class FlowMain : Node3D
         if (_flowshot != null)
         {
             _shotT += delta;
-            if (_shotT > 2.2)
+            if (_shotT > FlowshotCaptureDelay)
             {
                 _flowshot = null;
                 var img = GetViewport().GetTexture().GetImage();
@@ -225,7 +235,7 @@ public partial class FlowMain : Node3D
 
     private void BuildLoadingOverlay()
     {
-        _loadLayer = new CanvasLayer { Layer = 5, Visible = false };
+        _loadLayer = new CanvasLayer { Layer = LoadingLayer, Visible = false };
         AddChild(_loadLayer);
         var rect = new ColorRect { Color = FlowUi.LoadingBg };
         rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
@@ -398,7 +408,7 @@ public partial class FlowMain : Node3D
         // A real orbital photograph behind every menu screen (the
         // owner's reference shot), cover-fitted to the window. The
         // screens' translucent panels let it breathe through.
-        var layer = new CanvasLayer { Layer = -2 };
+        var layer = new CanvasLayer { Layer = BackdropLayer };
         AddChild(layer);
         var bg = new TextureRect
         {

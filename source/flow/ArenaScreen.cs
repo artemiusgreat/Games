@@ -9,6 +9,14 @@ public partial class ArenaScreen : Control
 {
     public FlowMain Flow;
 
+    private const float ArenaScrollMinHeight = 132f;
+    private const float DescScrollStretchRatio = 1.25f;
+    private const float ArenaScrollStretchRatio = 0.8f;
+    private const float ViewHolderMinWidth = 386f;
+    private const float ViewHolderMinHeight = 420f;
+    private const float ViewMinSize = 380f;
+    private const float ArenaSize = 260f;
+
     private Label _nameLabel, _subLabel, _descLabel, _arenaName, _arenaBody;
     private TextureRect _view;
 
@@ -47,30 +55,30 @@ public partial class ArenaScreen : Control
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 18);
-        margin.AddThemeConstantOverride("margin_right", 18);
-        margin.AddThemeConstantOverride("margin_top", 14);
-        margin.AddThemeConstantOverride("margin_bottom", 14);
+        margin.AddThemeConstantOverride("margin_left", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_right", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_top", FlowUi.ScreenMarginVertical);
+        margin.AddThemeConstantOverride("margin_bottom", FlowUi.ScreenMarginVertical);
         AddChild(margin);
         var root = new VBoxContainer();
-        root.AddThemeConstantOverride("separation", 10);
+        root.AddThemeConstantOverride("separation", FlowUi.ScreenSeparation);
         margin.AddChild(root);
 
         // ---- menu bar ----
         var menu = new HBoxContainer();
-        menu.AddThemeConstantOverride("separation", 10);
+        menu.AddThemeConstantOverride("separation", FlowUi.MenuSeparation);
         root.AddChild(menu);
-        var back = FlowUi.MakeButton("Back", 14);
+        var back = FlowUi.MakeButton("Back", FlowUi.MenuButtonFontSize);
         back.Pressed += () => Flow.GoPlanet();
         menu.AddChild(back);
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var next = FlowUi.MakeButton("Continue", 14);
+        var next = FlowUi.MakeButton("Continue", FlowUi.MenuButtonFontSize);
         next.Pressed += () => Flow.GoTeams();
         menu.AddChild(next);
 
         // ---- middle: info slider | visualized map ----
         var mid = new HBoxContainer();
-        mid.AddThemeConstantOverride("separation", 12);
+        mid.AddThemeConstantOverride("separation", FlowUi.MidSeparation);
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
         root.AddChild(mid);
 
@@ -83,24 +91,24 @@ public partial class ArenaScreen : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        sv.AddThemeConstantOverride("separation", 7);
+        sv.AddThemeConstantOverride("separation", FlowUi.PanelColumnSeparation);
         sideScroll.AddChild(sv);
         mid.AddChild(side);
 
         // Map section: displays the arena.
-        sv.AddChild(FlowUi.NavHeading("Map", 13, FlowUi.Gold));
+        sv.AddChild(FlowUi.NavHeading("Map", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
         _nameLabel = FlowUi.NavHeading("", 16, FlowUi.Gold);
         sv.AddChild(_nameLabel);
-        _subLabel = FlowUi.MakeLabel("", 11, FlowUi.Dim);
+        _subLabel = FlowUi.MakeLabel("", FlowUi.SubTextFontSize, FlowUi.Dim);
         sv.AddChild(_subLabel);
         var descScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0f, 150f),
+            CustomMinimumSize = new Vector2(0f, FlowUi.DescriptionScrollMinHeight),
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 1.25f,
+            SizeFlagsStretchRatio = DescScrollStretchRatio,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
-        _descLabel = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+        _descLabel = FlowUi.MakeLabel("", FlowUi.BodyTextFontSize, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
         _descLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         descScroll.AddChild(_descLabel);
         descScroll.Resized += () => FlowUi.FitTextWidth(descScroll, _descLabel);
@@ -109,16 +117,16 @@ public partial class ArenaScreen : Control
         sv.AddChild(descMonitor);
 
         // Arena section: the chooser.
-        sv.AddChild(FlowUi.NavHeading("Arena", 13, FlowUi.Gold));
+        sv.AddChild(FlowUi.NavHeading("Arena", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
         sv.AddChild(FlowUi.SelectorRow(out _arenaName, 15, StepArena));
         var arenaScroll = new ScrollContainer
         {
-            CustomMinimumSize = new Vector2(0f, 132f),
+            CustomMinimumSize = new Vector2(0f, ArenaScrollMinHeight),
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 0.8f,
+            SizeFlagsStretchRatio = ArenaScrollStretchRatio,
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
         };
-        _arenaBody = FlowUi.MakeLabel("", 13, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
+        _arenaBody = FlowUi.MakeLabel("", FlowUi.BodyTextFontSize, FlowUi.ScreenInk, HorizontalAlignment.Left, wrap: true);
         _arenaBody.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         arenaScroll.AddChild(_arenaBody);
         arenaScroll.Resized += () => FlowUi.FitTextWidth(arenaScroll, _arenaBody);
@@ -128,11 +136,11 @@ public partial class ArenaScreen : Control
 
         // Visual panel: the arena top-down.
         var centerPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        centerPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, 0.75f));
+        centerPanel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.NavySoft, FlowUi.VisualPanelAlpha));
         mid.AddChild(centerPanel);
         var holder = new Control
         {
-            CustomMinimumSize = new Vector2(386f, 420f),
+            CustomMinimumSize = new Vector2(ViewHolderMinWidth, ViewHolderMinHeight),
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
@@ -144,7 +152,7 @@ public partial class ArenaScreen : Control
             MouseFilter = MouseFilterEnum.Ignore
         };
         _view.SetAnchorsPreset(LayoutPreset.Center);
-        _view.CustomMinimumSize = new Vector2(380f, 380f);
+        _view.CustomMinimumSize = new Vector2(ViewMinSize, ViewMinSize);
         _view.GrowHorizontal = GrowDirection.Both;
         _view.GrowVertical = GrowDirection.Both;
         holder.AddChild(_view);
@@ -170,8 +178,8 @@ public partial class ArenaScreen : Control
         _arenaName.Text = a.Name;
         var bt = BiomeText(a.Biome);
         _arenaBody.Text =
-            $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: {Units.Km(260f)}\nFormat: Team battle - teams are formed on the next step\n" +
+            $"Arena: {a.Name}\nTerrain: {bt.Name}\nSize: {Units.Km(ArenaSize)}\nFormat: Team battle - teams are formed on the next step\n" +
             $"Purse: Last team standing\n\n{bt.Desc}";
-        _view.Texture = FlowUi.ArenaTexture(512, (int)a.Biome);
+        _view.Texture = FlowUi.ArenaTexture(FlowUi.ArenaTextureSize, (int)a.Biome);
     }
 }

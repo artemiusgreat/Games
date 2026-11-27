@@ -25,25 +25,25 @@ public partial class StoryTeamScreen : Control
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 18);
-        margin.AddThemeConstantOverride("margin_right", 18);
-        margin.AddThemeConstantOverride("margin_top", 14);
-        margin.AddThemeConstantOverride("margin_bottom", 14);
+        margin.AddThemeConstantOverride("margin_left", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_right", FlowUi.ScreenMarginHorizontal);
+        margin.AddThemeConstantOverride("margin_top", FlowUi.ScreenMarginVertical);
+        margin.AddThemeConstantOverride("margin_bottom", FlowUi.ScreenMarginVertical);
         AddChild(margin);
         var root = new VBoxContainer();
-        root.AddThemeConstantOverride("separation", 10);
+        root.AddThemeConstantOverride("separation", FlowUi.ScreenSeparation);
         margin.AddChild(root);
 
         // ---- menu bar: Back on the left, Continue on the
         // right - the owner's standing button rule ----
         var menu = new HBoxContainer();
-        menu.AddThemeConstantOverride("separation", 10);
+        menu.AddThemeConstantOverride("separation", FlowUi.MenuSeparation);
         root.AddChild(menu);
-        var back = FlowUi.MakeButton("Back", 14);
+        var back = FlowUi.MakeButton("Back", FlowUi.MenuButtonFontSize);
         back.Pressed += () => Flow.GoMissions();
         menu.AddChild(back);
         menu.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var next = FlowUi.MakeButton("Continue", 14);
+        var next = FlowUi.MakeButton("Continue", FlowUi.MenuButtonFontSize);
         next.Pressed += () => Flow.EnterLab();
         menu.AddChild(next);
 
@@ -52,10 +52,10 @@ public partial class StoryTeamScreen : Control
         panel.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
         root.AddChild(panel);
         var pv = new VBoxContainer();
-        pv.AddThemeConstantOverride("separation", 7);
+        pv.AddThemeConstantOverride("separation", FlowUi.PanelColumnSeparation);
         panel.AddChild(pv);
-        pv.AddChild(FlowUi.NavHeading("Mission team", 13, FlowUi.Gold));
-        _riderCount = FlowUi.MakeLabel("", 12, FlowUi.Dim);
+        pv.AddChild(FlowUi.NavHeading("Mission team", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
+        _riderCount = FlowUi.MakeLabel("", FlowUi.SmallTextFontSize, FlowUi.Dim);
         pv.AddChild(_riderCount);
         var scroll = new ScrollContainer
         {
@@ -64,7 +64,7 @@ public partial class StoryTeamScreen : Control
         };
         pv.AddChild(scroll);
         _riderRows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _riderRows.AddThemeConstantOverride("separation", 8);
+        _riderRows.AddThemeConstantOverride("separation", FlowUi.RowSeparation);
         scroll.AddChild(_riderRows);
 
         Refresh();
@@ -101,57 +101,9 @@ public partial class StoryTeamScreen : Control
         Refresh();
     }
 
-    // The add control: a compact '+' button, right-aligned
-    // below the last row - the team selector's idiom.
-    private Control AddRow(System.Action add, bool disabled)
-    {
-        var row = new HBoxContainer();
-        row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var b = new Button { Text = "+", CustomMinimumSize = new Vector2(46, 46) };
-        b.AddThemeFontSizeOverride("font_size", 18);
-        b.AddThemeStyleboxOverride("normal", FlowUi.Panel(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
-        b.AddThemeStyleboxOverride("hover", FlowUi.Panel(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
-        b.AddThemeStyleboxOverride("pressed", FlowUi.Panel(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
-        b.AddThemeStyleboxOverride("disabled", FlowUi.Panel(new Color(0.06f, 0.07f, 0.09f, 0.9f)));
-        b.AddThemeColorOverride("font_color", FlowUi.Ink);
-        b.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
-        b.AddThemeColorOverride("font_disabled_color", new Color(0.45f, 0.48f, 0.52f));
-        b.Disabled = disabled;
-        b.Pressed += () => add();
-        row.AddChild(b);
-        return row;
-    }
-
-    // FlowUi.Panel boxes carry 12px vertical content margins;
-    // boxes for buttons that must fit inside a row wear
-    // near-zero margins (the team selector's lesson).
-    private static StyleBoxFlat RowBtnBox(Color bg)
-    {
-        var sb = FlowUi.Panel(bg);
-        sb.ContentMarginLeft = 2; sb.ContentMarginRight = 2;
-        sb.ContentMarginTop = 2; sb.ContentMarginBottom = 2;
-        return sb;
-    }
-
-    // One shared slider minimum for every rider row (owner,
-    // 2026-11-15): the widest label the selector can show -
-    // the longest rider name with the active suffix - plus
-    // the two 42px arrows and separations. With one minimum
-    // (and the remove slot reserved on rows without a
-    // button), the half-width split lands identical on
-    // every row instead of drifting with the name length.
-    private static float RiderSliderMin()
-    {
-        var probe = FlowUi.NavHeading("", 16, FlowUi.Gold, HorizontalAlignment.Center);
-        var font = probe.GetThemeFont("font");
-        float w = 0f;
-        foreach (var s in RiderSpecs.All)
-        {
-            var t = $"{FlowUi.NameCase(s.Name)} - {s.Tonnage:F0}T - {FlowUi.NameCase(s.ClassLabel)} - Active";
-            w = Mathf.Max(w, font.GetStringSize(t, HorizontalAlignment.Left, -1f, 16).X);
-        }
-        return w + 100f;
-    }
+    // The add row, row-button boxes and the rider slider
+    // minimum are FlowUi's shared helpers (AddRow /
+    // RowButtonBox / RiderSliderMin).
 
     private void Refresh()
     {
@@ -161,25 +113,25 @@ public partial class StoryTeamScreen : Control
         _riderCount.Text = $"{team.Count} OF {TeamRoster.MaxPerTeam} RIDERS" +
             " - rider 1 is the active rider, prepared in the lab next";
         foreach (var ch in _riderRows.GetChildren()) ch.QueueFree();
-        float sliderMin = RiderSliderMin();
+        float sliderMin = FlowUi.RiderSliderMin();
         for (int r = 0; r < team.Count; r++)
         {
             int idx = r;
             var member = team[r];
             bool activeSeat = idx == 0;
             var card = new PanelContainer();
-            var cardSb = FlowUi.Panel(FlowUi.NavySoft, 0.9f);
+            var cardSb = FlowUi.Panel(FlowUi.NavySoft, FlowUi.RiderCardAlpha);
             // Vertical padding matches the horizontal 10
             // (owner, 2026-11-15).
-            cardSb.ContentMarginLeft = 10; cardSb.ContentMarginRight = 10;
-            cardSb.ContentMarginTop = 10; cardSb.ContentMarginBottom = 10;
+            cardSb.ContentMarginLeft = FlowUi.RiderCardPadding; cardSb.ContentMarginRight = FlowUi.RiderCardPadding;
+            cardSb.ContentMarginTop = FlowUi.RiderCardPadding; cardSb.ContentMarginBottom = FlowUi.RiderCardPadding;
             card.AddThemeStyleboxOverride("panel", cardSb);
             var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
+            row.AddThemeConstantOverride("separation", FlowUi.RowSeparation);
             card.AddChild(row);
             // One line per rider: name, tonnage and class all
             // live inside the selector - '< Enyo - 75T - Heavy >'.
-            var slider = FlowUi.SelectorRow(out var rname, 16, step =>
+            var slider = FlowUi.SelectorRow(out var rname, FlowUi.RiderSelectorFontSize, step =>
             {
                 int cur = Array.FindIndex(RiderSpecs.All, s => s.Id == member.Spec.Id);
                 int n = RiderSpecs.All.Length;
@@ -202,13 +154,13 @@ public partial class StoryTeamScreen : Control
             {
                 var rm = new Button
                 {
-                    Text = "−", CustomMinimumSize = new Vector2(30, 30),
+                    Text = "−", CustomMinimumSize = new Vector2(FlowUi.RemoveButtonSize, FlowUi.RemoveButtonSize),
                     SizeFlagsVertical = SizeFlags.ShrinkCenter
                 };
-                rm.AddThemeFontSizeOverride("font_size", 15);
-                rm.AddThemeStyleboxOverride("normal", RowBtnBox(new Color(0.10f, 0.13f, 0.19f, 0.98f)));
-                rm.AddThemeStyleboxOverride("hover", RowBtnBox(new Color(0.16f, 0.20f, 0.28f, 0.98f)));
-                rm.AddThemeStyleboxOverride("pressed", RowBtnBox(new Color(0.20f, 0.17f, 0.08f, 0.98f)));
+                rm.AddThemeFontSizeOverride("font_size", FlowUi.RemoveButtonFontSize);
+                rm.AddThemeStyleboxOverride("normal", FlowUi.RowButtonBox(FlowUi.PanelButtonNormal));
+                rm.AddThemeStyleboxOverride("hover", FlowUi.RowButtonBox(FlowUi.PanelButtonHover));
+                rm.AddThemeStyleboxOverride("pressed", FlowUi.RowButtonBox(FlowUi.PanelButtonPressed));
                 rm.AddThemeColorOverride("font_color", FlowUi.Ink);
                 rm.AddThemeColorOverride("font_hover_color", FlowUi.Gold);
                 rm.Pressed += () => RemoveRider(idx);
@@ -218,11 +170,11 @@ public partial class StoryTeamScreen : Control
             {
                 // Reserve the remove button's slot so the
                 // slider split is identical on every row.
-                row.AddChild(new Control { CustomMinimumSize = new Vector2(30, 30) });
+                row.AddChild(new Control { CustomMinimumSize = new Vector2(FlowUi.RemoveButtonSize, FlowUi.RemoveButtonSize) });
             }
             _riderRows.AddChild(card);
         }
-        _riderRows.AddChild(AddRow(AddRider,
+        _riderRows.AddChild(FlowUi.AddRow(AddRider,
             team.Count >= TeamRoster.MaxPerTeam));
     }
 }

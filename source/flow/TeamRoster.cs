@@ -37,6 +37,7 @@ public static class TeamRoster
     // player's own; its slot 0 is the rider he prepares in the
     // lab (step 4). At least two teams always stand and every
     // team fields at least one rider (the selector's rules).
+    public const int MinTeams = 2;
     public const int MaxTeams = 4;
     public const int MaxPerTeam = 4;
     public static readonly List<List<TeamMember>> Tourney = new();

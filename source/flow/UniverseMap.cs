@@ -15,6 +15,36 @@ public partial class UniverseMap : Control
     public System.Action<int> OnSelect;
     public int Selected;
 
+    private static readonly Color GridColor = new(0.38f, 0.52f, 0.75f, 0.055f);
+    private static readonly Color LaneColor = new(0.45f, 0.60f, 0.85f, 0.28f);
+    private static readonly Color DecoNodeColor = new(0.55f, 0.75f, 0.95f, 0.55f);
+    private static readonly Color RouteColor = new(0.45f, 0.60f, 0.85f, 0.40f);
+    private static readonly Color LabelShadowColor = new(0f, 0f, 0f, 0.55f);
+
+    private const int GridDivisions = 12;
+    private const float HitMinDistance = 26f;
+    private const float HitDistanceFraction = 0.035f;
+    private const float DecoNodeRadius = 3f;
+    private const float RouteWidth = 1.5f;
+    private const float RouteHotWidth = 2f;
+    private const float NodeRadius = 12f;
+    private const float NodeHighlightRadius = 5f;
+    private const float NodeBorderRadius = 14f;
+    // Owner's tuned node borders (2026-11-25): named, not rounded.
+    private const float NodeBorderWidth = 3.5f;
+    private const float NodeSelectedBorderWidth = 4.5f;
+    private const float SelectedHaloRadius = 25f;
+    private const float SelectedRingRadius = 21f;
+    private const float SelectedRingWidth = 2f;
+    private const float HoverRingRadius = 19f;
+    private const float HoverRingWidth = 1.5f;
+    private const float LabelWidth = 160f;
+    private const float NameLabelOffsetY = 48f;
+    private const float SystemLabelOffsetY = 64f;
+    private const int NameFontSize = 16;
+    private const int SystemFontSize = 11;
+    private const float LabelShadowOffset = 1.5f;
+
     private int _hover = -1;
     private static readonly Vector2[] DecoPos =
     {
@@ -44,7 +74,7 @@ public partial class UniverseMap : Control
 
     private int NodeAt(Vector2 p)
     {
-        float hit = Mathf.Max(26f, Size.X * 0.035f);
+        float hit = Mathf.Max(HitMinDistance, Size.X * HitDistanceFraction);
         for (int i = 0; i < MissionCatalog.Planets.Count; i++)
             if (p.DistanceTo(NodePos(i)) < hit) return i;
         return -1;
@@ -81,20 +111,20 @@ public partial class UniverseMap : Control
         // screen's universe photograph shows through; the
         // chart draws only its grid and nodes over it.
         // Faint chart grid (kept at the owner's word).
-        var gridC = new Color(0.38f, 0.52f, 0.75f, 0.055f);
-        for (int i = 1; i < 12; i++)
+        var gridC = GridColor;
+        for (int i = 1; i < GridDivisions; i++)
         {
-            float x = Size.X * i / 12f;
+            float x = Size.X * i / GridDivisions;
             DrawLine(new Vector2(x, 0f), new Vector2(x, Size.Y), gridC, 1f);
-            float y = Size.Y * i / 12f;
+            float y = Size.Y * i / GridDivisions;
             DrawLine(new Vector2(0f, y), new Vector2(Size.X, y), gridC, 1f);
         }
         // Decorative systems + their lanes.
-        var laneC = new Color(0.45f, 0.60f, 0.85f, 0.28f);
+        var laneC = LaneColor;
         foreach (var (a, b) in DecoLinks)
             DrawLine(DecoPos[a] * Size, DecoPos[b] * Size, laneC, 1f);
         foreach (var d in DecoPos)
-            DrawCircle(d * Size, 3f, new Color(0.55f, 0.75f, 0.95f, 0.55f));
+            DrawCircle(d * Size, DecoNodeRadius, DecoNodeColor);
         // Routes between the playable planets.
         int n = MissionCatalog.Planets.Count;
         for (int i = 0; i < n; i++)
@@ -102,8 +132,8 @@ public partial class UniverseMap : Control
         {
             bool hot = i == Selected || j == Selected;
             DrawLine(NodePos(i), NodePos(j),
-                hot ? new Color(FlowUi.Gold, 0.75f) : new Color(0.45f, 0.60f, 0.85f, 0.40f),
-                hot ? 2f : 1.5f, true);
+                hot ? new Color(FlowUi.Gold, 0.75f) : RouteColor,
+                hot ? RouteHotWidth : RouteWidth, true);
         }
         foreach (var (pl, dc) in PlanetLinks)
             DrawLine(NodePos(pl), DecoPos[dc] * Size, laneC, 1f);
@@ -117,35 +147,35 @@ public partial class UniverseMap : Control
             bool hov = i == _hover;
             if (sel)
             {
-                DrawCircle(ctr, 25f, new Color(FlowUi.Gold, 0.16f));
-                DrawArc(ctr, 21f, 0f, Mathf.Tau, 40, FlowUi.Gold, 2f, true);
+                DrawCircle(ctr, SelectedHaloRadius, new Color(FlowUi.Gold, 0.16f));
+                DrawArc(ctr, SelectedRingRadius, 0f, Mathf.Tau, 40, FlowUi.Gold, SelectedRingWidth, true);
             }
             else if (hov)
-                DrawArc(ctr, 19f, 0f, Mathf.Tau, 40, new Color(FlowUi.Ink, 0.7f), 1.5f, true);
+                DrawArc(ctr, HoverRingRadius, 0f, Mathf.Tau, 40, new Color(FlowUi.Ink, 0.7f), HoverRingWidth, true);
             var body = p.BaseColor.Lerp(p.LandColor, 0.55f);
-            DrawCircle(ctr, 12f, body);
-            DrawCircle(ctr + new Vector2(-4f, -4f), 5f, new Color(p.PolarColor, 0.5f));
+            DrawCircle(ctr, NodeRadius, body);
+            DrawCircle(ctr + new Vector2(-4f, -4f), NodeHighlightRadius, new Color(p.PolarColor, 0.5f));
             // Border ring (owner, 2026-11-25, screenshot of a
             // node): the old 1.5px Steel ring (0.5 grey at 0.6
             // alpha) washed out against the photograph - the
             // ring is now thicker and brighter on every planet:
             // near-white Ink at full alpha, Gold when selected.
-            DrawArc(ctr, 14f, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Ink, sel ? 4.5f : 3.5f, true);
+            DrawArc(ctr, NodeBorderRadius, 0f, Mathf.Tau, 40, sel ? FlowUi.Gold : FlowUi.Ink, sel ? NodeSelectedBorderWidth : NodeBorderWidth, true);
             // Text shadow under the name lines (owner,
             // 2026-11-25): over the photograph's bright
             // nebulae the bare labels washed out - a soft
             // dark copy offset down-right keeps them legible.
-            var shadowC = new Color(0f, 0f, 0f, 0.55f);
-            var shadowOff = new Vector2(1.5f, 1.5f);
-            DrawString(font, ctr + new Vector2(-80f, 48f) + shadowOff, FlowUi.NameCase(p.Name),
-                HorizontalAlignment.Center, 160f, 16, shadowC);
-            DrawString(font, ctr + new Vector2(-80f, 64f) + shadowOff, FlowUi.NameCase(p.System),
-                HorizontalAlignment.Center, 160f, 11, shadowC);
-            DrawString(font, ctr + new Vector2(-80f, 48f), FlowUi.NameCase(p.Name),
-                HorizontalAlignment.Center, 160f, 16,
+            var shadowC = LabelShadowColor;
+            var shadowOff = new Vector2(LabelShadowOffset, LabelShadowOffset);
+            DrawString(font, ctr + new Vector2(-LabelWidth / 2f, NameLabelOffsetY) + shadowOff, FlowUi.NameCase(p.Name),
+                HorizontalAlignment.Center, LabelWidth, NameFontSize, shadowC);
+            DrawString(font, ctr + new Vector2(-LabelWidth / 2f, SystemLabelOffsetY) + shadowOff, FlowUi.NameCase(p.System),
+                HorizontalAlignment.Center, LabelWidth, SystemFontSize, shadowC);
+            DrawString(font, ctr + new Vector2(-LabelWidth / 2f, NameLabelOffsetY), FlowUi.NameCase(p.Name),
+                HorizontalAlignment.Center, LabelWidth, NameFontSize,
                 sel ? FlowUi.Gold : FlowUi.Ink);
-            DrawString(font, ctr + new Vector2(-80f, 64f), FlowUi.NameCase(p.System),
-                HorizontalAlignment.Center, 160f, 11,
+            DrawString(font, ctr + new Vector2(-LabelWidth / 2f, SystemLabelOffsetY), FlowUi.NameCase(p.System),
+                HorizontalAlignment.Center, LabelWidth, SystemFontSize,
                 sel ? FlowUi.Gold : FlowUi.Steel);
         }
     }
