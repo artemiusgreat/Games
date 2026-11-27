@@ -27,6 +27,69 @@ public partial class Titans
     private const float ShakeVerticalJitter = 0.6f;  // vertical shake offset range (+/- this)
     private const float MinLookStepSq = 0.0001f;     // squared-distance guard: the look target must differ from the camera
 
+    // Proof-camera staging (owner, 2026-11-27): each capture
+    // mode's offset from the rider/pad/point it frames and
+    // its look offset, named per mode. Absolute world
+    // positions in the vista modes stay inline - they are
+    // placement coordinates, not offsets.
+    private static readonly Vector3 MissionBaseCamOffset = new(46f, 17f, 46f);
+    private static readonly Vector3 MissionBaseLookOffset = new(0f, 7f, 0f);
+    private const float MissionVistaOffsetX = 30f, MissionVistaHeight = 60f, MissionVistaOffsetZ = 95f;
+    private const float MissionVistaLookHeight = 16f; // look target's height over the far terrain sample
+    private const float SlopeVistaCamHeight = 30f, SlopeVistaLookHeight = 4f; // heights over the sampled terrain
+    private const float SlopeCloseCamHeight = 6f, SlopeCloseLookHeight = 16f;
+    private const float CanyonVistaOffsetX = 150f, CanyonVistaCamHeight = 82f, CanyonVistaOffsetZ = -60f;
+    private static readonly Vector3 BlockedCamOffset = new(-21f, 9f, 17f);
+    private static readonly Vector3 BlockedCamLookOffset = new(0f, 6.5f, 0f);
+    private const float UnderdeckCamOffsetX = -26f, UnderdeckCamHeight = 7f, UnderdeckCamOffsetZ = 10f;
+    private const float UnderdeckLookOffsetX = 6f, UnderdeckLookHeight = 5f;
+    private const float DecktopCamOffsetX = -58f, DecktopCamHeight = 66f, DecktopCamOffsetZ = 58f;
+    private const float DecktopLookOffsetX = -6f, DecktopLookHeight = 20f, DecktopLookOffsetZ = -4f;
+    private const float HomecamOffsetX = -150f, HomecamHeight = 62f, HomecamOffsetZ = 150f;
+    private const float HomecamLookOffsetX = 30f, HomecamLookHeight = 8f, HomecamLookOffsetZ = -10f;
+    private const float PasscamBackDistance = 55f, PasscamEyeHeight = 9f;
+    private const float PasscamLookDistance = 10f, PasscamLookHeight = 1.5f;
+    private const float GateskyEyeHeight = 10f, GateskyLookDistance = 100f, GateskyLookHeight = 42f;
+    private const float EnemyFrontDistance = 16f;
+    private static readonly Vector3 EnemyFrontCamOffset = new(0f, 5.5f, 0f);
+    private static readonly Vector3 EnemyFrontLookOffset = new(0f, 6.5f, 0f);
+    private static readonly Vector3 EnemySideCamOffset = new(-17.5f, 5.5f, -3f);
+    private static readonly Vector3 EnemySideLookOffset = new(0f, 6.8f, 0f);
+    private static readonly Vector3 WideCamOffset = new(-27f, 15f, -27f);
+    private static readonly Vector3 WideLookOffset = new(0f, 5f, 0f);
+    private static readonly Vector3 TwistCamOffset = new(-11f, 7f, -11f);
+    private static readonly Vector3 TwistLookOffset = new(0f, 8f, 0f);
+    private static readonly Vector3 PropSpotOffset = new(6f, 0f, 16f); // the staged prop's offset from the player
+    private static readonly Vector3 PropCamOffset = new(11f, 5f, 11f);
+    private static readonly Vector3 PropLookOffset = new(0f, 3.5f, 0f);
+    private const float WpnSideCamHeight = 6.0f, WpnRocketsCamHeight = 10.5f;
+    private const float WpnSideCamOffsetX = -26f, WpnSideCamOffsetZ = 3f;
+    private static readonly Vector3 WpnSideLookOffset = new(0f, 6.5f, 0f);
+    private static readonly Vector3 WpnDeadCamOffset = new(16f, 7f, 13f);
+    private static readonly Vector3 WpnDeadLookOffset = new(0f, 6.5f, 0f);
+    private const float WpnHudBackDistance = 27f, WpnHudSideOffset = 8.5f, WpnHudCamHeight = 11f;
+    private const float WpnHudLookHeight = 6f, WpnHudLookForward = 9f;
+    private static readonly Vector3 RiderSideCamOffset = new(-18f, 6.5f, 0f);
+    private static readonly Vector3 RiderSideLookOffset = new(0f, 6f, 0f);
+    private static readonly Vector3 BrkPlayerCamOffset = new(-15f, 5.5f, 5f);
+    private static readonly Vector3 BrkPlayerLookOffset = new(0f, 6.5f, 0f);
+    private static readonly Vector3 BrkHectorCamOffset = new(14.5f, 6.5f, -5f);
+    private static readonly Vector3 BrkHectorLookOffset = new(0f, 6.5f, 0f);
+    private static readonly Vector3 BrkDebrisCamOffset = new(-8.5f, 3.4f, 6.5f);
+    private const float BrkDebrisLookHeight = 0.4f;
+    private static readonly Vector3 DetailBuildingCamOffset = new(-10.5f, 4.6f, 10.5f);
+    private static readonly Vector3 DetailBuildingLookOffset = new(0f, 3.4f, 0f);
+    private static readonly Vector3 DetailTreeCamOffset = new(5.2f, 3.1f, 5.2f);
+    private static readonly Vector3 DetailTreeLookOffset = new(0f, 3.4f, 0f);
+    private const float PhotoTuftCamHeight = 0.55f, PhotoTuftLookHeight = 0.30f; // heights over the sampled terrain
+    private static readonly Vector3 GrassCloseCamOffset = new(2.4f, 1.5f, 2.4f);
+    private const float GrassCloseLookHeight = 0.25f;
+    private static readonly Vector3 GrassTopCamOffset = new(0.01f, 8f, 0.01f); // near-vertical: the 0.01 keeps the look off the singularity
+    private static readonly Vector3 GrassFieldCamOffset = new(-17f, 14f, 17f);
+    private const float PhotoGroundEyeHeight = 2.1f, PhotoGroundLookHeight = 5.5f;
+    private const float SlopeSideDistance = 15f, SlopeSideCamHeight = 4.2f, SlopeSideLookHeight = 5.5f;
+    private const float GroundDuelDistance = 11f, GroundDuelCamHeight = 3.4f, GroundDuelLookHeight = 6.5f;
+
     private void QueueCapture(string path, string tag, string camMode, System.Action after = null)
     {
         if (_pendingPath != null || _capturing) return;
@@ -82,23 +145,23 @@ public partial class Titans
         {
             var pad = Main.SpawnPads[0];
             var c = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y), pad.Y);
-            _cam.GlobalPosition = c + new Vector3(46f, 17f, 46f);
-            _cam.LookAt(c + new Vector3(0f, 7f, 0f), Vector3.Up);
+            _cam.GlobalPosition = c + MissionBaseCamOffset;
+            _cam.LookAt(c + MissionBaseLookOffset, Vector3.Up);
         }
         else if (_camMode == "missionVista")
         {
             var pad = Main.SpawnPads[0];
             float gy = Main.HeightAt(pad.X, pad.Y);
-            _cam.GlobalPosition = new Vector3(pad.X + 30f, gy + 60f, pad.Y + 95f);
-            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 240f) + 16f, 240f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(pad.X + MissionVistaOffsetX, gy + MissionVistaHeight, pad.Y + MissionVistaOffsetZ);
+            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 240f) + MissionVistaLookHeight, 240f), Vector3.Up);
         }
         else if (_camMode == "slopeVista")
         {
             // Grazing view across the center relief (dome flank
             // + ridge line): the owner's streaked-mountains
             // screenshot staged head-on (--slope-shot).
-            _cam.GlobalPosition = new Vector3(120f, Main.HeightAt(120f, -120f) + 30f, -120f);
-            _cam.LookAt(new Vector3(-40f, Main.HeightAt(-40f, 40f) + 4f, 40f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(120f, Main.HeightAt(120f, -120f) + SlopeVistaCamHeight, -120f);
+            _cam.LookAt(new Vector3(-40f, Main.HeightAt(-40f, 40f) + SlopeVistaLookHeight, 40f), Vector3.Up);
         }
         else if (_camMode == "stone")
         {
@@ -112,8 +175,8 @@ public partial class Titans
         {
             // Low on the dome flank, looking up it: planar-UV
             // stretch and normal streaks show here if anywhere.
-            _cam.GlobalPosition = new Vector3(58f, Main.HeightAt(58f, -14f) + 6f, -14f);
-            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 0f) + 16f, 0f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(58f, Main.HeightAt(58f, -14f) + SlopeCloseCamHeight, -14f);
+            _cam.LookAt(new Vector3(0f, Main.HeightAt(0f, 0f) + SlopeCloseLookHeight, 0f), Vector3.Up);
         }
         else if (_camMode == "canyonVista")
         {
@@ -122,7 +185,7 @@ public partial class Titans
             // rim ring and the road notch through it should
             // fill the middle distance (AOT_TERRATEST=10).
             var pad = Main.SpawnPads[0];
-            _cam.GlobalPosition = new Vector3(pad.X + 150f, 82f, pad.Y - 60f);
+            _cam.GlobalPosition = new Vector3(pad.X + CanyonVistaOffsetX, CanyonVistaCamHeight, pad.Y + CanyonVistaOffsetZ);
             _cam.LookAt(new Vector3(-268f, 26f, 155f), Vector3.Up);
         }
         else if (_camMode == "blockedcam")
@@ -131,8 +194,8 @@ public partial class Titans
             // height: the marching pose reads here - feet
             // under the body, normal cycle (AOT_TERRATEST=12).
             var p = _player.RootPos;
-            _cam.GlobalPosition = p + new Vector3(-21f, 9f, 17f);
-            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + BlockedCamOffset;
+            _cam.LookAt(p + BlockedCamLookOffset, Vector3.Up);
         }
         else if (_camMode == "underdeck")
         {
@@ -141,8 +204,8 @@ public partial class Titans
             // fixtures and their light pool read here
             // (AOT_TERRATEST=11).
             var dp = TestDeckPoint;
-            _cam.GlobalPosition = new Vector3(dp.X - 26f, 7f, dp.Y + 10f);
-            _cam.LookAt(new Vector3(dp.X + 6f, 5f, dp.Y), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(dp.X + UnderdeckCamOffsetX, UnderdeckCamHeight, dp.Y + UnderdeckCamOffsetZ);
+            _cam.LookAt(new Vector3(dp.X + UnderdeckLookOffsetX, UnderdeckLookHeight, dp.Y), Vector3.Up);
         }
         else if (_camMode == "decktop")
         {
@@ -151,8 +214,8 @@ public partial class Titans
             // glowing border ribbon and the plate ramps read
             // here (AOT_TERRATEST=11).
             var dp = TestDeckPoint;
-            _cam.GlobalPosition = new Vector3(dp.X - 58f, 66f, dp.Y + 58f);
-            _cam.LookAt(new Vector3(dp.X - 6f, 20f, dp.Y - 4f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(dp.X + DecktopCamOffsetX, DecktopCamHeight, dp.Y + DecktopCamOffsetZ);
+            _cam.LookAt(new Vector3(dp.X + DecktopLookOffsetX, DecktopLookHeight, dp.Y + DecktopLookOffsetZ), Vector3.Up);
         }
         else if (_camMode == "homecam")
         {
@@ -161,8 +224,8 @@ public partial class Titans
             // read as a FLAT ground-level city - no platforms,
             // ramps or island (AOT_TERRATEST=11).
             var hp = Main.SpawnPads[0];
-            _cam.GlobalPosition = new Vector3(hp.X - 150f, 62f, hp.Y + 150f);
-            _cam.LookAt(new Vector3(hp.X + 30f, 8f, hp.Y - 10f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(hp.X + HomecamOffsetX, HomecamHeight, hp.Y + HomecamOffsetZ);
+            _cam.LookAt(new Vector3(hp.X + HomecamLookOffsetX, HomecamLookHeight, hp.Y + HomecamLookOffsetZ), Vector3.Up);
         }
         else if (_camMode == "passcam")
         {
@@ -174,9 +237,9 @@ public partial class Titans
             var a = Main.SpawnPads[0]; var b = Main.SpawnPads[1];
             var mid = (a + b) * 0.5f;
             var dirv = new Vector3(b.X - a.X, 0f, b.Y - a.Y).Normalized();
-            var eye = new Vector3(mid.X, Main.HeightAt(mid.X, mid.Y), mid.Y) - dirv * 55f + new Vector3(0f, 9f, 0f);
+            var eye = new Vector3(mid.X, Main.HeightAt(mid.X, mid.Y), mid.Y) - dirv * PasscamBackDistance + Vector3.Up * PasscamEyeHeight;
             _cam.GlobalPosition = eye;
-            _cam.LookAt(eye + dirv * 10f + new Vector3(0f, 1.5f, 0f), Vector3.Up);
+            _cam.LookAt(eye + dirv * PasscamLookDistance + Vector3.Up * PasscamLookHeight, Vector3.Up);
         }
         else if (_camMode == "gatesky")
         {
@@ -189,9 +252,9 @@ public partial class Titans
             var pad = Main.SpawnPads[0];
             var to = Main.SpawnPads[2] - pad;
             var dirv = new Vector3(to.X, 0f, to.Y).Normalized();
-            var eye = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y) + 10f, pad.Y);
+            var eye = new Vector3(pad.X, Main.HeightAt(pad.X, pad.Y) + GateskyEyeHeight, pad.Y);
             _cam.GlobalPosition = eye;
-            _cam.LookAt(eye + dirv * 100f + new Vector3(0f, 42f, 0f), Vector3.Up);
+            _cam.LookAt(eye + dirv * GateskyLookDistance + Vector3.Up * GateskyLookHeight, Vector3.Up);
         }
         else if (_camMode == "enemyFront")
         {
@@ -199,39 +262,39 @@ public partial class Titans
             // frontal view (knee stance reads here, not from the side).
             var p = _enemy.RootPos;
             var toPlayer = new Vector3(_player.RootPos.X - p.X, 0f, _player.RootPos.Z - p.Z).Normalized();
-            _cam.GlobalPosition = p + toPlayer * 16f + new Vector3(0f, 5.5f, 0f);
-            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + toPlayer * EnemyFrontDistance + EnemyFrontCamOffset;
+            _cam.LookAt(p + EnemyFrontLookOffset, Vector3.Up);
         }
         else if (_camMode == "enemySide")
         {
             var p = _enemy.RootPos;
-            _cam.GlobalPosition = p + new Vector3(-17.5f, 5.5f, -3f);
-            _cam.LookAt(p + new Vector3(0f, 6.8f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + EnemySideCamOffset;
+            _cam.LookAt(p + EnemySideLookOffset, Vector3.Up);
         }
         else if (_camMode == "wide")
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
-            _cam.GlobalPosition = mid + new Vector3(-27f, 15f, -27f);
-            _cam.LookAt(mid + new Vector3(0f, 5f, 0f), Vector3.Up);
+            _cam.GlobalPosition = mid + WideCamOffset;
+            _cam.LookAt(mid + WideLookOffset, Vector3.Up);
         }
         else if (_camMode == "twist")
         {
             var p = _player.RootPos;
-            _cam.GlobalPosition = p + new Vector3(-11f, 7f, -11f);
-            _cam.LookAt(p + new Vector3(0f, 8f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + TwistCamOffset;
+            _cam.LookAt(p + TwistLookOffset, Vector3.Up);
         }
         else if (_camMode == "prop")
         {
-            var mid = (_player.RootPos + new Vector3(6f, 0f, 16f)) / 2f;
-            _cam.GlobalPosition = mid + new Vector3(11f, 5f, 11f);
-            _cam.LookAt(mid + new Vector3(0f, 3.5f, 0f), Vector3.Up);
+            var mid = (_player.RootPos + PropSpotOffset) / 2f;
+            _cam.GlobalPosition = mid + PropCamOffset;
+            _cam.LookAt(mid + PropLookOffset, Vector3.Up);
         }
         else if (_camMode == "wpnSide" || _camMode == "wpnRockets")
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
-            float h = _camMode == "wpnRockets" ? 10.5f : 6.0f;
-            _cam.GlobalPosition = mid + new Vector3(-26f, h, 3f);
-            _cam.LookAt(mid + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+            float h = _camMode == "wpnRockets" ? WpnRocketsCamHeight : WpnSideCamHeight;
+            _cam.GlobalPosition = mid + new Vector3(WpnSideCamOffsetX, h, WpnSideCamOffsetZ);
+            _cam.LookAt(mid + WpnSideLookOffset, Vector3.Up);
         }
         else if (_camMode == "wpnBlocked")
         {
@@ -242,8 +305,8 @@ public partial class Titans
         {
             // From the player's side (sunlit front), pulled well back.
             var p = _enemy.RootPos;
-            _cam.GlobalPosition = p + new Vector3(16f, 7f, 13f);
-            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + WpnDeadCamOffset;
+            _cam.LookAt(p + WpnDeadLookOffset, Vector3.Up);
         }
         else if (_camMode == "wpnHud")
         {
@@ -251,45 +314,45 @@ public partial class Titans
             var torsoYaw = _player.TorsoYawWorld;
             var fwd = RiderWalker.HeadingVec(torsoYaw);
             var right = new Vector3(-fwd.Z, 0f, fwd.X);
-            _cam.GlobalPosition = _player.RootPos - fwd * 27f + right * 8.5f + Vector3.Up * 11f;
-            _cam.LookAt(_player.RootPos + Vector3.Up * 6f + fwd * 9f, Vector3.Up);
+            _cam.GlobalPosition = _player.RootPos - fwd * WpnHudBackDistance + right * WpnHudSideOffset + Vector3.Up * WpnHudCamHeight;
+            _cam.LookAt(_player.RootPos + Vector3.Up * WpnHudLookHeight + fwd * WpnHudLookForward, Vector3.Up);
         }
         else if (_camMode == "riderSide")
         {
             var mid = (_player.RootPos + _enemy.RootPos) / 2f;
-            _cam.GlobalPosition = mid + new Vector3(-18f, 6.5f, 0f);
-            _cam.LookAt(mid + new Vector3(0f, 6f, 0f), Vector3.Up);
+            _cam.GlobalPosition = mid + RiderSideCamOffset;
+            _cam.LookAt(mid + RiderSideLookOffset, Vector3.Up);
         }
         else if (_camMode == "brkPlayer")
         {
             var p = _player.RootPos;
-            _cam.GlobalPosition = p + new Vector3(-15f, 5.5f, 5f);
-            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + BrkPlayerCamOffset;
+            _cam.LookAt(p + BrkPlayerLookOffset, Vector3.Up);
         }
         else if (_camMode == "brkHector")
         {
             var p = _enemy.RootPos;
-            _cam.GlobalPosition = p + new Vector3(14.5f, 6.5f, -5f);
-            _cam.LookAt(p + new Vector3(0f, 6.5f, 0f), Vector3.Up);
+            _cam.GlobalPosition = p + BrkHectorCamOffset;
+            _cam.LookAt(p + BrkHectorLookOffset, Vector3.Up);
         }
         else if (_camMode == "brkDebris")
         {
-            _cam.GlobalPosition = _camFocus + new Vector3(-8.5f, 3.4f, 6.5f);
-            _cam.LookAt(_camFocus + Vector3.Up * 0.4f, Vector3.Up);
+            _cam.GlobalPosition = _camFocus + BrkDebrisCamOffset;
+            _cam.LookAt(_camFocus + Vector3.Up * BrkDebrisLookHeight, Vector3.Up);
         }
         else if (_camMode == "detailBuilding")
         {
             // Close on the (22,8) building: brick courses + glass panes.
             var bp = new Vector3(22f, Main.HeightAt(22f, 8f), 8f);
-            _cam.GlobalPosition = bp + new Vector3(-10.5f, 4.6f, 10.5f);
-            _cam.LookAt(bp + new Vector3(0f, 3.4f, 0f), Vector3.Up);
+            _cam.GlobalPosition = bp + DetailBuildingCamOffset;
+            _cam.LookAt(bp + DetailBuildingLookOffset, Vector3.Up);
         }
         else if (_camMode == "detailTree")
         {
             // Close on the hand-placed tree at (-12,-8): branches + leaves.
             var tp = new Vector3(-12f, Main.HeightAt(-12f, -8f), -8f);
-            _cam.GlobalPosition = tp + new Vector3(5.2f, 3.1f, 5.2f);
-            _cam.LookAt(tp + new Vector3(0f, 3.4f, 0f), Vector3.Up);
+            _cam.GlobalPosition = tp + DetailTreeCamOffset;
+            _cam.LookAt(tp + DetailTreeLookOffset, Vector3.Up);
         }
         else if (_camMode == "vista")
         {
@@ -306,46 +369,46 @@ public partial class Titans
         else if (_camMode == "photoTuft")
         {
             // Debug: one tuft cluster at arm's length.
-            _cam.GlobalPosition = new Vector3(-18.6f, Main.HeightAt(-18.6f, 2.2f) + 0.55f, 2.2f);
-            _cam.LookAt(new Vector3(-21.5f, Main.HeightAt(-21.5f, -1.5f) + 0.30f, -1.5f), Vector3.Up);
+            _cam.GlobalPosition = new Vector3(-18.6f, Main.HeightAt(-18.6f, 2.2f) + PhotoTuftCamHeight, 2.2f);
+            _cam.LookAt(new Vector3(-21.5f, Main.HeightAt(-21.5f, -1.5f) + PhotoTuftLookHeight, -1.5f), Vector3.Up);
         }
         else if (_camMode == "grassClose")
         {
-            _cam.GlobalPosition = _grassPos + new Vector3(2.4f, 1.5f, 2.4f);
-            _cam.LookAt(_grassPos + Vector3.Up * 0.25f, Vector3.Up);
+            _cam.GlobalPosition = _grassPos + GrassCloseCamOffset;
+            _cam.LookAt(_grassPos + Vector3.Up * GrassCloseLookHeight, Vector3.Up);
         }
         else if (_camMode == "grassTop")
         {
-            _cam.GlobalPosition = _grassPos + new Vector3(0.01f, 8f, 0.01f);
+            _cam.GlobalPosition = _grassPos + GrassTopCamOffset;
             _cam.LookAt(_grassPos, Vector3.Up);
         }
         else if (_camMode == "grassField")
         {
-            _cam.GlobalPosition = _grassPos + new Vector3(-17f, 14f, 17f);
+            _cam.GlobalPosition = _grassPos + GrassFieldCamOffset;
             _cam.LookAt(_grassPos, Vector3.Up);
         }
         else if (_camMode == "photoGround")
         {
             // Ground level by the hand-placed trees, looking across
             // the road at the Enyo.
-            var tp = new Vector3(-21f, Main.HeightAt(-21f, 0f) + 2.1f, -1f);
+            var tp = new Vector3(-21f, Main.HeightAt(-21f, 0f) + PhotoGroundEyeHeight, -1f);
             _cam.GlobalPosition = tp;
-            _cam.LookAt(_player.RootPos + Vector3.Up * 5.5f, Vector3.Up);
+            _cam.LookAt(_player.RootPos + Vector3.Up * PhotoGroundLookHeight, Vector3.Up);
         }
         else if (_camMode == "slopeSide")
         {
             var p = _player.RootPos;
             var fwd = RiderWalker.HeadingVec(_player.LegsYaw);
             var right = new Vector3(-fwd.Z, 0f, fwd.X);
-            _cam.GlobalPosition = p - right * 15f + Vector3.Up * 4.2f;
-            _cam.LookAt(p + Vector3.Up * 5.5f, Vector3.Up);
+            _cam.GlobalPosition = p - right * SlopeSideDistance + Vector3.Up * SlopeSideCamHeight;
+            _cam.LookAt(p + Vector3.Up * SlopeSideLookHeight, Vector3.Up);
         }
         else if (_camMode == "groundDuel")
         {
             var p = _player.RootPos;
             var fwd = RiderWalker.HeadingVec(_player.LegsYaw);
-            _cam.GlobalPosition = p - fwd * 11f + Vector3.Up * 3.4f;
-            _cam.LookAt(_enemy.RootPos + Vector3.Up * 6.5f, Vector3.Up);
+            _cam.GlobalPosition = p - fwd * GroundDuelDistance + Vector3.Up * GroundDuelCamHeight;
+            _cam.LookAt(_enemy.RootPos + Vector3.Up * GroundDuelLookHeight, Vector3.Up);
         }
         else // chase (interactive)
         {

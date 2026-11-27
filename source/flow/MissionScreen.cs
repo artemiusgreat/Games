@@ -70,6 +70,55 @@ public partial class MissionScreen : Control
     private const int PatronHeadSegments = 12, PatronHeadRings = 8;
     private static readonly Color PatronSkinColor = new(0.78f, 0.62f, 0.50f);
     private const float PatronSkinRoughness = 0.7f;
+    // Diorama camera and sun (owner, 2026-11-27).
+    private static readonly Vector3 DioramaCameraPosition = new(0f, 2.3f, 6.2f);
+    private static readonly Vector3 DioramaCameraTarget = new(0.3f, 1.0f, -2.6f);
+    private static readonly Vector3 DioramaSunRotation = new(-0.9f, 0.4f, 0f);
+    // Diorama material palette (the Mat() recipes' colours
+    // and roughnesses; furniture placement stays scene data
+    // in the Box() calls).
+    private static readonly Color FloorColor = new(0.16f, 0.11f, 0.07f);
+    private const float FloorRoughness = 0.95f;
+    private static readonly Color WallColor = new(0.10f, 0.11f, 0.14f);
+    private const float WallRoughness = 0.95f;
+    private static readonly Color WoodColor = new(0.30f, 0.19f, 0.10f);
+    private const float WoodRoughness = 0.7f;
+    private static readonly Color BrassColor = new(0.55f, 0.42f, 0.18f);
+    private const float BrassRoughness = 0.45f;
+    private static readonly Color StripLightColor = new(0.25f, 0.85f, 0.95f); // the counter's glowing front strip
+    private const float StripLightRoughness = 0.4f, StripLightEmission = 1.6f;
+    private static readonly Color SeatColor = new(0.45f, 0.16f, 0.12f);
+    private const float SeatRoughness = 0.8f;
+    private static readonly Color ChairColor = new(0.13f, 0.15f, 0.19f);
+    private static readonly Color CandleColor = new(0.95f, 0.7f, 0.25f);
+    private const float CandleRoughness = 0.25f, CandleEmission = 0.8f;
+    // Back-bar bottle row: count, spacing and the bottle
+    // piece recipe (the shelves share the row step).
+    private const float ShelfRowStep = 0.75f;
+    private static readonly Color[] BottleColors =
+    {
+        new(0.2f, 0.75f, 0.35f), new(0.85f, 0.55f, 0.15f),
+        new(0.3f, 0.5f, 0.95f), new(0.8f, 0.25f, 0.3f)
+    };
+    private const int BottleCount = 26;
+    private const float BottleStartX = -2.2f, BottleSpacing = 0.235f;
+    private const float BottleBaseY = 2.06f, BottleYOffset = 0.14f;
+    private const float ShelfZ = -3.95f; // the back-bar shelf plane (shelves and bottles share it)
+    private static readonly Vector3 BottleSize = new(0.09f, 0.28f, 0.09f);
+    private const float BottleRoughness = 0.3f, BottleEmission = 0.55f;
+    // Screen-side values (owner, 2026-11-27): the contracts
+    // column stretch, the selector font size, the offer rows'
+    // panel alpha and inner text separation.
+    private const float ContractsStretchRatio = 1.0f;
+    private const int MissionSelectorFontSize = 15;
+    private const float OfferRowPanelAlpha = 0.9f;
+    private const int OfferTextSeparation = 2;
+    // Patron UI placement heights.
+    private const float PatronLabelHeight = 2.12f;
+    private const float PatronRingHeight = 0.04f;
+    private const float PatronClickHeight = 1.15f;
+    private const float PatronBodyHeightOffset = 0.78f; // body centre over the holder origin
+    private const float PatronHeadHeightOffset = 1.68f;
 
     private PlanetDef Planet => MissionCatalog.Planets[FlowMain.PlanetIndex];
     private MissionDef Mission => Planet.Missions[FlowMain.MissionIndex];
@@ -112,14 +161,14 @@ public partial class MissionScreen : Control
         mid.SizeFlagsVertical = SizeFlags.ExpandFill;
         root.AddChild(mid);
 
-        var side = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 1.0f };
+        var side = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsStretchRatio = ContractsStretchRatio };
         side.AddThemeStyleboxOverride("panel", FlowUi.Panel(FlowUi.Navy));
         mid.AddChild(side);
         var sv = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         sv.AddThemeConstantOverride("separation", FlowUi.PanelColumnSeparation);
         side.AddChild(sv);
         sv.AddChild(FlowUi.NavHeading("Mission", FlowUi.SectionHeadingFontSize, FlowUi.Gold));
-        sv.AddChild(FlowUi.SelectorRow(out _selName, 15, StepMission));
+        sv.AddChild(FlowUi.SelectorRow(out _selName, MissionSelectorFontSize, StepMission));
         var briefScroll = new ScrollContainer
         {
             CustomMinimumSize = new Vector2(0f, BriefScrollMinHeight),
@@ -228,7 +277,7 @@ public partial class MissionScreen : Control
             int idx = mi;
             var row = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
             row.AddThemeStyleboxOverride("panel", FlowUi.Panel(
-                mi == FlowMain.MissionIndex ? FlowUi.Navy : FlowUi.NavySoft, 0.9f));
+                mi == FlowMain.MissionIndex ? FlowUi.Navy : FlowUi.NavySoft, OfferRowPanelAlpha));
             row.GuiInput += ev =>
             {
                 if (ev is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
@@ -238,7 +287,7 @@ public partial class MissionScreen : Control
             h.AddThemeConstantOverride("separation", OfferRowSeparation);
             row.AddChild(h);
             var tx = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.Expand, MouseFilter = MouseFilterEnum.Ignore };
-            tx.AddThemeConstantOverride("separation", 2);
+            tx.AddThemeConstantOverride("separation", OfferTextSeparation);
             h.AddChild(tx);
             bool doneRow = StoryProgress.IsCompleted(FlowMain.PlanetIndex, idx);
             var patron = FlowUi.NavHeading(mm.Patron, OfferTitleFontSize,
@@ -324,13 +373,13 @@ public partial class MissionScreen : Control
         };
         sv.AddChild(we);
 
-        var cam = new Camera3D { Position = new Vector3(0f, 2.3f, 6.2f), Fov = DioramaCameraFov };
+        var cam = new Camera3D { Position = DioramaCameraPosition, Fov = DioramaCameraFov };
         sv.AddChild(cam);
-        cam.LookAt(new Vector3(0.3f, 1.0f, -2.6f), Vector3.Up);
+        cam.LookAt(DioramaCameraTarget, Vector3.Up);
         sv.AddChild(new DirectionalLight3D
         {
             LightEnergy = DioramaSunEnergy, LightColor = DioramaSunColor,
-            Rotation = new Vector3(-0.9f, 0.4f, 0f), ShadowEnabled = false
+            Rotation = DioramaSunRotation, ShadowEnabled = false
         });
 
         var root = new Node3D();
@@ -349,10 +398,10 @@ public partial class MissionScreen : Control
             };
             root.AddChild(mi); return mi;
         }
-        var floorMat = Mat(new Color(0.16f, 0.11f, 0.07f), 0.95f);
-        var wallMat = Mat(new Color(0.10f, 0.11f, 0.14f), 0.95f);
-        var woodMat = Mat(new Color(0.30f, 0.19f, 0.10f), 0.7f);
-        var brassMat = Mat(new Color(0.55f, 0.42f, 0.18f), 0.45f);
+        var floorMat = Mat(FloorColor, FloorRoughness);
+        var wallMat = Mat(WallColor, WallRoughness);
+        var woodMat = Mat(WoodColor, WoodRoughness);
+        var brassMat = Mat(BrassColor, BrassRoughness);
 
         Box(new Vector3(0f, -0.05f, 0f), new Vector3(16f, 0.1f, 14f), floorMat);            // floor
         Box(new Vector3(0f, 2.6f, -4.2f), new Vector3(16f, 5.2f, 0.3f), wallMat);          // back wall
@@ -362,21 +411,16 @@ public partial class MissionScreen : Control
         Box(new Vector3(0.7f, 0.55f, -2.5f), new Vector3(6.4f, 1.1f, 0.9f), woodMat);
         Box(new Vector3(0.7f, 1.14f, -2.5f), new Vector3(6.8f, 0.08f, 1.15f), brassMat);
         Box(new Vector3(0.7f, 0.72f, -2.02f), new Vector3(6.4f, 0.10f, 0.04f),
-            Mat(new Color(0.25f, 0.85f, 0.95f), 0.4f, 1.6f));
+            Mat(StripLightColor, StripLightRoughness, StripLightEmission));
         // Back-bar shelves + bottles.
         for (int sIdx = 0; sIdx < 2; sIdx++)
-            Box(new Vector3(0.7f, 1.9f + sIdx * 0.75f, -3.95f), new Vector3(6.2f, 0.06f, 0.35f), woodMat);
-        var bottleCols = new[]
+            Box(new Vector3(0.7f, 1.9f + sIdx * ShelfRowStep, ShelfZ), new Vector3(6.2f, 0.06f, 0.35f), woodMat);
+        for (int i = 0; i < BottleCount; i++)
         {
-            new Color(0.2f, 0.75f, 0.35f), new Color(0.85f, 0.55f, 0.15f),
-            new Color(0.3f, 0.5f, 0.95f), new Color(0.8f, 0.25f, 0.3f)
-        };
-        for (int i = 0; i < 26; i++)
-        {
-            float x = -2.2f + i * 0.235f;
-            float y = 2.06f + (i % 2) * 0.75f;
-            Box(new Vector3(x, y + 0.14f, -3.95f), new Vector3(0.09f, 0.28f, 0.09f),
-                Mat(bottleCols[i % bottleCols.Length], 0.3f, 0.55f));
+            float x = BottleStartX + i * BottleSpacing;
+            float y = BottleBaseY + (i % 2) * ShelfRowStep;
+            Box(new Vector3(x, y + BottleYOffset, ShelfZ), BottleSize,
+                Mat(BottleColors[i % BottleColors.Length], BottleRoughness, BottleEmission));
         }
         // Stools in front of the counter.
         for (int i = 0; i < 4; i++)
@@ -386,7 +430,7 @@ public partial class MissionScreen : Control
             var seat = new MeshInstance3D
             {
                 Mesh = new CylinderMesh { TopRadius = StoolSeatRadius, BottomRadius = StoolSeatRadius, Height = StoolSeatHeight, RadialSegments = StoolSeatSegments },
-                MaterialOverride = Mat(new Color(0.45f, 0.16f, 0.12f), 0.8f),
+                MaterialOverride = Mat(SeatColor, SeatRoughness),
                 Position = new Vector3(x, 0.60f, -1.55f)
             };
             root.AddChild(seat);
@@ -402,9 +446,9 @@ public partial class MissionScreen : Control
             };
             root.AddChild(top);
             Box(new Vector3(tx, 0.39f, -0.6f), new Vector3(0.1f, 0.78f, 0.1f), brassMat);
-            Box(new Vector3(tx - 0.95f, 0.45f, -0.6f), new Vector3(0.5f, 0.9f, 0.5f), Mat(new Color(0.13f, 0.15f, 0.19f)));
+            Box(new Vector3(tx - 0.95f, 0.45f, -0.6f), new Vector3(0.5f, 0.9f, 0.5f), Mat(ChairColor));
             Box(new Vector3(tx + 0.2f, 0.90f, -0.5f), new Vector3(0.08f, 0.18f, 0.08f),
-                Mat(new Color(0.95f, 0.7f, 0.25f), 0.25f, 0.8f));
+                Mat(CandleColor, CandleRoughness, CandleEmission));
         }
         // Patrons: capsule bodies + heads, one bartender behind
         // the bar. Holders are recorded in creation order and
@@ -468,14 +512,14 @@ public partial class MissionScreen : Control
                 OutlineSize = PatronLabelOutlineSize,
                 OutlineModulate = PatronLabelOutlineColor,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Position = hp + new Vector3(0f, 2.12f, 0f),
+                Position = hp + Vector3.Up * PatronLabelHeight,
                 Visible = false
             };
             root.AddChild(label);
             var ring = new MeshInstance3D
             {
                 Mesh = new TorusMesh { InnerRadius = PatronRingInnerRadius, OuterRadius = PatronRingOuterRadius, Rings = PatronRingSegments, RingSegments = PatronRingSegmentSides },
-                Position = new Vector3(hp.X, 0.04f, hp.Z),
+                Position = new Vector3(hp.X, PatronRingHeight, hp.Z),
                 Visible = false
             };
             ring.MaterialOverride = new StandardMaterial3D
@@ -487,7 +531,7 @@ public partial class MissionScreen : Control
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
             };
             root.AddChild(ring);
-            var area = new Area3D { Position = hp + new Vector3(0f, 1.15f, 0f) };
+            var area = new Area3D { Position = hp + Vector3.Up * PatronClickHeight };
             var shape = new CollisionShape3D
             {
                 Shape = new SphereShape3D { Radius = PatronClickRadius }
@@ -523,14 +567,14 @@ public partial class MissionScreen : Control
         {
             Mesh = new CapsuleMesh { Radius = PatronBodyRadius, Height = PatronBodyHeight, RadialSegments = PatronBodySegments },
             MaterialOverride = new StandardMaterial3D { AlbedoColor = suit, Roughness = PatronSuitRoughness },
-            Position = new Vector3(0f, 0.78f, 0f)
+            Position = Vector3.Up * PatronBodyHeightOffset
         };
         holder.AddChild(body);
         var head = new MeshInstance3D
         {
             Mesh = new SphereMesh { Radius = PatronHeadRadius, Height = PatronHeadRadius * 2f, RadialSegments = PatronHeadSegments, Rings = PatronHeadRings },
             MaterialOverride = new StandardMaterial3D { AlbedoColor = PatronSkinColor, Roughness = PatronSkinRoughness },
-            Position = new Vector3(0f, 1.68f, 0f)
+            Position = Vector3.Up * PatronHeadHeightOffset
         };
         holder.AddChild(head);
     }

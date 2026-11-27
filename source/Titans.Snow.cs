@@ -34,6 +34,52 @@ public partial class Titans
     private const float PrintGradientStep = 1.5f;    // terrain-normal sampling distance for a print
     private const float MinPrintForwardSq = 0.01f;   // squared forward length below which a print has no direction
     private static readonly Vector2 PrintPlaneSize = new(1.8f, 2.7f);
+    // Footprint stamp canvas and shape recipe (owner,
+    // 2026-11-27): the toe/arch/heel rounded-rect shapes in
+    // UV space (centre, half-size, corner radius), the
+    // arch's lighter contact, the soft rim, and the toe's
+    // tread grooves.
+    private const int PrintTextureWidth = 96, PrintTextureHeight = 144;
+    private static readonly Vector2 PrintToeCenter = new(0.5f, 0.30f);
+    private static readonly Vector2 PrintToeHalfSize = new(0.31f, 0.235f);
+    private const float PrintToeRadius = 0.10f;
+    private static readonly Vector2 PrintArchCenter = new(0.5f, 0.545f);
+    private static readonly Vector2 PrintArchHalfSize = new(0.155f, 0.075f);
+    private const float PrintArchRadius = 0.06f;
+    private static readonly Vector2 PrintHeelCenter = new(0.5f, 0.775f);
+    private static readonly Vector2 PrintHeelHalfSize = new(0.235f, 0.155f);
+    private const float PrintHeelRadius = 0.08f;
+    private const float PrintArchLighten = 0.012f;   // SDF offset: the arch sits lighter (less contact)
+    private const float PrintEdgeSoftness = 0.055f;  // SDF range the stamp's rim fades over
+    private const float PrintGrooveInset = -0.015f;  // grooves only well inside the toe pad
+    private const float PrintGrooveY1 = 0.185f, PrintGrooveY2 = 0.415f; // groove rows across the toe
+    private const float PrintGrooveHalfWidth = 0.016f;
+    private const float PrintGrooveDim = 0.45f;      // alpha factor inside a groove
+    // Snowflake recipe (owner, 2026-11-27): arm length and
+    // width with their jitter ranges, the branch geometry,
+    // the broken arm's gap, the melt specks, and the alpha
+    // construction. The LCG constants in FlakeTexture stay
+    // inline - they ARE the generator algorithm.
+    private const float FlakeArmLength = 0.92f;
+    private const float FlakeArmLengthMin = 0.74f, FlakeArmLengthRange = 0.26f; // per-arm length jitter
+    private const float FlakeArmAngleJitter = 0.24f;
+    private const float FlakeArmBaseWidth = 0.050f;
+    private const float FlakeArmWidthMin = 0.8f, FlakeArmWidthRange = 0.4f; // per-arm width jitter (fractions)
+    private const float FlakeArmTipWidth = 0.016f;
+    private const float FlakeBrokenTaperStart = 0.8f, FlakeBrokenTaperEnd = 0.62f; // broken-arm width, fractions of the base width
+    private const float FlakeBrokenGapStart = 0.34f, FlakeBrokenGapEnd = 0.58f; // the melted gap, fractions of the arm length
+    private const float FlakeBrokenTipWidth = 0.014f;
+    private const float FlakeBranchT = 0.52f, FlakeBranchTJitter = 0.1f;   // lone branch pair's position along the arm
+    private const float FlakeBranchTStart = 0.40f, FlakeBranchTStep = 0.24f, FlakeBranchTJitter2 = 0.08f; // two-pair positions
+    private const float FlakeBranchLengthGain = 0.52f, FlakeBranchLengthRange = 0.22f;
+    private const float FlakeBranchAngle = 0.96f, FlakeBranchAngleJitter = 0.3f;
+    private const float FlakeBranchBaseWidth = 0.030f, FlakeBranchTipWidth = 0.007f;
+    private const float FlakeSnappedBranchFactor = 0.4f; // the one snapped branch's length factor
+    private const int FlakeSpeckCount = 4;
+    private const float FlakeSpeckRadiusMin = 0.016f, FlakeSpeckRadiusRange = 0.02f;
+    private const float FlakeEdgeSoftness = 0.6f;    // alpha fade range, as a fraction of the local thickness
+    private const float FlakePeakAlpha = 0.30f;
+    private const float FlakeCoreRadius = 0.16f, FlakeCoreAlpha = 0.18f; // the centre knot
     private static readonly Color PrintColor = new(0.40f, 0.48f, 0.68f, 0f); // alpha driven per-frame by the fade
     private static readonly Color FlakeColor = new(1f, 1f, 1f, 0.95f);
     private static readonly Color FlakeTint = new(0.96f, 0.98f, 1f); // flake RGB; alpha comes from the distance field
@@ -67,22 +113,22 @@ public partial class Titans
         // forward. Alpha comes from the shapes' signed
         // distance, so the rim is soft and a corner sunk into
         // a slope fades instead of slicing the shape.
-        var img = Image.CreateEmpty(96, 144, false, Image.Format.Rgba8);
-        for (int y = 0; y < 144; y++)
-        for (int x = 0; x < 96; x++)
+        var img = Image.CreateEmpty(PrintTextureWidth, PrintTextureHeight, false, Image.Format.Rgba8);
+        for (int y = 0; y < PrintTextureHeight; y++)
+        for (int x = 0; x < PrintTextureWidth; x++)
         {
-            var p = new Vector2((x + 0.5f) / 96f, (y + 0.5f) / 144f);
-            float dToe = RRect(p, new Vector2(0.5f, 0.30f), new Vector2(0.31f, 0.235f), 0.10f);
-            float dArch = RRect(p, new Vector2(0.5f, 0.545f), new Vector2(0.155f, 0.075f), 0.06f);
-            float dHeel = RRect(p, new Vector2(0.5f, 0.775f), new Vector2(0.235f, 0.155f), 0.08f);
-            float d = Mathf.Min(Mathf.Min(dToe, dHeel), dArch + 0.012f); // arch sits lighter (less contact)
-            float a = Mathf.Clamp(0.5f - d / 0.055f, 0f, 1f);
+            var p = new Vector2((x + 0.5f) / PrintTextureWidth, (y + 0.5f) / PrintTextureHeight);
+            float dToe = RRect(p, PrintToeCenter, PrintToeHalfSize, PrintToeRadius);
+            float dArch = RRect(p, PrintArchCenter, PrintArchHalfSize, PrintArchRadius);
+            float dHeel = RRect(p, PrintHeelCenter, PrintHeelHalfSize, PrintHeelRadius);
+            float d = Mathf.Min(Mathf.Min(dToe, dHeel), dArch + PrintArchLighten); // arch sits lighter (less contact)
+            float a = Mathf.Clamp(0.5f - d / PrintEdgeSoftness, 0f, 1f);
             a = a * a * (3f - 2f * a);
             // Tread grooves across the toe pad.
-            if (dToe < -0.015f)
+            if (dToe < PrintGrooveInset)
             {
-                float g1 = Mathf.Abs(p.Y - 0.185f), g2 = Mathf.Abs(p.Y - 0.415f);
-                if (Mathf.Min(g1, g2) < 0.016f) a *= 0.45f;
+                float g1 = Mathf.Abs(p.Y - PrintGrooveY1), g2 = Mathf.Abs(p.Y - PrintGrooveY2);
+                if (Mathf.Min(g1, g2) < PrintGrooveHalfWidth) a *= PrintGrooveDim;
             }
             img.SetPixel(x, y, new Color(1f, 1f, 1f, a));
         }
@@ -246,39 +292,39 @@ public partial class Titans
         int[] pairs = { 2, 1, 2, 0, 2, 1 };
         for (int k = 0; k < 6; k++)
         {
-            float a = k * Mathf.Pi / 3f + (Rand() - 0.5f) * 0.24f;
+            float a = k * Mathf.Pi / 3f + (Rand() - 0.5f) * FlakeArmAngleJitter;
             var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
             var side = new Vector2(-dir.Y, dir.X);
-            float len = 0.92f * (0.74f + 0.26f * Rand());
-            float w0 = 0.050f * (0.8f + 0.4f * Rand());
+            float len = FlakeArmLength * (FlakeArmLengthMin + FlakeArmLengthRange * Rand());
+            float w0 = FlakeArmBaseWidth * (FlakeArmWidthMin + FlakeArmWidthRange * Rand());
             if (k == 3)
             {
                 // the broken arm: a melted gap mid-shaft
-                segs.Add((Vector2.Zero, dir * (len * 0.34f), w0, w0 * 0.8f));
-                segs.Add((dir * (len * 0.58f), dir * len, w0 * 0.62f, 0.014f));
+                segs.Add((Vector2.Zero, dir * (len * FlakeBrokenGapStart), w0, w0 * FlakeBrokenTaperStart));
+                segs.Add((dir * (len * FlakeBrokenGapEnd), dir * len, w0 * FlakeBrokenTaperEnd, FlakeBrokenTipWidth));
             }
-            else segs.Add((Vector2.Zero, dir * len, w0, 0.016f));
+            else segs.Add((Vector2.Zero, dir * len, w0, FlakeArmTipWidth));
             for (int b = 0; b < pairs[k]; b++)
             {
-                float t = pairs[k] == 1 ? 0.52f + (Rand() - 0.5f) * 0.1f
-                                        : 0.40f + 0.24f * b + (Rand() - 0.5f) * 0.08f;
+                float t = pairs[k] == 1 ? FlakeBranchT + (Rand() - 0.5f) * FlakeBranchTJitter
+                                        : FlakeBranchTStart + FlakeBranchTStep * b + (Rand() - 0.5f) * FlakeBranchTJitter2;
                 var bas = dir * (len * t);
-                float bl = len * (1f - t) * (0.52f + 0.22f * Rand()) / 0.92f;
+                float bl = len * (1f - t) * (FlakeBranchLengthGain + FlakeBranchLengthRange * Rand()) / FlakeArmLength;
                 foreach (float sgn in new[] { -1f, 1f })
                 {
-                    float ba = 0.96f + (Rand() - 0.5f) * 0.3f;
+                    float ba = FlakeBranchAngle + (Rand() - 0.5f) * FlakeBranchAngleJitter;
                     var bd = (dir * Mathf.Cos(ba) + side * (sgn * Mathf.Sin(ba))).Normalized();
-                    float l2 = (k == 1 && b == 0 && sgn > 0f) ? bl * 0.4f : bl; // one snapped branch
-                    segs.Add((bas, bas + bd * l2, 0.030f, 0.007f));
+                    float l2 = (k == 1 && b == 0 && sgn > 0f) ? bl * FlakeSnappedBranchFactor : bl; // one snapped branch
+                    segs.Add((bas, bas + bd * l2, FlakeBranchBaseWidth, FlakeBranchTipWidth));
                 }
             }
         }
         // melt specks drifting off the flake
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < FlakeSpeckCount; i++)
         {
-            float a = Rand() * Mathf.Tau, d = 0.92f * (0.5f + 0.5f * Rand());
+            float a = Rand() * Mathf.Tau, d = FlakeArmLength * (0.5f + 0.5f * Rand());
             var c = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * d;
-            float r = 0.016f + 0.02f * Rand();
+            float r = FlakeSpeckRadiusMin + FlakeSpeckRadiusRange * Rand();
             segs.Add((c, c, r, r));
         }
         for (int y = 0; y < S; y++)
@@ -294,9 +340,9 @@ public partial class Titans
                 float d = (p - (A + ab * t)).Length();
                 if (d < best) { best = d; thick = Mathf.Lerp(T0, T1, t); }
             }
-            float core = Mathf.Clamp(1f - p.Length() / 0.16f, 0f, 1f);
-            float alpha = Mathf.Clamp((thick - best) / (thick * 0.6f), 0f, 1f) * 0.30f;
-            alpha = Mathf.Max(alpha, core * 0.18f);
+            float core = Mathf.Clamp(1f - p.Length() / FlakeCoreRadius, 0f, 1f);
+            float alpha = Mathf.Clamp((thick - best) / (thick * FlakeEdgeSoftness), 0f, 1f) * FlakePeakAlpha;
+            alpha = Mathf.Max(alpha, core * FlakeCoreAlpha);
             img.SetPixel(x, y, new Color(FlakeTint, alpha));
         }
         return ImageTexture.CreateFromImage(img);
