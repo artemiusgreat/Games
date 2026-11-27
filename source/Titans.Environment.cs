@@ -585,17 +585,6 @@ public partial class Titans
         Dbg.Print($"DUEL scatter trees+={trees} propsNow={_props.Count}");
     }
 
-    // Photo-scene shades over the shared concrete set (owner:
-    // buildings must not all look the same) - blue-grey, teal,
-    // warm sand, pale, brick-warm, slate, cycled per building
-    // with a small hash jitter on top.
-    private static readonly Color[] BuildingTints =
-    {
-        new(0.92f, 0.95f, 1.00f), new(0.85f, 0.95f, 0.95f),
-        new(1.03f, 0.97f, 0.88f), new(0.88f, 0.90f, 0.94f),
-        new(1.02f, 0.90f, 0.84f), new(0.80f, 0.86f, 0.90f)
-    };
-
     // Procedural facade (terrain-detail ask): a window grid with lit and
     // dark panes, a door at street level and a darker parapet band -
     // drawn once per building into a 256px image texture.
