@@ -22,8 +22,8 @@ public partial class Titans
         // Dashboard text carries a hard shadow (owner: HUD text
         // washed out against bright ground without one).
         l.AddThemeColorOverride("font_shadow_color", LabelShadowColor);
-        l.AddThemeConstantOverride("shadow_offset_x", 1);
-        l.AddThemeConstantOverride("shadow_offset_y", 1);
+        l.AddThemeConstantOverride("shadow_offset_x", LabelShadowOffset);
+        l.AddThemeConstantOverride("shadow_offset_y", LabelShadowOffset);
         return l;
     }
 
@@ -35,7 +35,7 @@ public partial class Titans
     // one compact name + bar block per NPC teammate, stacked
     // under the player's own block in the same idiom.
     private readonly (Label Lab, ProgressBar Bar, VBoxContainer Box)[] _teamHpRows =
-        new (Label, ProgressBar, VBoxContainer)[3];
+        new (Label, ProgressBar, VBoxContainer)[MaxTeamHpRows];
 
     private void BuildHud(CanvasLayer layer)
     {
@@ -65,7 +65,7 @@ public partial class Titans
         // Team-command feed, top-left: rides under the weapons
         // block (owner, 2026-11-21 - restored for team orders
         // only; the 2026-11-20 event feed stays removed).
-        _feedLabel = MakeLabel(15, FeedTextColor);
+        _feedLabel = MakeLabel(FeedFontSize, FeedTextColor);
         _feedLabel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         _feedLabel.OffsetLeft = FeedLabelLeft; _feedLabel.OffsetTop = FeedLabelTop;
         _feedLabel.OffsetRight = FeedLabelRight; _feedLabel.OffsetBottom = FeedLabelBottom;
@@ -75,7 +75,7 @@ public partial class Titans
         // weapons panel - a free label under it, stacked
         // between the panel and the order feed; FitCornerPanels
         // positions it every frame.
-        _lblWeaponStatus = MakeLabel(12, WeaponStatusColor);
+        _lblWeaponStatus = MakeLabel(WeaponStatusFontSize, WeaponStatusColor);
         _lblWeaponStatus.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         _lblWeaponStatus.AutowrapMode = TextServer.AutowrapMode.Word;
         _lblWeaponStatus.OffsetLeft = FeedLabelLeft; _lblWeaponStatus.OffsetTop = FeedLabelTop;
@@ -97,7 +97,7 @@ public partial class Titans
         _panelRadar.AddThemeStyleboxOverride("panel", rsb);
         layer.AddChild(_panelRadar);
         var radarBox = new VBoxContainer();
-        radarBox.AddThemeConstantOverride("separation", 8);
+        radarBox.AddThemeConstantOverride("separation", RadarBoxSeparation);
         _panelRadar.AddChild(radarBox);
         radarBox.AddChild(PanelHeader("RADAR", 1, HudCyan));
         _radar = new RadarView
@@ -105,7 +105,7 @@ public partial class Titans
             Player = _player,
             Enemy = _enemy,
             CustomMinimumSize = new Vector2(DashboardWidth, DashboardWidth),
-            Range = WorldConfig.IsMission ? 600f : 160f
+            Range = WorldConfig.IsMission ? RadarMissionRange : RadarArenaRange
         };
         _radar.MouseFilter = Control.MouseFilterEnum.Ignore;
         radarBox.AddChild(_radar);
@@ -124,9 +124,9 @@ public partial class Titans
         HBoxContainer PanelHeader(string t, int icon, Color accent)
         {
             var h = new HBoxContainer();
-            h.AddThemeConstantOverride("separation", 8);
-            h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(20, 20), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
-            var l = MakeLabel(15, HeaderTextColor);
+            h.AddThemeConstantOverride("separation", PanelHeaderSeparation);
+            h.AddChild(new IconMark { Kind = icon, Accent = accent, CustomMinimumSize = new Vector2(HeaderIconSize, HeaderIconSize), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+            var l = MakeLabel(HeaderFontSize, HeaderTextColor);
             l.Text = t;
             l.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             h.AddChild(l);
@@ -138,25 +138,25 @@ public partial class Titans
             // 2026-11-22): the title row and the body should
             // not crowd the separator.
             var m = new MarginContainer();
-            m.AddThemeConstantOverride("margin_top", 5);
-            m.AddThemeConstantOverride("margin_bottom", 5);
-            m.AddChild(new ColorRect { Color = new Color(accent, DividerAccentAlpha), CustomMinimumSize = new Vector2(0, 1) });
+            m.AddThemeConstantOverride("margin_top", PanelDividerMargin);
+            m.AddThemeConstantOverride("margin_bottom", PanelDividerMargin);
+            m.AddChild(new ColorRect { Color = new Color(accent, DividerAccentAlpha), CustomMinimumSize = new Vector2(0, DividerHeight) });
             return m;
         }
 
         // -- Left: own rider integrity + per-part status grid.
         var leftBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) }; // the shared dashboard width (owner: all panels match the target block)
-        leftBox.AddThemeConstantOverride("separation", 4);
+        leftBox.AddThemeConstantOverride("separation", PanelColumnSeparation);
         _panelHealth.AddChild(leftBox);
         leftBox.AddChild(PanelHeader("STATUS", 2, HudCyan));
         leftBox.AddChild(PanelDivider(HudCyan));
-        _lblPlayerHp = MakeLabel(16, HealthTextColor);
+        _lblPlayerHp = MakeLabel(MainHealthFontSize, HealthTextColor);
         leftBox.AddChild(_lblPlayerHp);
-        _barPlayer = MakeBar(HealthFillColor, new Vector2(DashboardWidth, 20));
+        _barPlayer = MakeBar(HealthFillColor, new Vector2(DashboardWidth, MainBarHeight));
         leftBox.AddChild(_barPlayer);
-        var grid = new GridContainer { Columns = 4 };
-        grid.AddThemeConstantOverride("h_separation", 10);
-        grid.AddThemeConstantOverride("v_separation", 3);
+        var grid = new GridContainer { Columns = PartGridColumns };
+        grid.AddThemeConstantOverride("h_separation", PartGridHSeparation);
+        grid.AddThemeConstantOverride("v_separation", PartGridVSeparation);
         leftBox.AddChild(grid);
         foreach (var (id, name) in new[]
         {
@@ -165,11 +165,11 @@ public partial class Titans
         })
         {
             var cell = new VBoxContainer();
-            cell.AddThemeConstantOverride("separation", 1);
-            var lab = MakeLabel(10, PartTextColor);
+            cell.AddThemeConstantOverride("separation", CompactRowSeparation);
+            var lab = MakeLabel(PartLabelFontSize, PartTextColor);
             lab.Text = name;
             cell.AddChild(lab);
-            var bar = MakeBar(PartFillColor, new Vector2(67, 8)); // 4 cells + gaps = the 300 dashboard width
+            var bar = MakeBar(PartFillColor, new Vector2(PartBarWidth, PartBarHeight)); // 4 cells + gaps = the 300 dashboard width
             cell.AddChild(bar);
             grid.AddChild(cell);
             _partCells[id] = (lab, bar);
@@ -180,10 +180,10 @@ public partial class Titans
         for (int i = 0; i < _teamHpRows.Length; i++)
         {
             var tbox = new VBoxContainer();
-            tbox.AddThemeConstantOverride("separation", 1);
-            var tlab = MakeLabel(13, HealthTextColor);
+            tbox.AddThemeConstantOverride("separation", CompactRowSeparation);
+            var tlab = MakeLabel(TeamHpFontSize, HealthTextColor);
             tbox.AddChild(tlab);
-            var tbar = MakeBar(HealthFillColor, new Vector2(DashboardWidth, 12));
+            var tbar = MakeBar(HealthFillColor, new Vector2(DashboardWidth, TeamBarHeight));
             tbox.AddChild(tbar);
             tbox.Visible = false;
             leftBox.AddChild(tbox);
@@ -195,21 +195,21 @@ public partial class Titans
         // and bright text (set in UpdateHud); the hint line teaches the
         // switching scheme in-game.
         var midBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) };
-        midBox.AddThemeConstantOverride("separation", 4);
+        midBox.AddThemeConstantOverride("separation", PanelColumnSeparation);
         _panelWeapons.AddChild(midBox);
         midBox.AddChild(PanelHeader("WEAPONS", 0, HudCyan));
         midBox.AddChild(PanelDivider(HudCyan));
         (Label, ProgressBar, TriMark) CdRow(string name)
         {
             var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 8);
-            var lab = MakeLabel(14, CdLabelNormal);
+            row.AddThemeConstantOverride("separation", CdRowSeparation);
+            var lab = MakeLabel(WeaponRowFontSize, CdLabelNormal);
             lab.Text = name;
-            lab.CustomMinimumSize = new Vector2(136, 0); // THRUST row: sized so its bar starts on the weapon bars' line (112 name + digit cell)
+            lab.CustomMinimumSize = new Vector2(ThrustLabelWidth, 0); // THRUST row: sized so its bar starts on the weapon bars' line (112 name + digit cell)
             lab.ClipText = true;
             lab.HorizontalAlignment = HorizontalAlignment.Right; // panel labels right-aligned (owner, 2026-11-22)
             row.AddChild(lab);
-            var bar = MakeBar(CdNormal, new Vector2(100, 13));
+            var bar = MakeBar(CdNormal, new Vector2(CdBarMinWidth, CdBarHeight));
             bar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             // Every bar stretches to the row's right edge (owner:
             // the bars' start and end X must match across rows -
@@ -225,7 +225,7 @@ public partial class Titans
             // however the label was aligned (measured), while the
             // drawn triangle centers on the bar's own box exactly.
             var mark = new TriMark();
-            mark.CustomMinimumSize = new Vector2(16, 13);
+            mark.CustomMinimumSize = new Vector2(TriMarkWidth, TriMarkHeight);
             mark.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             row.AddChild(mark);
             midBox.AddChild(row);
@@ -238,21 +238,21 @@ public partial class Titans
         for (int wi = 0; wi < MaxWeaponRows; wi++)
         {
             var wrow = new HBoxContainer();
-            wrow.AddThemeConstantOverride("separation", 6);
-            var gcell = MakeLabel(14, GroupTextColor);
-            gcell.CustomMinimumSize = new Vector2(20, 0);
+            wrow.AddThemeConstantOverride("separation", WeaponRowSeparation);
+            var gcell = MakeLabel(WeaponRowFontSize, GroupTextColor);
+            gcell.CustomMinimumSize = new Vector2(GroupCellWidth, 0);
             gcell.HorizontalAlignment = HorizontalAlignment.Center;
             wrow.AddChild(gcell);
-            var wlab = MakeLabel(14, CdLabelNormal);
-            wlab.CustomMinimumSize = new Vector2(112, 0); // tight to the longest name (owner: less space before the bar)
+            var wlab = MakeLabel(WeaponRowFontSize, CdLabelNormal);
+            wlab.CustomMinimumSize = new Vector2(WeaponNameWidth, 0); // tight to the longest name (owner: less space before the bar)
             wlab.ClipText = true;
             wlab.HorizontalAlignment = HorizontalAlignment.Right; // panel labels right-aligned (owner, 2026-11-22)
             wrow.AddChild(wlab);
-            var wbar = MakeBar(CdNormal, new Vector2(100, 13));
+            var wbar = MakeBar(CdNormal, new Vector2(CdBarMinWidth, CdBarHeight));
             wbar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             wbar.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             wrow.AddChild(wbar);
-            var wmark = new TriMark { CustomMinimumSize = new Vector2(16, 13) };
+            var wmark = new TriMark { CustomMinimumSize = new Vector2(TriMarkWidth, TriMarkHeight) };
             wmark.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
             wrow.AddChild(wmark);
             midBox.AddChild(wrow);
@@ -269,26 +269,26 @@ public partial class Titans
 
         // -- Right: target + own systems readouts.
         var rightBox = new VBoxContainer { CustomMinimumSize = new Vector2(DashboardWidth, 0) };
-        rightBox.AddThemeConstantOverride("separation", 4);
+        rightBox.AddThemeConstantOverride("separation", PanelColumnSeparation);
         _panelTarget.AddChild(rightBox);
         rightBox.AddChild(PanelHeader("TARGET", 3, HudRed));
         rightBox.AddChild(PanelDivider(HudRed));
-        _lblEnemyHp = MakeLabel(16, EnemyTextColor);
+        _lblEnemyHp = MakeLabel(MainHealthFontSize, EnemyTextColor);
         rightBox.AddChild(_lblEnemyHp);
-        _barEnemy = MakeBar(new Color(0.88f, 0.3f, 0.24f), new Vector2(DashboardWidth, 20));
+        _barEnemy = MakeBar(EnemyBarFillColor, new Vector2(DashboardWidth, MainBarHeight));
         rightBox.AddChild(_barEnemy);
         // Second opponent (free-for-all): a compact readout under
         // the primary target's. Hidden when the foe is not fielded
         // (the precision test modes).
-        _lblFoeHp = MakeLabel(13, EnemyTextColor);
+        _lblFoeHp = MakeLabel(ReadoutFontSize, EnemyTextColor);
         rightBox.AddChild(_lblFoeHp);
-        _barFoe = MakeBar(new Color(0.88f, 0.45f, 0.24f), new Vector2(DashboardWidth, 12));
+        _barFoe = MakeBar(FoeBarFillColor, new Vector2(DashboardWidth, FoeBarHeight));
         rightBox.AddChild(_barFoe);
-        _lblRange = MakeLabel(13, ReadoutTextColor);
+        _lblRange = MakeLabel(ReadoutFontSize, ReadoutTextColor);
         rightBox.AddChild(_lblRange);
-        _lblReticle = MakeLabel(13, ReadoutTextColor);
+        _lblReticle = MakeLabel(ReadoutFontSize, ReadoutTextColor);
         rightBox.AddChild(_lblReticle);
-        _lblSpeed = MakeLabel(13, ReadoutTextColor);
+        _lblSpeed = MakeLabel(ReadoutFontSize, ReadoutTextColor);
         rightBox.AddChild(_lblSpeed);
         // No LEGS line in this panel (owner, 2026-11-22: the
         // "Legs: OK" readout is removed).
@@ -319,16 +319,16 @@ public partial class Titans
         layer.AddChild(_teamDialog);
 
         // Death banner.
-        _banner = MakeLabel(46, Colors.White);
+        _banner = MakeLabel(BannerFontSize, Colors.White);
         _banner.SetAnchorsPreset(Control.LayoutPreset.Center);
-        _banner.OffsetLeft = -450; _banner.OffsetTop = -150; _banner.OffsetRight = 450; _banner.OffsetBottom = -90;
+        _banner.OffsetLeft = -BannerHalfWidth; _banner.OffsetTop = BannerTop; _banner.OffsetRight = BannerHalfWidth; _banner.OffsetBottom = BannerBottom;
         _banner.HorizontalAlignment = HorizontalAlignment.Center;
         _banner.Visible = false;
         layer.AddChild(_banner);
-        _bannerSub = MakeLabel(19, new Color(0.9f, 0.9f, 0.9f));
+        _bannerSub = MakeLabel(BannerSubFontSize, BannerSubTextColor);
         _bannerSub.Text = "press R to reset";
         _bannerSub.SetAnchorsPreset(Control.LayoutPreset.Center);
-        _bannerSub.OffsetLeft = -450; _bannerSub.OffsetTop = -84; _bannerSub.OffsetRight = 450; _bannerSub.OffsetBottom = -56;
+        _bannerSub.OffsetLeft = -BannerHalfWidth; _bannerSub.OffsetTop = BannerSubTop; _bannerSub.OffsetRight = BannerHalfWidth; _bannerSub.OffsetBottom = BannerSubBottom;
         _bannerSub.HorizontalAlignment = HorizontalAlignment.Center;
         _bannerSub.Visible = false;
         layer.AddChild(_bannerSub);
@@ -397,6 +397,72 @@ public partial class Titans
     private const double HudFlickerChance = 0.38;    // head-loss flicker: dark-frame probability
     private const float HudFlickerAlpha = 0.15f;     // head-loss flicker: dark-frame alpha
     private const float DroopDurationSeconds = 1.5f; // a wreck's droop ease duration
+    private const float DroopScale = 0.5f;           // a wreck's droop reaches half the curve's full bend
+    // BuildHud layout (exact values): label shadow, font
+    // sizes, bar geometry and separations for the corner
+    // panels and their rows.
+    private const int LabelShadowOffset = 1;
+    private const int MaxTeamHpRows = 3;
+    private const int FeedFontSize = 15;
+    private const int WeaponStatusFontSize = 12;
+    private const int RadarBoxSeparation = 8;
+    private const int PanelHeaderSeparation = 8;
+    private const float HeaderIconSize = 20f;
+    private const int HeaderFontSize = 15;
+    private const int PanelDividerMargin = 5;
+    private const float DividerHeight = 1f;
+    private const int PanelColumnSeparation = 4;
+    private const int MainHealthFontSize = 16;
+    private const float MainBarHeight = 20f;
+    private const int PartGridColumns = 4;
+    private const int PartGridHSeparation = 10;
+    private const int PartGridVSeparation = 3;
+    private const int CompactRowSeparation = 1;
+    private const int PartLabelFontSize = 10;
+    private const float PartBarWidth = 67f;
+    private const float PartBarHeight = 8f;
+    private const int TeamHpFontSize = 13;
+    private const float TeamBarHeight = 12f;
+    private const int CdRowSeparation = 8;
+    private const int WeaponRowFontSize = 14;
+    private const float ThrustLabelWidth = 136f;
+    private const float CdBarMinWidth = 100f;
+    private const float CdBarHeight = 13f;
+    private const float TriMarkWidth = 16f;
+    private const float TriMarkHeight = 13f;
+    private const int WeaponRowSeparation = 6;
+    private const float GroupCellWidth = 20f;
+    private const float WeaponNameWidth = 112f;
+    private const int ReadoutFontSize = 13;
+    private const float FoeBarHeight = 12f;
+    private static readonly Color EnemyBarFillColor = new(0.88f, 0.3f, 0.24f);
+    private static readonly Color FoeBarFillColor = new(0.88f, 0.45f, 0.24f);
+    private const int BannerFontSize = 46;
+    private const float BannerHalfWidth = 450f;
+    private const float BannerTop = -150f;
+    private const float BannerBottom = -90f;
+    private const int BannerSubFontSize = 19;
+    private static readonly Color BannerSubTextColor = new(0.9f, 0.9f, 0.9f);
+    private const float BannerSubTop = -84f;
+    private const float BannerSubBottom = -56f;
+    // Radar ranges (the RadarView's Range): missions read
+    // wider than the arena.
+    private const float RadarMissionRange = 600f;
+    private const float RadarArenaRange = 160f;
+    // Popup family shared geometry (leave / team / controls).
+    private const int PopupBorderWidth = 1;
+    private const int PopupTitleFontSize = 21;
+    private const int PopupBodyFontSize = 13;
+    private const int PopupContentSeparation = 10;
+    private const float PopupContentSideMargin = 30f;
+    private const float PopupFrameOutset = 7f; // the corner frame stands this far proud of the panel
+    // FitCornerPanels: the status/feed stack under the
+    // weapons panel.
+    private const float FeedTopGap = 10f;
+    private const float StatusLabelLeft = 18f;
+    private const float StatusTopGap = 8f;
+    private const float FeedAfterStatusGap = 8f;
+    private const float RunIndicatorMinSpeed = 0.5f; // the SPEED line's RUN suffix threshold
 
     // The active-weapon marker: a triangle drawn centered in
     // its own rect (which is the cooldown bar's exact box), so
@@ -430,6 +496,7 @@ public partial class Titans
         private const float BracketOutset = 6f;
         private const float BracketArm = 17f;
         private const float BracketWidth = 2f;
+        private const float PanelBorderWidth = 1f; // the hairline border's stroke
 
         public override void _Notification(int what)
         {
@@ -451,7 +518,7 @@ public partial class Titans
             // Barely-there hairline border (owner, 2026-11-24):
             // the header separator's own recipe - the panel's
             // accent at 0.35 alpha, 1px (see PanelDivider).
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Accent, PanelAccentBorderAlpha), false, 1f);
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Accent, PanelAccentBorderAlpha), false, PanelBorderWidth);
             var col = CornerBracketColor;
             float o = BracketOutset, L = BracketArm, w = BracketWidth;
             var s = Size;
@@ -477,6 +544,8 @@ public partial class Titans
         private const float CheckTipRise = 3f;     // the status check's rising tip
         private const float GlyphLineWidth = 1.6f; // the badges' shared stroke
         private const float GlyphHalfWidth = 4.2f; // the glyphs' shared half-extent
+        private const float WeaponsGlyphLineWidth = 1.7f; // the weapons glyph's stroke (slightly heavier than the shared stroke)
+        private const float CheckGlyphLineWidth = 1.9f;   // the status check's stroke
 
         public int Kind;
         public Color Accent = HudCyan;
@@ -499,7 +568,7 @@ public partial class Titans
                     for (int i = 0; i < 3; i++)
                     {
                         float y = c.Y + (i - 1) * GlyphLineSpacing;
-                        DrawLine(new Vector2(c.X - GlyphHalfWidth, y), new Vector2(c.X + GlyphHalfWidth, y), col, 1.7f, true);
+                        DrawLine(new Vector2(c.X - GlyphHalfWidth, y), new Vector2(c.X + GlyphHalfWidth, y), col, WeaponsGlyphLineWidth, true);
                     }
                     break;
                 case 1: // radar: fan + sweep, centred in the badge
@@ -509,8 +578,8 @@ public partial class Titans
                     DrawCircle(c, 1.3f, col);
                     break;
                 case 2: // status: a check (the shield is retired)
-                    DrawLine(c + new Vector2(-4f, 0.2f), c + new Vector2(-1.3f, 3f), col, 1.9f, true);
-                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(GlyphHalfWidth, -CheckTipRise), col, 1.9f, true);
+                    DrawLine(c + new Vector2(-4f, 0.2f), c + new Vector2(-1.3f, 3f), col, CheckGlyphLineWidth, true);
+                    DrawLine(c + new Vector2(-1.3f, 3f), c + new Vector2(GlyphHalfWidth, -CheckTipRise), col, CheckGlyphLineWidth, true);
                     break;
                 default: // target: inner ring, dot, four ticks
                     DrawArc(c, 2.8f, 0, Mathf.Tau, 20, col, GlyphLineWidth, true);
@@ -535,11 +604,14 @@ public partial class Titans
         public bool Show;
         public Rect2 Box;
         private static readonly Color FrameColor = new(1f, 0.30f, 0.22f, 0.95f);
+        private const float BracketMaxLength = 20f;    // a corner bracket's longest arm
+        private const float BracketLengthFraction = 0.3f; // a bracket's arm as a fraction of the box width
+        private const float FrameLineWidth = 2f;
         public override void _Draw()
         {
             if (!Show) return;
             var col = FrameColor;
-            float L = Mathf.Min(20f, Box.Size.X * 0.3f), w = 2f;
+            float L = Mathf.Min(BracketMaxLength, Box.Size.X * BracketLengthFraction), w = FrameLineWidth;
             var a = Box.Position; var b = Box.Position + Box.Size;
             DrawLine(a + new Vector2(0, L), a, col, w);
             DrawLine(a, a + new Vector2(L, 0), col, w);
@@ -560,19 +632,23 @@ public partial class Titans
     // drawn proud of the panel's corners (owner's reference).
     private sealed partial class CornerFrame : Control
     {
+        private const float BracketLength = 18f;
+        private const float BracketLineWidth = 2f;
+        private const float BracketInset = 1f; // the frame draws this far inside the rect's edges
+
         public override void _Draw()
         {
             var col = CornerBracketColor;
-            float L = 18f, w = 2f;
+            float L = BracketLength, w = BracketLineWidth;
             var s = Size;
-            DrawLine(new Vector2(1, L), new Vector2(1, 1), col, w);
-            DrawLine(new Vector2(1, 1), new Vector2(L, 1), col, w);
-            DrawLine(new Vector2(s.X - L, 1), new Vector2(s.X - 1, 1), col, w);
-            DrawLine(new Vector2(s.X - 1, 1), new Vector2(s.X - 1, L), col, w);
-            DrawLine(new Vector2(s.X - 1, s.Y - L), new Vector2(s.X - 1, s.Y - 1), col, w);
-            DrawLine(new Vector2(s.X - 1, s.Y - 1), new Vector2(s.X - L, s.Y - 1), col, w);
-            DrawLine(new Vector2(1, s.Y - 1), new Vector2(L, s.Y - 1), col, w);
-            DrawLine(new Vector2(1, s.Y - L), new Vector2(1, s.Y - 1), col, w);
+            DrawLine(new Vector2(BracketInset, L), new Vector2(BracketInset, BracketInset), col, w);
+            DrawLine(new Vector2(BracketInset, BracketInset), new Vector2(L, BracketInset), col, w);
+            DrawLine(new Vector2(s.X - L, BracketInset), new Vector2(s.X - BracketInset, BracketInset), col, w);
+            DrawLine(new Vector2(s.X - BracketInset, BracketInset), new Vector2(s.X - BracketInset, L), col, w);
+            DrawLine(new Vector2(s.X - BracketInset, s.Y - L), new Vector2(s.X - BracketInset, s.Y - BracketInset), col, w);
+            DrawLine(new Vector2(s.X - BracketInset, s.Y - BracketInset), new Vector2(s.X - L, s.Y - BracketInset), col, w);
+            DrawLine(new Vector2(BracketInset, s.Y - BracketInset), new Vector2(L, s.Y - BracketInset), col, w);
+            DrawLine(new Vector2(BracketInset, s.Y - L), new Vector2(BracketInset, s.Y - BracketInset), col, w);
         }
     }
 
@@ -584,6 +660,23 @@ public partial class Titans
     // paused behind it; Esc inside it means NO.
     private sealed partial class LeaveOverlay : Control
     {
+        // Leave popup geometry and button faces (exact values).
+        private const float RootWidth = 452f;
+        private const float RootHeight = 204f;
+        private const float ContentTop = 28f;
+        private const float ContentBottom = 26f;
+        private const float SpacerHeight = 16f;
+        private const int ButtonRowSeparation = 18;
+        private const float ButtonWidth = 148f;
+        private const float ButtonHeight = 38f;
+        private const int ButtonFontSize = 15;
+        private static readonly Color ButtonDarkFace = new(0.16f, 0.19f, 0.25f);
+        private static readonly Color ButtonLightFace = new(0.93f, 0.93f, 0.94f);
+        private static readonly Color ButtonDarkText = new(0.05f, 0.05f, 0.06f);
+        private static readonly Color ButtonDarkHover = new(0.24f, 0.28f, 0.36f);
+        private static readonly Color ButtonDarkPressed = new(0.33f, 0.38f, 0.47f);
+        private static readonly Color ButtonLightPressed = new(0.78f, 0.78f, 0.8f);
+
         public event System.Action LeaveRequested;
         private Button _noBtn;
         private ulong _openedAt;
@@ -603,37 +696,37 @@ public partial class Titans
             center.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(center);
 
-            var root = new Control { CustomMinimumSize = new Vector2(452, 204) };
+            var root = new Control { CustomMinimumSize = new Vector2(RootWidth, RootHeight) };
             center.AddChild(root);
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
             // Some transparency (owner): the game ghosts
             // through the panel; buttons stay solid.
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColor, BorderColor = PopupBorderColor, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColor, BorderColor = PopupBorderColor, BorderWidthLeft = PopupBorderWidth, BorderWidthRight = PopupBorderWidth, BorderWidthTop = PopupBorderWidth, BorderWidthBottom = PopupBorderWidth });
             root.AddChild(panel);
 
             var v = new VBoxContainer();
             v.SetAnchorsPreset(LayoutPreset.FullRect);
-            v.OffsetLeft = 30; v.OffsetTop = 28; v.OffsetRight = -30; v.OffsetBottom = -26;
-            v.AddThemeConstantOverride("separation", 10);
+            v.OffsetLeft = PopupContentSideMargin; v.OffsetTop = ContentTop; v.OffsetRight = -PopupContentSideMargin; v.OffsetBottom = -ContentBottom;
+            v.AddThemeConstantOverride("separation", PopupContentSeparation);
             root.AddChild(v);
 
             var title = new Label { Text = "Exit the game?", HorizontalAlignment = HorizontalAlignment.Center };
             // Cinzel for the popup's title (owner, 2026-11-13);
             // the rest of the game UI is Open Sans.
             title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
-            title.AddThemeFontSizeOverride("font_size", 21);
+            title.AddThemeFontSizeOverride("font_size", PopupTitleFontSize);
             title.AddThemeColorOverride("font_color", Colors.White);
             v.AddChild(title);
             var sub = new Label { Text = "Any unsaved progress will be lost.", HorizontalAlignment = HorizontalAlignment.Center };
-            sub.AddThemeFontSizeOverride("font_size", 13);
+            sub.AddThemeFontSizeOverride("font_size", PopupBodyFontSize);
             sub.AddThemeColorOverride("font_color", Colors.White);
             v.AddChild(sub);
-            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 16) });
+            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, SpacerHeight) });
 
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-            row.AddThemeConstantOverride("separation", 18);
+            row.AddThemeConstantOverride("separation", ButtonRowSeparation);
             v.AddChild(row);
             var yes = MakeBtn("YES", dark: true);
             yes.Pressed += () => LeaveRequested?.Invoke();
@@ -644,24 +737,24 @@ public partial class Titans
 
             var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
             frame.SetAnchorsPreset(LayoutPreset.FullRect);
-            frame.OffsetLeft = -7; frame.OffsetTop = -7; frame.OffsetRight = 7; frame.OffsetBottom = 7;
+            frame.OffsetLeft = -PopupFrameOutset; frame.OffsetTop = -PopupFrameOutset; frame.OffsetRight = PopupFrameOutset; frame.OffsetBottom = PopupFrameOutset;
             root.AddChild(frame);
         }
 
         internal static Button MakeBtn(string text, bool dark)
         {
-            var b = new Button { Text = text, CustomMinimumSize = new Vector2(148, 38) };
-            b.AddThemeFontSizeOverride("font_size", 15);
+            var b = new Button { Text = text, CustomMinimumSize = new Vector2(ButtonWidth, ButtonHeight) };
+            b.AddThemeFontSizeOverride("font_size", ButtonFontSize);
             // The dark face was near-black (0.03) on the near-
             // black panel - once the popup backdrop deepened
             // to 0.93 it all but vanished (owner, 2026-11-24).
             // Lifted to a slate that reads against both.
-            var bg = dark ? new Color(0.16f, 0.19f, 0.25f) : new Color(0.93f, 0.93f, 0.94f);
-            var fg = dark ? Colors.White : new Color(0.05f, 0.05f, 0.06f);
+            var bg = dark ? ButtonDarkFace : ButtonLightFace;
+            var fg = dark ? Colors.White : ButtonDarkText;
             StyleBoxFlat S(Color c) => new() { BgColor = c };
             b.AddThemeStyleboxOverride("normal", S(bg));
-            b.AddThemeStyleboxOverride("hover", S(dark ? new Color(0.24f, 0.28f, 0.36f) : Colors.White));
-            b.AddThemeStyleboxOverride("pressed", S(dark ? new Color(0.33f, 0.38f, 0.47f) : new Color(0.78f, 0.78f, 0.8f)));
+            b.AddThemeStyleboxOverride("hover", S(dark ? ButtonDarkHover : Colors.White));
+            b.AddThemeStyleboxOverride("pressed", S(dark ? ButtonDarkPressed : ButtonLightPressed));
             b.AddThemeStyleboxOverride("focus", S(bg));
             b.AddThemeColorOverride("font_color", fg);
             b.AddThemeColorOverride("font_hover_color", fg);
@@ -712,6 +805,29 @@ public partial class Titans
         private readonly Control _root;
         private const float BaseHeight = 210f; // the team panel's height before its rows
         private const float RowPitch = 60f;    // one member row: 52 face + 8 separation
+        // Team popup geometry, row faces and text sizes (exact values).
+        private const float RootWidth = 520f;
+        private const float RootInitialHeight = 300f;
+        private const float ContentTop = 26f;
+        private const float ContentBottom = 24f;
+        private const int RowsSeparation = 8;
+        private const float BottomSpacerHeight = 6f;
+        private const int ButtonRowSeparation = 10;
+        private const float RowHeight = 52f;
+        private const int RowMarginX = 10;
+        private const int RowMarginY = 6;
+        private const int RowContentSeparation = 12;
+        private const float TileSize = 40f;
+        private const int GlyphFontSize = 14;
+        private const int NameFontSize = 15;
+        private const int StateFontSize = 12;
+        private const int TextSeparation = 1;
+        private static readonly Color SubTextColor = new(0.85f, 0.88f, 0.92f);
+        private static readonly Color LeaderRowFace = new(0.16f, 0.13f, 0.04f, 0.95f);
+        private static readonly Color DeadRowFace = new(0.05f, 0.05f, 0.06f, 0.9f);
+        private static readonly Color RowHoverFace = new(0.14f, 0.18f, 0.26f, 0.98f);
+        private static readonly Color RowPressedFace = new(0.20f, 0.17f, 0.08f, 0.98f);
+        private static readonly Color RowTileFace = new(0.10f, 0.13f, 0.19f, 0.98f);
         private ulong _openedAt;
 
         public TeamOverlay()
@@ -729,23 +845,23 @@ public partial class Titans
             center.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(center);
 
-            _root = new Control { CustomMinimumSize = new Vector2(520, 300) };
+            _root = new Control { CustomMinimumSize = new Vector2(RootWidth, RootInitialHeight) };
             center.AddChild(_root);
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColorDense, BorderColor = PopupBorderColor, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColorDense, BorderColor = PopupBorderColor, BorderWidthLeft = PopupBorderWidth, BorderWidthRight = PopupBorderWidth, BorderWidthTop = PopupBorderWidth, BorderWidthBottom = PopupBorderWidth });
             _root.AddChild(panel);
 
             var v = new VBoxContainer();
             v.SetAnchorsPreset(LayoutPreset.FullRect);
-            v.OffsetLeft = 30; v.OffsetTop = 26; v.OffsetRight = -30; v.OffsetBottom = -24;
-            v.AddThemeConstantOverride("separation", 10);
+            v.OffsetLeft = PopupContentSideMargin; v.OffsetTop = ContentTop; v.OffsetRight = -PopupContentSideMargin; v.OffsetBottom = -ContentBottom;
+            v.AddThemeConstantOverride("separation", PopupContentSeparation);
             _root.AddChild(v);
 
             var title = new Label { Text = "TEAM", HorizontalAlignment = HorizontalAlignment.Center };
             title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
-            title.AddThemeFontSizeOverride("font_size", 21);
+            title.AddThemeFontSizeOverride("font_size", PopupTitleFontSize);
             title.AddThemeColorOverride("font_color", Colors.White);
             v.AddChild(title);
             var sub = new Label
@@ -753,17 +869,17 @@ public partial class Titans
                 Text = "Select a rider to take command of it, or leave the mission.",
                 HorizontalAlignment = HorizontalAlignment.Center
             };
-            sub.AddThemeFontSizeOverride("font_size", 13);
-            sub.AddThemeColorOverride("font_color", new Color(0.85f, 0.88f, 0.92f));
+            sub.AddThemeFontSizeOverride("font_size", PopupBodyFontSize);
+            sub.AddThemeColorOverride("font_color", SubTextColor);
             v.AddChild(sub);
 
             _rows = new VBoxContainer();
-            _rows.AddThemeConstantOverride("separation", 8);
+            _rows.AddThemeConstantOverride("separation", RowsSeparation);
             v.AddChild(_rows);
 
-            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
+            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, BottomSpacerHeight) });
             var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 10);
+            row.AddThemeConstantOverride("separation", ButtonRowSeparation);
             v.AddChild(row);
             // Both buttons on the right (owner, 2026-11-14):
             // Leave first, then Resume.
@@ -777,7 +893,7 @@ public partial class Titans
 
             var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
             frame.SetAnchorsPreset(LayoutPreset.FullRect);
-            frame.OffsetLeft = -7; frame.OffsetTop = -7; frame.OffsetRight = 7; frame.OffsetBottom = 7;
+            frame.OffsetLeft = -PopupFrameOutset; frame.OffsetTop = -PopupFrameOutset; frame.OffsetRight = PopupFrameOutset; frame.OffsetBottom = PopupFrameOutset;
             _root.AddChild(frame);
         }
 
@@ -799,15 +915,15 @@ public partial class Titans
                 string state = m.Dead ? "Destroyed"
                     : m.Leader ? $"Leader · HP {pct}"
                     : $"Take command · HP {pct}";
-                var b = new Button { CustomMinimumSize = new Vector2(0, 52) };
+                var b = new Button { CustomMinimumSize = new Vector2(0, RowHeight) };
                 StyleBoxFlat S(Color bgc, Color bdc)
                 {
                     var sb = new StyleBoxFlat { BgColor = bgc, BorderColor = bdc };
-                    sb.SetBorderWidthAll(1);
+                    sb.SetBorderWidthAll(PopupBorderWidth);
                     return sb;
                 }
-                var bg = m.Leader ? new Color(0.16f, 0.13f, 0.04f, 0.95f)
-                    : m.Dead ? new Color(0.05f, 0.05f, 0.06f, 0.9f)
+                var bg = m.Leader ? LeaderRowFace
+                    : m.Dead ? DeadRowFace
                     : PopupFaceColor;
                 if (m.Dead || m.Leader)
                 {
@@ -817,24 +933,24 @@ public partial class Titans
                 else
                 {
                     b.AddThemeStyleboxOverride("normal", S(bg, border));
-                    b.AddThemeStyleboxOverride("hover", S(new Color(0.14f, 0.18f, 0.26f, 0.98f), gold));
-                    b.AddThemeStyleboxOverride("pressed", S(new Color(0.20f, 0.17f, 0.08f, 0.98f), gold));
+                    b.AddThemeStyleboxOverride("hover", S(RowHoverFace, gold));
+                    b.AddThemeStyleboxOverride("pressed", S(RowPressedFace, gold));
                     b.AddThemeStyleboxOverride("focus", S(bg, border));
                     b.Pressed += () => { Visible = false; LeaderChosen?.Invoke(slot); };
                 }
                 var margin = new MarginContainer();
                 margin.SetAnchorsPreset(LayoutPreset.FullRect);
-                margin.AddThemeConstantOverride("margin_left", 10);
-                margin.AddThemeConstantOverride("margin_right", 10);
-                margin.AddThemeConstantOverride("margin_top", 6);
-                margin.AddThemeConstantOverride("margin_bottom", 6);
+                margin.AddThemeConstantOverride("margin_left", RowMarginX);
+                margin.AddThemeConstantOverride("margin_right", RowMarginX);
+                margin.AddThemeConstantOverride("margin_top", RowMarginY);
+                margin.AddThemeConstantOverride("margin_bottom", RowMarginY);
                 b.AddChild(margin);
                 var h = new HBoxContainer();
-                h.AddThemeConstantOverride("separation", 12);
+                h.AddThemeConstantOverride("separation", RowContentSeparation);
                 margin.AddChild(h);
-                var tile = new PanelContainer { CustomMinimumSize = new Vector2(40, 40) };
-                var tsb = new StyleBoxFlat { BgColor = new Color(0.10f, 0.13f, 0.19f, 0.98f), BorderColor = border };
-                tsb.SetBorderWidthAll(1);
+                var tile = new PanelContainer { CustomMinimumSize = new Vector2(TileSize, TileSize) };
+                var tsb = new StyleBoxFlat { BgColor = RowTileFace, BorderColor = border };
+                tsb.SetBorderWidthAll(PopupBorderWidth);
                 tile.AddThemeStyleboxOverride("panel", tsb);
                 var glyph = new Label
                 {
@@ -842,26 +958,26 @@ public partial class Titans
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
-                glyph.AddThemeFontSizeOverride("font_size", 14);
+                glyph.AddThemeFontSizeOverride("font_size", GlyphFontSize);
                 glyph.AddThemeColorOverride("font_color", nameCol);
                 tile.AddChild(glyph);
                 h.AddChild(tile);
                 var texts = new VBoxContainer();
-                texts.AddThemeConstantOverride("separation", 1);
+                texts.AddThemeConstantOverride("separation", TextSeparation);
                 texts.SizeFlagsVertical = SizeFlags.ShrinkCenter;
                 h.AddChild(texts);
                 var nameL = new Label { Text = FlowUi.NameCase(m.Name) }; // no row numbers (owner, 2026-11-15)
-                nameL.AddThemeFontSizeOverride("font_size", 15);
+                nameL.AddThemeFontSizeOverride("font_size", NameFontSize);
                 nameL.AddThemeColorOverride("font_color", nameCol);
                 texts.AddChild(nameL);
                 var stateL = new Label { Text = state };
-                stateL.AddThemeFontSizeOverride("font_size", 12);
+                stateL.AddThemeFontSizeOverride("font_size", StateFontSize);
                 stateL.AddThemeColorOverride("font_color", m.Leader ? gold : dim);
                 texts.AddChild(stateL);
                 IgnoreMouse(b);
                 _rows.AddChild(b);
             }
-            _root.CustomMinimumSize = new Vector2(520, BaseHeight + members.Count * RowPitch);
+            _root.CustomMinimumSize = new Vector2(RootWidth, BaseHeight + members.Count * RowPitch);
             _openedAt = Time.GetTicksMsec();
             Visible = true;
         }
@@ -903,6 +1019,28 @@ public partial class Titans
         private const float PanelMaxHeight = 760f;
         private const float ViewportMarginX = 32f;  // closest the panel gets to the screen edges
         private const float ViewportMarginY = 48f;
+        // Controls popup layout and colours (exact values).
+        private const float RootInitialHeight = 700f;
+        private const float ContentTop = 26f;
+        private const float ContentBottom = 30f;
+        private const int ContentSeparation = 7;
+        private const int ListSeparation = 5;
+        private const float SectionSpacerHeight = 10f;
+        private const float BandSpacerHeight = 8f;
+        private const float BottomSpacerHeight = 12f;
+        private const int BandMarginRight = 14;
+        private const int BandMarginX = 10;
+        private const int BandMarginY = 4;
+        private const int ControlsFontSize = 14; // the screen's one body text size
+        private const float BulletWidth = 12f;
+        private const float KeyColumnWidth = 205f;
+        private const int RowSeparation = 10;
+        private const float ResumeWidth = 120f;
+        private const float ResumeHeight = 36f;
+        private static readonly Color BandBackground = new(0.55f, 0.65f, 0.85f, 0.13f);
+        private static readonly Color BandBorder = new(0.75f, 0.82f, 0.95f, 0.40f);
+        private static readonly Color RowSeparatorColor = new(0.80f, 0.86f, 0.96f, 0.16f);
+        private const float RowSeparatorHeight = 1f; // the hairline between binding rows
         private ulong _openedAt;
         private Control _root;
 
@@ -959,23 +1097,23 @@ public partial class Titans
             center.SetAnchorsPreset(LayoutPreset.FullRect);
             AddChild(center);
 
-            _root = new Control { CustomMinimumSize = new Vector2(600, 700) };
+            _root = new Control { CustomMinimumSize = new Vector2(PanelMaxWidth, RootInitialHeight) };
             center.AddChild(_root);
 
             var panel = new PanelContainer();
             panel.SetAnchorsPreset(LayoutPreset.FullRect);
-            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColorDense, BorderColor = PopupBorderColor, BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+            panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = PopupPanelColorDense, BorderColor = PopupBorderColor, BorderWidthLeft = PopupBorderWidth, BorderWidthRight = PopupBorderWidth, BorderWidthTop = PopupBorderWidth, BorderWidthBottom = PopupBorderWidth });
             _root.AddChild(panel);
 
             var v = new VBoxContainer();
             v.SetAnchorsPreset(LayoutPreset.FullRect);
-            v.OffsetLeft = 30; v.OffsetTop = 26; v.OffsetRight = -30; v.OffsetBottom = -30;
-            v.AddThemeConstantOverride("separation", 7);
+            v.OffsetLeft = PopupContentSideMargin; v.OffsetTop = ContentTop; v.OffsetRight = -PopupContentSideMargin; v.OffsetBottom = -ContentBottom;
+            v.AddThemeConstantOverride("separation", ContentSeparation);
             _root.AddChild(v);
 
             var title = new Label { Text = "CONTROLS", HorizontalAlignment = HorizontalAlignment.Center };
             title.AddThemeFontOverride("font", FlowUi.HeadFont(true));
-            title.AddThemeFontSizeOverride("font_size", 21);
+            title.AddThemeFontSizeOverride("font_size", PopupTitleFontSize);
             title.AddThemeColorOverride("font_color", PopupInkColor);
             v.AddChild(title);
 
@@ -988,7 +1126,7 @@ public partial class Titans
             v.AddChild(scroll);
             var list = new VBoxContainer();
             list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            list.AddThemeConstantOverride("separation", 5);
+            list.AddThemeConstantOverride("separation", ListSeparation);
             scroll.AddChild(list);
 
             bool firstSection = true;
@@ -999,7 +1137,7 @@ public partial class Titans
                     // Air between sections (owner, 2026-11-23:
                     // the hairline that stood here is removed -
                     // separators now live between the ROWS).
-                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
+                    list.AddChild(new Control { CustomMinimumSize = new Vector2(0, SectionSpacerHeight) });
                 }
                 firstSection = false;
                 // The subtitle wears a band (owner): body-size
@@ -1010,22 +1148,22 @@ public partial class Titans
                 var headBand = new PanelContainer();
                 var hsb = new StyleBoxFlat
                 {
-                    BgColor = new Color(0.55f, 0.65f, 0.85f, 0.13f),
-                    BorderColor = new Color(0.75f, 0.82f, 0.95f, 0.40f),
-                    ContentMarginLeft = 10, ContentMarginTop = 4,
-                    ContentMarginRight = 10, ContentMarginBottom = 4
+                    BgColor = BandBackground,
+                    BorderColor = BandBorder,
+                    ContentMarginLeft = BandMarginX, ContentMarginTop = BandMarginY,
+                    ContentMarginRight = BandMarginX, ContentMarginBottom = BandMarginY
                 };
-                hsb.SetBorderWidthAll(1);
+                hsb.SetBorderWidthAll(PopupBorderWidth);
                 headBand.AddThemeStyleboxOverride("panel", hsb);
                 var head = new Label { Text = secTitle };
-                head.AddThemeFontSizeOverride("font_size", 14);
+                head.AddThemeFontSizeOverride("font_size", ControlsFontSize);
                 head.AddThemeColorOverride("font_color", gold);
                 headBand.AddChild(head);
                 var bandWrap = new MarginContainer();
-                bandWrap.AddThemeConstantOverride("margin_right", 14);
+                bandWrap.AddThemeConstantOverride("margin_right", BandMarginRight);
                 bandWrap.AddChild(headBand);
                 list.AddChild(bandWrap);
-                list.AddChild(new Control { CustomMinimumSize = new Vector2(0, 8) });
+                list.AddChild(new Control { CustomMinimumSize = new Vector2(0, BandSpacerHeight) });
                 bool firstRow = true;
                 foreach (var (what, key) in items)
                 {
@@ -1033,24 +1171,24 @@ public partial class Titans
                     {
                         // A hairline between rows inside the
                         // section (owner, 2026-11-23).
-                        var rsep = new ColorRect { Color = new Color(0.80f, 0.86f, 0.96f, 0.16f), CustomMinimumSize = new Vector2(0, 1) };
+                        var rsep = new ColorRect { Color = RowSeparatorColor, CustomMinimumSize = new Vector2(0, RowSeparatorHeight) };
                         rsep.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                         list.AddChild(rsep);
                     }
                     firstRow = false;
                     var h = new HBoxContainer();
-                    h.AddThemeConstantOverride("separation", 10);
-                    var bullet = new Label { Text = "\u2022", CustomMinimumSize = new Vector2(12, 0) };
-                    bullet.AddThemeFontSizeOverride("font_size", 14);
+                    h.AddThemeConstantOverride("separation", RowSeparation);
+                    var bullet = new Label { Text = "\u2022", CustomMinimumSize = new Vector2(BulletWidth, 0) };
+                    bullet.AddThemeFontSizeOverride("font_size", ControlsFontSize);
                     bullet.AddThemeColorOverride("font_color", gold);
                     h.AddChild(bullet);
                     var w = new Label { Text = what, HorizontalAlignment = HorizontalAlignment.Left };
                     w.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-                    w.AddThemeFontSizeOverride("font_size", 14);
+                    w.AddThemeFontSizeOverride("font_size", ControlsFontSize);
                     w.AddThemeColorOverride("font_color", ink);
                     h.AddChild(w);
-                    var k = new Label { Text = key, CustomMinimumSize = new Vector2(205, 0) };
-                    k.AddThemeFontSizeOverride("font_size", 14);
+                    var k = new Label { Text = key, CustomMinimumSize = new Vector2(KeyColumnWidth, 0) };
+                    k.AddThemeFontSizeOverride("font_size", ControlsFontSize);
                     k.AddThemeColorOverride("font_color", gold);
                     h.AddChild(k);
                     list.AddChild(h);
@@ -1059,11 +1197,11 @@ public partial class Titans
 
             // Extra air above the button and the deeper bottom
             // inset (owner): Resume gets room at the bottom.
-            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
-            var resume = new Button { Text = "Resume", CustomMinimumSize = new Vector2(120, 36) };
+            v.AddChild(new Control { CustomMinimumSize = new Vector2(0, BottomSpacerHeight) });
+            var resume = new Button { Text = "Resume", CustomMinimumSize = new Vector2(ResumeWidth, ResumeHeight) };
             resume.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
             var sb = new StyleBoxFlat { BgColor = PopupFaceColor, BorderColor = PopupSteelColor };
-            sb.SetBorderWidthAll(1);
+            sb.SetBorderWidthAll(PopupBorderWidth);
             resume.AddThemeStyleboxOverride("normal", sb);
             resume.AddThemeStyleboxOverride("hover", sb);
             resume.AddThemeStyleboxOverride("pressed", sb);
@@ -1076,7 +1214,7 @@ public partial class Titans
             // team popups (owner).
             var frame = new CornerFrame { MouseFilter = MouseFilterEnum.Ignore };
             frame.SetAnchorsPreset(LayoutPreset.FullRect);
-            frame.OffsetLeft = -7; frame.OffsetTop = -7; frame.OffsetRight = 7; frame.OffsetBottom = 7;
+            frame.OffsetLeft = -PopupFrameOutset; frame.OffsetTop = -PopupFrameOutset; frame.OffsetRight = PopupFrameOutset; frame.OffsetBottom = PopupFrameOutset;
             _root.AddChild(frame);
         }
 
@@ -1384,7 +1522,7 @@ public partial class Titans
                 : $"RANGE: {Units.KmVal(Aim.FarRange):0.##}+ km";
         }
         else _lblReticle.Text = "RANGE: -";
-        _lblSpeed.Text = $"SPEED: {Units.Kmh(_playerVel.Length())}" + (_running && _playerVel.Length() > 0.5f ? " - RUN" : "");
+        _lblSpeed.Text = $"SPEED: {Units.Kmh(_playerVel.Length())}" + (_running && _playerVel.Length() > RunIndicatorMinSpeed ? " - RUN" : "");
 
         if (_radar != null)
         {
@@ -1487,14 +1625,14 @@ public partial class Titans
         // Loss lines under the panel (owner, 2026-11-25), the
         // order feed under them; with no losses the feed sits
         // exactly where it always did.
-        float feedTop = PanelScreenMarginY + ws.Y + 10;
+        float feedTop = PanelScreenMarginY + ws.Y + FeedTopGap;
         if (_lblWeaponStatus != null)
         {
-            _lblWeaponStatus.OffsetLeft = 18;
+            _lblWeaponStatus.OffsetLeft = StatusLabelLeft;
             _lblWeaponStatus.OffsetRight = PanelScreenMarginX + w;
-            _lblWeaponStatus.OffsetTop = PanelScreenMarginY + ws.Y + 8;
+            _lblWeaponStatus.OffsetTop = PanelScreenMarginY + ws.Y + StatusTopGap;
             float lh = _lblWeaponStatus.GetCombinedMinimumSize().Y;
-            if (lh > 0f) feedTop = PanelScreenMarginY + ws.Y + 8 + lh + 8;
+            if (lh > 0f) feedTop = PanelScreenMarginY + ws.Y + StatusTopGap + lh + FeedAfterStatusGap;
         }
         if (_feedLabel != null) _feedLabel.OffsetTop = feedTop;
         var hs = _panelHealth.GetCombinedMinimumSize();
@@ -1511,7 +1649,7 @@ public partial class Titans
         }
     }
 
-    private static float DroopCurve(float t) => t * t * (3f - 2f * t) * 0.5f;
+    private static float DroopCurve(float t) => t * t * (3f - 2f * t) * DroopScale;
 
     private void UpdateDroop(float dt)
     {

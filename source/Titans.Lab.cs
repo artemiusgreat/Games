@@ -19,6 +19,30 @@ public partial class Titans
     private const float LabPlateUvScale = 4f, LabPlateLift = 0.02f;
     private const float LabDomeRadius = 120f, LabDomeLift = 2f;
     private const int LabDomeSegments = 32, LabDomeRings = 16;
+    private const int LabLoadLayer = 5; // the lab loading cover's canvas layer (the flow's loading layer, same value)
+    private const int StoryRosterMaxMembers = 4; // AddStoryMember's roster cap
+    // Deck plate painting recipe (PlateTexture).
+    private static readonly Color PlateBaseColor = new(0.25f, 0.27f, 0.31f);
+    private static readonly Color PlateSeamColor = new(0.10f, 0.11f, 0.13f);
+    private static readonly Color PlateBevelColor = new(0.36f, 0.39f, 0.44f);
+    private static readonly Color PlateRivetColor = new(0.42f, 0.46f, 0.52f);
+    private const float PlateNoiseAmplitude = 0.05f;   // per-pixel brushed-noise swing
+    private const float PlateBrushFrequency = 0.9f;    // the horizontal brush sine's frequency
+    private const float PlateBrushAmplitude = 0.008f;  // the brush sine's swing
+    private const int RivetRadiusSquared = 4;          // a rivet's disc, in squared pixel distance
+    private const int RivetEdgeSquared = 3;            // squared distance where a rivet's rim turns to seam colour
+    // Lab dome gradient (SkyGradientTexture): the horizon band
+    // is shared by both stops either side of the peak (symmetric
+    // by design, so the sphere's V direction cannot flip it).
+    private static readonly Color LabSkyHorizonBand = new(0.075f, 0.092f, 0.120f);
+    private static readonly (float At, Color C)[] LabSkyGradientStops =
+    {
+        (0.00f, new Color(0.030f, 0.038f, 0.052f)),
+        (0.38f, LabSkyHorizonBand),
+        (0.50f, new Color(0.135f, 0.160f, 0.200f)),
+        (0.62f, LabSkyHorizonBand),
+        (1.00f, new Color(0.035f, 0.045f, 0.062f))
+    };
 
     private Vector2? ProjectSlotAnchor(PartId slotId)
     {
@@ -55,7 +79,7 @@ public partial class Titans
     // sweep completes (_warmPose reaches 4).
     private void BuildLabLoadOverlay()
     {
-        _labLoad = new CanvasLayer { Layer = 5, Visible = _photo };
+        _labLoad = new CanvasLayer { Layer = LabLoadLayer, Visible = _photo };
         AddChild(_labLoad);
         var rect = new ColorRect { Color = FlowUi.LoadingBg };
         rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
@@ -224,16 +248,16 @@ public partial class Titans
         const int P = 128, N = 16;
         var panel = Image.CreateEmpty(P, P, false, Image.Format.Rgb8);
         var rng = new System.Random(0x57EE1);
-        var baseC = new Color(0.25f, 0.27f, 0.31f);
+        var baseC = PlateBaseColor;
         for (int y = 0; y < P; y++)
         for (int x = 0; x < P; x++)
         {
-            float nse = (float)(rng.NextDouble() - 0.5) * 0.05f;
-            float brush = Mathf.Sin(y * 0.9f) * 0.008f;
+            float nse = (float)(rng.NextDouble() - 0.5) * PlateNoiseAmplitude;
+            float brush = Mathf.Sin(y * PlateBrushFrequency) * PlateBrushAmplitude;
             panel.SetPixel(x, y, new Color(baseC.R + nse + brush, baseC.G + nse + brush, baseC.B + nse + brush));
         }
-        var seam = new Color(0.10f, 0.11f, 0.13f);
-        var bevel = new Color(0.36f, 0.39f, 0.44f);
+        var seam = PlateSeamColor;
+        var bevel = PlateBevelColor;
         for (int i = 0; i < P; i++)
         {
             panel.SetPixel(i, 0, seam); panel.SetPixel(i, 1, seam);
@@ -243,11 +267,11 @@ public partial class Titans
             panel.SetPixel(i, 3, bevel); panel.SetPixel(i, P - 4, bevel);
             panel.SetPixel(3, i, bevel); panel.SetPixel(P - 4, i, bevel);
         }
-        var rivet = new Color(0.42f, 0.46f, 0.52f);
+        var rivet = PlateRivetColor;
         foreach (var (rx, ry) in new[] { (9, 9), (P - 10, 9), (9, P - 10), (P - 10, P - 10) })
             for (int y = -2; y <= 2; y++)
             for (int x = -2; x <= 2; x++)
-                if (x * x + y * y <= 4) panel.SetPixel(rx + x, ry + y, x * x + y * y >= 3 ? seam : rivet);
+                if (x * x + y * y <= RivetRadiusSquared) panel.SetPixel(rx + x, ry + y, x * x + y * y >= RivetEdgeSquared ? seam : rivet);
         var img = Image.CreateEmpty(P * N, P * N, false, Image.Format.Rgb8);
         var full = new Rect2I(0, 0, P, P);
         for (int i = 0; i < N; i++)
@@ -268,15 +292,7 @@ public partial class Titans
         if (_standSkyTex != null) return _standSkyTex;
         const int H = 256;
         var img = Image.CreateEmpty(2, H, false, Image.Format.Rgb8);
-        var band = new Color(0.075f, 0.092f, 0.120f); // the horizon band, shared by both stops (symmetric by design)
-        var stops = new (float At, Color C)[]
-        {
-            (0.00f, new Color(0.030f, 0.038f, 0.052f)),
-            (0.38f, band),
-            (0.50f, new Color(0.135f, 0.160f, 0.200f)),
-            (0.62f, band),
-            (1.00f, new Color(0.035f, 0.045f, 0.062f))
-        };
+        var stops = LabSkyGradientStops;
         for (int y = 0; y < H; y++)
         {
             float v = (float)y / (H - 1);
@@ -474,7 +490,7 @@ public partial class Titans
     // roster changes still take the field at deploy.
     private void AddStoryMember()
     {
-        if (TeamRoster.Story.Count >= 4) return;
+        if (TeamRoster.Story.Count >= StoryRosterMaxMembers) return;
         var last = TeamRoster.Story[TeamRoster.Story.Count - 1].Spec;
         int idx = 0;
         for (int i = 0; i < RiderSpecs.All.Length; i++)

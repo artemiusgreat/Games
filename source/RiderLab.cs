@@ -146,6 +146,15 @@ public partial class RiderLab : Control
     private const int FittedRowMarginSide = 5;
     private const int FittedRowMarginTop = 4;
     private const int FittedRowMarginBottom = 4;
+    // Icon artwork transform (Icon's Poly): silhouettes are
+    // authored on the 48px tile, then squeezed into the top
+    // band above the abbreviation strip.
+    private const float IconArtCenter = 24f;
+    private const float IconArtScaleX = 0.82f;
+    private const float IconArtTop = 1f;
+    private const float IconArtScaleY = 0.68f;
+    private const int EquipmentSeparation = 4; // the equipment page's row separation
+    private const float RunSpeedMultiplier = 3f; // run speed as a multiple of walk speed (the status line's figure)
 
     public override void _Process(double delta)
     {
@@ -232,7 +241,7 @@ public partial class RiderLab : Control
             // drawn full-height disappeared behind it (the
             // 'cut image' in the owner's screenshots).
             for (int i = 0; i < pts.Length; i++)
-                pts[i] = new Vector2(24f + (pts[i].X - 24f) * 0.82f, 1f + pts[i].Y * 0.68f);
+                pts[i] = new Vector2(IconArtCenter + (pts[i].X - IconArtCenter) * IconArtScaleX, IconArtTop + pts[i].Y * IconArtScaleY);
             for (int y = 0; y < IconSize; y++)
                 for (int x = 0; x < IconSize; x++)
                 {
@@ -877,7 +886,7 @@ public partial class RiderLab : Control
         // format as the weapons catalog; the jets toggle lives
         // here now instead of a bottom-bar button.
         var equipBox = new VBoxContainer { Visible = false };
-        equipBox.AddThemeConstantOverride("separation", 4);
+        equipBox.AddThemeConstantOverride("separation", EquipmentSeparation);
         catBox.AddChild(equipBox);
         _pageEquipment = equipBox;
         // A plain row, like the weapons list (owner,
@@ -1347,6 +1356,6 @@ public partial class RiderLab : Control
         _paperdoll?.Layout();
         if (_tonnage != null)
             _tonnage.Text = $"Weapons: {Loadout.TotalWeaponWeight:F0}t of {Spec.Tonnage:F0}t chassis";
-            _speed.Text = $"Speed: {Units.Kmh(Spec.MaxSpeed)} walk / {Units.Kmh(Spec.MaxSpeed * 3f)} run";
+            _speed.Text = $"Speed: {Units.Kmh(Spec.MaxSpeed)} walk / {Units.Kmh(Spec.MaxSpeed * RunSpeedMultiplier)} run";
     }
 }

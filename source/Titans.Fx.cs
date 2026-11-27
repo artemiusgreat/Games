@@ -25,6 +25,7 @@ public partial class Titans
         new Color(1f, 0.80f, 0.35f, 0.95f), new Color(1f, 0.50f, 0.10f, 0.9f),
         new Color(0.85f, 0.20f, 0.03f, 0.5f), new Color(0.30f, 0.05f, 0.01f, 0f),
     };
+    private static readonly float[] FireRampOffsets = { 0f, 0.30f, 0.62f, 1f }; // the ramp stops' positions, matching FireRampColors
     private static readonly Color FireballModulate = new(1.5f, 1.5f, 1.5f, 1f);
     private static readonly Color ExplosionFlashColor = new(1f, 0.55f, 0.18f);
     private static readonly Color ExplosionCoreColor = new(1f, 0.9f, 0.65f);
@@ -106,6 +107,21 @@ public partial class Titans
     // ramps: a flame is a noisy teardrop that runs white-yellow ->
     // orange -> deep red -> gone, smoke/dust are eroded soft puffs
     // that swell and fade.
+    // Flame sprite recipe (FlameTexture): the teardrop's blob
+    // table and the erosion/density tuning of the painted alpha.
+    private static readonly (float X, float Y, float R, float W)[] FlameBlobs =
+    {
+        (0.50f, 0.80f, 0.27f, 1.00f), (0.47f, 0.64f, 0.21f, 0.90f),
+        (0.53f, 0.49f, 0.155f, 0.82f), (0.49f, 0.34f, 0.11f, 0.72f),
+        (0.51f, 0.21f, 0.07f, 0.60f),
+    };
+    private const float FlameBlobFalloff = 2.6f;
+    private const float FlameNoiseFreqU1 = 39.7f, FlameNoiseFreqV1 = 17.3f;
+    private const float FlameNoiseFreqU2 = 11.9f, FlameNoiseFreqV2 = 29.1f;
+    private const float FlameErosionBase = 0.82f, FlameErosionGain = 0.28f;
+    private const float FlameDensityBase = 1.25f, FlameDensityFalloff = 0.45f;
+    private const float FlipChance = 0.5f; // a fireball flips horizontally/vertically on a coin toss
+
     private static ImageTexture FlameTexture()
     {
         const int N = 128;
@@ -113,12 +129,7 @@ public partial class Titans
         // A narrow, tall teardrop with a pointed tip - v1's fat
         // round blob mass read as a pale rounded SQUARE in the
         // proof frame (the burn emitter's flames), not as fire.
-        var blobs = new (float X, float Y, float R, float W)[]
-        {
-            (0.50f, 0.80f, 0.27f, 1.00f), (0.47f, 0.64f, 0.21f, 0.90f),
-            (0.53f, 0.49f, 0.155f, 0.82f), (0.49f, 0.34f, 0.11f, 0.72f),
-            (0.51f, 0.21f, 0.07f, 0.60f),
-        };
+        var blobs = FlameBlobs;
         for (int y = 0; y < N; y++)
         for (int x = 0; x < N; x++)
         {
@@ -127,11 +138,11 @@ public partial class Titans
             foreach (var (bx, by, br, bw) in blobs)
             {
                 float d2 = ((u - bx) * (u - bx) + (v - by) * (v - by)) / (br * br);
-                a += bw * Mathf.Exp(-d2 * 2.6f);
+                a += bw * Mathf.Exp(-d2 * FlameBlobFalloff);
             }
-            float n = Mathf.Sin(u * 39.7f + v * 17.3f) * Mathf.Sin(u * 11.9f - v * 29.1f);
-            a *= 0.82f + 0.28f * n; // erode the edge so it is not a clean ellipse
-            a *= Mathf.Clamp(1.25f - v * 0.45f, 0f, 1f); // base burns denser than the tip
+            float n = Mathf.Sin(u * FlameNoiseFreqU1 + v * FlameNoiseFreqV1) * Mathf.Sin(u * FlameNoiseFreqU2 - v * FlameNoiseFreqV2);
+            a *= FlameErosionBase + FlameErosionGain * n; // erode the edge so it is not a clean ellipse
+            a *= Mathf.Clamp(FlameDensityBase - v * FlameDensityFalloff, 0f, 1f); // base burns denser than the tip
             a = Mathf.Clamp(a, 0f, 1f);
             img.SetPixel(x, y, new Color(1f, 1f, 1f, a * a * (3f - 2f * a)));
         }
@@ -173,7 +184,7 @@ public partial class Titans
         if (mat == FireParticleMat)
         {
             pm.ColorRamp = new GradientTexture1D { Gradient = new Gradient {
-                Offsets = new float[] { 0f, 0.30f, 0.62f, 1f },
+                Offsets = FireRampOffsets,
                 Colors = FireRampColors } };
             var sc = new Curve(); sc.AddPoint(new Vector2(0f, 0.5f)); sc.AddPoint(new Vector2(0.35f, 0.9f)); sc.AddPoint(new Vector2(1f, 1.12f));
             pm.ScaleCurve = new CurveTexture { Curve = sc };
@@ -346,8 +357,8 @@ public partial class Titans
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
             Modulate = FireballModulate,
             SpeedScale = 1.0f / seconds,
-            FlipH = _fxRng.Randf() < 0.5f,
-            FlipV = _fxRng.Randf() < 0.5f,
+            FlipH = _fxRng.Randf() < FlipChance,
+            FlipV = _fxRng.Randf() < FlipChance,
         };
         AddChild(s);
         s.GlobalPosition = point;

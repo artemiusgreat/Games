@@ -158,10 +158,18 @@ public static class WorldConfig
     // Tournament: the 260u arena. Mission: a 1900u front - bases sit
     // ~1075u apart, a ~4.5 minute walk or ~90 seconds at a run for a
     // Heavy rider, so crossing the map is a decision, not a stroll.
-    public static int WorldSize => IsMission ? 1900 : 260;
-    public static int TerrainSegs => IsMission ? 512 : 384;
-    public static float WorldBound => IsMission ? 915f : 115f;
-    public static float PadFlattenRadius => IsMission ? 60f : 18f;
+    public const int MissionWorldSize = 1900;
+    public const int TournamentWorldSize = 260;
+    public const int MissionTerrainSegs = 512;
+    public const int TournamentTerrainSegs = 384;
+    public const float MissionWorldBound = 915f;
+    public const float TournamentWorldBound = 115f;
+    public const float MissionPadFlattenRadius = 60f;
+    public const float TournamentPadFlattenRadius = 18f;
+    public static int WorldSize => IsMission ? MissionWorldSize : TournamentWorldSize;
+    public static int TerrainSegs => IsMission ? MissionTerrainSegs : TournamentTerrainSegs;
+    public static float WorldBound => IsMission ? MissionWorldBound : TournamentWorldBound;
+    public static float PadFlattenRadius => IsMission ? MissionPadFlattenRadius : TournamentPadFlattenRadius;
 
     public static Vector2[] Pads => IsMission && Ascent ? global::Ascent.Pads
         : IsMission ? MissionPads : TournamentPads;
