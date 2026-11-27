@@ -1044,8 +1044,8 @@ public partial class RiderLab : Control
                 // (owner, 2026-11-15: the team is formed there,
                 // not in the lab); the team selector in
                 // Tournament.
-                FlowMain.StartScreen = WorldConfig.IsMission ? "storyteam" : "teams";
-                GetTree().ChangeSceneToFile("res://flow/Flow.tscn");
+                FlowMain.StartScreen = WorldConfig.IsMission ? FlowMain.FlowScreen.StoryTeam : FlowMain.FlowScreen.Teams;
+                GetTree().ChangeSceneToFile(Paths.FlowScene);
             };
             btnRow.AddChild(backBtn);
             PadButton(backBtn);

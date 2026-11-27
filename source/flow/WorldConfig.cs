@@ -23,7 +23,7 @@ public static class WorldConfig
     public static BiomeKind Biome = InitBiome();
 
     private static BiomeKind InitBiome() =>
-        System.Environment.GetEnvironmentVariable("AOT_BIOME") switch
+        EnvVars.Value(EnvVars.Biome) switch
         {
             "desert" => BiomeKind.Desert,
             "city" => BiomeKind.City,
@@ -43,7 +43,7 @@ public static class WorldConfig
     public static int CityKit = InitCityKit();
 
     private static int InitCityKit() =>
-        int.TryParse(System.Environment.GetEnvironmentVariable("AOT_CITYKIT"), out var k)
+        int.TryParse(EnvVars.Value(EnvVars.CityKit), out var k)
             ? k : -1;
 
     // The picked map's painted sky (owner: supplied images on
@@ -58,7 +58,7 @@ public static class WorldConfig
     public static bool SkyStars = InitStars();
 
     private static bool InitStars() =>
-        System.Environment.GetEnvironmentVariable("AOT_STARS") == "1";
+        EnvVars.Value(EnvVars.Stars) == "1";
 
     // Snow-covered ground (owner): the terrain wears snow
     // where the map's painted sky is a snowscape. EnterLab
@@ -85,24 +85,24 @@ public static class WorldConfig
     public static bool Photoreal = InitPhotoreal();
 
     private static bool InitPhotoreal() =>
-        System.Environment.GetEnvironmentVariable("AOT_PHOTOREAL") == "1";
+        EnvVars.Value(EnvVars.Photoreal) == "1";
 
     private static bool InitAscent() =>
-        System.Environment.GetEnvironmentVariable("AOT_ASCENT") == "1";
+        EnvVars.Value(EnvVars.Ascent) == "1";
 
     private static bool InitHills() =>
-        System.Environment.GetEnvironmentVariable("AOT_HILLS") == "1";
+        EnvVars.Value(EnvVars.Hills) == "1";
 
     private static bool InitTerraces() =>
-        System.Environment.GetEnvironmentVariable("AOT_TERRACES") == "1";
+        EnvVars.Value(EnvVars.Terraces) == "1";
 
     private static bool InitSnow() =>
-        System.Environment.GetEnvironmentVariable("AOT_SNOW") == "1";
+        EnvVars.Value(EnvVars.Snow) == "1";
 
     private static string InitSky()
     {
-        var f = System.Environment.GetEnvironmentVariable("AOT_SKY");
-        return string.IsNullOrEmpty(f) ? "" : "res://assets/skies/" + f;
+        var f = EnvVars.Value(EnvVars.Sky);
+        return string.IsNullOrEmpty(f) ? "" : Paths.SkiesDir + f;
     }
 
     // Tiled sky (owner, 2026-11-25): a seamless tile repeated
@@ -113,8 +113,8 @@ public static class WorldConfig
 
     private static string InitSkyTile()
     {
-        var f = System.Environment.GetEnvironmentVariable("AOT_SKYTILE");
-        return string.IsNullOrEmpty(f) ? "" : "res://assets/skies/" + f;
+        var f = EnvVars.Value(EnvVars.SkyTile);
+        return string.IsNullOrEmpty(f) ? "" : Paths.SkiesDir + f;
     }
 
     // Flat maps (owner): a contract whose streets must all be
@@ -124,10 +124,10 @@ public static class WorldConfig
     public static bool FlatWorld = InitFlat();
 
     private static bool InitFlat() =>
-        System.Environment.GetEnvironmentVariable("AOT_FLAT") == "1";
+        EnvVars.Value(EnvVars.Flat) == "1";
 
     private static MapMode InitMode() =>
-        System.Environment.GetEnvironmentVariable("AOT_MODE") == "mission"
+        EnvVars.Value(EnvVars.Mode) == "mission"
             ? MapMode.Mission : MapMode.Tournament;
 
     public static bool IsMission => Mode == MapMode.Mission;
@@ -212,7 +212,7 @@ public static class ArenaCatalog
         new ArenaDef
         {
             Name = "Polis", Biome = WorldConfig.BiomeKind.City,
-            SkyTex = "res://assets/skies/sky_jungle.jpg",
+            SkyTex = Paths.SkyJungle,
             Sub = "City · Tournament arena · 0.26 km",
             Desc = "A dead city of towers and blocks. Streets channel movement, roofs are high ground, every building falls.\n\n" +
                    "Polis: a 260-unit city basin ringed by high ground, with a flat-topped mesa at its heart. " +

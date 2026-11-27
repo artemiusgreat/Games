@@ -1158,8 +1158,8 @@ public partial class Titans
         Input.MouseMode = Input.MouseModeEnum.Visible;
         if (FlowMain.FromFlow)
         {
-            FlowMain.StartScreen = null; // back to the front door
-            GetTree().ChangeSceneToFile("res://flow/Flow.tscn");
+            FlowMain.StartScreen = FlowMain.FlowScreen.None; // back to the front door
+            GetTree().ChangeSceneToFile(Paths.FlowScene);
         }
         else GetTree().Quit();
     }

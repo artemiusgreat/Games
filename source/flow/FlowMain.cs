@@ -24,21 +24,21 @@ public partial class FlowMain : Node3D
     public static int MissionIndex = InitMission();
     public static int ArenaIndex = InitArena();
 
-    private static int InitPlanet() =>
-        int.TryParse(System.Environment.GetEnvironmentVariable("AOT_PLANET"), out int pl) ? pl : 0; // harness seed only
-    private static int InitMission() =>
-        int.TryParse(System.Environment.GetEnvironmentVariable("AOT_MISSION"), out int mi) ? mi : 0; // harness seed only
-    private static int InitArena() => System.Environment.GetEnvironmentVariable("AOT_ARENA") switch
-    {
-        "1" => 1, "2" => 2, _ => 0 // harness seed only; arenas carry their own biomes
-    };
+    // Harness seeds only: the starting planet / mission /
+    // arena, parsed by the one helper that knows the format.
+    private static int InitPlanet() => EnvVars.ParseIndex(EnvVars.Planet, 0);
+    private static int InitMission() => EnvVars.ParseIndex(EnvVars.Mission, 0);
+    private static int InitArena() => EnvVars.ParseIndex(EnvVars.Arena, 0);
+
+    // The wizard screens _Ready can reopen on return from the
+    // lab (owner, 2026-11-27: an enum, not string names).
+    public enum FlowScreen { None, Planet, Missions, StoryTeam, Arena, Teams }
 
     // Set by EnterLab; the lab shows its Back button only when
     // the flow brought the player there. StartScreen is set by
     // that button to name the screen _Ready should reopen.
-    public static bool FromFlow =
-        System.Environment.GetEnvironmentVariable("AOT_FROMFLOW") == "1"; // harness seed
-    public static string StartScreen;
+    public static bool FromFlow = EnvVars.Flag(EnvVars.FromFlow); // harness seed
+    public static FlowScreen StartScreen;
 
     private const int BackdropLayer = -2;
     private const int LoadingLayer = 5;
@@ -54,6 +54,7 @@ public partial class FlowMain : Node3D
     private Control _host;
     private Control _screen;
     private string _flowshot;
+    private string _flowshotPath; // the capture's full file name, fixed in _Ready when the shot is armed
     private double _shotT;
     private CanvasLayer _loadLayer;
     private Control _loadArt;
@@ -67,7 +68,15 @@ public partial class FlowMain : Node3D
     {
         foreach (var arg in OS.GetCmdlineUserArgs())
         {
-            if (arg.StartsWith("--flowshot=")) _flowshot = arg.Substring("--flowshot=".Length);
+            if (arg.StartsWith("--flowshot="))
+            {
+                _flowshot = arg.Substring("--flowshot=".Length);
+                // The image's complete name is defined HERE, at
+                // setup (owner, 2026-11-27) - never assembled in
+                // _Process from the live screen's node name,
+                // which only happened to match.
+                _flowshotPath = $"/tmp/flow_{_flowshot}.png";
+            }
             if (arg.StartsWith("--flowfocus=")) _focusTarget = int.Parse(arg.Substring("--flowfocus=".Length));
             if (arg == "--flowtest-nav") _navTest = true;
         }
@@ -80,7 +89,7 @@ public partial class FlowMain : Node3D
         // the previous run's planet, mission, arena and teams
         // do not carry over. The lab's Back button names a
         // StartScreen and keeps its state intact, as before.
-        if (_flowshot == null && StartScreen == null && !_navTest)
+        if (_flowshot == null && StartScreen == FlowScreen.None && !_navTest)
         {
             PlanetIndex = InitPlanet();
             MissionIndex = InitMission();
@@ -148,13 +157,16 @@ public partial class FlowMain : Node3D
                 GoMissions();
                 break;
             default:
-                if (StartScreen == "planet") GoPlanet();
-                else if (StartScreen == "missions") GoMissions();
-                else if (StartScreen == "storyteam") GoStoryTeam();
-                else if (StartScreen == "arena" || StartScreen == "tournament") GoArena();
-                else if (StartScreen == "teams") GoTeams();
-                else GoMapType();
-                StartScreen = null;
+                switch (StartScreen)
+                {
+                    case FlowScreen.Planet: GoPlanet(); break;
+                    case FlowScreen.Missions: GoMissions(); break;
+                    case FlowScreen.StoryTeam: GoStoryTeam(); break;
+                    case FlowScreen.Arena: GoArena(); break;
+                    case FlowScreen.Teams: GoTeams(); break;
+                    default: GoMapType(); break;
+                }
+                StartScreen = FlowScreen.None;
                 break;
         }
     }
@@ -199,9 +211,8 @@ public partial class FlowMain : Node3D
             {
                 _flowshot = null;
                 var img = GetViewport().GetTexture().GetImage();
-                var path = $"/tmp/flow_{(_host.GetChildCount() > 0 ? _host.GetChild(0).Name : "screen")}.png";
-                img.SavePng(path);
-                GD.Print($"FLOW captured {path} size={img.GetSize()}");
+                img.SavePng(_flowshotPath);
+                GD.Print($"FLOW captured {_flowshotPath} size={img.GetSize()}");
                 GetTree().Quit(0);
             }
         }
@@ -322,43 +333,43 @@ public partial class FlowMain : Node3D
         // player never picks a map type): the contract's ground
         // on the mission path, the arena's on the tournament
         // path. AOT_BIOME still overrides for harnesses.
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_BIOME")))
+        if (string.IsNullOrEmpty(EnvVars.Biome))
             WorldConfig.Biome = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.Biome
                 : ArenaCatalog.Arenas[ArenaIndex].Biome;
         // The contract's building kit (City contracts only;
         // tournament arenas keep the procedural buildings).
         // AOT_CITYKIT, when set, was already applied at startup.
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_CITYKIT")))
+        if (string.IsNullOrEmpty(EnvVars.CityKit))
             WorldConfig.CityKit = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.CityKit : -1;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_FLAT")))
+        if (string.IsNullOrEmpty(EnvVars.Flat))
             WorldConfig.FlatWorld = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.FlatTerrain;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SNOW")))
+        if (string.IsNullOrEmpty(EnvVars.Snow))
             WorldConfig.SnowGround = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.SnowGround;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRACES")))
+        if (string.IsNullOrEmpty(EnvVars.Terraces))
             WorldConfig.TerracedCity = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Terraces;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_ASCENT")))
+        if (string.IsNullOrEmpty(EnvVars.Ascent))
             WorldConfig.Ascent = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Ascent;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_PHOTOREAL")))
+        if (string.IsNullOrEmpty(EnvVars.Photoreal))
             WorldConfig.Photoreal = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Photoreal;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_HILLS")))
+        if (string.IsNullOrEmpty(EnvVars.Hills))
             WorldConfig.Hills = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Hills;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SKY")))
+        if (string.IsNullOrEmpty(EnvVars.Sky))
             WorldConfig.SkyTex = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTex
                 : ArenaCatalog.Arenas[ArenaIndex].SkyTex;
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_SKYTILE")))
+        if (string.IsNullOrEmpty(EnvVars.SkyTile))
             WorldConfig.SkyTile = WorldConfig.IsMission
                 ? WorldConfig.SelectedMission.SkyTile
                 : "";
-        if (string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_STARS")))
+        if (string.IsNullOrEmpty(EnvVars.Stars))
             WorldConfig.SkyStars = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.ProceduralStars;
         FromFlow = true;
@@ -377,7 +388,7 @@ public partial class FlowMain : Node3D
         _loadLayer.Visible = true;
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        const string path = "res://photo/PhotoDuel.tscn";
+        const string path = Paths.DuelScene;
         if (ResourceLoader.LoadThreadedRequest(path) != Error.Ok)
         {
             GetTree().ChangeSceneToFile(path);
@@ -412,7 +423,7 @@ public partial class FlowMain : Node3D
         AddChild(layer);
         var bg = new TextureRect
         {
-            Texture = GD.Load<Texture2D>("res://assets/flow/space_bg.png"),
+            Texture = GD.Load<Texture2D>(Paths.SpaceBackground),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
             MouseFilter = Control.MouseFilterEnum.Ignore

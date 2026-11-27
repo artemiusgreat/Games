@@ -651,7 +651,7 @@ public partial class Titans
             // player - its pod_L is folded into the shoulder
             // mesh (no volumes of its own), the case that
             // salvoed into its own feet (owner, 2026-11-23).
-            if (!string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_HECTOR")))
+            if (EnvVars.IsSet(EnvVars.Hector))
             { SetRiderSelection("hector", "enyo"); ApplyLoadout(); }
             LrmStage(0);
             return;
@@ -3845,7 +3845,7 @@ public partial class Titans
         {
             if (!HasTerraceTest) { GD.PrintErr("TERRACE FAIL: no ramp/lift test hooks"); GetTree().Quit(1); return; }
             GD.Print($"TERRACE ramp foot=({TestRampFoot.X:F0},{TestRampFoot.Y:F0}) {TestRampLo:F0}->{TestRampHi:F0}; lift pad=({TestLiftPad.X:F0},{TestLiftPad.Y:F0}) {TestLiftLo:F0}->{TestLiftHi:F0}");
-            string start = System.Environment.GetEnvironmentVariable("AOT_TERRATEST");
+            string start = EnvVars.Value(EnvVars.TerraTest);
             if (start == "2")
             {
                 _player.Teleport(new Vector3(TestLiftPad.X, TestLiftLo, TestLiftPad.Y), 0f);
@@ -4523,7 +4523,7 @@ public partial class Titans
                 // center relief (the owner's streaked-mountains
                 // screenshot), then quit - the patrol/aggro
                 // phases below are not part of a portrait run.
-                if (System.Environment.GetEnvironmentVariable("AOT_SLOPE") == "1")
+                if (EnvVars.Flag(EnvVars.Slope))
                 {
                     QueueCapture("res://proof/slope_vista.png", "slopeVista", "slopeVista", () =>
                     QueueCapture("res://proof/slope_close.png", "slopeClose", "slopeClose", () =>

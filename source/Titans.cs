@@ -752,7 +752,7 @@ public partial class Titans : Node3D
         // viewport rect rather than its own Size, hid the
         // same trap on the line above (2026-11-23).
         _scope.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        if (System.Environment.GetEnvironmentVariable("AOT_SNIPER") == "1") _sniper = true; // harness: scope captures
+        if (EnvVars.Flag(EnvVars.Sniper)) _sniper = true; // harness: scope captures
         BuildHud(layer);
         ApplyLoadout();
         if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
@@ -1252,7 +1252,7 @@ public partial class Titans : Node3D
             else if (_teamTest) UpdateTeamTest(dt);
             else if (_bracketTest) UpdateBracketTest(dt);
             else if (_deployTest) UpdateDeployTest(dt);
-            else if (_missionTest && !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AOT_TERRATEST")) && WorldConfig.TerracedCity) UpdateTerraceTest(dt);
+            else if (_missionTest && !EnvVars.IsSet(EnvVars.TerraTest) && WorldConfig.TerracedCity) UpdateTerraceTest(dt);
             else if (_missionTest) UpdateMissionTest(dt);
             else if (_longshotTest) UpdateLongshotTest(dt);
             else if (_rangeTest) UpdateRangeTest(dt);
