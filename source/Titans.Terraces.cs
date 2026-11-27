@@ -142,6 +142,34 @@ public partial class Titans
             Mathf.Lerp(Hash2(x0, y0), Hash2(x1, y0), u),
             Mathf.Lerp(Hash2(x0, y1), Hash2(x1, y1), u), v);
     }
+    // Stone and plate texture recipes (naming pass,
+    // 2026-11-27: names only, exact values). For each
+    // noise layer the tiling period must equal its scale,
+    // so scale and period are separate constants carrying
+    // the same number.
+    private const float StoneBlotchScale1 = 5f, StoneBlotchScale2 = 13f, StoneBlotchScale3 = 34f;
+    private const int StoneBlotchPeriod1 = 5, StoneBlotchPeriod2 = 13, StoneBlotchPeriod3 = 34;
+    private const float StoneBlotchOffset2X = 7f, StoneBlotchOffset2Y = 3f;
+    private const float StoneBlotchOffset3X = 13f, StoneBlotchOffset3Y = 29f;
+    private const float StoneBlotchWeight1 = 0.55f, StoneBlotchWeight2 = 0.30f, StoneBlotchWeight3 = 0.15f;
+    private const float StoneGrainScale = 90f;
+    private const int StoneGrainPeriod = 90;
+    private const float StoneGrainOffsetX = 41f, StoneGrainOffsetY = 17f;
+    private const float StoneBaseBrightness = 0.52f;
+    private const float StoneBlotchGain = 0.22f, StoneGrainGain = 0.07f, StoneSpeckleGain = 0.05f;
+    private const float StoneTintR = 1.03f, StoneTintB = 0.93f;
+    private const float StoneNormalStrength = 2.2f;
+    private const float PlateTintBase = 0.92f, PlateTintRange = 0.16f;
+    private const float PlateGrainScale = 40f;
+    private const int PlateGrainPeriod = 40;
+    private const int PlateSeamWidth = 3;
+    private const int PlateRivetOffset = 14, PlateRivetFarInset = 15, PlateRivetRadius = 3; // (radius is NOT PlateSeamWidth - different feature, same value)
+    private const float PlateBaseBrightness = 0.34f, PlateGrainGain = 0.06f;
+    private const float PlateSeamHeight = 0.25f, PlateFieldHeight = 0.6f, PlateHeightGain = 0.08f;
+    private const float PlateRivetBrighten = 0.13f, PlateRivetHeight = 0.95f;
+    private const float PlateChannelR = 0.92f, PlateChannelG = 0.98f, PlateChannelB = 1.12f; // (R is NOT PlateTintBase - channel tint vs tint base)
+    private const float PlateNormalStrength = 2.6f;
+
     private static ImageTexture StoneTexture()
     {
         if (_stoneTex != null) return _stoneTex;
@@ -151,14 +179,14 @@ public partial class Titans
         for (int x = 0; x < S; x++)
         {
             float u = x / (float)S, v = y / (float)S;
-            float blotch = PNoise(u * 5f, v * 5f, 5) * 0.55f
-                         + PNoise(u * 13f + 7f, v * 13f + 3f, 13) * 0.30f
-                         + PNoise(u * 34f + 13f, v * 34f + 29f, 34) * 0.15f;
-            float grain = PNoise(u * 90f + 41f, v * 90f + 17f, 90);
+            float blotch = PNoise(u * StoneBlotchScale1, v * StoneBlotchScale1, StoneBlotchPeriod1) * StoneBlotchWeight1
+                         + PNoise(u * StoneBlotchScale2 + StoneBlotchOffset2X, v * StoneBlotchScale2 + StoneBlotchOffset2Y, StoneBlotchPeriod2) * StoneBlotchWeight2
+                         + PNoise(u * StoneBlotchScale3 + StoneBlotchOffset3X, v * StoneBlotchScale3 + StoneBlotchOffset3Y, StoneBlotchPeriod3) * StoneBlotchWeight3;
+            float grain = PNoise(u * StoneGrainScale + StoneGrainOffsetX, v * StoneGrainScale + StoneGrainOffsetY, StoneGrainPeriod);
             float spk = Hash2(x * 3 + 11, y * 5 + 7);
-            float b = 0.52f + (blotch - 0.5f) * 0.22f + (grain - 0.5f) * 0.07f
-                    + (spk - 0.5f) * 0.05f;
-            img.SetPixel(x, y, new Color(b * 1.03f, b, b * 0.93f));
+            float b = StoneBaseBrightness + (blotch - 0.5f) * StoneBlotchGain + (grain - 0.5f) * StoneGrainGain
+                    + (spk - 0.5f) * StoneSpeckleGain;
+            img.SetPixel(x, y, new Color(b * StoneTintR, b, b * StoneTintB));
         }
         _stoneTex = ImageTexture.CreateFromImage(img);
         return _stoneTex;
@@ -185,15 +213,15 @@ public partial class Titans
         float H(int x, int y)
         {
             float u = ((x % S) + S) % S / (float)S, v = ((y % S) + S) % S / (float)S;
-            return PNoise(u * 5f, v * 5f, 5) * 0.55f + PNoise(u * 13f + 7f, v * 13f + 3f, 13) * 0.30f
-                 + PNoise(u * 34f + 13f, v * 34f + 29f, 34) * 0.15f;
+            return PNoise(u * StoneBlotchScale1, v * StoneBlotchScale1, StoneBlotchPeriod1) * StoneBlotchWeight1 + PNoise(u * StoneBlotchScale2 + StoneBlotchOffset2X, v * StoneBlotchScale2 + StoneBlotchOffset2Y, StoneBlotchPeriod2) * StoneBlotchWeight2
+                 + PNoise(u * StoneBlotchScale3 + StoneBlotchOffset3X, v * StoneBlotchScale3 + StoneBlotchOffset3Y, StoneBlotchPeriod3) * StoneBlotchWeight3;
         }
         var img = Image.CreateEmpty(S, S, false, Image.Format.Rgb8);
         for (int y = 0; y < S; y++)
         for (int x = 0; x < S; x++)
         {
-            float dx = (H(x + 1, y) - H(x - 1, y)) * 2.2f;
-            float dy = (H(x, y + 1) - H(x, y - 1)) * 2.2f;
+            float dx = (H(x + 1, y) - H(x - 1, y)) * StoneNormalStrength;
+            float dy = (H(x, y + 1) - H(x, y - 1)) * StoneNormalStrength;
             var n = new Vector3(-dx, -dy, 1f).Normalized();
             img.SetPixel(x, y, new Color(n.X * 0.5f + 0.5f, n.Y * 0.5f + 0.5f, n.Z * 0.5f + 0.5f));
         }
@@ -219,15 +247,15 @@ public partial class Titans
         {
             int px = x * 2 / S, py = y * 2 / S;              // plate indices (2x2 per tile)
             int lx = x % (S / 2), ly = y % (S / 2);          // local position in the plate
-            float tint = 0.92f + Hash2(px * 7 + 3, py * 11 + 5) * 0.16f;
-            float grain = PNoise(x / (float)S * 40f, y / (float)S * 40f, 40);
-            bool seam = lx < 3 || ly < 3 || lx >= S / 2 - 3 || ly >= S / 2 - 3;
-            bool rivet = (Mathf.Abs(lx - 14) < 3 || Mathf.Abs(lx - (S / 2 - 15)) < 3) &&
-                         (Mathf.Abs(ly - 14) < 3 || Mathf.Abs(ly - (S / 2 - 15)) < 3);
-            float b = (0.34f + (grain - 0.5f) * 0.06f) * tint;
-            float h = seam ? 0.25f : 0.6f + (grain - 0.5f) * 0.08f;
-            if (rivet) { b += 0.13f; h = 0.95f; }
-            alb.SetPixel(x, y, new Color(b * 0.92f, b * 0.98f, b * 1.12f));
+            float tint = PlateTintBase + Hash2(px * 7 + 3, py * 11 + 5) * PlateTintRange;
+            float grain = PNoise(x / (float)S * PlateGrainScale, y / (float)S * PlateGrainScale, PlateGrainPeriod);
+            bool seam = lx < PlateSeamWidth || ly < PlateSeamWidth || lx >= S / 2 - PlateSeamWidth || ly >= S / 2 - PlateSeamWidth;
+            bool rivet = (Mathf.Abs(lx - PlateRivetOffset) < PlateRivetRadius || Mathf.Abs(lx - (S / 2 - PlateRivetFarInset)) < PlateRivetRadius) &&
+                         (Mathf.Abs(ly - PlateRivetOffset) < PlateRivetRadius || Mathf.Abs(ly - (S / 2 - PlateRivetFarInset)) < PlateRivetRadius);
+            float b = (PlateBaseBrightness + (grain - 0.5f) * PlateGrainGain) * tint;
+            float h = seam ? PlateSeamHeight : PlateFieldHeight + (grain - 0.5f) * PlateHeightGain;
+            if (rivet) { b += PlateRivetBrighten; h = PlateRivetHeight; }
+            alb.SetPixel(x, y, new Color(b * PlateChannelR, b * PlateChannelG, b * PlateChannelB));
             hgt[x, y] = h;
         }
         _plateTex = ImageTexture.CreateFromImage(alb);
@@ -236,8 +264,8 @@ public partial class Titans
         for (int y = 0; y < S; y++)
         for (int x = 0; x < S; x++)
         {
-            float dx = (Hg(x + 1, y) - Hg(x - 1, y)) * 2.6f;
-            float dy = (Hg(x, y + 1) - Hg(x, y - 1)) * 2.6f;
+            float dx = (Hg(x + 1, y) - Hg(x - 1, y)) * PlateNormalStrength;
+            float dy = (Hg(x, y + 1) - Hg(x, y - 1)) * PlateNormalStrength;
             var n = new Vector3(-dx, -dy, 1f).Normalized();
             nrm.SetPixel(x, y, new Color(n.X * 0.5f + 0.5f, n.Y * 0.5f + 0.5f, n.Z * 0.5f + 0.5f));
         }
@@ -298,6 +326,13 @@ public partial class Titans
         Dbg.Print($"TERRACES built: {_lifts.Count} lifts in the 2 enemy valley cities (roofs={Main.Roofs.Count} walls={Main.Walls.Count} ramps={Main.Ramps.Count})");
     }
 
+    // Valley layout and landmark sizing (naming pass,
+    // 2026-11-27: names only, exact values).
+    private const float ValleyBridgeRampRun = 44f;   // L1 -> L2 bridge-ramp run (NOT TerraceL2 - different meaning, same value)
+    private const float ValleySummitRampRun = 70f;   // L2 -> L3 ramp run
+    private const float LandmarkClearHalf = 17f;     // the landmark plot kept clear on the top platform
+    private const float LandmarkWidth = 26f, LandmarkHeight = 46f, LandmarkHp = 200f;
+
     private void BuildValleyCity(System.Random rng, ref int placed, Vector2 ctr, bool home)
     {
         float p = CityGrid.Pitch;
@@ -325,16 +360,16 @@ public partial class Titans
         BuildLift(L(48f, 48f), new Vector2(-1, 0), 0f, TerraceL1);
         // L1 -> L2 bridge-ramps over the ground between the
         // platforms (the wedge's underside stays walkable).
-        BuildRamp(L(-80f, -112f), new Vector2(0, 1), TerraceL1, TerraceL2, 44f);
-        BuildRamp(L(80f, 112f), new Vector2(0, -1), TerraceL1, TerraceL2, 44f);
+        BuildRamp(L(-80f, -112f), new Vector2(0, 1), TerraceL1, TerraceL2, ValleyBridgeRampRun);
+        BuildRamp(L(80f, 112f), new Vector2(0, -1), TerraceL1, TerraceL2, ValleyBridgeRampRun);
         // L2 -> L3 ramp along the north band (long run: the
         // foot lands on E across the gap).
-        BuildRamp(L(48f, -144f), new Vector2(-1, 0), TerraceL2, TerraceL3, 70f);
+        BuildRamp(L(48f, -144f), new Vector2(-1, 0), TerraceL2, TerraceL3, ValleySummitRampRun);
         // Same-level flat bridges across the plaza.
         BuildFlatBridge(L(-48f, -48f), L(48f, -48f), TerraceL1);
         BuildFlatBridge(L(-48f, 48f), L(48f, 48f), TerraceL1);
         // The landmark plot stays clear on the top platform.
-        _skipRects.Add(new Main.RoofRect { Cx = ctr.X + 80f, Cz = ctr.Y - 144f, Hx = 17f, Hz = 17f, Top = 0f });
+        _skipRects.Add(new Main.RoofRect { Cx = ctr.X + 80f, Cz = ctr.Y - 144f, Hx = LandmarkClearHalf, Hz = LandmarkClearHalf, Top = 0f });
         }
         // Harness hooks anchor on the FIRST enemy valley
         // (they pointed at the home decks while those
@@ -375,13 +410,20 @@ public partial class Titans
             // stays open ground around the base.
             if (!home) PlaceCityBlock(rng, c, ref placed, l);
         }
-        if (!home) BuildLandmark(L(80f, -144f), TerraceL3, 26f, 46f, 200f, true);
+        if (!home) BuildLandmark(L(80f, -144f), TerraceL3, LandmarkWidth, LandmarkHeight, LandmarkHp, true);
         Dbg.Print($"VALLEY CITY at ({ctr.X:F0},{ctr.Y:F0}) home={home}");
     }
 
     // A flat same-level span between two platform edges:
     // deck slab on columns, light rails, registered with an
     // underside like every platform.
+    // Flat bridge construction (naming pass, 2026-11-27).
+    private const float BridgeHalfWidth = 5.5f, BridgeWidth = 11f;
+    private const float BridgeRailOffset = 5.4f, BridgeRailThickness = 0.35f, BridgeRailHeight = 0.9f;
+    private const float BridgeFixtureDrop = 1.35f;   // ceiling fixture hangs this far below the bridge top
+    private const float BridgeLightRange = 17f;
+    private const float CeilingLightDrop = 1.2f;     // the omni hangs this far below its fixture
+
     private void BuildFlatBridge(Vector2 a, Vector2 b, float top)
     {
         var mid = (a + b) / 2f;
@@ -391,12 +433,12 @@ public partial class Titans
         Main.Roofs.Add(new Main.RoofRect
         {
             Cx = mid.X, Cz = mid.Y,
-            Hx = alongX ? len / 2f : 5.5f, Hz = alongX ? 5.5f : len / 2f,
+            Hx = alongX ? len / 2f : BridgeHalfWidth, Hz = alongX ? BridgeHalfWidth : len / 2f,
             Top = top, Under = top - BridgeDeckThickness
         });
         var mi = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(alongX ? len : 11f, BridgeDeckThickness, alongX ? 11f : len) },
+            Mesh = new BoxMesh { Size = new Vector3(alongX ? len : BridgeWidth, BridgeDeckThickness, alongX ? BridgeWidth : len) },
             MaterialOverride = DeckMat(),
             Position = new Vector3(mid.X, top - BridgeDeckThickness / 2f, mid.Y)
         };
@@ -407,22 +449,22 @@ public partial class Titans
             AddColumn(cp, top - BridgeDeckThickness, LevelIndex(top), b);
             _props.Add(new Circle { P = cp, R = ColumnRadius, RoofTop = top - BridgeDeckThickness });
         }
-        foreach (float side in new[] { -5.4f, 5.4f })
+        foreach (float side in new[] { -BridgeRailOffset, BridgeRailOffset })
         {
             var rail = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(alongX ? len : 0.35f, 0.35f, alongX ? 0.35f : len) },
+                Mesh = new BoxMesh { Size = new Vector3(alongX ? len : BridgeRailThickness, BridgeRailThickness, alongX ? BridgeRailThickness : len) },
                 MaterialOverride = TrimMat(LevelIndex(top)),
-                Position = new Vector3(mid.X + (alongX ? 0f : side), top + 0.9f, mid.Y + (alongX ? side : 0f)),
+                Position = new Vector3(mid.X + (alongX ? 0f : side), top + BridgeRailHeight, mid.Y + (alongX ? side : 0f)),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             };
             AddChild(rail);
         }
-        AddCeilingLight(new Vector3(mid.X, top - 1.35f, mid.Y), 17f);
+        AddCeilingLight(new Vector3(mid.X, top - BridgeFixtureDrop, mid.Y), BridgeLightRange);
         _skipRects.Add(new Main.RoofRect
         {
             Cx = mid.X, Cz = mid.Y,
-            Hx = (alongX ? len / 2f : 5.5f) + 6f, Hz = (alongX ? 5.5f : len / 2f) + 6f, Top = 0f
+            Hx = (alongX ? len / 2f : BridgeHalfWidth) + SkipRectMargin, Hz = (alongX ? BridgeHalfWidth : len / 2f) + SkipRectMargin, Top = 0f
         });
     }
 
@@ -455,7 +497,7 @@ public partial class Titans
             LightEnergy = CeilingLightEnergy,
             OmniRange = range,
             ShadowEnabled = false,
-            Position = centre + new Vector3(0f, -1.2f, 0f)
+            Position = centre + new Vector3(0f, -CeilingLightDrop, 0f)
         };
         AddChild(omni);
     }
@@ -466,9 +508,16 @@ public partial class Titans
     // size of its collision circle, a bevel ring at both
     // ends, and one emissive line running its height on the
     // side facing `face` (usually the deck's centre).
+    // Terrace column construction (naming pass, 2026-11-27).
+    private const float ColumnMinHeight = 1f;
+    private const int ColumnRadialSegments = 18;
+    private const float ColumnRingRadius = 1.34f, ColumnRingHeight = 0.56f, ColumnRingEndOffset = 0.28f;
+    private const float ColumnStripWidth = 0.16f, ColumnStripDepth = 0.07f;
+    private const float ColumnStripHeightCut = 1.4f, ColumnStripOffset = 1.17f;
+
     private void AddColumn(Vector2 p, float topY, int lvl, Vector2 face)
     {
-        float h = Mathf.Max(topY, 1f);
+        float h = Mathf.Max(topY, ColumnMinHeight);
         // Shot collision (owner, 2026-11-11 round 7: 'I can
         // shoot through column even it is an obstacle'): the
         // movement circle existed, the hit cylinder did not.
@@ -477,16 +526,16 @@ public partial class Titans
         _hit.Props.Add(new HitModel.PropCyl { P = p, R = ColumnRadius, BaseY = 0f, Height = h });
         var col = new MeshInstance3D
         {
-            Mesh = new CylinderMesh { TopRadius = ColumnRadius, BottomRadius = ColumnRadius, Height = h, RadialSegments = 18 },
+            Mesh = new CylinderMesh { TopRadius = ColumnRadius, BottomRadius = ColumnRadius, Height = h, RadialSegments = ColumnRadialSegments },
             MaterialOverride = ColumnMat(),
             Position = new Vector3(p.X, h / 2f, p.Y)
         };
         AddChild(col);
-        foreach (float ry in new[] { 0.28f, h - 0.28f })
+        foreach (float ry in new[] { ColumnRingEndOffset, h - ColumnRingEndOffset })
         {
             var ring = new MeshInstance3D
             {
-                Mesh = new CylinderMesh { TopRadius = 1.34f, BottomRadius = 1.34f, Height = 0.56f, RadialSegments = 18 },
+                Mesh = new CylinderMesh { TopRadius = ColumnRingRadius, BottomRadius = ColumnRingRadius, Height = ColumnRingHeight, RadialSegments = ColumnRadialSegments },
                 MaterialOverride = ColumnMat(),
                 Position = new Vector3(p.X, ry, p.Y)
             };
@@ -498,9 +547,9 @@ public partial class Titans
             dir = dir.Normalized();
             var strip = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(0.16f, h - 1.4f, 0.07f) },
+                Mesh = new BoxMesh { Size = new Vector3(ColumnStripWidth, h - ColumnStripHeightCut, ColumnStripDepth) },
                 MaterialOverride = TrimMat(lvl),
-                Position = new Vector3(p.X + dir.X * 1.17f, h / 2f, p.Y + dir.Y * 1.17f),
+                Position = new Vector3(p.X + dir.X * ColumnStripOffset, h / 2f, p.Y + dir.Y * ColumnStripOffset),
                 Rotation = new Vector3(0f, Mathf.Atan2(dir.X, dir.Y), 0f),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             };
@@ -511,15 +560,23 @@ public partial class Titans
     // The non-visual half of a platform plot: its standable
     // roof rect, its four columns (the only obstacles under
     // the deck) and its ceiling light.
+    // Platform statics and fallback slab (naming pass,
+    // 2026-11-27: names only, exact values).
+    private const float PlatformColumnOffset = 13.5f; // columns inset this far from the plot centre on both axes
+    private const float PlatformRoofHalf = 16.05f;    // standable roof half-extent of one plot
+    private const float PlatformLightDrop = 2.35f, PlatformLightRange = 21f;
+    private const float PlatformSlabSize = 31.9f;
+    private const float PlatformTrimSize = 32.5f, PlatformTrimThickness = 0.55f, PlatformTrimDrop = 0.28f; // (the drop is NOT ColumnRingEndOffset - different part, same value)
+
     private void PlatformStatics(Vector2 c, float lvlTop, bool roof = true)
     {
-        foreach (var s2 in new[] { new Vector2(13.5f, 13.5f), new Vector2(-13.5f, 13.5f), new Vector2(13.5f, -13.5f), new Vector2(-13.5f, -13.5f) })
+        foreach (var s2 in new[] { new Vector2(PlatformColumnOffset, PlatformColumnOffset), new Vector2(-PlatformColumnOffset, PlatformColumnOffset), new Vector2(PlatformColumnOffset, -PlatformColumnOffset), new Vector2(-PlatformColumnOffset, -PlatformColumnOffset) })
         {
             AddColumn(c + s2, lvlTop - DeckThickness, LevelIndex(lvlTop), c);
             _props.Add(new Circle { P = c + s2, R = ColumnRadius, RoofTop = lvlTop });
         }
-        if (roof) Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = 16.05f, Hz = 16.05f, Top = lvlTop, Under = lvlTop - DeckThickness });
-        AddCeilingLight(new Vector3(c.X, lvlTop - 2.35f, c.Y), 21f);
+        if (roof) Main.Roofs.Add(new Main.RoofRect { Cx = c.X, Cz = c.Y, Hx = PlatformRoofHalf, Hz = PlatformRoofHalf, Top = lvlTop, Under = lvlTop - DeckThickness });
+        AddCeilingLight(new Vector3(c.X, lvlTop - PlatformLightDrop, c.Y), PlatformLightRange);
     }
 
     // The platform outline (owner, 2026-11-11 round 5):
@@ -567,16 +624,16 @@ public partial class Titans
     {
         var mi = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(31.9f, DeckThickness, 31.9f) },
+            Mesh = new BoxMesh { Size = new Vector3(PlatformSlabSize, DeckThickness, PlatformSlabSize) },
             MaterialOverride = DeckMat(),
             Position = new Vector3(c.X, lvlTop - DeckThickness / 2f, c.Y)
         };
         AddChild(mi);
         var trim = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(32.5f, 0.55f, 32.5f) },
+            Mesh = new BoxMesh { Size = new Vector3(PlatformTrimSize, PlatformTrimThickness, PlatformTrimSize) },
             MaterialOverride = TrimMat(LevelIndex(lvlTop)),
-            Position = new Vector3(c.X, lvlTop - 0.28f, c.Y),
+            Position = new Vector3(c.X, lvlTop - PlatformTrimDrop, c.Y),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
         AddChild(trim);
@@ -644,8 +701,8 @@ public partial class Titans
             foreach (var (i, j) in group) PlatformSlabFallback(ctr + new Vector2(i * p, j * p), lvlTop);
             return;
         }
-        float x0 = ctr.X + i0 * p - 16.05f, x1 = ctr.X + i1 * p + 16.05f;
-        float z0 = ctr.Y + j0 * p - 16.05f, z1 = ctr.Y + j1 * p + 16.05f;
+        float x0 = ctr.X + i0 * p - PlatformRoofHalf, x1 = ctr.X + i1 * p + PlatformRoofHalf;
+        float z0 = ctr.Y + j0 * p - PlatformRoofHalf, z1 = ctr.Y + j1 * p + PlatformRoofHalf;
         var centre = new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f);
         float hx = (x1 - x0) / 2f, hz = (z1 - z0) / 2f;
         float seed = Mathf.Abs(centre.X * BlobSeedWeightX + centre.Y * BlobSeedWeightY) % BlobSeedTurn;
@@ -684,6 +741,13 @@ public partial class Titans
     // the cap) and the glowing border ribbon follow the
     // same outline; the standable discs registered in
     // BuildPlatformCluster follow the same radii.
+    // Blob deck outline dressing (naming pass, 2026-11-27).
+    private const float BevelFlare = 0.55f;          // outline pushed out this far at the bevel
+    private const float BevelNormalY = 0.75f;        // bevel face normal's up component
+    private const float BevelDrop = 0.6f;            // bevel bottom below the deck top
+    private const float RibbonInset = 1.1f;          // glow ribbon set in from the outline
+    private const float RibbonLift = 0.06f;          // glow ribbon floats this far above the deck top
+
     private void BuildBlobDeck(float x0, float x1, float z0, float z1, float top, Main.Sector[] secs = null)
     {
         var centre = new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f);
@@ -713,11 +777,11 @@ public partial class Titans
         for (int k = 0; k < n2; k++)
         {
             var d = dir[k];
-            var outP = loop[k] + d * 0.55f;
-            var bevN = new Vector3(d.X, 0.75f, d.Y).Normalized();
+            var outP = loop[k] + d * BevelFlare;
+            var bevN = new Vector3(d.X, BevelNormalY, d.Y).Normalized();
             var sideN = new Vector3(d.X, 0f, d.Y);
             T[k] = V(new Vector3(loop[k].X, top, loop[k].Y), Vector3.Up);
-            O[k] = V(new Vector3(outP.X, top - 0.6f, outP.Y), bevN);
+            O[k] = V(new Vector3(outP.X, top - BevelDrop, outP.Y), bevN);
             B[k] = V(new Vector3(outP.X, top - DeckThickness, outP.Y), sideN);
         }
         for (int k = 0; k < n2; k++)
@@ -742,9 +806,9 @@ public partial class Titans
         for (int k = 0; k < n2; k++)
         {
             var d = dir[k];
-            var inner = loop[k] - d * 1.1f;
-            tv.Add(new Vector3(loop[k].X, top + 0.06f, loop[k].Y)); tn.Add(Vector3.Up); tuv.Add(new Vector2(loop[k].X / DeckUvScale, loop[k].Y / DeckUvScale));
-            tv.Add(new Vector3(inner.X, top + 0.06f, inner.Y)); tn.Add(Vector3.Up); tuv.Add(new Vector2(inner.X / DeckUvScale, inner.Y / DeckUvScale));
+            var inner = loop[k] - d * RibbonInset;
+            tv.Add(new Vector3(loop[k].X, top + RibbonLift, loop[k].Y)); tn.Add(Vector3.Up); tuv.Add(new Vector2(loop[k].X / DeckUvScale, loop[k].Y / DeckUvScale));
+            tv.Add(new Vector3(inner.X, top + RibbonLift, inner.Y)); tn.Add(Vector3.Up); tuv.Add(new Vector2(inner.X / DeckUvScale, inner.Y / DeckUvScale));
         }
         for (int k = 0; k < n2; k++)
         {
@@ -768,6 +832,16 @@ public partial class Titans
     // A sloped deck wedge between two points at two heights:
     // a box sunk into the lower deck so its top face lies on
     // the slope line. Shared by terrace ramps and the bridge.
+    // Ramp wedge construction (naming pass, 2026-11-27).
+    private const float RampWedgeExtraLength = 2f;   // the wedge box extends 1u past each end of the slope line
+    private const float RampWedgeSink = 1.75f;       // holder sits this far below the slope midpoint (half the plate thickness)
+    private const float RampPlateInset = 2.4f;       // plate narrower than the wedge by this (the two curbs)
+    private const float RampPlateThickness = 3.5f;
+    private const float RampCurbWidth = 1.2f, RampCurbHeight = 3.75f;
+    private const float RampCurbInset = 0.6f;        // curb centre inset from the wedge edge (half the curb width)
+    private const float RampCurbLift = 0.125f;
+    private const float RampGlowWidth = 0.34f, RampGlowThickness = 0.1f, RampGlowHeight = 2.03f;
+
     private void AddRampWedge(Vector2 s0, float h0, Vector2 s1, float h1, float width)
     {
         var mid = (s0 + s1) / 2f;
@@ -778,8 +852,8 @@ public partial class Titans
         // only 1u past each end - a longer nose poked ~1.1u
         // above the upper deck at the lip and read as the
         // rider sinking into the ramp (owner fall report).
-        float len = Mathf.Sqrt(run * run + (h1 - h0) * (h1 - h0)) + 2f;
-        var holder = new Node3D { Position = new Vector3(mid.X, (h0 + h1) / 2f - 1.75f, mid.Y) };
+        float len = Mathf.Sqrt(run * run + (h1 - h0) * (h1 - h0)) + RampWedgeExtraLength;
+        var holder = new Node3D { Position = new Vector3(mid.X, (h0 + h1) / 2f - RampWedgeSink, mid.Y) };
         // Local +Z runs up-slope: yaw maps +Z onto (s1 - s0),
         // pitch lifts it by the slope angle (negative X
         // rotation raises +Z in Godot's YXZ euler order).
@@ -793,7 +867,7 @@ public partial class Titans
         // level's glow line.
         var plate = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(width - 2.4f, 3.5f, len) },
+            Mesh = new BoxMesh { Size = new Vector3(width - RampPlateInset, RampPlateThickness, len) },
             MaterialOverride = PlateMat()
         };
         holder.AddChild(plate);
@@ -801,16 +875,16 @@ public partial class Titans
         {
             var curb = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(1.2f, 3.75f, len) },
+                Mesh = new BoxMesh { Size = new Vector3(RampCurbWidth, RampCurbHeight, len) },
                 MaterialOverride = DeckMat(),
-                Position = new Vector3(sx * (width / 2f - 0.6f), 0.125f, 0f)
+                Position = new Vector3(sx * (width / 2f - RampCurbInset), RampCurbLift, 0f)
             };
             holder.AddChild(curb);
             var glow = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(0.34f, 0.1f, len) },
+                Mesh = new BoxMesh { Size = new Vector3(RampGlowWidth, RampGlowThickness, len) },
                 MaterialOverride = TrimMat(LevelIndex(Mathf.Max(h0, h1))),
-                Position = new Vector3(sx * (width / 2f - 0.6f), 2.03f, 0f),
+                Position = new Vector3(sx * (width / 2f - RampCurbInset), RampGlowHeight, 0f),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             };
             holder.AddChild(glow);
@@ -949,6 +1023,21 @@ public partial class Titans
     // stacked tiers with lit rings, corner spires and a
     // central spire, registered as one destructible building
     // through the same shell as every other building.
+    // Landmark proportions, as fractions of its width/
+    // height arguments (naming pass, 2026-11-27). Same
+    // values with different meanings stay separate
+    // constants (banner base 0.38 vs corner-spire height
+    // 0.38; banner width vs banner height 0.30).
+    private const float LandmarkTier1HeightFraction = 0.24f;
+    private const float LandmarkTier2WidthFraction = 0.72f, LandmarkTier2HeightFraction = 0.34f;
+    private const float LandmarkTier3WidthFraction = 0.48f, LandmarkTier3HeightFraction = 0.26f, LandmarkTier3BaseFraction = 0.58f;
+    private const float LandmarkRingOverhang = 1.2f, LandmarkRingHeight = 0.5f;
+    private const float LandmarkSpireWidthFraction = 0.13f, LandmarkSpireHeightFraction = 0.16f, LandmarkSpireBaseFraction = 0.92f;
+    private const float LandmarkCornerWidthFraction = 0.10f, LandmarkCornerHeightFraction = 0.38f;
+    private const float LandmarkCornerBaseFraction = 0.19f, LandmarkCornerInsetFraction = 0.07f;
+    private const float LandmarkBannerWidthFraction = 0.30f, LandmarkBannerHeightFraction = 0.30f;
+    private const float LandmarkBannerBaseFraction = 0.38f, LandmarkBannerOutsetFraction = 0.36f, LandmarkBannerGap = 0.06f;
+
     private void BuildLandmark(Vector2 c, float deckTop, float w, float h, float hp, bool banners)
     {
         int pc0 = _props.Count, hc0 = _hit.Props.Count;
@@ -966,30 +1055,30 @@ public partial class Titans
             mi.AddChild(t);
             var ring = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(tw + 1.2f, 0.5f, tw + 1.2f) },
+                Mesh = new BoxMesh { Size = new Vector3(tw + LandmarkRingOverhang, LandmarkRingHeight, tw + LandmarkRingOverhang) },
                 MaterialOverride = TrimMat(LevelIndex(deckTop)),
                 Position = new Vector3(0f, yBase + th - h / 2f, 0f),
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
             };
             mi.AddChild(ring);
         }
-        Tier(w, h * 0.24f, 0f, 7);
-        Tier(w * 0.72f, h * 0.34f, h * 0.24f, 8);
-        Tier(w * 0.48f, h * 0.26f, h * 0.58f, 9);
+        Tier(w, h * LandmarkTier1HeightFraction, 0f, 7);
+        Tier(w * LandmarkTier2WidthFraction, h * LandmarkTier2HeightFraction, h * LandmarkTier1HeightFraction, 8);
+        Tier(w * LandmarkTier3WidthFraction, h * LandmarkTier3HeightFraction, h * LandmarkTier3BaseFraction, 9);
         var spire = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(w * 0.13f, h * 0.16f, w * 0.13f) },
+            Mesh = new BoxMesh { Size = new Vector3(w * LandmarkSpireWidthFraction, h * LandmarkSpireHeightFraction, w * LandmarkSpireWidthFraction) },
             MaterialOverride = DeckMat(),
-            Position = new Vector3(0f, h * 0.92f - h / 2f, 0f)
+            Position = new Vector3(0f, h * LandmarkSpireBaseFraction - h / 2f, 0f)
         };
         mi.AddChild(spire);
         foreach (var cs in new[] { new Vector2(1, 1), new Vector2(-1, 1), new Vector2(1, -1), new Vector2(-1, -1) })
         {
             var csp = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(w * 0.10f, h * 0.38f, w * 0.10f) },
+                Mesh = new BoxMesh { Size = new Vector3(w * LandmarkCornerWidthFraction, h * LandmarkCornerHeightFraction, w * LandmarkCornerWidthFraction) },
                 MaterialOverride = DeckMat(),
-                Position = new Vector3(cs.X * (w / 2f - w * 0.07f), h * 0.19f - h / 2f, cs.Y * (w / 2f - w * 0.07f))
+                Position = new Vector3(cs.X * (w / 2f - w * LandmarkCornerInsetFraction), h * LandmarkCornerBaseFraction - h / 2f, cs.Y * (w / 2f - w * LandmarkCornerInsetFraction))
             };
             mi.AddChild(csp);
         }
@@ -1000,9 +1089,9 @@ public partial class Titans
             {
                 var bp = new MeshInstance3D
                 {
-                    Mesh = new PlaneMesh { Size = new Vector2(w * 0.30f, h * 0.30f) },
+                    Mesh = new PlaneMesh { Size = new Vector2(w * LandmarkBannerWidthFraction, h * LandmarkBannerHeightFraction) },
                     MaterialOverride = bmat,
-                    Position = new Vector3(0f, h * 0.38f - h / 2f, f * (w * 0.36f + 0.06f)),
+                    Position = new Vector3(0f, h * LandmarkBannerBaseFraction - h / 2f, f * (w * LandmarkBannerOutsetFraction + LandmarkBannerGap)),
                     Rotation = new Vector3(0f, f > 0f ? 0f : Mathf.Pi, 0f)
                 };
                 mi.AddChild(bp);
