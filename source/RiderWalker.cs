@@ -1196,8 +1196,14 @@ public partial class RiderWalker : Node3D
             * Basis.Identity.Rotated(Vector3.Right, Mathf.Clamp(this.Droop - this._torsoPitch, TorsoRenderPitchMin, TorsoRenderPitchMax))
             * Basis.Identity.Rotated(Vector3.Up, Mathf.Pi);
     var basisSk = this._skelGlobal.Basis.Orthonormalized().Transposed() * (f * this._torsoM0);
+    // CS0618: Godot deprecated SetBoneGlobalPoseOverride with no drop-in
+    // replacement (the amount blend + persistence have no equivalent short
+    // of a SkeletonModifier3D re-architecture - owner's call, flagged
+    // 2026-11-28). Scoped suppression; the gait depends on this API.
+#pragma warning disable CS0618
     this._skel.SetBoneGlobalPoseOverride(this._torsoBone,
             new Transform3D(basisSk, this._torsoRestOrigin), 1f, true);
+#pragma warning restore CS0618
   }
 
   // World yaw of the torso as the engine renders it (verification):
@@ -1256,12 +1262,18 @@ public partial class RiderWalker : Node3D
     var K = H + dir * a + pole * hh;
 
     var qHip = new Quaternion(leg.ThighRestDir, (K - H).Normalized());
+    // CS0618: Godot deprecated SetBoneGlobalPoseOverride with no drop-in
+    // replacement (the amount blend + persistence have no equivalent short
+    // of a SkeletonModifier3D re-architecture - owner's call, flagged
+    // 2026-11-28). Scoped suppression; the gait depends on this API.
+#pragma warning disable CS0618
     this._skel.SetBoneGlobalPoseOverride(leg.Hip, new Transform3D(new Basis(qHip) * leg.HrestBasis, H), 1f, true);
     var qKnee = new Quaternion(leg.ShinRestDir, (A - K).Normalized());
     this._skel.SetBoneGlobalPoseOverride(leg.Knee, new Transform3D(new Basis(qKnee) * leg.KrestBasis, K), 1f, true);
     var ankleBasisSk = this._skelGlobal.Basis.Orthonormalized().Transposed() * (basisW * leg.M0);
     leg.SolvedAnklePose = new Transform3D(ankleBasisSk, A);
     this._skel.SetBoneGlobalPoseOverride(leg.Ankle, leg.SolvedAnklePose, 1f, true);
+#pragma warning restore CS0618
     leg.SolvedSoleWorld = this._skelGlobal * (leg.SolvedAnklePose * leg.SoleOffLocal);
   }
 
