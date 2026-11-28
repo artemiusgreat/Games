@@ -104,7 +104,7 @@ public partial class Titans
     return Mathf.Sqrt(ax * ax + ay * ay) + Mathf.Min(Mathf.Max(q.X, q.Y), 0f) - r;
   }
 
-  private static Texture2D PrintTexture()
+  private static ImageTexture PrintTexture()
   {
     // Abstract mech-foot stamp (owner, 2026-11-23: the
     // plain oval read as a smudge and clipped on slopes):

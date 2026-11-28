@@ -34,14 +34,14 @@ public partial class Titans
     }
   }
 
-  public override void _Input(InputEvent e)
+  public override void _Input(InputEvent @event)
   {
     if (!this._built)
     {
       return; // staged build in progress - the loading cover is up
     }
 
-    if (!OS.HasFeature("windows") && e is InputEventKey ck && ck.Pressed && !ck.Echo && ck.Keycode == Key.Capslock)
+    if (!OS.HasFeature("windows") && @event is InputEventKey ck && ck.Pressed && !ck.Echo && ck.Keycode == Key.Capslock)
     {
       this._capsLockOn = !this._capsLockOn;
     }
@@ -53,12 +53,12 @@ public partial class Titans
       return;
     }
 
-    if (e is InputEventKey rk && rk.Pressed && !rk.Echo && rk.Keycode == Key.R)
+    if (@event is InputEventKey rk && rk.Pressed && !rk.Echo && rk.Keycode == Key.R)
     {
       this.ResetDuel();
       return;
     }
-    if (e is InputEventMouseButton zb && zb.Pressed && zb.ButtonIndex == MouseButton.Right)
+    if (@event is InputEventMouseButton zb && zb.Pressed && zb.ButtonIndex == MouseButton.Right)
     {
       // Sniper view toggle (owner, 2026-11-22; moved
       // from T to RMB at the owner's word, 2026-11-25):
@@ -73,7 +73,7 @@ public partial class Titans
       this.GetViewport().SetInputAsHandled();
       return;
     }
-    if (e is InputEventKey tk && tk.Pressed && !tk.Echo && tk.Keycode == Key.Tab)
+    if (@event is InputEventKey tk && tk.Pressed && !tk.Echo && tk.Keycode == Key.Tab)
     {
       // The TAB family (owner; the two modifier forms
       // added 2026-11-23). Handled here so Tab never
@@ -134,7 +134,7 @@ public partial class Titans
       // command the NPC teammates. Intercepted before the
       // weapon-group keys below - a shifted number is an
       // order, not a group switch.
-      if (e is InputEventKey ok && ok.Pressed && !ok.Echo && ok.ShiftPressed
+      if (@event is InputEventKey ok && ok.Pressed && !ok.Echo && ok.ShiftPressed
           && WorldConfig.IsMission && this._allies.Count > 0)
       {
         TeamOrder? ord = ok.Keycode switch
@@ -164,7 +164,7 @@ public partial class Titans
       // Weapon selection (owner's groups): keys 1-6 pick
       // the group by its lab number, the wheel cycles the
       // groups that exist.
-      if (e is InputEventKey sk && sk.Pressed && !sk.Echo)
+      if (@event is InputEventKey sk && sk.Pressed && !sk.Echo)
       {
         int num = sk.Keycode switch
         {
@@ -185,21 +185,21 @@ public partial class Titans
           }
         }
       }
-      else if (e is InputEventMouseButton wb && wb.Pressed && this._groups.Count > 0 &&
+      else if (@event is InputEventMouseButton wb && wb.Pressed && this._groups.Count > 0 &&
                (wb.ButtonIndex == MouseButton.WheelUp || wb.ButtonIndex == MouseButton.WheelDown))
       {
         int d = wb.ButtonIndex == MouseButton.WheelDown ? 1 : -1;
         this._weaponSel = (this._weaponSel + d + this._groups.Count) % this._groups.Count;
       }
     }
-    if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+    if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
     {
       if (Input.MouseMode != Input.MouseModeEnum.Captured)
       {
         Input.MouseMode = Input.MouseModeEnum.Captured;
       }
     }
-    else if (e is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
+    else if (@event is InputEventKey k && k.Pressed && !k.Echo && k.Keycode == Key.Escape)
     {
       // Leave the game (owner): release the mouse, pause
       // the sim, and ask for confirmation. Esc is ONLY
@@ -215,7 +215,7 @@ public partial class Titans
         this.GetTree().Paused = true;
       }
     }
-    else if (e is InputEventKey kf && kf.Pressed && !kf.Echo && kf.Keycode == Key.F2)
+    else if (@event is InputEventKey kf && kf.Pressed && !kf.Echo && kf.Keycode == Key.F2)
     {
       // Team screen (owner, 2026-11-17; moved F1 -> F2,
       // 2026-11-23): F2 opens it in a mission - pick a
@@ -231,7 +231,7 @@ public partial class Titans
         this.GetTree().Paused = true;
       }
     }
-    else if (e is InputEventKey kc && kc.Pressed && !kc.Echo && kc.Keycode == Key.F1)
+    else if (@event is InputEventKey kc && kc.Pressed && !kc.Echo && kc.Keycode == Key.F1)
     {
       // Controls screen (owner, 2026-11-23): F1 lists
       // the game's key bindings. Same pause contract as
@@ -247,7 +247,7 @@ public partial class Titans
         this.GetTree().Paused = true;
       }
     }
-    else if (e is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !this._test)
+    else if (@event is InputEventMouseMotion mm && Input.MouseMode == Input.MouseModeEnum.Captured && !this._test)
     {
       // The mouse owns the torso's WORLD bearing (round 7);
       // MaintainTorsoWorldYaw turns it into a twist each frame.

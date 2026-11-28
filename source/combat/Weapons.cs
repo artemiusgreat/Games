@@ -15,7 +15,7 @@ public partial class Projectile : Node3D
   public Vector3 Vel;
   public float Gravity = 5f;
   public float Damage = 10f;
-  public float SplashRadius = 0f; // 0 = direct damage only
+  public float SplashRadius; // 0 = direct damage only
   public string OwnerId = "";
   public float WeaponWeight; // firing weapon's tonnage (knockdown-by-weight)
   public float Life = 8f;

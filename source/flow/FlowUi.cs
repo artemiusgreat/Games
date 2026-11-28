@@ -276,7 +276,7 @@ public static class FlowUi
   // stored all-caps ('PROMETHEUS'); most screens read
   // 'Prometheus'. (The lab title is the standing exception.)
   public static string NameCase(string n) =>
-      string.IsNullOrEmpty(n) ? n : char.ToUpper(n[0]) + n.Substring(1).ToLowerInvariant();
+      string.IsNullOrEmpty(n) ? n : char.ToUpper(n[0], System.Globalization.CultureInfo.InvariantCulture) + n.Substring(1).ToLowerInvariant();
 
   // The front-end's selector row (the owner's "slider"):
   // ‹ NAME › cycling one entry per press.

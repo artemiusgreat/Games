@@ -24,7 +24,7 @@ public partial class UiSfx : Node
   private const float TickVolumeDb = -36f; // owner: the first cut (-11) was too loud; -20 and then -27 still too loud (2026-11-25); tune here
   private readonly AudioStreamPlayer[] _pool = new AudioStreamPlayer[PoolSize];
   private int _next;
-  public static int WiredCount; // harness visibility
+  public static int WiredCount { get; set; } // harness visibility
 
   public static void Install(Node root)
   {

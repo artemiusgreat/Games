@@ -94,14 +94,14 @@ public partial class UniverseMap : Control
     return -1;
   }
 
-  public override void _GuiInput(InputEvent ev)
+  public override void _GuiInput(InputEvent @event)
   {
-    if (ev is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+    if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
     {
       int hit = this.NodeAt(mb.Position);
       if (hit >= 0) { UiSfx.Play(); this.OnSelect?.Invoke(hit); this.AcceptEvent(); }
     }
-    else if (ev is InputEventMouseMotion mm)
+    else if (@event is InputEventMouseMotion mm)
     {
       int hit = this.NodeAt(mm.Position);
       if (hit != this._hover)

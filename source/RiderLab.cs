@@ -1343,7 +1343,7 @@ public partial class RiderLab : Control
 
   // Slideshow selector (owner): chips don't scale to tens of
   // riders - arrows cycle through the registry, wrapping around.
-  private Control RiderSelector(string role, bool playerSide)
+  private HBoxContainer RiderSelector(string role, bool playerSide)
   {
     var box = new HBoxContainer();
     box.AddThemeConstantOverride("separation", SelectorSeparation);
@@ -1426,12 +1426,12 @@ public partial class RiderLab : Control
   public string DumpLayout()
   {
     var sb = new System.Text.StringBuilder();
-    sb.AppendLine($"LABLAYOUT live={this._paperdoll?.LiveCount} areaPos={this._paperdoll?.GetGlobalPosition()} areaSize={this._paperdoll?.Size}");
+    sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"LABLAYOUT live={this._paperdoll?.LiveCount} areaPos={this._paperdoll?.GetGlobalPosition()} areaSize={this._paperdoll?.Size}");
     foreach (var (id, panel) in this._slots)
     {
       var c = panel.GetGlobalRect().GetCenter();
       var a = this._paperdoll?.LiveAnchor(id);
-      sb.AppendLine($"LABLAYOUT {id} panel=({c.X:F0},{c.Y:F0}) size=({panel.Size.X:F0},{panel.Size.Y:F0}) anchor={(a.HasValue ? $"({a.Value.X:F0},{a.Value.Y:F0})" : "none")}");
+      sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"LABLAYOUT {id} panel=({c.X:F0},{c.Y:F0}) size=({panel.Size.X:F0},{panel.Size.Y:F0}) anchor={(a.HasValue ? $"({a.Value.X:F0},{a.Value.Y:F0})" : "none")}");
     }
     return sb.ToString();
   }

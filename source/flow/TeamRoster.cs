@@ -20,7 +20,7 @@ public sealed class TeamMember
 public static class TeamRoster
 {
   public static readonly List<TeamMember> Story = new();
-  public static int StorySlot; // the lab's currently edited slot
+  public static int StorySlot { get; set; } // the lab's currently edited slot
 
   public static TeamMember Make(RiderSpec spec) =>
       new() { Spec = spec, Loadout = LoadoutState.DefaultFor(spec) };
@@ -50,7 +50,7 @@ public static class TeamRoster
   public const int MaxTeams = 4;
   public const int MaxPerTeam = 4;
   public static readonly List<List<TeamMember>> Tourney = new();
-  public static int TourneyTeam; // the selector's open team
+  public static int TourneyTeam { get; set; } // the selector's open team
 
   // Front-door reset (owner, 2026-11-15): a new run forms
   // its teams from the defaults, not from the bracket or

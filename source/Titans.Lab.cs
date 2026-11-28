@@ -442,7 +442,7 @@ public partial class Titans
   private void RefreshHitCaps()
   {
     this._hit.Riders.RemoveAll(m => m.Id == Roles.Player || m.Id == Roles.Enemy || m.Id == Roles.Foe
-            || (m.Id != null && m.Id.StartsWith(Roles.AllyPrefix)));
+            || (m.Id != null && m.Id.StartsWith(Roles.AllyPrefix, System.StringComparison.Ordinal)));
     this._hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Player, Root = () => this._player.RootPos, Radius = this._playerSpec.Radius, Height = this._playerSpec.Height });
     this._hit.Riders.Add(new HitModel.RiderCap { Id = Roles.Enemy, Root = () => this._enemy.RootPos, Radius = this._enemySpec.Radius, Height = this._enemySpec.Height });
     if (this._foe?.Walker != null)

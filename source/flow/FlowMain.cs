@@ -22,9 +22,9 @@ public partial class FlowMain : Node3D
 {
   // Flow state is static so it survives the trip to the lab
   // and back (the lab's Back button reloads this scene).
-  public static int PlanetIndex = InitPlanet();
-  public static int MissionIndex = InitMission();
-  public static int ArenaIndex = InitArena();
+  public static int PlanetIndex { get; set; } = InitPlanet();
+  public static int MissionIndex { get; set; } = InitMission();
+  public static int ArenaIndex { get; set; } = InitArena();
 
   // Harness seeds only: the starting planet / mission /
   // arena, parsed by the one helper that knows the format.
@@ -39,8 +39,8 @@ public partial class FlowMain : Node3D
   // Set by EnterLab; the lab shows its Back button only when
   // the flow brought the player there. StartScreen is set by
   // that button to name the screen _Ready should reopen.
-  public static bool FromFlow = EnvVars.Flag(EnvVars.FromFlow); // harness seed
-  public static FlowScreen StartScreen;
+  public static bool FromFlow { get; set; } = EnvVars.Flag(EnvVars.FromFlow); // harness seed
+  public static FlowScreen StartScreen { get; set; }
 
   private const int BackdropLayer = -2;
   private const int LoadingLayer = 5;
@@ -70,7 +70,7 @@ public partial class FlowMain : Node3D
   {
     foreach (var arg in OS.GetCmdlineUserArgs())
     {
-      if (arg.StartsWith("--flowshot="))
+      if (arg.StartsWith("--flowshot=", System.StringComparison.Ordinal))
       {
         this._flowshot = arg.Substring("--flowshot=".Length);
         // The image's complete name is defined HERE, at
@@ -79,9 +79,9 @@ public partial class FlowMain : Node3D
         // which only happened to match.
         this._flowshotPath = $"/tmp/flow_{this._flowshot}.png";
       }
-      if (arg.StartsWith("--flowfocus="))
+      if (arg.StartsWith("--flowfocus=", System.StringComparison.Ordinal))
       {
-        this._focusTarget = int.Parse(arg.Substring("--flowfocus=".Length));
+        this._focusTarget = int.Parse(System.MemoryExtensions.AsSpan(arg, "--flowfocus=".Length), System.Globalization.CultureInfo.InvariantCulture);
       }
 
       if (arg == "--flowtest-nav")

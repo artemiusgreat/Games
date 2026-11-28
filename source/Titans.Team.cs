@@ -217,7 +217,7 @@ public partial class Titans
   private Ally AllyOf(RiderWalker w) => this._allies.Find(a => a.Walker == w);
   private Ally AllyOfParts(RiderParts p) => this._allies.Find(a => a.Parts == p);
   private Ally AllyByRole(string role) =>
-      role != null && role.StartsWith(Roles.AllyPrefix) ? this._allies.Find(a => a.Role == role) : null;
+      role != null && role.StartsWith(Roles.AllyPrefix, System.StringComparison.Ordinal) ? this._allies.Find(a => a.Role == role) : null;
   private Ally AllyBySlot(int slot) => this._allies.Find(a => a.Slot == slot);
 
   // The whole player team, leader first: the driven rider

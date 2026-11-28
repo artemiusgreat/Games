@@ -205,7 +205,7 @@ public partial class MapTypeScreen : Control
     return l;
   }
 
-  private Control Card(string title, string sub, string artPath, string desc,
+  private Button Card(string title, string sub, string artPath, string desc,
       string action, bool featured, CardIcon.Kind icon, System.Action go)
   {
     var card = new Button { CustomMinimumSize = new Vector2(CardMaxWidth, CardMaxHeight) };

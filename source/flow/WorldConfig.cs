@@ -9,7 +9,7 @@ public static class WorldConfig
 {
   public enum MapMode { Tournament, Mission }
 
-  public static MapMode Mode = InitMode();
+  public static MapMode Mode { get; set; } = InitMode();
 
   // The map type (owner): every map - a tournament arena or a
   // mission contract's ground - is one of three biomes,
@@ -20,7 +20,7 @@ public static class WorldConfig
   // world they always have. The harness can force AOT_BIOME.
   public enum BiomeKind { Desert, Forest, City }
 
-  public static BiomeKind Biome = InitBiome();
+  public static BiomeKind Biome { get; set; } = InitBiome();
 
   private static BiomeKind InitBiome() =>
       EnvVars.Value(EnvVars.Biome) switch
@@ -32,7 +32,7 @@ public static class WorldConfig
 
   // The contract signed in the flow (Mission path). Null on the
   // Tournament path and in harness runs.
-  public static MissionDef SelectedMission;
+  public static MissionDef SelectedMission { get; set; }
 
   // The building kit for City maps (owner): each mission
   // contract names the kit its city is built from (real
@@ -40,7 +40,7 @@ public static class WorldConfig
   // supplied, assets/citykits/kit<N>/). -1 = the procedural
   // buildings. EnterLab copies the contract's kit here;
   // AOT_CITYKIT forces one for harnesses.
-  public static int CityKit = InitCityKit();
+  public static int CityKit { get; set; } = InitCityKit();
 
   private static int InitCityKit() =>
       int.TryParse(EnvVars.Value(EnvVars.CityKit), out var k)
@@ -50,12 +50,12 @@ public static class WorldConfig
   // City maps). EnterLab copies the contract's / arena's
   // SkyTex here; AOT_SKY=<file name in assets/skies/> forces
   // one for harnesses. "" = the procedural sky.
-  public static string SkyTex = InitSky();
+  public static string SkyTex { get; set; } = InitSky();
 
   // Procedural star layer over the painted sky (owner: hybrid
   // sky). EnterLab copies the contract's flag here;
   // AOT_STARS=1 forces it for harnesses.
-  public static bool SkyStars = InitStars();
+  public static bool SkyStars { get; set; } = InitStars();
 
   private static bool InitStars() =>
       EnvVars.Flag(EnvVars.Stars);
@@ -63,7 +63,7 @@ public static class WorldConfig
   // Snow-covered ground (owner): the terrain wears snow
   // where the map's painted sky is a snowscape. EnterLab
   // copies the contract's flag here; AOT_SNOW=1 forces it.
-  public static bool SnowGround = InitSnow();
+  public static bool SnowGround { get; set; } = InitSnow();
 
   // Which map the mission is fought on (owner, 2026-11-27:
   // a data value the MapFactory reads - it replaced the
@@ -71,18 +71,18 @@ public static class WorldConfig
   // EnterLab copies the contract's kind here; the
   // AOT_ASCENT env var (its historical wire name) forces
   // Babylon for harness boots.
-  public static MapKind Map = InitMap();
+  public static MapKind Map { get; set; } = InitMap();
 
   // Hills terrain (owner's Maps-Hills OBJ, 2026-11-22): the
   // Ascent heightfield's base is sampled from a grid baked
   // out of the OBJ instead of the analytic valley.
   // AOT_HILLS=1 forces it.
-  public static bool Hills = InitHills();
+  public static bool Hills { get; set; } = InitHills();
 
   // The photoreal treatment in the standard scene
   // (owner, 2026-11-20): EnterLab copies the contract's
   // Photoreal flag here; AOT_PHOTOREAL=1 forces it.
-  public static bool Photoreal = InitPhotoreal();
+  public static bool Photoreal { get; set; } = InitPhotoreal();
 
   private static bool InitPhotoreal() =>
       EnvVars.Flag(EnvVars.Photoreal);
@@ -106,7 +106,7 @@ public static class WorldConfig
   // over the dome by the triplanar sky shader instead of a
   // stretched panorama. EnterLab copies the contract's
   // SkyTile here; AOT_SKYTILE=<file name> forces one.
-  public static string SkyTile = InitSkyTile();
+  public static string SkyTile { get; set; } = InitSkyTile();
 
   private static string InitSkyTile()
   {
@@ -118,7 +118,7 @@ public static class WorldConfig
   // level - The Harbor Stacks - skips the height map entirely;
   // its world builds at height 0 everywhere. EnterLab copies
   // the contract's flag here; AOT_FLAT=1 forces it.
-  public static bool FlatWorld = InitFlat();
+  public static bool FlatWorld { get; set; } = InitFlat();
 
   private static bool InitFlat() =>
       EnvVars.Flag(EnvVars.Flat);

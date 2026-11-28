@@ -12,7 +12,7 @@ namespace Titans;
 // prints, in production too.
 public static class Dbg
 {
-  public static bool On;
+  public static bool On { get; set; }
 
   public static void Print(object message)
   {

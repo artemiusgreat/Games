@@ -318,7 +318,7 @@ public partial class Titans : Node3D
   private double _wPhaseT;
   private int _wShotsFired;
   private bool _wCaptured, _wDeadShotQueued, _wDeathLogged;
-  private Destructible _wEnvB, _wEnvT;
+  private Destructible _wEnvT;
   private int _wEnvFx0, _wEnvChunks0, _wEnvParticles0;
   private float _wJoltSeen;
   private bool _wHitCaptured;
@@ -522,17 +522,17 @@ public partial class Titans : Node3D
         this._hectorLab = true;
       }
 
-      if (arg.StartsWith("--lab-rider=") && System.Enum.TryParse<RiderId>(arg.Substring("--lab-rider=".Length), true, out var lr))
+      if (arg.StartsWith("--lab-rider=", System.StringComparison.Ordinal) && System.Enum.TryParse<RiderId>(arg.Substring("--lab-rider=".Length), true, out var lr))
       {
         this._labRiderId = lr;
       }
 
-      if (arg.StartsWith("--player-rider=") && System.Enum.TryParse<RiderId>(arg.Substring("--player-rider=".Length), true, out var pr))
+      if (arg.StartsWith("--player-rider=", System.StringComparison.Ordinal) && System.Enum.TryParse<RiderId>(arg.Substring("--player-rider=".Length), true, out var pr))
       {
         this._playerSpec = RiderSpecs.ById(pr);
       }
 
-      if (arg.StartsWith("--enemy-rider=") && System.Enum.TryParse<RiderId>(arg.Substring("--enemy-rider=".Length), true, out var er))
+      if (arg.StartsWith("--enemy-rider=", System.StringComparison.Ordinal) && System.Enum.TryParse<RiderId>(arg.Substring("--enemy-rider=".Length), true, out var er))
       {
         this._enemySpec = RiderSpecs.ById(er);
       }
@@ -602,20 +602,20 @@ public partial class Titans : Node3D
         this._brakeTest = true;
       }
 
-      if (arg.StartsWith("--team-seed="))
+      if (arg.StartsWith("--team-seed=", System.StringComparison.Ordinal))
       {
         // Harness: pre-form a Story team of N riders
         // (roster order) so the team lab can be captured.
-        int nSeed = int.Parse(arg.Substring("--team-seed=".Length));
+        int nSeed = int.Parse(System.MemoryExtensions.AsSpan(arg, "--team-seed=".Length), System.Globalization.CultureInfo.InvariantCulture);
         TeamRoster.Story.Clear();
         for (int si = 0; si < nSeed && si < RiderSpecs.All.Length; si++)
         {
           TeamRoster.Story.Add(TeamRoster.Make(RiderSpecs.All[si]));
         }
       }
-      if (arg.StartsWith("--team-slot="))
+      if (arg.StartsWith("--team-slot=", System.StringComparison.Ordinal))
       {
-        TeamRoster.StorySlot = int.Parse(arg.Substring("--team-slot=".Length));
+        TeamRoster.StorySlot = int.Parse(System.MemoryExtensions.AsSpan(arg, "--team-slot=".Length), System.Globalization.CultureInfo.InvariantCulture);
       }
     }
 
@@ -642,7 +642,7 @@ public partial class Titans : Node3D
       bool playerArg = false;
       foreach (var arg in OS.GetCmdlineUserArgs())
       {
-        if (arg.StartsWith("--player-rider="))
+        if (arg.StartsWith("--player-rider=", System.StringComparison.Ordinal))
         {
           playerArg = true;
         }
@@ -671,12 +671,12 @@ public partial class Titans : Node3D
       bool pArg = false, eArg = false;
       foreach (var arg in OS.GetCmdlineUserArgs())
       {
-        if (arg.StartsWith("--player-rider="))
+        if (arg.StartsWith("--player-rider=", System.StringComparison.Ordinal))
         {
           pArg = true;
         }
 
-        if (arg.StartsWith("--enemy-rider="))
+        if (arg.StartsWith("--enemy-rider=", System.StringComparison.Ordinal))
         {
           eArg = true;
         }

@@ -85,7 +85,7 @@ public partial class TeamSelectScreen : Control
   // One of the two list panels: heading, count line, the
   // scrollable rows. The add buttons live INSIDE the scroll,
   // right below the last row (owner) - no panel footer.
-  private Control ListPanel(bool teams)
+  private PanelContainer ListPanel(bool teams)
   {
     var panel = new PanelContainer
     {

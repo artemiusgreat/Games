@@ -207,7 +207,7 @@ public sealed class RiderParts
     }
     foreach (var part in this._parts.Values)
     {
-      string line = $"{this._riderId} PART {part.Id} hp={(part.MaxHp > 0 ? part.MaxHp.ToString("F0") : "pool")} meshes=[";
+      string line = $"{this._riderId} PART {part.Id} hp={(part.MaxHp > 0 ? part.MaxHp.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) : "pool")} meshes=[";
       foreach (var rec in part.Meshes)
       {
         line += $"{rec.Mi.Name}:{rec.BoneName} ";
@@ -361,7 +361,7 @@ public sealed class RiderParts
   {
     foreach (var kv in byName)
     {
-      if (!kv.Key.StartsWith("Debris_"))
+      if (!kv.Key.StartsWith("Debris_", System.StringComparison.Ordinal))
       {
         continue;
       }

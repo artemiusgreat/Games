@@ -1969,7 +1969,7 @@ public partial class Titans
   private const float PointBestUnmeasured = 1e9f; // best-miss sentinel before any sample
   private const float PointFoeCloseZ = 11f;
   private const float PointFoeOffsetZ = 10f;
-  private int _pointNext = 0;
+  private int _pointNext;
 
   private void UpdatePointTest(float dt)
   {
@@ -2685,7 +2685,7 @@ public partial class Titans
       if (this._bracketT > BracketFightSeconds)
       {
         float moved = FlatDist(this._bracketNpc.Walker.RootPos, this._bracketNpcHome);
-        Dbg.Print($"BRACKETTEST fight: npcMoved={moved:F1} bracketShots={this._bracketShots} npcTarget={(this._bracketNpc.TargetW == null ? "none" : this.TeamOf(this._bracketNpc.TargetW).ToString())} playerHp={this._hpPlayer:F0}");
+        Dbg.Print($"BRACKETTEST fight: npcMoved={moved:F1} bracketShots={this._bracketShots} npcTarget={(this._bracketNpc.TargetW == null ? "none" : this.TeamOf(this._bracketNpc.TargetW).ToString(System.Globalization.CultureInfo.InvariantCulture))} playerHp={this._hpPlayer:F0}");
         if (this._bracketNpc.TargetW == null) { this.BracketFail("hostile NPC never picked a target"); return; }
         if (this.TeamOf(this._bracketNpc.TargetW) == 2) { this.BracketFail("hostile NPC targeted its own team"); return; }
         if (moved <= BracketMoveMin && this._bracketShots <= 0) { this.BracketFail("hostile NPC neither moved nor fired"); return; }

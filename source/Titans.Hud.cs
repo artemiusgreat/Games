@@ -636,7 +636,7 @@ public partial class Titans
   // eight corners of the walker's capsule box each frame.
   private sealed partial class TargetFrame : Control
   {
-    public bool Show;
+    public new bool Show;
     public Rect2 Box;
     private static readonly Color FrameColor = new(1f, 0.30f, 0.22f, 0.95f);
     private const float BracketMaxLength = 20f;    // a corner bracket's longest arm
@@ -1564,7 +1564,7 @@ public partial class Titans
         bool dead = !this._partsPlayer.Alive(gun.Slot);
         bool sel = this._weaponSel == gi;
         this._wpnRows[wi].Visible = true;
-        this._wpnGroupCells[wi].Text = grp.Num.ToString();
+        this._wpnGroupCells[wi].Text = grp.Num.ToString(System.Globalization.CultureInfo.InvariantCulture);
         this._wpnGroupCells[wi].AddThemeColorOverride("font_color",
                     sel ? SelectedTextColor : GroupTextColor);
         this._wpnLabels[wi].Text = gun.Def.Name;
@@ -1721,7 +1721,7 @@ public partial class Titans
     // Pod status: only for pods the chassis actually HAS (the
     // Hector carries a single rack - an absent right pod is not
     // a "lost" one). Wording follows the equipped pod weapon.
-    string podName = (this._defPodL ?? this._defPodR)?.Short ?? "LRM";
+    string podName = (this._defPodL ?? this._defPodR)?.ShortName ?? "LRM";
     bool hasPodL = this._partsPlayer.Has(PartId.PodL), hasPodR = this._partsPlayer.Has(PartId.PodR);
     int podRocketsL = 0, podRocketsR = 0;
     foreach (var g in this._podGunsL)

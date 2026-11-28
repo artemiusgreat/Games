@@ -37,7 +37,10 @@ public static class StoryProgress
         {
           for (int p = 0; p < PlanetCount; p++)
           {
-            int.TryParse(parts[p], out _done[p]);
+            if (!int.TryParse(parts[p], out _done[p]))
+            {
+              _done[p] = 0;
+            }
           }
         }
       }
