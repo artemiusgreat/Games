@@ -76,5 +76,4 @@ public static class Paths
     public const string TerrainArm = "res://photo/textures/aerial_rocks_02/aerial_rocks_02_arm_2k.jpg";
     public const string ExplosionSheet = "res://assets/fx/explosion_fireball.png";
     // {0} = kit number, {1} = building index inside the kit.
-    public const string CityKitBuildingFormat = "res://assets/citykits/kit{0}/b_{1}.glb";
 }

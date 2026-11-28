@@ -108,7 +108,6 @@ public partial class Titans : Node3D
     private bool _boomShot; // TEMP probe: rider visibility across the pitch travel (round 28)
     private bool _leaveShot, _leaveShotDone, _leaveShotSaved; // proof hook: frame the exit popup
     private float _leaveShotT;
-    private bool _boomCheck; // TEMP probe: boom vs buildings + photo level frame (round 28 follow-up)
     private bool _lagCheck; // TEMP probe: camera lag + rock/tree movement rules (round 29)
     private bool _flipbookTest; // TEMP probe: Freelancer flipbook fireball (explosion prototype)
     private bool _grassStaged;
@@ -252,7 +251,6 @@ public partial class Titans : Node3D
     private float _pointDbgNext;
     private bool _pointHector;
     private bool _brakeTest; // --brake-test: stop-within-1s measurement, both chassis
-    private bool _roofTest; // --roof-test: jump onto a building roof and stand there
     private readonly System.Collections.Generic.List<(string Target, Vector3 Point)> _lrmImpacts = new();
     private Vector3 _enemyVel;
     private Vector3 _prevEnemyRoot;
@@ -438,7 +436,6 @@ public partial class Titans : Node3D
             if (arg == "--boom-shot") _boomShot = true;
             if (arg == "--flipbook-test") _flipbookTest = true;
             if (arg == "--leave-shot") _leaveShot = true;
-            if (arg == "--boom-check") _boomCheck = true;
             if (arg == "--lag-check") _lagCheck = true;
             if (arg == "--gait-shot") _gaitShot = true;
             if (arg == "--hector-cam") _hectorCam = true;
@@ -472,7 +469,6 @@ public partial class Titans : Node3D
             if (arg == "--point-walk") _pointWalk = true;
             if (arg == "--point-close") _pointClose = true;
             if (arg == "--brake-test") _brakeTest = true;
-            if (arg == "--roof-test") _roofTest = true;
             if (arg.StartsWith("--team-seed="))
             {
                 // Harness: pre-form a Story team of N riders
@@ -655,15 +651,10 @@ public partial class Titans : Node3D
         await BuildFrame(); // staged build: mesh in, skin next
         SkinTerrain(terrainMi);
         await BuildFrame(); // staged build: ground done, dressing next
-        Main.Roofs.Clear(); // rebuilt by the world builders below
-        // Round-1 ARENA props at fixed spots around the origin.
-        // Arena only (owner: "random pieces of building are
-        // sticking out of the ground" - in a 1900u mission
-        // world the origin is open wilderness; on Harbor it is
-        // a mountain, so these four buildings planted
-        // themselves on the slope there, half-buried. Missions
-        // dress themselves via their own builders/
-        // ScatterNature below.)
+        // Round-1 ARENA trees at fixed spots around the origin.
+        // Arena only: in a 1900u mission world the origin is
+        // open wilderness; missions dress themselves via their
+        // own builders/ScatterNature below.
         if (!WorldConfig.IsMission)
         {
             AddTree(new Vector3(-12f, 0f, -8f));
@@ -683,9 +674,9 @@ public partial class Titans : Node3D
         if (_photo)
         {
             var propPts = new System.Collections.Generic.List<(Vector2 P, float R)>();
-            foreach (var c in _props) propPts.Add((c.P, c.R));
+            foreach (var c in _hit.Props) propPts.Add((c.P, c.R));
             if (WorldConfig.Biome == WorldConfig.BiomeKind.Forest)
-                PhotoEnv.AddGrassField(this, _buildingPts, propPts); // the scanned grass is lush green - forest only
+                PhotoEnv.AddGrassField(this, propPts); // the scanned grass is lush green - forest only
             PhotoEnv.AddBackdrop(this);
         }
 
@@ -709,7 +700,7 @@ public partial class Titans : Node3D
         _player.RefreshMaterials();
         _enemy.RefreshMaterials();
         await BuildFrame(); // staged build: player + enemy in, foe next
-        if (((!PrecisionTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest) || _ffaTest)
+        if (((!PrecisionTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest) || _ffaTest)
             && (!_bracketActive || _foeMember != null)) BuildFoe();
         if (_bracketActive && _foe != null && _foeMember != null && _foeMemberTeam != 2)
         {
@@ -760,7 +751,7 @@ public partial class Titans : Node3D
         if (EnvVars.Flag(EnvVars.Sniper)) _sniper = true; // harness: scope captures
         BuildHud(layer);
         ApplyLoadout();
-        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_roofTest && !_pointTest && !_grassShot && !_boomShot && !_boomCheck && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
+        if (!_test && !_weaponsTest && !_breakTest && !_terrainTest && !_photoTest && !_gaitShot && !_ffaTest && !_lrmProbe && !_boneProbe && !_ppcProbe && !_debrisProbe && !_guardProbe && !_ffProbe && !_sfxProbe && !_targetProbe && !_feedProbe && !_ambientProbe && !_beamShot && !_controlsShot && !_bindingsProbe && !_stoneShot && !_viewShot && !_brakeTest && !_pointTest && !_grassShot && !_boomShot && !_lagCheck && !_flipbookTest && !_missionTest && !_leaveShot && !_longshotTest && !_rangeTest && !_teamTest && !_bracketTest && !_deployTest)
         {
             // Pre-game RiderLab (owner): the duel waits behind the lab
             // until DEPLOY. Test modes skip straight to the duel.
@@ -778,7 +769,7 @@ public partial class Titans : Node3D
         _built = true;
         _buildCover.QueueFree();
         _buildCover = null;
-        Dbg.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest} props={_props.Count} circles");
+        Dbg.Print($"DUEL ready test={_test} weaponsTest={_weaponsTest} breakTest={_breakTest} terrainTest={_terrainTest}");
         if (_terrainTest) TerrainSelfCheck();
         if (_weaponsTest)
         {
@@ -1238,7 +1229,6 @@ public partial class Titans : Node3D
             if (_viewShot) UpdateViewShot(dt);
             else if (_pointTest) UpdatePointTest(dt);
             else if (_brakeTest) UpdateBrakeTest(dt);
-            else if (_roofTest) UpdateRoofTest(dt);
             else if (_lrmProbe) UpdateLrmProbe(dt);
             else if (_boneProbe) UpdateBoneProbe(dt);
             else if (_ppcProbe) UpdatePpcProbe(dt);
@@ -1267,7 +1257,6 @@ public partial class Titans : Node3D
             else if (_photoTest) UpdatePhotoTest(dt);
             else if (_grassShot) UpdateGrassShot(dt);
             else if (_boomShot) UpdateBoomShot(dt);
-            else if (_boomCheck) UpdateBoomCheck(dt);
             else if (_flipbookTest) UpdateFlipbookTest(dt);
             else if (_lagCheck) UpdateLagCheck(dt);
             else if (_test) UpdateTest(dt);

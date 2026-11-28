@@ -167,8 +167,8 @@ public partial class Titans
     // team exists only in the live game.
     private bool AnyHarness => _test || _weaponsTest || _breakTest || _terrainTest
         || _photoTest || _missionTest || _ffaTest || _lrmProbe || _viewShot || _pointTest
-        || _brakeTest || _roofTest || _longshotTest || _rangeTest || _grassShot
-        || _boomShot || _boomCheck || _lagCheck || _flipbookTest || _gaitShot || _leaveShot;
+        || _brakeTest || _longshotTest || _rangeTest || _grassShot
+        || _boomShot || _lagCheck || _flipbookTest || _gaitShot || _leaveShot;
 
     private static string RoleForSlot(int slot) => Roles.AllyPrefix + slot;
 

@@ -6,8 +6,6 @@ using System.Collections.Generic;
 // stays one partial class - see Titans.cs for the field block.
 public partial class Titans
 {
-    private struct Circle { public Vector2 P; public float R; public float RoofTop; } // RoofTop > 0: a building circle whose push-out lifts at roof level.
-
     // Destructible environment (owner): buildings take weapon damage
     // and collapse into rubble; trees burn and smoke away.
     // (owner, 2026-11-27: the state is an enum, not magic
@@ -30,7 +28,6 @@ public partial class Titans
         public float FxAcc;
         public float StartScale = 1f;
         public readonly System.Collections.Generic.List<HitModel.PropCyl> Cyls = new();
-        public readonly System.Collections.Generic.List<Vector2> CirclePts = new();
     }
     private readonly System.Collections.Generic.List<Destructible> _destructibles = new();
 
@@ -153,8 +150,6 @@ public partial class Titans
                 }
             }
     }
-    private readonly List<Circle> _props = new();
-    private readonly System.Collections.Generic.List<Vector2> _buildingPts = new();
 
     // ---------- world ----------
 
@@ -460,9 +455,10 @@ public partial class Titans
         ApplyVisibilityRange(tree, TreeFadeEnd, TreeFadeMargin);
         float r = TreeRadiusFactor * scale;
         // Owner's rule: trees do NOT block movement - a rider that walks
-        // into one stomps it flat (see StompCheck). Only buildings (and
-        // rocks) keep movement circles. The hit cylinder stays, so
-        // trees still block shots and can be shot/burned.
+        // into one stomps it flat (see StompCheck). Nothing keeps
+        // movement circles any more (the buildings and rocks are
+        // gone). The hit cylinder stays, so trees still block
+        // shots and can be shot/burned.
         var treeCyl = new HitModel.PropCyl { P = new Vector2(pos.X, pos.Z), R = r, BaseY = pos.Y, Height = totalH * scale };
         _hit.Props.Add(treeCyl);
         // The canopy is a collider too (owner, three reports): the
@@ -482,7 +478,6 @@ public partial class Titans
             Center = new Vector3(pos.X, pos.Y, pos.Z),
             Radius = r, Height = totalH * scale, Hp = TreeHp, StartScale = scale
         };
-        td.CirclePts.Add(new Vector2(pos.X, pos.Z));
         td.Cyls.Add(treeCyl);
         td.Cyls.Add(canopyCyl);
         _destructibles.Add(td);
@@ -517,8 +512,6 @@ public partial class Titans
             foreach (var pad in Arena.ScatterPads)
                 if (p.DistanceTo(new Vector2(pad.X, pad.Z)) < pad.R + clearR) return false;
         }
-        foreach (var c in _props)
-            if (p.DistanceTo(c.P) < c.R + clearR + PropClearanceMargin) return false;
         return true;
     }
 
@@ -582,98 +575,9 @@ public partial class Titans
             AddTreeV(new Vector3(p.X, 0f, p.Y), rng.Next(3), sc, (float)rng.NextDouble());
             trees++;
         }
-        Dbg.Print($"DUEL scatter trees+={trees} propsNow={_props.Count}");
+        Dbg.Print($"DUEL scatter trees+={trees}");
     }
 
-    // Procedural facade (terrain-detail ask): a window grid with lit and
-    // dark panes, a door at street level and a darker parapet band -
-    // drawn once per building into a 256px image texture.
-    // Facade texture, second detail pass (owner): real masonry instead
-    // of flat paint - brick courses with mortar lines and per-brick
-    // tone jitter, or ashlar stone blocks with bevel shading on the
-    // alternate buildings. Windows are NOT painted here anymore: each
-    // window is a dark frame quad with a real transparent glass pane in
-    // front of it (see AddGlassPanes), so alignment is exact on every
-    // face. Door + transom stay painted.
-    private static int BrickHash(int seed, int a, int b)
-    {
-        int h = (seed * 73856093) ^ (a * 19349663) ^ (b * 83492791);
-        h = (h ^ (h >> 13)) * 1274126177;
-        return (h ^ (h >> 16)) & 0x3FF;
-    }
-
-    private static void AddQuad(System.Collections.Generic.List<Vector3> verts,
-        System.Collections.Generic.List<Vector3> norms,
-        System.Collections.Generic.List<int> idx,
-        Vector3 center, Vector3 right, Vector3 normal, float w, float h)
-    {
-        int b0 = verts.Count;
-        var up = Vector3.Up;
-        verts.Add(center - right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
-        verts.Add(center + right * (w / 2f) - up * (h / 2f)); norms.Add(normal);
-        verts.Add(center + right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
-        verts.Add(center - right * (w / 2f) + up * (h / 2f)); norms.Add(normal);
-        // Godot front faces are clockwise from outside (the same
-        // convention the terrain fix established): BL -> TR -> BR.
-        idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
-    }
-
-    // ---- Building detail (owner: buildings read as primitives;
-    // they need roofs, doors, balconies, fire escapes) ----
-    // One merged mesh per building, three materials - trim
-    // (parapets, canopies, balcony slabs, cornices: the wall
-    // concrete in the photo scene), metal (rails, fire escapes,
-    // HVAC), dark (doors, storefront glass). Every building gets
-    // a parapet, roof clutter and a front door with a canopy;
-    // taller ones add one seeded character: balcony rows, a
-    // zigzag fire escape, or cornice bands. Visual only - the
-    // pieces hug the walls inside the collider margin, and they
-    // ride the building node when it collapses.
-
-    // ---- City dressing (owner's references): neon signs on the
-    // gameplay buildings, a lit skyline beyond the boundary ----
-
-
-
-    // District blocks pack tighter than the generic circle
-    // spacing allows: a square's registered circle radius is
-    // its half-diagonal, so the circle test demands ~40% more
-    // room than the boxes need and killed half the block slots
-    // (measured). Blocks test true box overlap against the
-    // district's own placements instead, plus the nature-prop
-    // circles (buildings register RoofTop circles; trees and
-    // rocks don't).
-    // District block spacing (naming pass, 2026-11-27).
-    private const float BlockPadMargin = 0.15f;      // half-size padding on a block's test box
-    private const float BlockGap = 0.1f;             // extra gap demanded between block boxes
-    private const float BlockPropClearance = 2f;     // distance kept from nature-prop circles
-    private const float SkipRectMargin = 6f;         // skip rects (ramps/lifts/bridges) repel blocks by this much
-
-    // One district plot becomes a city block in the owner's
-    // reference image: several buildings of MIXED heights on a
-    // single block - low podiums beside a tower - with the gaps
-    // between blocks reading as streets. 2x2 sub-plots, 2-4
-    // filled; every block carries at least one low building
-    // (9-16u) and one tall one (26-39u).
-    // Rects where terrace works (ramps, lift pads) displace
-    // buildings: block slots landing inside are skipped.
-
-    // City block recipe (naming pass, 2026-11-27).
-    private const float BlockExtraSlotChance = 0.55f; // chance the 4th sub-plot is filled too
-    private const float BlockLowChance = 0.45f, BlockMidChance = 0.80f; // height-band rolls for extra buildings
-    private const float BlockJitterRange = 1.6f, BlockJitterHalf = 0.8f; // sub-plot position jitter
-    private const float BlockDepthMinFraction = 0.8f, BlockDepthRange = 0.2f; // depth as a fraction of width
-
-    // Cluster city scatter (naming pass, 2026-11-27).
-    private const float ClusterOffset = 48f;         // leg-cluster offset from the pad-pair midpoint
-    private const float MesaClearRadius = 33f;       // tournament: no buildings inside this of the mesa centre
-    private const float CityBuildingClearMargin = 2.5f; // ScatterFree margin over the footprint half-size (NOT SlopeTopTolerance - different test)
-    private const float CityMaxGroundHeight = 9.5f;  // tournament: no buildings on ground higher than this
-
-    // ---------- collisions ----------
-
-    // Collision, steering and stomp tuning (naming pass,
-    // 2026-11-27: names only, exact values).
     private const float FlyoverHeight = 12f;         // jump height at which riders pass over each other
     private const float SteeringBrakeMargin = 0.5f;  // extra separation the steering brake demands
     private const float SteeringBrakeDot = 0.3f;     // heading alignment above which a rider ahead brakes steering
@@ -684,21 +588,6 @@ public partial class Titans
     private const float PropHitReach = 0.35f;          // hit attribution slack around a prop cylinder
     private const float PropHitBandMargin = 0.6f;      // hit attribution slack above/below a prop cylinder
     private const float HitSmokeSeconds = 1.0f;        // shot trees smoke out over this
-    private const float PropMatchEpsilonSq = 0.001f;   // squared-distance match when removing prop circles
-    private const float RoofMatchEpsilon = 0.01f;      // centre match when removing a building's roof
-
-    private static Vector2 PushOut(Vector2 p, float r, Circle c, out float sep)
-    {
-        var d = p - c.P;
-        float dist = d.Length();
-        float min = r + c.R;
-        sep = dist;
-        if (dist >= min) return p;
-        if (dist < 1e-4f) d = new Vector2(1f, 0f);
-        else d /= dist;
-        return c.P + d * min;
-    }
-
     private void ResolveCollisions()
     {
         ResolveOne(_player);
@@ -842,32 +731,12 @@ public partial class Titans
     // foot plants right at the wall base.
     private const float FootPad = 0.5f;
 
-    private Vector3 ClampFootTarget(Vector3 t)
-    {
-        var p = new Vector2(t.X, t.Z);
-        float lvl = t.Y;
-        foreach (var c in _props)
-        {
-            if (c.RoofTop > 0f && lvl + StepUpClearance >= c.RoofTop) continue;
-            p = PushOut(p, FootPad, c, out _);
-        }
-        return new Vector3(p.X, t.Y, p.Y);
-    }
-
     private void ResolveOne(RiderWalker w)
     {
+        // Movement collision is the world bound alone (owner,
+        // 2026-11-27: trees are stomped, never walls, and the
+        // building circles are gone with the buildings).
         var p = new Vector2(w.RootPos.X, w.RootPos.Z);
-        for (int iter = 0; iter < 2; iter++)
-        {
-            foreach (var c in _props)
-            {
-                // A building's walls stop a rider on the ground -
-                // but not one standing on its roof or flying over
-                // it: at roof level the circle is not a wall.
-                if (c.RoofTop > 0f && w.SoleLevel + StepUpClearance >= c.RoofTop) continue;
-                p = PushOut(p, w.CollisionRadius, c, out _);
-            }
-        }
         float lim = WorldBound - w.CollisionRadius;
         p.X = Mathf.Clamp(p.X, -lim, lim);
         p.Y = Mathf.Clamp(p.Y, -lim, lim);
@@ -903,46 +772,17 @@ public partial class Titans
         var d = PropAt(point, extraReach);
         if (d == null) return;
         if (d.Kind == "tree") { DestroyTree(d, HitSmokeSeconds); return; }
-        d.Hp -= dmg;
-        Dbg.Print($"ENVDMG building at ({d.Center.X:F0},{d.Center.Z:F0}) hp={d.Hp:F0}");
-        if (d.Hp <= 0f) StartCollapse(d);
     }
 
     private void RemovePropColliders(Destructible d)
     {
         foreach (var c in d.Cyls) _hit.Props.Remove(c);
-        foreach (var pt in d.CirclePts)
-            for (int i = 0; i < _props.Count; i++)
-                if (_props[i].P.DistanceSquaredTo(pt) < PropMatchEpsilonSq)
-                    _props[i] = new Circle { P = pt, R = 0f, RoofTop = -1f };
-        if (d.Kind == "building")
-            Main.Roofs.RemoveAll(r => Mathf.Abs(r.Cx - d.Center.X) < RoofMatchEpsilon && Mathf.Abs(r.Cz - d.Center.Z) < RoofMatchEpsilon);
     }
 
     // Destruction FX recipes (naming pass, 2026-11-27:
-    // names only, exact values) - the collapse and
-    // tree-death bursts, flashes, lights and chunks.
-    private const float CollapseSeconds = 3.4f;      // collapse state lifetime (pieces fly, settle, dissolve)
-    private const float CollapseBurstHeightFraction = 0.35f;
-    private const float CollapseExplosionVolDb = 2f, CollapseExplosionPitch = 0.95f;
-    private static readonly Color CollapseFlashColor = new(1f, 0.8f, 0.5f);
-    private const float CollapseFlashRadius = 2.6f, CollapseFlashLife = 0.5f;
-    private static readonly Color CollapseDustFlashColor = new(0.75f, 0.72f, 0.66f);
-    private const float CollapseDustFlashRadius = 1.9f, CollapseDustFlashLife = 0.35f;
-    private const float CollapseDustFlashHeight = 1.5f;
-    private static readonly Color CollapseLightColor = new(1f, 0.6f, 0.25f);
-    private const float CollapseLightRange = 16f, CollapseLightLife = 0.8f; // energy is CollapseLightIntensity
-    private const int CollapseChunkCount = 14;
-    private const float CollapseChunkSizeMin = 0.7f, CollapseChunkSizeMax = 2.2f;
-    private const float CollapseChunkUpMin = 4f, CollapseChunkUpMax = 8.5f;
-    private const float CollapseChunkLife = 3.0f;
-    private const int CollapseFireCount = 80;
-    private const float CollapseFireLifetime = 1.5f;
-    private const float CollapseFireVelMin = 5f, CollapseFireVelMax = 11f;
-    private const float CollapseFireMeshRadius = 0.2f;
-    private const float CollapseFireScaleMin = 1f, CollapseFireScaleMax = 2f;
+    // names only, exact values) - the tree-death bursts,
+    // flashes, lights and chunks.
     private static readonly Vector3 FireBurstGravity = new(0f, -6f, 0f); // shared by the collapse and tree fire bursts
-    private const float CollapseBurnSeconds = 7f, CollapseBurnEmitterHeight = 0.6f;
     private const float TreeBurstHeightFraction = 0.7f;
     private static readonly Color TreeFlashColor = new(1f, 0.5f, 0.16f);
     private const float TreeFlashRadius = 1.1f, TreeFlashLife = 0.24f;
@@ -976,51 +816,6 @@ public partial class Titans
     private static readonly Color TreeSmokeFlashColor = new(1f, 0.5f, 0.15f);
     private const float TreeSmokeFlashRadius = 0.9f, TreeSmokeFlashLife = 0.22f;
 
-    private void StartCollapse(Destructible d)
-    {
-        d.State = DestrState.Collapsing;
-        d.Timer = CollapseSeconds; // pieces fly, settle, then dissolve (~3s lives)
-        d.PhaseLen = CollapseSeconds;
-        RemovePropColliders(d); // falling masonry no longer blocks or stops riders
-        // Round 21 (owner): the original building HIDES the moment
-        // it is destroyed - no more sliding/squashing underground.
-        // Only the pieces and the dust animate from here.
-        if (d.Node is Node3D bn) bn.Visible = false;
-        // Destruction is an EVENT now (round 7 - it used to sink
-        // silently): an explosion burst at the base, a dust flash, and
-        // the facade breaks into chunks that fly, tumble and settle
-        // as rubble around the footprint.
-        _envFxEvents++;
-        var mid = d.Center + Vector3.Up * (d.Height * CollapseBurstHeightFraction);
-        PlaySfx(_sfxExplosion, mid, CollapseExplosionVolDb, CollapseExplosionPitch);
-        SpawnExplosionFx(mid);
-        SpawnFlash(mid, CollapseFlashColor, CollapseFlashRadius, CollapseFlashLife);
-        SpawnFlash(d.Center + Vector3.Up * CollapseDustFlashHeight, CollapseDustFlashColor, CollapseDustFlashRadius, CollapseDustFlashLife);
-        SpawnImpactLight(mid, CollapseLightColor, CollapseLightIntensity, CollapseLightRange, CollapseLightLife);
-        // Round 21 (owner, supersedes round 20's no-blocks rule):
-        // the building explodes into PIECES (its own facade
-        // material), the pieces settle, then each dissolves into
-        // dust; a two-layer dust cloud billows over the whole event.
-        Material facade = null;
-        if (d.Node is MeshInstance3D fmi)
-            facade = fmi.GetSurfaceOverrideMaterial(0) ?? fmi.Mesh?.SurfaceGetMaterial(0);
-        SpawnChunks(mid, CollapseChunkCount, CollapseChunkSizeMin, CollapseChunkSizeMax, facade ?? RubbleMat, CollapseChunkUpMin, CollapseChunkUpMax, life: CollapseChunkLife);
-        // NO dust cloud (owner, 2026-11-20, repeating his
-        // 2026-11-16 rule): the round dust sprites read as
-        // smoke bubbles. A collapse is the explosion, the
-        // flashes, the fire burst and the flying pieces -
-        // nothing soft and round.
-        SpawnBurst(mid, FireParticleMat, CollapseFireCount, CollapseFireLifetime, CollapseFireVelMin, CollapseFireVelMax, FireBurstGravity, CollapseFireMeshRadius, CollapseFireScaleMin, CollapseFireScaleMax);
-        SpawnBurnEmitter(d.Center + Vector3.Up * CollapseBurnEmitterHeight, CollapseBurnSeconds);
-        Dbg.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) COLLAPSING (hidden, 14 pieces -> dust)");
-    }
-
-    // Owner's current rule: a tree is destroyed by ANY interaction -
-    // a single weapon hit of any kind, or a stomp. Its colliders come
-    // off immediately (shots and riders pass from that frame) and the
-    // mesh smokes out over ~1s. This supersedes the round-2 spec
-    // (ignite, burn 3s, then evaporate), under which a hit tree kept
-    // standing and blocking shots for up to ~6 seconds.
     private void DestroyTree(Destructible d, float smokeLen)
     {
         if (d.State != DestrState.Intact) return;
@@ -1081,18 +876,6 @@ public partial class Titans
                     RemovePropColliders(d);
                     d.Node.QueueFree();
                     Dbg.Print($"ENV tree at ({d.Center.X:F0},{d.Center.Z:F0}) GONE");
-                }
-            }
-            else if (d.State == DestrState.Collapsing) // building gone: pieces + dust animate (round 21)
-            {
-                // The building node is hidden (StartCollapse); the
-                // pieces fly and dissolve into dust under
-                // StepEnvChunks. Nothing animates on the node itself.
-                d.Timer -= dt;
-                if (d.Timer <= 0f)
-                {
-                    d.State = DestrState.Gone;
-                    Dbg.Print($"ENV building at ({d.Center.X:F0},{d.Center.Z:F0}) CLEARED (pieces turned to dust)");
                 }
             }
         }

@@ -104,7 +104,7 @@ public partial class Titans
         // shrinks, so only the finished states are pinned hidden.
         HashSet<Node3D> gone = null;
         foreach (var d in _destructibles)
-            if (d.State == DestrState.Gone || (d.Kind == "building" && d.State >= DestrState.Collapsing))
+            if (d.State == DestrState.Gone)
                 (gone ??= new HashSet<Node3D>()).Add(d.Node);
         foreach (var (node, centre, range) in _streamed)
         {

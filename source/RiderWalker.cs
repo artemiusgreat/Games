@@ -65,7 +65,6 @@ public partial class RiderWalker : Node3D
 
     private const float StandReachFactor = 0.90f;
     private const float AirborneSoleDrop = 10.5f; // SoleLevel: the soles hang this far under the root when no foot is planted
-    private const float GroundStepTolerance = 1.5f; // GroundHere: sole level plus this is the roof-adoption reference
     // Thruster tuning (owner, see the SetThrust comment):
     // burn time, recharge time, climb acceleration and cap,
     // fall gravity and terminal velocity - exact values.
@@ -80,7 +79,6 @@ public partial class RiderWalker : Node3D
     // the owner's tightened standard).
     private const float AirborneHeightEpsilon = 0.02f; // jump height above which the rider counts as airborne
     private const float SoleDropEngageHeight = 0.05f;  // jump height at which the sole level switches to the hang drop
-    private const float LedgeSlack = 4.0f;             // GroundAt: a ledge this far above the root may still ground the feet
     private const float TorsoPitchMin = -0.32f, TorsoPitchMax = 0.48f;   // the torso bone's pitch stops
     private const float TorsoRenderPitchMin = -0.85f, TorsoRenderPitchMax = 0.32f; // rendered pitch clamp (droop included)
     private const float MinDirLengthSq = 0.01f;        // squared length below which a direction is unusable
@@ -94,8 +92,6 @@ public partial class RiderWalker : Node3D
     private const float MinStepDuration = 0.01f;       // step-duration divisor guard
     private const float FootClampEpsilon = 0.001f;     // a foot clamp counts as moved past this
     private const float StrideCapSlack = 0.001f;       // trail-vs-demand slack that detects the stride budget capping
-    private const float CeilingProbeAboveGround = 0.5f; // ceiling probe starts this far above the ground reference
-    private const float HeadRoomMargin = 0.5f;         // head room charged above the chassis height at a ceiling
     private const float BrakeDetectEpsilon = 0.001f;   // target-vs-speed slack in the braking test
     private const float BrakeOvershootFactor = 1.15f;  // brake rate overshoot (stop inside one second incl. detection lag)
     private const float CohesionWindowSeconds = 0.25f; // blocked-coherence sampling window
@@ -240,11 +236,10 @@ public partial class RiderWalker : Node3D
         }
     }
 
-    // Foot ground: terrain, or a building roof the soles are
-    // already level with (standing on it, falling onto it).
-    private float GroundHere(float x, float z) => Airborne
-        ? Main.GroundAt(x, z, SoleLevel + GroundStepTolerance, _rootPos.Y, LedgeSlack)
-        : Main.GroundAt(x, z, SoleLevel + GroundStepTolerance);
+    // Foot ground: the terrain (owner, 2026-11-27: roofs and
+    // decks are gone with the buildings - nothing else is
+    // walkable).
+    private float GroundHere(float x, float z) => Main.HeightAt(x, z);
     public float LegsYaw => _legsYaw;
     public float CollisionRadius => _cfg.CollisionRadius;
     public float Height => _cfg.TargetHeight;
@@ -836,32 +831,6 @@ public partial class RiderWalker : Node3D
         {
             _jumpH += _jumpVel * h;
             if (_jumpH <= 0f) { _jumpH = 0f; _jumpVel = 0f; }
-        }
-        // Ceilings (owner: platforms collide from below too):
-        // a thrustering rider under a deck bonks against its
-        // underside instead of passing through it. The head
-        // room is the FULL chassis height above the soles:
-        // _rootPos.Y sits at sole level (_groundY + _jumpH)
-        // and the body stands TargetHeight tall on it. (The
-        // first cut charged only TargetHeight - 10.5 against
-        // the ceiling, so the head and most of the body came
-        // through the deck before the clamp bit - the owner's
-        // 'no collision from the bottom' report, 2026-11-11;
-        // the old bonk test passed because it capped the root
-        // by the same wrong allowance instead of the head.)
-        if (_jumpH > 0f)
-        {
-            float ceil = Main.CeilingAt(_rootPos.X, _rootPos.Z, _groundY + CeilingProbeAboveGround);
-            if (ceil < float.MaxValue)
-            {
-                float headRoom = _cfg.TargetHeight + HeadRoomMargin;
-                float maxH = ceil - headRoom - _groundY;
-                if (_jumpH > maxH)
-                {
-                    _jumpH = Mathf.Max(0f, maxH);
-                    if (_jumpVel > 0f) _jumpVel = 0f;
-                }
-            }
         }
         if (!_thrustHeld && JumpCharge < 1f)
             JumpCharge = Mathf.Min(1f, JumpCharge + h / ThrustRechargeSeconds); // recharge is gated on the KEY, not on thrust: it starts the moment SPACE is released - ground or air (owner round 22) - and a held key on empty tanks stays dead instead of sputtering

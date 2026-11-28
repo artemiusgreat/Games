@@ -207,66 +207,6 @@ public partial class Main : Node3D
 	// Verification hook: the stored analytic height at a grid node.
 	public static float GridHeightAt(int i, int j) => Grid[j * GridN + i];
 
-	// Building roofs a rider can stand on (owner, 2026-10-31):
-	// registered by the world builders (building shells,
-	// terrace decks), removed when the building is destroyed.
-	// Axis-aligned rectangles with a top.
-	// Under: the surface's underside height when the space
-	// below it is open (terrace decks, lift pads, the island
-	// bridge slab) - thruster flight bonks against it (owner:
-	// collision works both ways). 0 = solid / no underside.
-	public struct RoofRect { public float Cx, Cz, Hx, Hz, Top, Under; }
-	public static readonly System.Collections.Generic.List<RoofRect> Roofs = new();
-
-	// Ground height for a walker at (x, z): the terrain, or a
-	// roof's top when the walker's soles are already at that level
-	// - refY is the sole level plus a small step tolerance, so a
-	// walker standing ON the roof (or falling onto it) grounds on
-	// it, while a walker on the ground beside the building, whose
-	// refY sits far below the top, keeps the terrain and is still
-	// stopped by the walls.
-	public static float GroundAt(float x, float z, float refY, float ledgeRootY = float.NaN, float ledgeSlack = 0f)
-	{
-		// Ledge adoption (owner: thruster landings on the Harbor
-		// decks): an AIRBORNE walker whose hips are already above
-		// a top and whose soles hang within ledgeSlack below it
-		// grounds on it - he clambers up the last few units. A
-		// walker UNDER the same deck (hips below the top) never
-		// adopts it, so decks stay walkable from underneath.
-		bool Ledge(float top) => ledgeSlack > 0f && ledgeRootY > top && refY >= top - ledgeSlack;
-		// Step-up allowance (owner's ramp-lip fall-through,
-		// 2026-11-10): a climbing walker plants its next foot up
-		// to ~2.5u above its current sole - a stride's rise.
-		// Roofs need the same allowance ramps always had: just
-		// past a ramp's lip the deck is the only surface under
-		// the leading foot, and with a long stride the trailing
-		// foot still sits ~2u below the deck top, so a strict
-		// refY >= Top planted that foot on the terrain BELOW
-		// (LIPSWEEP: 45 of 725 plant cases returned 0 under a
-		// 22 deck). The allowance is far too small to adopt a
-		// deck from the ground beneath it (22 - 2.5 >> 1.5).
-		const float StepUp = 2.5f;
-		float g = HeightAt(x, z);
-		foreach (var r in Roofs)
-			if (r.Top > g && (refY >= r.Top - StepUp || Ledge(r.Top)) && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
-				g = r.Top;
-		return g;
-	}
-
-	// The lowest underside strictly above aboveY in this
-	// column (owner: platforms collide from below too - a
-	// thrustering rider must not pass through a deck). Counts
-	// deck/pad undersides. Returns
-	// float.MaxValue when the column is open to the sky.
-	public static float CeilingAt(float x, float z, float aboveY)
-	{
-		float c = float.MaxValue;
-		foreach (var r in Roofs)
-			if (r.Under > aboveY && r.Under < c && Mathf.Abs(x - r.Cx) <= r.Hx && Mathf.Abs(z - r.Cz) <= r.Hz)
-				c = r.Under;
-		return c;
-	}
-
 	private static Vector3 GridNormal(int i, int j, float step)
 	{
 		int il = Mathf.Max(i - 1, 0), ir = Mathf.Min(i + 1, GridN - 1);

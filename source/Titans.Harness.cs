@@ -13,6 +13,7 @@ public partial class Titans
     // speed staged walkers drive at, and the limp phase's
     // measurement window in seconds.
     private const float StagingDriveSpeed = 3f;
+    private const float FlatsTrioPlayerZ = 85f; // the flats trio's player mark (was the boom probe's photo mark)
     private const string ProofDir = "res://proof/"; // every harness capture writes under here
     private const float LimpMeasureSeconds = 3f;
 
@@ -26,7 +27,7 @@ public partial class Titans
     // facing yaw 0 on the arena flats.
     private void StageFlatsTrio()
     {
-        _player.Teleport(new Vector3(0f, Main.HeightAt(0f, BoomCheckPhotoZ), BoomCheckPhotoZ), 0f);
+        _player.Teleport(new Vector3(0f, Main.HeightAt(0f, FlatsTrioPlayerZ), FlatsTrioPlayerZ), 0f);
         _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ParkedEnemyZ), ParkedEnemyZ), 0f);
         _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
     }
@@ -689,7 +690,7 @@ public partial class Titans
     // ---------- weapons-test choreography ----------
 
     private enum WeaponsPhase { Settle, Laser, Autocannon, Lrm, Blocked, ReturnFire, Kill, PlayerDeath, Environment }
-    private enum WeaponsEnvStep { Stage, CollapseBuilding, BuildingGone, TreeSmoke, FarTargets }
+    private enum WeaponsEnvStep { Stage, TreeHit, TreeSmoke, FarTargets }
 
     // Weapons-test timers, tolerances and staging (exact values).
     private const double WPhaseTimeoutSeconds = 40;
@@ -731,9 +732,6 @@ public partial class Titans
     private const double WDeathResetSeconds = 0.9;
     private const float WDeathDamage = 9999f;
     private const float WDeathHitHeight = 8f;
-    private const float WEnvFireDistance = 16f;
-    private const float WEnvAimHeightFactor = 0.55f;
-    private const double WEnvCollapseTimeoutSeconds = 20;
     private const float WEnvShotOriginHeight = 8f;
     private const float WEnvRubbleAimHeight = 2f;
     private const float WEnvRayRange = 30f;
@@ -1992,23 +1990,16 @@ public partial class Titans
     // (only tall objects should block movement)? (3) trees - a
     // rider staged just outside the old stomp trigger but inside
     // body reach: does the tree die before contact?
-    private enum LagStage { NotStarted = -1, Setup, RockRun, TreeVerdict }
+    private enum LagStage { NotStarted = -1, Setup, TreeRun, TreeVerdict }
     private const float LagFlickYaw = 1.2f;
     private const float LagFlickPitch = 0.8f;
     private const int LagSettleFrameCap = 240;
     private const float LagSettleTolerance = 0.05f;
-    private const float LagRockMinRadius = 1.2f;
-    private const float LagRockStageGap = 3f;
     private const float LagTreeMaxCenterY = 12f;
     private const float LagTreeStageGap = 0.5f;
-    private const float LagRockRunSeconds = 5f;
     private const float LagTreeVerdictSeconds = 0.5f;
     private LagStage _lagStage = LagStage.NotStarted;
     private float _lagT;
-    private Circle _lagRock;
-    private bool _lagHasRock;
-    private bool _lagRockStaged;
-    private float _lagRockMin = float.MaxValue;
     private Destructible _lagTree;
     private void UpdateLagCheck(float dt)
     {
@@ -2043,56 +2034,28 @@ public partial class Titans
                 settle++;
             }
             Dbg.Print($"LAGCHECK cameraLag={lag0:F2}u one frame after a 1.2rad yaw + 0.8rad pitch flick; settleFrames={settle} to within 0.05u (0 = camera exact every frame)");
-            _lagHasRock = false;
-            foreach (var c in _props)
-                if (c.RoofTop <= 0f && c.R > LagRockMinRadius) { _lagRock = c; _lagHasRock = true; break; }
-            Dbg.Print(_lagHasRock
-                ? $"LAGCHECK rock candidate at {_lagRock.P} R={_lagRock.R:F2} playerCR={_player.CollisionRadius:F2}"
-                : "LAGCHECK no rock candidate found");
+            // The rock stage is gone with the rocks (owner,
+            // 2026-11-20) and the prop circles with the
+            // buildings (2026-11-27): the tree stomp verdict
+            // stages directly from Setup now.
+            _lagStage = LagStage.TreeRun;
+            _lagT = 0f;
+            _lagTree = null;
+            foreach (var d in _destructibles)
+                if (d.Kind == "tree" && d.State == DestrState.Intact && d.Center.Y < LagTreeMaxCenterY) { _lagTree = d; break; }
+            if (_lagTree != null)
+            {
+                float off = _player.CollisionRadius + _lagTree.Radius + LagTreeStageGap;
+                var sp = new Vector3(_lagTree.Center.X + off, 0f, _lagTree.Center.Z);
+                sp.Y = Main.HeightAt(sp.X, sp.Z);
+                _player.Teleport(sp, 0f);
+                _player.SetDrive(0f, 0f);
+                Dbg.Print($"LAGCHECK tree at ({_lagTree.Center.X:F0},{_lagTree.Center.Z:F0}) trunkR={_lagTree.Radius:F2} stagedDist={off:F2} oldTrigger={_player.CollisionRadius + 0.35f:F2} bodyReach={_player.CollisionRadius + _lagTree.Radius:F2}");
+            }
+            else Dbg.Print("LAGCHECK no tree candidate found");
             return;
         }
-        if (_lagStage == LagStage.Setup)
-        {
-            if (_lagHasRock)
-            {
-                if (!_lagRockStaged)
-                {
-                    _lagRockStaged = true;
-                    float off = _lagRock.R + _player.CollisionRadius + LagRockStageGap;
-                    var sp = new Vector3(_lagRock.P.X + off, 0f, _lagRock.P.Y);
-                    sp.Y = Main.HeightAt(sp.X, sp.Z);
-                    _player.Teleport(sp, Mathf.Pi / 2f);
-                    _playerYaw = Mathf.Pi / 2f; // heading -X, straight at the rock
-                }
-                ApplyPlayerInput(dt, true, false, false, false, false);
-                var rp0 = new Vector2(_player.RootPos.X, _player.RootPos.Z);
-                _lagRockMin = Mathf.Min(_lagRockMin, rp0.DistanceTo(_lagRock.P));
-            }
-            if (_lagT > LagRockRunSeconds)
-            {
-                _lagStage = LagStage.RockRun;
-                _lagT = 0f;
-                var rp = new Vector2(_player.RootPos.X, _player.RootPos.Z);
-                float dist = rp.DistanceTo(_lagRock.P);
-                Dbg.Print($"LAGCHECK ROCK endDist={dist:F2} minDist={_lagRockMin:F2} rockR={_lagRock.R:F2} oldWallAt={_lagRock.R + _player.CollisionRadius:F2} {(_lagRockMin < _lagRock.R ? "CROSSED the rock disc - walked through" : "STOPPED outside it")}");
-                _player.SetDrive(_playerYaw, 0f);
-                _lagTree = null;
-                foreach (var d in _destructibles)
-                    if (d.Kind == "tree" && d.State == DestrState.Intact && d.Center.Y < LagTreeMaxCenterY) { _lagTree = d; break; }
-                if (_lagTree != null)
-                {
-                    float off = _player.CollisionRadius + _lagTree.Radius + LagTreeStageGap;
-                    var sp = new Vector3(_lagTree.Center.X + off, 0f, _lagTree.Center.Z);
-                    sp.Y = Main.HeightAt(sp.X, sp.Z);
-                    _player.Teleport(sp, 0f);
-                    _player.SetDrive(0f, 0f);
-                    Dbg.Print($"LAGCHECK tree at ({_lagTree.Center.X:F0},{_lagTree.Center.Z:F0}) trunkR={_lagTree.Radius:F2} stagedDist={off:F2} oldTrigger={_player.CollisionRadius + 0.35f:F2} bodyReach={_player.CollisionRadius + _lagTree.Radius:F2}");
-                }
-                else Dbg.Print("LAGCHECK no tree candidate found");
-            }
-            return;
-        }
-        if (_lagStage == LagStage.RockRun && _lagT > LagTreeVerdictSeconds)
+        if (_lagStage == LagStage.TreeRun && _lagT > LagTreeVerdictSeconds)
         {
             _lagStage = LagStage.TreeVerdict;
             Dbg.Print(_lagTree != null
@@ -2100,124 +2063,6 @@ public partial class Titans
                 : "LAGCHECK TREE skipped");
             Dbg.Print("LAGCHECK DONE");
             GetTree().Quit();
-        }
-    }
-
-    private enum BoomCheckStage { NotStarted = -1, CityLevel, CityPitch, Mesa, Photo, Finished }
-    private const float BoomCheckGateSeconds = 0.4f;
-    private const float BoomCheckPitch = 0.35f;
-    private const float BoomCheckDeviationMax = 0.15f;
-    private const float BoomCheckAimUpMin = 0.05f;
-    private const float BoomCheckBuildingGapZ = 14f;
-    private const float BoomCheckPropPrintRadius = 12f;
-    private const float BoomCheckMesaZ = 40f;
-    private const float BoomCheckPhotoZ = 85f;
-    private BoomCheckStage _boomCheckStage = BoomCheckStage.NotStarted;
-    private float _boomCheckT;
-    private int _boomCheckFails;
-    // The camera contract (owner, 2026-11-15): the chase camera
-    // sits EXACTLY on the boom formula - anchor minus aim dir
-    // times boom, with only the steep-pitch shortening and the
-    // floor clamp applied. Any deviation means something (rider,
-    // building, terrain) moved the camera, which is now banned.
-    private void BoomAssert(string tag, float pitch)
-    {
-        float k = _playerSpec.Height / 13f;
-        var aimDir = AimDirWorld();
-        float upRamp = Mathf.Abs(aimDir.Y) / 0.9757f;
-        var anchor = _player.RootPos + Vector3.Up * (_playerSpec.Height * (1.15f + 0.22f * upRamp));
-        float boom = 26f * k;
-        if (aimDir.Y > BoomCheckAimUpMin)
-        {
-            float clearance = anchor.Y - (Main.HeightAt(anchor.X, anchor.Z) + 1.3f);
-            boom = Mathf.Min(boom, Mathf.Max(8f * k, clearance / aimDir.Y));
-        }
-        var expected = anchor - aimDir * boom;
-        float fy = Main.HeightAt(expected.X, expected.Z) + 1.3f;
-        if (expected.Y < fy) expected.Y = fy;
-        float dev = _cam.GlobalPosition.DistanceTo(expected);
-        bool ok = dev < BoomCheckDeviationMax;
-        if (!ok) _boomCheckFails++;
-        Dbg.Print($"BOOMCHECK {tag} pitch={pitch:F2} dev={dev:F3} {(ok ? "PASS" : "FAIL")} camPos={_cam.GlobalPosition} expected={expected}");
-    }
-
-    private void UpdateBoomCheck(float dt)
-    {
-        _aimPoint = TorsoAimPoint();
-        _boomCheckT += dt;
-        if (_boomCheckStage < BoomCheckStage.CityLevel)
-        {
-            _boomCheckStage = BoomCheckStage.CityLevel;
-            _boomCheckT = 0f;
-            var bp = _buildingPts[0];
-            _player.Teleport(new Vector3(bp.X, Main.HeightAt(bp.X, bp.Y - BoomCheckBuildingGapZ), bp.Y - BoomCheckBuildingGapZ), 0f);
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ParkedEnemyZ), ParkedEnemyZ), 0f);
-            _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
-            _player.SetDrive(0f, 0f);
-            _player.TorsoTwist = 0f;
-            _hpPlayer = InvulnerableHp;
-            Dbg.Print($"BOOMCHECK staged: rider 14u in front of building[0] at {bp}, facing -Z (building behind)");
-            return;
-        }
-        if (_pendingPath != null || _capturing || _boomCheckT < BoomCheckGateSeconds) return;
-        _boomCheckT = 0f;
-        if (_boomCheckStage == BoomCheckStage.CityLevel || _boomCheckStage == BoomCheckStage.CityPitch)
-        {
-            float pitch = _boomCheckStage == BoomCheckStage.CityLevel ? 0f : BoomCheckPitch;
-            _player.AimPitchWide = pitch;
-            _player.TorsoPitch = pitch;
-            UpdateCamera(0f);
-            var vp = GetViewport().GetVisibleRect().Size;
-            var head = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
-            var feet = _cam.UnprojectPosition(_player.RootPos);
-            Dbg.Print($"BOOMCHECK city pitch={pitch:F2} camPos={_cam.GlobalPosition} head=({head.X:F0},{head.Y:F0}) feet=({feet.X:F0},{feet.Y:F0}) viewport={vp}");
-            BoomAssert("city", pitch);
-            var anch = _player.RootPos + Vector3.Up * (_playerSpec.Height * 1.15f);
-            var blk = _hit.Ray(anch, -AimDirWorld(), 26f, Roles.Player);
-            Dbg.Print($"BOOMDBG root={_player.RootPos} anchor={anch} terrainAtCam={Main.HeightAt(_cam.GlobalPosition.X, _cam.GlobalPosition.Z):F1} blockHit={blk.Hit} blockT={blk.T:F1} blockTarget={blk.Target}");
-            foreach (var pc in _hit.Props) if (new Vector2(pc.P.X - _buildingPts[0].X, pc.P.Y - _buildingPts[0].Y).Length() < BoomCheckPropPrintRadius)
-                Dbg.Print($"BOOMDBG cyl P={pc.P} R={pc.R:F1} base={pc.BaseY:F1} top={pc.BaseY + pc.Height:F1}");
-            int st = (int)_boomCheckStage;
-            _boomCheckStage++;
-            QueueCapture($"{ProofDir}boom_city{st}.png", $"boomcity{st}", CamMode.Chase);
-        }
-        else if (_boomCheckStage == BoomCheckStage.Mesa)
-        {
-            // Mesa staging (owner, 2026-11-15: NOTHING blocks the
-            // camera): rider 40u south of the centre mesa facing
-            // +Z, so the full boom points INTO the mesa flank.
-            // Under the old occlusion rules the terrain ray pulled
-            // the boom in to ~5u; now the camera must sit exactly
-            // on the boom formula (floor clamp included).
-            _boomCheckStage++;
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, BoomCheckMesaZ), BoomCheckMesaZ), 0f);
-            _player.SetDrive(0f, 0f);
-            _player.TorsoTwist = Mathf.Pi;
-            _player.AimPitchWide = 0f;
-            _player.TorsoPitch = 0f;
-            UpdateCamera(0f);
-            var vp2 = GetViewport().GetVisibleRect().Size;
-            var head2 = _cam.UnprojectPosition(_player.RootPos + Vector3.Up * _playerSpec.Height);
-            var feet2 = _cam.UnprojectPosition(_player.RootPos);
-            Dbg.Print($"BOOMCHECK mesa pitch=0.00 camPos={_cam.GlobalPosition} head=({head2.X:F0},{head2.Y:F0}) feet=({feet2.X:F0},{feet2.Y:F0}) viewport={vp2}");
-            BoomAssert("mesa", 0f);
-            QueueCapture(ProofDir + "boom_mesa.png", "boommesa", CamMode.Chase);
-        }
-        else if (_boomCheckStage == BoomCheckStage.Photo)
-        {
-            _boomCheckStage++;
-            if (_photo)
-            {
-                _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 85f), 85f), 0f);
-                _player.SetDrive(0f, 0f);
-                _player.TorsoTwist = 0f;
-                _player.AimPitchWide = 0f;
-                _player.TorsoPitch = 0f;
-                UpdateCamera(0f);
-                QueueCapture(ProofDir + "boom_photo_level.png", "boomphotolevel", CamMode.Chase,
-                    () => { Dbg.Print(_boomCheckFails == 0 ? "BOOMCHECK DONE" : $"BOOMCHECK FAIL x{_boomCheckFails}"); GetTree().Quit(); });
-            }
-            else { Dbg.Print(_boomCheckFails == 0 ? "BOOMCHECK DONE" : $"BOOMCHECK FAIL x{_boomCheckFails}"); GetTree().Quit(); }
         }
     }
 
@@ -2346,105 +2191,6 @@ public partial class Titans
                 Dbg.Print("BRAKE staged: Hector accelerating to run speed");
             }
             else GetTree().Quit();
-        }
-    }
-
-    // --roof-test: the owner's rooftop case (2026-10-31) - the
-    // Enyo jump-jets from beside the (22,8) building, flies over
-    // its roof, cuts the thrusters and must LAND AND STAND on the
-    // roof (soles at roof level, not sunk to the terrain, not
-    // pushed out by the wall colliders) - then walk on it.
-    private enum RoofStage { NotStarted = -1, WalkIn, OverRoof, Settle, WalkRoof, Done }
-    private const float RoofAnchorX = 22f;
-    private const float RoofAnchorZ = 8f;
-    private const float RoofMatchTolerance = 0.1f;
-    private const float RoofTimeoutSeconds = 40f;
-    private const float RoofWalkInX = 6f;
-    private const float RoofApproachSpeed = 4.2f;
-    private const float RoofJumpMarkX = 10.5f;
-    private const float RoofCenterTolerance = 2.5f;
-    private const float RoofEarlyCutX = 17f;
-    private const float RoofLandedEpsilon = 0.01f;
-    private const float RoofSettleSeconds = 1.6f;
-    private const float RoofSoleTolerance = 0.8f;
-    private const float RoofAboveTerrain = 7f;
-    private const float RoofWalkSpeed = 3f;
-    private const float RoofWalkSeconds = 1.5f;
-    private const float RoofWalkMin = 2.2f;
-    private RoofStage _roofStage = RoofStage.NotStarted;
-    private float _roofT, _roofTop;
-    private Vector3 _roofCenter, _roofWalkFrom;
-    private void UpdateRoofTest(float dt)
-    {
-        _roofT += dt;
-        if (_roofStage < RoofStage.WalkIn)
-        {
-            _roofStage = RoofStage.WalkIn;
-            _roofT = 0f;
-            foreach (var r in Main.Roofs)
-                if (Mathf.Abs(r.Cx - RoofAnchorX) < RoofMatchTolerance && Mathf.Abs(r.Cz - RoofAnchorZ) < RoofMatchTolerance)
-                { _roofTop = r.Top; _roofCenter = new Vector3(r.Cx, 0f, r.Cz); }
-            if (_roofTop <= 0f) { Dbg.Print("ROOF FAIL no roof registered for the (22,8) building"); GetTree().Quit(); return; }
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ParkedEnemyZ), ParkedEnemyZ), 0f);
-            // A running approach, like real play: the burn budget
-            // (2.2s) cannot lift from a standstill AND cross - the
-            // horizontal Accel is only 4.2. Walk in from x=6, light
-            // the thrusters at x=10.5, and momentum plus burn carry
-            // him over the edge (x=16) just as his soles reach the
-            // roof line.
-            _player.Teleport(new Vector3(RoofWalkInX, Main.HeightAt(RoofWalkInX, RoofAnchorZ), RoofAnchorZ), RiderWalker.YawOf(Vector3.Right));
-            _player.SetDrive(_player.LegsYaw, RoofApproachSpeed);
-            Dbg.Print($"ROOF staged: roofTop={_roofTop:F1} terrainAtBuilding={Main.HeightAt(RoofAnchorX, RoofAnchorZ):F1} - walking in, thrusters at x=10.5");
-            return;
-        }
-        if (_roofT > RoofTimeoutSeconds) { Dbg.Print($"ROOF FAIL timeout in stage {(int)_roofStage} (root={_player.RootPos} sole={_player.SoleLevel:F1} jumpH={_player.JumpHeight:F1} charge={_player.JumpCharge:F2})"); GetTree().Quit(); return; }
-        switch (_roofStage)
-        {
-            case RoofStage.WalkIn: // walking in - light the thrusters at the mark
-                if (_player.RootPos.X >= RoofJumpMarkX)
-                {
-                    _player.SetThrust(true);
-                    _roofStage = RoofStage.OverRoof;
-                    Dbg.Print($"ROOF thrusters lit at x={_player.RootPos.X:F1} - climbing over the edge");
-                }
-                break;
-            case RoofStage.OverRoof: // over the roof (or set down on it early): cut
-                if (Mathf.Abs(_player.RootPos.X - _roofCenter.X) < RoofCenterTolerance && Mathf.Abs(_player.RootPos.Z - _roofCenter.Z) < RoofCenterTolerance
-                    || _player.JumpHeight <= RoofLandedEpsilon && _player.RootPos.X > RoofEarlyCutX)
-                {
-                    _player.SetThrust(false);
-                    _player.SetDrive(_player.LegsYaw, 0f);
-                    _roofStage = RoofStage.Settle;
-                    _roofT = 0f;
-                    Dbg.Print($"ROOF over the roof at x={_player.RootPos.X:F1} - thrusters cut, settling");
-                }
-                break;
-            case RoofStage.Settle: // land and settle
-                if (_player.JumpHeight <= RoofLandedEpsilon && _roofT > RoofSettleSeconds)
-                {
-                    float soleErr = _player.SoleLevel - _roofTop;
-                    bool onRoof = Mathf.Abs(soleErr) <= RoofSoleTolerance && _player.RootPos.Y > Main.HeightAt(RoofAnchorX, RoofAnchorZ) + RoofAboveTerrain;
-                    Dbg.Print($"ROOF LAND sole={_player.SoleLevel:F2} roofTop={_roofTop:F2} err={soleErr:F2} rootY={_player.RootPos.Y:F1}");
-                    Dbg.Print(onRoof ? "ROOF LAND PASS standing on the roof" : "ROOF LAND FAIL not standing on the roof");
-                    _roofWalkFrom = _player.RootPos;
-                    _player.SetDrive(_player.LegsYaw, RoofWalkSpeed);
-                    _roofStage = RoofStage.WalkRoof;
-                    _roofT = 0f;
-                }
-                break;
-            case RoofStage.WalkRoof: // walk on the roof
-                if (_roofT > RoofWalkSeconds)
-                {
-                    _player.SetDrive(_player.LegsYaw, 0f);
-                    float walked = new Vector2(_player.RootPos.X - _roofWalkFrom.X, _player.RootPos.Z - _roofWalkFrom.Z).Length();
-                    float soleErr = _player.SoleLevel - _roofTop;
-                    bool ok = walked >= RoofWalkMin && Mathf.Abs(soleErr) <= RoofSoleTolerance;
-                    Dbg.Print($"ROOF WALK walked={walked:F1}u sole={_player.SoleLevel:F2} err={soleErr:F2}");
-                    Dbg.Print(ok ? "ROOF WALK PASS walked across the roof at roof level" : "ROOF WALK FAIL could not walk on the roof");
-                    _roofStage = RoofStage.Done;
-                    QueueCapture(ProofDir + "roof_stand.png", "roof", CamMode.Chase, () => GetTree().Quit());
-                }
-                break;
         }
     }
 
@@ -3155,66 +2901,30 @@ public partial class Titans
                 }
                 break;
 
-            case WeaponsPhase.Environment: // ENV: destructible buildings + trees
+            case WeaponsPhase.Environment: // ENV: destructible trees (owner, 2026-11-27: the building half went with the buildings)
                 if (_wEnvStep == WeaponsEnvStep.Stage)
                 {
                     ResetDuel();
-                    _wEnvB = null; _wEnvT = null;
+                    _wEnvT = null;
                     foreach (var d in _destructibles)
-                    {
-                        if (d.Kind == "building" && d.State == DestrState.Intact && _wEnvB == null) _wEnvB = d;
                         if (d.Kind == "tree" && d.State == DestrState.Intact && _wEnvT == null) _wEnvT = d;
-                    }
-                    if (_wEnvB == null || _wEnvT == null) { WFail("no intact building/tree for the env phase"); return; }
+                    if (_wEnvT == null) { WFail("no intact tree for the env phase"); return; }
                     _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
-                    // Firing position: 16u from the building, toward the arena center.
-                    var bc = _wEnvB.Center;
-                    var toC = (Vector3.Zero - bc); toC.Y = 0f;
-                    var fp = bc + toC.Normalized() * WEnvFireDistance;
-                    fp.Y = Main.HeightAt(fp.X, fp.Z);
-                    _player.Teleport(fp, RiderWalker.YawOf((bc - fp).Normalized()));
+                    // Firing position: toward the arena center from the tree.
+                    var tc0 = _wEnvT.Center;
+                    var toC0 = (Vector3.Zero - tc0); toC0.Y = 0f;
+                    var fp0 = tc0 + toC0.Normalized() * WEnvTreeDistance;
+                    fp0.Y = Main.HeightAt(fp0.X, fp0.Z);
+                    _player.Teleport(fp0, RiderWalker.YawOf((tc0 - fp0).Normalized()));
                     _playerYaw = _player.LegsYaw;
-                    _wEnvStep = WeaponsEnvStep.CollapseBuilding;
+                    _wEnvStep = WeaponsEnvStep.TreeHit;
                 }
-                else if (_wEnvStep == WeaponsEnvStep.CollapseBuilding)
+                else if (_wEnvStep == WeaponsEnvStep.TreeHit)
                 {
-                    // Laser the building down: 40 HP / 12 per hit = 4 hits.
-                    _cdLaser = 0f;
-                    var bc = _wEnvB.Center;
-                    FireLaser(new Vector3(bc.X, bc.Y + _wEnvB.Height * WEnvAimHeightFactor, bc.Z));
-                    if (_wEnvB.State == DestrState.Collapsing)
-                    {
-                        Dbg.Print("ENVTEST COLLAPSE-START PASS building gave way under fire");
-                        if (_envFxEvents <= _wEnvFx0) { WFail("building collapsed with NO destruction FX"); return; }
-                        // (the dust rule's proof is the particle count below: fire+2 dust systems+burn emitter)
-                        if (_fxLights <= 0) { WFail("building collapse lit no impact light"); return; }
-                        int bp = _fxParticles - _wEnvParticles0;
-                        if (bp < 4) { WFail($"building collapse spawned only {bp} particle systems (want explosion fire, 2 dust systems, burning wreck)"); return; }
-                        Dbg.Print($"ENVTEST FX PASS building died with an explosion, a light flash, a dust cloud and {bp} particle systems; original hidden, pieces flying");
-                        QueueCapture(ProofDir + "env_building_collapse.png", "envCollapse", CamMode.Chase);
-                        _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
-                        _wEnvStep = WeaponsEnvStep.BuildingGone;
-                    }
-                    if (_wPhaseT > WEnvCollapseTimeoutSeconds) WFail("building never collapsed");
-                }
-                else if (_wEnvStep == WeaponsEnvStep.BuildingGone && _wEnvB.State == DestrState.Gone)
-                {
-                    var bc = _wEnvB.Center;
-                    var from = _player.RootPos + Vector3.Up * WEnvShotOriginHeight;
-                    var aimB = new Vector3(bc.X, bc.Y + WEnvRubbleAimHeight, bc.Z);
-                    var ray = _hit.Ray(from, (aimB - from).Normalized(), WEnvRayRange, Roles.Player);
-                    float distB = from.DistanceTo(aimB);
-                    if (ray.Target == Roles.Prop && ray.T < distB + WEnvRubbleSlack) { WFail("rubble still blocks shots"); return; }
-                    Dbg.Print("ENVTEST BUILDING PASS collapsed to rubble, colliders removed, shots pass through");
-                    // Move to the tree: ONE hit of any kind destroys
-                    // it, and its shot-blocking cylinder is gone from
-                    // that same frame (owner's rule).
+                    // ONE hit of any kind destroys the tree, and its
+                    // shot-blocking cylinder is gone from that same
+                    // frame (owner's rule).
                     var tc = _wEnvT.Center;
-                    var toC2 = (Vector3.Zero - tc); toC2.Y = 0f;
-                    var fp2 = tc + toC2.Normalized() * WEnvTreeDistance;
-                    fp2.Y = Main.HeightAt(fp2.X, fp2.Z);
-                    _player.Teleport(fp2, RiderWalker.YawOf((tc - fp2).Normalized()));
-                    _playerYaw = _player.LegsYaw;
                     // The owner's live scenario, scripted - twice
                     // over. He aims at the tree's VISIBLE center: the
                     // crown, ~1.5u off the trunk axis at 0.75 height.
@@ -3242,7 +2952,7 @@ public partial class Titans
                         if (_aimTarget == Roles.Prop && conv.DistanceTo(crownCtr) < WEnvCrownTolerance) { onCrown = true; break; }
                     }
                     if (!onCrown) { WFail("no pitch puts the cursor on the crown"); return; }
-                    _wEnvChunks0 = _envChunks.Count; // re-baseline at the shot: building pieces dissolve on their own clock (round 21) and must not pollute the splinter delta
+                    _wEnvChunks0 = _envChunks.Count; // re-baseline at the shot so the splinter delta is the tree's alone
                     FireLaser(conv);
                     if (_wEnvT.State != DestrState.SmokingOut) { WFail($"one hit did not destroy the tree (state={_wEnvT.State})"); return; }
                     var fromT = _player.RootPos + Vector3.Up * WEnvShotOriginHeight;
@@ -4439,7 +4149,6 @@ public partial class Titans
                 Dbg.Print($"MISSION BASE {i} pad=({pad.X:F0},{pad.Y:F0}) h={hc:F2} maxDevR20={dev:F3}");
                 if (dev > MBaseFlatTolerance) { Dbg.Err("MISSION FAIL: base plateau not flat"); GetTree().Quit(1); return; }
             }
-            Dbg.Print($"MISSION BUILDINGS pts={_buildingPts.Count} (expect 19: 4 arena + 15 base)");
             _mDistE0 = _enemy.RootPos.DistanceTo(_player.RootPos);
             _mDistF0 = _foe != null ? _foe.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
             _mEnemyStart = _enemy.RootPos; _mFoeStart = _foe?.Walker.RootPos ?? Vector3.Zero;

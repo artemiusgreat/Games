@@ -58,7 +58,6 @@ public static class PhotoEnv
     private const float GrassRoadClearance = 2.9f;
     private const float GrassMaxHeight = 10f, GrassMinHeight = 0.3f;
     private const float GrassSlopeSampleStep = 0.4f, GrassMaxSlope = 0.45f;
-    private const float GrassBuildingClearance = 7f;
     private const float GrassPropClearanceMargin = 0.5f; // added to a prop's own radius
     private const float GrassSpotSink = 0.04f;       // spots sit this far into the ground
     private const float GrassSpotScaleMin = 0.75f, GrassSpotScaleMax = 1.5f;
@@ -517,50 +516,7 @@ void fragment() {
     }
 
     // Photographic wall sets (Poly Haven, CC0): one per
-    // building variant - the photoreal pass (owner, 2026-11-07)
-    // so buildings stop sharing a single concrete block.
-    private static readonly string[] WallSets =
-    {
-        "concrete_block_wall_02", "brick_wall_04", "plastered_wall",
-        "concrete_panels", "concrete_tile_facade", "painted_plaster_wall"
-    };
-
-    public static Material BuildingMaterial(Vector3 size, Color tint, int variant = 0)
-    {
-        string set = WallSets[((variant % WallSets.Length) + WallSets.Length) % WallSets.Length];
-        return new StandardMaterial3D
-        {
-            AlbedoColor = tint, // per-building shade (owner: buildings must not all look the same)
-            AlbedoTexture = Tex(set, "diff"),
-            NormalEnabled = true,
-            NormalScale = WallNormalScale,
-            NormalTexture = Tex(set, "nor_gl"),
-            RoughnessTexture = Tex(set, "arm"),
-            RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
-            AOTexture = Tex(set, "arm"),
-            Uv1Scale = new Vector3(Mathf.Max(size.X, size.Z) / WallTileSize, size.Y / WallTileSize, 1f)
-        };
-    }
-
-    // Roof faces wear gravel concrete, not the wall skin.
-    public static Material RoofMaterial(Vector3 size)
-    {
-        return new StandardMaterial3D
-        {
-            AlbedoTexture = Tex("gravel_concrete_02", "diff"),
-            NormalEnabled = true,
-            NormalScale = RoofNormalScale,
-            NormalTexture = Tex("gravel_concrete_02", "nor_gl"),
-            RoughnessTexture = Tex("gravel_concrete_02", "arm"),
-            RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green,
-            AOTexture = Tex("gravel_concrete_02", "arm"),
-            Uv1Scale = new Vector3(size.X / RoofTileSize, size.Z / RoofTileSize, 1f)
-        };
-    }
-
-    // ---- Instanced grass field (visual only) ----
-
-    public static void AddGrassField(Node3D parent, List<Vector2> buildingPts,
+    public static void AddGrassField(Node3D parent,
         List<(Vector2 P, float R)> props)
     {
         // Scanned hero clumps ONLY (the full grass patch, 24.7k
@@ -588,9 +544,6 @@ void fragment() {
                 Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e;
             if (slope > GrassMaxSlope) continue;
             bool bad = false;
-            foreach (var bp in buildingPts)
-                if (new Vector2(x, z).DistanceTo(bp) < GrassBuildingClearance) { bad = true; break; }
-            if (bad) continue;
             foreach (var (cp, cr) in props)
                 if (new Vector2(x, z).DistanceTo(cp) < cr + GrassPropClearanceMargin) { bad = true; break; }
             if (bad) continue;
