@@ -1,0 +1,91 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1634.severity = none
+dotnet_diagnostic.SA1635.severity = none
+dotnet_diagnostic.SA1636.severity = none
+dotnet_diagnostic.SA1637.severity = none
+dotnet_diagnostic.SA1638.severity = none
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1601.severity = none
+
+# --- Modern C# Style & Formatting ---
+csharp_style_namespace_declarations = file_scoped:error
+csharp_prefer_braces = true:error
+csharp_prefer_simple_using_statement = true:warning
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+# --- Enforce `this.` Qualification (Replaces Underscore Prefixes) ---
+dotnet_style_qualification_for_field = true:error
+dotnet_style_qualification_for_property = true:error
+dotnet_style_qualification_for_method = true:error
+dotnet_style_qualification_for_event = true:error
+
+# --- Naming Conventions (No snake_case, No Underscores) ---
+# 1. Permit ONLY Godot's mandatory virtual engine overrides (_Ready, _Process, etc.)
+dotnet_naming_rule.godot_overrides.symbols = godot_methods
+dotnet_naming_rule.godot_overrides.style = godot_underscore_pascal
+dotnet_naming_rule.godot_overrides.severity = none
+
+dotnet_naming_symbols.godot_methods.applicable_kinds = method
+dotnet_naming_symbols.godot_methods.applicable_accessibilities = public, protected
+dotnet_naming_symbols.godot_methods.required_modifiers = override
+
+dotnet_naming_style.godot_underscore_pascal.capitalization = pascal_case
+dotnet_naming_style.godot_underscore_pascal.required_prefix = _
+
+# 2. Interfaces must start with 'I' + PascalCase
+dotnet_naming_rule.interfaces_pascal_case.symbols = interface_symbols
+dotnet_naming_rule.interfaces_pascal_case.style = interface_pascal_style
+dotnet_naming_rule.interfaces_pascal_case.severity = error
+
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_symbols.interface_symbols.applicable_accessibilities = *
+
+dotnet_naming_style.interface_pascal_style.capitalization = pascal_case
+dotnet_naming_style.interface_pascal_style.required_prefix = I
+
+# 3. Types (classes, structs, enums, delegates) & Members (methods, properties, fields, events) -> PascalCase
+dotnet_naming_rule.types_and_members_pascal_case.symbols = types_and_members
+dotnet_naming_rule.types_and_members_pascal_case.style = strict_pascal_case
+dotnet_naming_rule.types_and_members_pascal_case.severity = error
+
+dotnet_naming_symbols.types_and_members.applicable_kinds = namespace, class, struct, enum, property, method, field, event, delegate
+dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
+
+dotnet_naming_style.strict_pascal_case.capitalization = pascal_case
+
+# 4. Local variables & parameters -> camelCase (no leading underscore)
+dotnet_naming_rule.locals_and_params_camel_case.symbols = locals_and_params
+dotnet_naming_rule.locals_and_params_camel_case.style = strict_camel_case
+dotnet_naming_rule.locals_and_params_camel_case.severity = error
+
+dotnet_naming_symbols.locals_and_params.applicable_kinds = parameter, local
+dotnet_naming_symbols.locals_and_params.applicable_accessibilities = *
+
+dotnet_naming_style.strict_camel_case.capitalization = camel_case
+
+# --- Build Hygiene ---
+dotnet_diagnostic.IDE0005.severity = error   # Remove unused usings
+dotnet_diagnostic.CS0168.severity = error    # Unused local variables
+dotnet_diagnostic.CS0219.severity = error    # Assigned but never used variables
+
+# --- Godot 4 Specific Suppressions (Prevent False Positives) ---
+dotnet_diagnostic.CA1822.severity = none     # Lifecycle methods (_Ready, _Process) cannot be static
+dotnet_diagnostic.CS8618.severity = warning  # [Export] fields/properties are populated by the Inspector
+dotnet_diagnostic.CA1051.severity = none     # Do not declare visible instance fields (common with [Export])
+dotnet_diagnostic.CA1062.severity = none     # Validate arguments of public methods (noisy on overrides)
+dotnet_diagnostic.CA1711.severity = none     # Identifiers should not have incorrect suffix (EventHandler)
+dotnet_diagnostic.CA1003.severity = none     # Use generic event handler instances ([Signal] delegates)
