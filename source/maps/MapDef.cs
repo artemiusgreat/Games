@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Titans;
+namespace Titans.Definitions;
 
 // The map contract (owner, 2026-11-27): everything specific
 // to one map lives in that map's own class under maps/ -

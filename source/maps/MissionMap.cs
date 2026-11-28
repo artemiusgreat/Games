@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Titans;
+namespace Titans.Definitions;
 
 // The plain mission front (owner, 2026-11-27: map-specific
 // code lives in the map's own file): the shared relief

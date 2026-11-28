@@ -1,4 +1,4 @@
-namespace Titans;
+namespace Titans.Definitions;
 
 // One home for the values that repeat across the engine's
 // files (owner: no magic strings or numbers scattered through

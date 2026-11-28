@@ -1,4 +1,4 @@
-namespace Titans;
+namespace Titans.Definitions;
 
 // Pure game data - no engine references. A rider spec is its tonnage
 // plus the weapon slots the RiderLab can fill. Slot weight capacity is

@@ -1,4 +1,4 @@
-namespace Titans;
+namespace Titans.Definitions;
 
 // Resource paths (owner, 2026-11-27): every res:// reference
 // the code loads is a named constant here, so a moved asset is

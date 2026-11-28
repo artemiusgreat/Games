@@ -1,4 +1,4 @@
-namespace Titans;
+namespace Titans.Definitions;
 
 // The AOT_* environment variables: harness seeds that force a
 // selection the flow or the contract would otherwise make

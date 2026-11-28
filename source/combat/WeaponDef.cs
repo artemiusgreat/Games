@@ -1,4 +1,4 @@
-namespace Titans;
+namespace Titans.Definitions;
 
 // Pure game data - no engine references, so the catalog, the loadout
 // rules and the knockdown math can move to another engine as-is.

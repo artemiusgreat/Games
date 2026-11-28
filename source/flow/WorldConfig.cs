@@ -1,3 +1,5 @@
+using Titans.Definitions;
+
 namespace Titans;
 
 // Which world the duel scene builds, chosen in the front-end flow

@@ -1,5 +1,6 @@
 using Godot;
 using System.Linq;
+using Titans.Definitions;
 
 namespace Titans;
 
