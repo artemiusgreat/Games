@@ -60,7 +60,7 @@ dotnet_naming_style.interface_pascal_style.required_prefix = I
 # 3. Types (classes, structs, enums, delegates) & Members (methods, properties, fields, events) -> PascalCase
 dotnet_naming_rule.types_and_members_pascal_case.symbols = types_and_members
 dotnet_naming_rule.types_and_members_pascal_case.style = strict_pascal_case
-dotnet_naming_rule.types_and_members_pascal_case.severity = error
+dotnet_naming_rule.types_and_members_pascal_case.severity = none  # Deferred 2026-11-28 (owner D2): _camelCase fields stay for now; re-enable with the field rename. NOTE: this rule fires only in dotnet format, never in dotnet build.
 
 dotnet_naming_symbols.types_and_members.applicable_kinds = namespace, class, struct, enum, property, method, field, event, delegate
 dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
@@ -70,7 +70,7 @@ dotnet_naming_style.strict_pascal_case.capitalization = pascal_case
 # 4. Local variables & parameters -> camelCase (no leading underscore)
 dotnet_naming_rule.locals_and_params_camel_case.symbols = locals_and_params
 dotnet_naming_rule.locals_and_params_camel_case.style = strict_camel_case
-dotnet_naming_rule.locals_and_params_camel_case.severity = error
+dotnet_naming_rule.locals_and_params_camel_case.severity = none  # Deferred 2026-11-28 with the naming family (owner D1/D2): 46 capitalized locals ride with the future rename pass.
 
 dotnet_naming_symbols.locals_and_params.applicable_kinds = parameter, local
 dotnet_naming_symbols.locals_and_params.applicable_accessibilities = *
@@ -78,7 +78,7 @@ dotnet_naming_symbols.locals_and_params.applicable_accessibilities = *
 dotnet_naming_style.strict_camel_case.capitalization = camel_case
 
 # --- Build Hygiene ---
-dotnet_diagnostic.IDE0005.severity = error   # Remove unused usings
+dotnet_diagnostic.IDE0005.severity = none    # Remove unused usings. NOT error: Roslyn refuses IDE0005 in build unless the csproj sets GenerateDocumentationFile=true (CSC error EnableGenerateDocumentationFile), and the csproj is owner-locked. dotnet format still removes unused usings.
 dotnet_diagnostic.CS0168.severity = error    # Unused local variables
 dotnet_diagnostic.CS0219.severity = error    # Assigned but never used variables
 
@@ -89,3 +89,19 @@ dotnet_diagnostic.CA1051.severity = none     # Do not declare visible instance f
 dotnet_diagnostic.CA1062.severity = none     # Validate arguments of public methods (noisy on overrides)
 dotnet_diagnostic.CA1711.severity = none     # Identifiers should not have incorrect suffix (EventHandler)
 dotnet_diagnostic.CA1003.severity = none     # Use generic event handler instances ([Signal] delegates)
+
+# Deferred 2026-11-28 (owner D1): mechanical conventions (this., namespaces,
+# braces) are enforced; the rules below are off until triaged rule-by-rule
+# under further instructions. Do not "fix" code to satisfy them yet.
+dotnet_diagnostic.CA2211.severity = none     # Non-constant static fields (WorldConfig shared state is deliberate)
+dotnet_diagnostic.CA1310.severity = none     # String comparisons should use StringComparison (deferred)
+dotnet_diagnostic.CA1305.severity = none     # Specify IFormatProvider (deferred)
+dotnet_diagnostic.CA1304.severity = none     # Specify CultureInfo (deferred)
+dotnet_diagnostic.CA1859.severity = none     # Change return type for performance (deferred)
+dotnet_diagnostic.CA1805.severity = none     # Do not initialize unnecessarily (deferred)
+dotnet_diagnostic.CA1806.severity = none     # Do not ignore method results (deferred)
+dotnet_diagnostic.CA1725.severity = none     # Parameter names should match base declaration (Godot overrides)
+dotnet_diagnostic.CA1720.severity = none     # Identifiers should not contain type names (deferred)
+dotnet_diagnostic.CS0618.severity = none     # Obsolete API use (deferred triage)
+dotnet_diagnostic.CS0169.severity = none     # Field is never used (deferred triage)
+dotnet_diagnostic.CS0108.severity = none     # Member hides inherited member (deferred triage)
