@@ -13,9 +13,15 @@ public partial class Titans
     // a felled tree now goes straight to SmokingOut.)
     private enum DestrState { Intact = 0, Collapsing = 2, SmokingOut = 3, Gone = 4 }
 
+    // What a destructible IS (owner, 2026-11-27: an enum,
+    // not a string). Trees are the only kind left since the
+    // buildings were removed; the seam stays for the day a
+    // new kind is added.
+    private enum DestrKind { Tree }
+
     private sealed class Destructible
     {
-        public string Kind;
+        public DestrKind Kind;
         public Node3D Node;
         public Vector3 Center;      // base center (Y = ground)
         public float Radius;        // hit-attribution radius (XZ)
@@ -474,7 +480,7 @@ public partial class Titans
         _hit.Props.Add(canopyCyl);
         var td = new Destructible
         {
-            Kind = "tree", Node = tree,
+            Kind = DestrKind.Tree, Node = tree,
             Center = new Vector3(pos.X, pos.Y, pos.Z),
             Radius = r, Height = totalH * scale, Hp = TreeHp, StartScale = scale
         };
@@ -701,7 +707,7 @@ public partial class Titans
             var wp = new Vector2(w.RootPos.X, w.RootPos.Z);
             foreach (var d in _destructibles)
             {
-                if (d.Kind != "tree" || d.State != DestrState.Intact) continue;
+                if (d.Kind != DestrKind.Tree || d.State != DestrState.Intact) continue;
                 var tp = new Vector2(d.Center.X, d.Center.Z);
                 // Reach is the CROWN's width, not the trunk's
                 // (owner, 2026-11-14): the visible canopy spans
@@ -771,7 +777,7 @@ public partial class Titans
     {
         var d = PropAt(point, extraReach);
         if (d == null) return;
-        if (d.Kind == "tree") { DestroyTree(d, HitSmokeSeconds); return; }
+        if (d.Kind == DestrKind.Tree) { DestroyTree(d, HitSmokeSeconds); return; }
     }
 
     private void RemovePropColliders(Destructible d)

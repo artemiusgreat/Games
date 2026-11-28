@@ -338,7 +338,7 @@ public partial class Titans
                     _minTreeSep = Mathf.Min(_minTreeSep, sep);
                     Destructible treeD = null;
                     foreach (var d in _destructibles)
-                        if (d.Kind == "tree" && Mathf.Abs(d.Center.X - StompTreeX) < StompTreeMatchTolerance && Mathf.Abs(d.Center.Z - StompTreeZ) < StompTreeMatchTolerance)
+                        if (d.Kind == DestrKind.Tree && Mathf.Abs(d.Center.X - StompTreeX) < StompTreeMatchTolerance && Mathf.Abs(d.Center.Z - StompTreeZ) < StompTreeMatchTolerance)
                             treeD = d;
                     if (treeD != null && treeD.State != DestrState.Intact && _minTreeSep < StompCrushSeparation)
                     {
@@ -2042,7 +2042,7 @@ public partial class Titans
             _lagT = 0f;
             _lagTree = null;
             foreach (var d in _destructibles)
-                if (d.Kind == "tree" && d.State == DestrState.Intact && d.Center.Y < LagTreeMaxCenterY) { _lagTree = d; break; }
+                if (d.Kind == DestrKind.Tree && d.State == DestrState.Intact && d.Center.Y < LagTreeMaxCenterY) { _lagTree = d; break; }
             if (_lagTree != null)
             {
                 float off = _player.CollisionRadius + _lagTree.Radius + LagTreeStageGap;
@@ -2907,7 +2907,7 @@ public partial class Titans
                     ResetDuel();
                     _wEnvT = null;
                     foreach (var d in _destructibles)
-                        if (d.Kind == "tree" && d.State == DestrState.Intact && _wEnvT == null) _wEnvT = d;
+                        if (d.Kind == DestrKind.Tree && d.State == DestrState.Intact && _wEnvT == null) _wEnvT = d;
                     if (_wEnvT == null) { WFail("no intact tree for the env phase"); return; }
                     _wEnvFx0 = _envFxEvents; _wEnvChunks0 = _envChunks.Count; _wEnvParticles0 = _fxParticles;
                     // Firing position: toward the arena center from the tree.
