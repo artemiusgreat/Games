@@ -706,6 +706,8 @@ public partial class Titans
     private const double WBlockedShotSeconds = 0.3;
     private const double WBlockedVerdictSeconds = 1.2;
     private const float WBlockedAimHeight = 6.0f;
+    private const float WBlockedTreeX = 22f, WBlockedTreeZ = -7f; // the planted blocker: on the LRM-flat line (x=22), 9u in front of the enemy
+    private const float WBlockedTreeScale = 2.2f; // trunk radius 1.54u, crown radius 4.4u at this scale
     private const float WTolerance = 0.01f;
     private const float WLaserExpectedDamage = 36f;
     private const float WLaserHpExpected = 304f;
@@ -720,7 +722,7 @@ public partial class Titans
     private const int WReturnFireShots = 6;
     private const double WReturnFireSettleSeconds = 1.4;
     private const int WReturnFireMinHits = 5;
-    private const float WReturnFireDamagePerHit = 18f;
+    private const float WReturnFireDamagePerHit = 40f; // the Heavy Cannon's damage (WeaponDef): Hector's waist gun since the AC/20 was deleted (2026-11-25) - the 18 this held was the AC/20's
     private const double WReturnFireTimeoutSeconds = 35;
     private const double WKillCaptureSeconds = 0.9;
     private const double WKillVerdictDelay = 1.8;
@@ -743,8 +745,40 @@ public partial class Titans
     private const float WEnvCrownPitchStep = 0.025f;
     private const float WEnvCrownTolerance = 3.5f;
     private const double WEnvSmokeTimeoutSeconds = 40;
-    private const float WFarPlayerZ = 45f;
-    private const float WFarEnemyZ = -40f;
+    private const float WFarPlayerX = 77f, WFarPlayerZ = 11f;   // the far pair stands on the SE valley lane (see the FarTargets step)
+    // A far-lane endpoint must stand clear of the seeded tree
+    // scatter by this much: a muzzle inside a canopy cylinder
+    // starts its cast inside the prop and the shot dies at T=0
+    // (measured 2026-11-27: the ArmL muzzle sat inside a crown
+    // 2.4u off the (77,11) root). Muzzle offset ~2.4u + the
+    // largest crown radius ~2.6u, rounded up.
+    private const float WFarClearRadius = 5.5f;
+    private const int WFarSearchSteps = 72;               // the bearing search walks the full circle, 5 degrees at a time
+    private const float WFarSearchStep = Mathf.Pi / 36f;
+    private const float WFarSearchBound = 100f;           // search candidates stay inside this (arena bound is 115)
+    private static readonly Vector2[] WFarSpotNudges =
+        { Vector2.Zero, new(5, 0), new(-5, 0), new(0, 5), new(0, -5),
+          new(5, 5), new(-5, -5), new(5, -5), new(-5, 5),
+          new(9, 0), new(-9, 0), new(0, 9), new(0, -9) };
+    // The first nudge of the wanted spot that stands clear of
+    // every standing tree by WFarClearRadius (XZ), on the ground.
+    private Vector3 WFarClearSpot(float x, float z)
+    {
+        foreach (var n in WFarSpotNudges)
+        {
+            float cx = x + n.X, cz = z + n.Y;
+            bool clear = true;
+            foreach (var d in _destructibles)
+            {
+                if (d.State == DestrState.Gone) continue;
+                float dx = d.Center.X - cx, dz = d.Center.Z - cz;
+                if (dx * dx + dz * dz < WFarClearRadius * WFarClearRadius) { clear = false; break; }
+            }
+            if (clear) return new Vector3(cx, Main.HeightAt(cx, cz), cz);
+        }
+        return new Vector3(x, Main.HeightAt(x, z), z);
+    }
+    private const float WFarEnemyX = 39f, WFarEnemyZ = -65f;    // 85u from the player along the valley
     private const float WFarPitchStart = 0.30f;
     private const float WFarPitchEnd = -0.30f;
     private const float WFarPitchStep = 0.01f;
@@ -2963,12 +2997,21 @@ public partial class Titans
                     Dbg.Print($"WPNTEST LRM PASS rocketsDamaging={_enemyDmgEvents}/8 dmg={_enemyDmgTotal:F1} hectorHp={_hpEnemy:F1}");
                     _enemyDmgEvents = 0; _enemyDmgTotal = 0f;
                     WSetup(LrmFlatPlayerPos, LrmFlatEnemyPos);
+                    // The blocker on the line (owner, 2026-11-27:
+                    // the (22,8) building this phase was written
+                    // against is gone with the buildings): a big
+                    // tree planted 9u in front of the enemy - clear
+                    // of his stomp reach (radius + crown + margin
+                    // = 7.5u at this scale), and wide enough that
+                    // every converging beam meets its trunk or
+                    // crown before the aim point.
+                    AddTreeV(new Vector3(WBlockedTreeX, Main.HeightAt(WBlockedTreeX, WBlockedTreeZ), WBlockedTreeZ), 0, WBlockedTreeScale, 0f);
                     _wHpSnapshot = _hpEnemy;
                     SetWPhase(WeaponsPhase.Blocked);
                 }
                 break;
 
-            case WeaponsPhase.Blocked: // laser with the (22,8) building on the line: zero damage
+            case WeaponsPhase.Blocked: // laser with a tree on the line, 9u in front of the enemy: zero damage
                 if (_wShotsFired == 0 && _wPhaseT > WBlockedShotSeconds)
                 {
                     FireLaser(_enemy.RootPos + Vector3.Up * WBlockedAimHeight);
@@ -2979,7 +3022,7 @@ public partial class Titans
                 {
                     if (_enemyDmgTotal > WTolerance || Mathf.Abs(_hpEnemy - _wHpSnapshot) > WTolerance)
                         WFail($"blocked laser leaked dmg={_enemyDmgTotal:F1} hp {_wHpSnapshot:F1}->{_hpEnemy:F1}");
-                    Dbg.Print("WPNTEST BLOCKED PASS building stopped the beam, hectorHp unchanged");
+                    Dbg.Print("WPNTEST BLOCKED PASS tree stopped the beam, hectorHp unchanged");
                     // Phase 5 engages at 45u, not 30u: at 30u the shell
                     // TOF (0.6s) is shorter than the strafe reversal and
                     // the lead error stays inside the part-box volume
@@ -3027,10 +3070,10 @@ public partial class Titans
                     // 2..5 dodge band (measured at 50 u/s, verify21..26)
                     // died with the dodge window itself. The sharp
                     // assertion stays the exact damage total below
-                    // (hits x 18, no tolerance games there).
+                    // (hits x 40, no tolerance games there).
                     if (hits < WReturnFireMinHits) WFail($"hector return fire unreliable at matched speed: {hits} hits in {_enemyShots} shots");
                     if (Mathf.Abs(_playerDmgTotal - hits * WReturnFireDamagePerHit) > WTolerance)
-                        WFail($"hector dmg total={_playerDmgTotal:F1} != hits*18 ({hits * 18})");
+                        WFail($"hector dmg total={_playerDmgTotal:F1} != hits*40 ({hits * 40})");
                     Dbg.Print($"WPNTEST HECTORFIRE PASS shots={_enemyShots} hits={hits} misses={misses} playerHp={_hpPlayer:F0}");
                     _enemyMayFire = false;
                     _player.TorsoTwist = 0f;
@@ -3244,22 +3287,69 @@ public partial class Titans
                     // and shots fell back to the free point - in the
                     // sky. Hunt the pitch until the cursor sits on
                     // the Hector, then require exact laser damage.
+                    // The bearing search starts on the SE valley
+                    // lane: the old z-line crosses the centre dome, and since
+                    // the per-gun beam model (2026-11-25) the
+                    // muzzles - lower than the camera - strike its
+                    // skirt while the cursor clears it (the owner's
+                    // accepted crest trade-off), so that line can
+                    // no longer certify convergence. The endpoints
+                    // are nudged clear of the tree scatter first
+                    // (WFarClearSpot): a muzzle that starts inside
+                    // a canopy cylinder loses its shot at T=0.
                     _hpEnemy = _enemySpec.MaxHp;
-                    _player.Teleport(new Vector3(0f, Main.HeightAt(0f, WFarPlayerZ), WFarPlayerZ), 0f);
-                    _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, WFarEnemyZ), WFarEnemyZ), Mathf.Pi);
-                    _playerYaw = 0f; _enemyYaw = Mathf.Pi;
-                    _player.SetDrive(0f, 0f); _enemy.SetDrive(Mathf.Pi, 0f);
-                    _player.TorsoTwist = 0f;
-                    _playerVel = Vector3.Zero; _prevPlayerRoot = _player.RootPos;
-                    UpdateCamera(0f);
+                    var farE = WFarClearSpot(WFarEnemyX, WFarEnemyZ);
+                    float farR = new Vector2(WFarPlayerX - farE.X, WFarPlayerZ - farE.Z).Length();
+                    float farBaseAng = Mathf.Atan2(WFarPlayerZ - farE.Z, WFarPlayerX - farE.X);
                     Vector3 convF = Vector3.Zero; bool onFar = false;
-                    for (float pp = WFarPitchStart; pp >= WFarPitchEnd; pp -= WFarPitchStep)
+                    // Per-gun beams (owner, 2026-11-25): the
+                    // cursor's convergence no longer certifies a
+                    // hit by itself - a muzzle sits lower than the
+                    // camera and offset from it, so a crest (or a
+                    // tree at the muzzle) can eat the volley while
+                    // the cursor sits on the target; that is the
+                    // owner's accepted trade-off of the physical-
+                    // beam model. The far shot is certified the way
+                    // live play works: a bearing and pitch where
+                    // the cursor is on the Hector AND at least one
+                    // gun's own cast reaches him. The valley lane
+                    // is tried first; if its muzzle line is crest-
+                    // eaten the search walks the whole 85u circle
+                    // around the Hector and keeps the first clear
+                    // bearing - the same searched staging the FAR
+                    // HILL step below runs for its hillside.
+                    for (int k = 0; k < WFarSearchSteps && !onFar; k++)
                     {
-                        _player.TorsoPitch = pp;
-                        convF = TorsoAimPoint();
-                        if (_aimTarget == Roles.Enemy) { onFar = true; break; }
+                        float ang = farBaseAng + k * WFarSearchStep;
+                        var cand = new Vector2(farE.X + farR * Mathf.Cos(ang), farE.Z + farR * Mathf.Sin(ang));
+                        if (Mathf.Abs(cand.X) > WFarSearchBound || Mathf.Abs(cand.Y) > WFarSearchBound) continue;
+                        var farP = WFarClearSpot(cand.X, cand.Y);
+                        float farYawP = RiderWalker.YawOf(farE - farP);
+                        float farYawE = RiderWalker.YawOf(farP - farE);
+                        _player.Teleport(farP, farYawP);
+                        _enemy.Teleport(farE, farYawE);
+                        _playerYaw = farYawP; _enemyYaw = farYawE;
+                        _player.SetDrive(farYawP, 0f); _enemy.SetDrive(farYawE, 0f);
+                        _player.TorsoTwist = 0f;
+                        _playerVel = Vector3.Zero; _prevPlayerRoot = _player.RootPos;
+                        UpdateCamera(0f);
+                        for (float pp = WFarPitchStart; pp >= WFarPitchEnd && !onFar; pp -= WFarPitchStep)
+                        {
+                            _player.TorsoPitch = pp;
+                            var conv = TorsoAimPoint();
+                            if (_aimTarget != Roles.Enemy) continue;
+                            foreach (var g in _gunsEnergy)
+                            {
+                                if (!_partsPlayer.Alive(g.Slot)) continue;
+                                var mz = MuzzleForSlot(g.Slot, false);
+                                var toC = conv - mz;
+                                if (toC.Length() < MinAimDirLength) continue;
+                                var cast = AimRay(mz, toC.Normalized(), g.Def.Range, LaserHitThickness);
+                                if (cast.Hit && cast.Target == Roles.Enemy) { convF = conv; onFar = true; break; }
+                            }
+                        }
                     }
-                    if (!onFar) { WFail("no pitch puts the cursor on the far Hector"); return; }
+                    if (!onFar) { WFail("no bearing on the 85u circle gives the cursor and a gun a clear line to the far Hector"); return; }
                     _cdLaser = 0f;
                     FireLaser(convF);
                     if (340f - _hpEnemy < WFarMinDamage) { WFail($"far cursor shot did not damage the Hector (hp={_hpEnemy:F0})"); return; }

@@ -187,8 +187,17 @@ public partial class Titans
     private static readonly Color BreakFlashColor = new(1f, 0.62f, 0.22f);
     private static readonly Color BreakFlashHotColor = new(1f, 0.88f, 0.55f);
 
+    private const float BeamMinDrawLength = 0.1f; // a shorter beam is not drawn (see SpawnBeam)
+
     private void SpawnBeam(Vector3 a, Vector3 b, Color col, float width, float life)
     {
+        // A point-blank hit (the muzzle inside the surface it
+        // struck) leaves no beam to draw: MakeBeam's orientation
+        // math throws on a zero-length direction, and the throw
+        // aborted the whole volley mid-loop (found by the
+        // weapons suite's far-target step, 2026-11-27). The
+        // impact FX still fire; only the beam quad is skipped.
+        if (a.DistanceSquaredTo(b) < BeamMinDrawLength * BeamMinDrawLength) return;
         _beamsSpawned++;
         var beam = WeaponFx.MakeBeam(a, b, col, width);
         AddChild(beam);
