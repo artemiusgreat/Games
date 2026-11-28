@@ -1,5 +1,4 @@
 using Godot;
-using System.Collections.Generic;
 
 namespace Titans;
 
@@ -11,164 +10,176 @@ namespace Titans;
 // The class stays one partial class - see Titans.cs.
 public partial class Titans
 {
-    // Aim (owner's model, round 27 - center crosshair, his pick
-    // over the free reticle point): the crosshair is fixed at the
-    // screen center and the CAMERA's axis is the aim. The mouse
-    // steers yaw/pitch (AimDirWorld); the chase camera looks along
-    // exactly that direction, and this method casts that same axis
-    // from the camera - the weapons converge on its first hit, at
-    // any range or angle. The torso still twists/pitches after the
-    // mouse to its mechanical stops, as a visual. This retires the
-    // free 40u reticle point (rounds 9-26): its projection against
-    // the high chase camera left a parallax dead zone close-in and
-    // steep (measured round 26 follow-up: a top-edge target could
-    // not be pointed at inside ~18u), which a center crosshair
-    // cannot have by construction.
-    private Vector3 _aimPoint;
-    private Vector3 _aimFrom, _aimDir;
-    // True when the crosshair rests on something BEYOND the
-    // 220u convergence cast (a Mission sightline, open sky):
-    // there is no hit point to converge on, so ballistic shells
-    // must fly PARALLEL to the aim axis instead of converging
-    // on the 220u far point - converging there makes them cross
-    // the sight line at 220u and diverge above it beyond,
-    // sailing over far targets (owner's repro at 500u+).
-    private bool _aimParallel;
-    // Where far shells converge: the distance of whatever the
-    // crosshair rests on, from the long cast below (the same
-    // reach as the HUD rangefinder), or 1500u for open sky.
-    private float _farConverge = Aim.FarRange;
-    // The one aim direction: the mouse's world yaw and the
-    // effective pitch (the wide mouse pitch when the player has
-    // taken it past the torso clamp, else the torso's own pitch -
-    // every harness phase drives TorsoPitch directly). The chase
-    // camera, the convergence cast and the laser's truth ray all
-    // use this, so they can never disagree about where "aim" is.
-    private Vector3 AimDirWorld()
+  // Aim (owner's model, round 27 - center crosshair, his pick
+  // over the free reticle point): the crosshair is fixed at the
+  // screen center and the CAMERA's axis is the aim. The mouse
+  // steers yaw/pitch (AimDirWorld); the chase camera looks along
+  // exactly that direction, and this method casts that same axis
+  // from the camera - the weapons converge on its first hit, at
+  // any range or angle. The torso still twists/pitches after the
+  // mouse to its mechanical stops, as a visual. This retires the
+  // free 40u reticle point (rounds 9-26): its projection against
+  // the high chase camera left a parallax dead zone close-in and
+  // steep (measured round 26 follow-up: a top-edge target could
+  // not be pointed at inside ~18u), which a center crosshair
+  // cannot have by construction.
+  private Vector3 _aimPoint;
+  private Vector3 _aimFrom, _aimDir;
+  // True when the crosshair rests on something BEYOND the
+  // 220u convergence cast (a Mission sightline, open sky):
+  // there is no hit point to converge on, so ballistic shells
+  // must fly PARALLEL to the aim axis instead of converging
+  // on the 220u far point - converging there makes them cross
+  // the sight line at 220u and diverge above it beyond,
+  // sailing over far targets (owner's repro at 500u+).
+  private bool _aimParallel;
+  // Where far shells converge: the distance of whatever the
+  // crosshair rests on, from the long cast below (the same
+  // reach as the HUD rangefinder), or 1500u for open sky.
+  private float _farConverge = Aim.FarRange;
+  // The one aim direction: the mouse's world yaw and the
+  // effective pitch (the wide mouse pitch when the player has
+  // taken it past the torso clamp, else the torso's own pitch -
+  // every harness phase drives TorsoPitch directly). The chase
+  // camera, the convergence cast and the laser's truth ray all
+  // use this, so they can never disagree about where "aim" is.
+  private Vector3 AimDirWorld()
+  {
+    float yaw = this._player.TorsoYawWorld;
+    float p = float.IsNaN(this._player.AimPitchWide) ? this._player.TorsoPitch : this._player.AimPitchWide;
+    var h = RiderWalker.HeadingVec(yaw);
+    return new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
+  }
+
+  // The player's whole team, for aim casts - see AimRay
+  // for the two-sided rule (never a surface on the camera
+  // side of the player; a blocking surface in the line of
+  // fire).
+  private readonly System.Collections.Generic.HashSet<string> _team0Ids = new();
+  private System.Collections.Generic.HashSet<string> Team0Ids()
+  {
+    this._team0Ids.Clear();
+    this._team0Ids.Add(Roles.Player);
+    foreach (var a in this._allies)
     {
-        float yaw = _player.TorsoYawWorld;
-        float p = float.IsNaN(_player.AimPitchWide) ? _player.TorsoPitch : _player.AimPitchWide;
-        var h = RiderWalker.HeadingVec(yaw);
-        return new Vector3(h.X * Mathf.Cos(p), Mathf.Sin(p), h.Z * Mathf.Cos(p));
+      if (a.Team == 0)
+      {
+        this._team0Ids.Add(a.Role);
+      }
     }
 
-    // The player's whole team, for aim casts - see AimRay
-    // for the two-sided rule (never a surface on the camera
-    // side of the player; a blocking surface in the line of
-    // fire).
-    private readonly System.Collections.Generic.HashSet<string> _team0Ids = new();
-    private System.Collections.Generic.HashSet<string> Team0Ids()
+    return this._team0Ids;
+  }
+
+  // The aim cast's team rule (owner, 2026-11-23, both halves
+  // of it): a teammate on the CAMERA side of the player -
+  // standing in the camera's line, behind the rider - is
+  // never an aim surface (the backward-salvo bug: the
+  // reticle point landed on his back and every weapon
+  // converged behind the pods). A teammate on the TARGET
+  // side - in the line of fire, beyond the rider - BLOCKS
+  // like any rider: weapons do not shoot through your own
+  // team (his follow-up the same day). So: cast open; if
+  // the first surface is a teammate nearer than the player
+  // himself along the ray, recast with the team ignored.
+  private HitModel.Result AimRay(Vector3 from, Vector3 dir, float range, float inflate = 0f)
+  {
+    var hit = this._hit.Ray(from, dir, range, Roles.Player, inflate);
+    if (hit.Hit && this.Team0Ids().Contains(hit.Target))
     {
-        _team0Ids.Clear();
-        _team0Ids.Add(Roles.Player);
-        foreach (var a in _allies) if (a.Team == 0) _team0Ids.Add(a.Role);
-        return _team0Ids;
+      float playerT = (this._player.RootPos - from).Dot(dir);
+      if (hit.T < playerT)
+      {
+        return this._hit.Ray(from, dir, range, Roles.Player, inflate, this.Team0Ids());
+      }
+    }
+    return hit;
+  }
+
+  private Vector3 TorsoAimPoint()
+  {
+    var dir = this.AimDirWorld();
+    var from = this._player.BoneWorldPos(Bones.Torso) + dir * (this._player.CollisionRadius + AimOriginClearance);
+    this._aimFrom = from;
+    this._aimDir = dir;
+    this._aimParallel = false;
+    this._reticlePoint = from + dir * AimDepth;
+    // Round 27: converge on the point UNDER THE CROSSHAIR -
+    // a ray from the CAMERA along the aim axis (the direction
+    // the chase camera is looking). Its first hit of ANY kind
+    // is where every weapon goes: what the center crosshair
+    // rests on is what gets hit, at any range; a clean sky
+    // shot converges on the far point of the axis itself.
+    // Live play always runs the chase camera; harness proof
+    // poses keep the chest logic below.
+    if (this._camMode == CamMode.Chase)
+    {
+      var camPos = this._cam.GlobalPosition;
+      var viewHit = this.AimRay(camPos, dir, Aim.ConvergenceRange);
+      this._aimTarget = viewHit.Hit ? viewHit.Target : "";
+      this._reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * Aim.ConvergenceRange;
+      this._aimParallel = !viewHit.Hit;
+      if (this._aimParallel)
+      {
+        // The crosshair rests past the weapon cast:
+        // find how far it actually rests (1500u cast,
+        // the rangefinder's reach) so far shells can
+        // converge on THAT point and land on the
+        // crosshair at mission ranges.
+        var farHit = this.AimRay(camPos, dir, Aim.FarRange);
+        this._farConverge = farHit.Hit ? farHit.T : Aim.FarRange;
+      }
+      return this._reticlePoint;
+    }
+    // Fallback (round 11): the chest ray's RIDER/PROP hit within
+    // ChestHitAcceptRange, else the free AimDepth point.
+    var hit = this.AimRay(from, dir, ChestRayRange);
+    this._aimTarget = hit.Hit ? hit.Target : "";
+    if (hit.Hit && hit.T <= ChestHitAcceptRange && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
+    {
+      return hit.Point;
     }
 
-    // The aim cast's team rule (owner, 2026-11-23, both halves
-    // of it): a teammate on the CAMERA side of the player -
-    // standing in the camera's line, behind the rider - is
-    // never an aim surface (the backward-salvo bug: the
-    // reticle point landed on his back and every weapon
-    // converged behind the pods). A teammate on the TARGET
-    // side - in the line of fire, beyond the rider - BLOCKS
-    // like any rider: weapons do not shoot through your own
-    // team (his follow-up the same day). So: cast open; if
-    // the first surface is a teammate nearer than the player
-    // himself along the ray, recast with the team ignored.
-    private HitModel.Result AimRay(Vector3 from, Vector3 dir, float range, float inflate = 0f)
-    {
-        var hit = _hit.Ray(from, dir, range, Roles.Player, inflate);
-        if (hit.Hit && Team0Ids().Contains(hit.Target))
-        {
-            float playerT = (_player.RootPos - from).Dot(dir);
-            if (hit.T < playerT)
-                return _hit.Ray(from, dir, range, Roles.Player, inflate, Team0Ids());
-        }
-        return hit;
-    }
+    return this._reticlePoint;
+  }
 
-    private Vector3 TorsoAimPoint()
-    {
-        var dir = AimDirWorld();
-        var from = _player.BoneWorldPos(Bones.Torso) + dir * (_player.CollisionRadius + AimOriginClearance);
-        _aimFrom = from;
-        _aimDir = dir;
-        _aimParallel = false;
-        _reticlePoint = from + dir * AimDepth;
-        // Round 27: converge on the point UNDER THE CROSSHAIR -
-        // a ray from the CAMERA along the aim axis (the direction
-        // the chase camera is looking). Its first hit of ANY kind
-        // is where every weapon goes: what the center crosshair
-        // rests on is what gets hit, at any range; a clean sky
-        // shot converges on the far point of the axis itself.
-        // Live play always runs the chase camera; harness proof
-        // poses keep the chest logic below.
-        if (_camMode == CamMode.Chase)
-        {
-            var camPos = _cam.GlobalPosition;
-            var viewHit = AimRay(camPos, dir, Aim.ConvergenceRange);
-            _aimTarget = viewHit.Hit ? viewHit.Target : "";
-            _reticlePoint = viewHit.Hit ? viewHit.Point : camPos + dir * Aim.ConvergenceRange;
-            _aimParallel = !viewHit.Hit;
-            if (_aimParallel)
-            {
-                // The crosshair rests past the weapon cast:
-                // find how far it actually rests (1500u cast,
-                // the rangefinder's reach) so far shells can
-                // converge on THAT point and land on the
-                // crosshair at mission ranges.
-                var farHit = AimRay(camPos, dir, Aim.FarRange);
-                _farConverge = farHit.Hit ? farHit.T : Aim.FarRange;
-            }
-            return _reticlePoint;
-        }
-        // Fallback (round 11): the chest ray's RIDER/PROP hit within
-        // ChestHitAcceptRange, else the free AimDepth point.
-        var hit = AimRay(from, dir, ChestRayRange);
-        _aimTarget = hit.Hit ? hit.Target : "";
-        if (hit.Hit && hit.T <= ChestHitAcceptRange && (hit.Target == Roles.Enemy || hit.Target == Roles.Foe || hit.Target == Roles.Prop))
-            return hit.Point;
-        return _reticlePoint;
-    }
-
-    // The reticle rides a fixed-depth point on the aim ray - AND
-    // (round 9) the weapons converge on that same point, which is
-    // what makes both of the owner's demands true at once:
-    // round 6: the target must move FREELY (projecting the ray's
-    // hit point made it stick to surfaces and jump between boxes -
-    // round 8's model, and he reported it as grid-snapped within
-    // the day). Round 8: shots must land where the cursor points
-    // (a free cursor the weapons ignored was a lie - cannons hit
-    // under a high cursor because the chest ray still crossed the
-    // enemy). Now the cursor IS the convergence point: every
-    // weapon's line is drawn to it, and the first thing on that
-    // line is what gets hit. Cursor above him = the lines pass
-    // above him. When the torso points behind the camera (deep
-    // twist), the projection mirrors - flip through the center and
-    // clamp to the screen edge.
-    private string _aimTarget = "";
-    private Vector3 _reticlePoint;
-    private const float AimDepth = 40f;
-    // The aim origin sits this far ahead of the rider's own
-    // collision cylinder (owner, 2026-11-25: anchor-relative,
-    // not a bare magic offset - the torso bone is the rider's
-    // centre and CollisionRadius is its reference size, so the
-    // origin clears the chest on every chassis by construction).
-    private const float AimOriginClearance = 1.0f;
-    // Fallback chest ray (harness poses only; live play aims
-    // from the camera): its reach, and how near a rider/prop
-    // hit must be to count as the aim point.
-    private const float ChestRayRange = 200f;
-    private const float ChestHitAcceptRange = 140f;
-    private void UpdateReticle()
-    {
-        // Center crosshair (round 27): the reticle is the viewport
-        // center, always - the camera axis is the aim, so there is
-        // no world point left to project. (_reticlePoint still
-        // tracks the convergence point for the weapon code.)
-        var vp = GetViewport().GetVisibleRect().Size;
-        _cross.ReticlePos = vp * 0.5f;
-    }
+  // The reticle rides a fixed-depth point on the aim ray - AND
+  // (round 9) the weapons converge on that same point, which is
+  // what makes both of the owner's demands true at once:
+  // round 6: the target must move FREELY (projecting the ray's
+  // hit point made it stick to surfaces and jump between boxes -
+  // round 8's model, and he reported it as grid-snapped within
+  // the day). Round 8: shots must land where the cursor points
+  // (a free cursor the weapons ignored was a lie - cannons hit
+  // under a high cursor because the chest ray still crossed the
+  // enemy). Now the cursor IS the convergence point: every
+  // weapon's line is drawn to it, and the first thing on that
+  // line is what gets hit. Cursor above him = the lines pass
+  // above him. When the torso points behind the camera (deep
+  // twist), the projection mirrors - flip through the center and
+  // clamp to the screen edge.
+  private string _aimTarget = "";
+  private Vector3 _reticlePoint;
+  private const float AimDepth = 40f;
+  // The aim origin sits this far ahead of the rider's own
+  // collision cylinder (owner, 2026-11-25: anchor-relative,
+  // not a bare magic offset - the torso bone is the rider's
+  // centre and CollisionRadius is its reference size, so the
+  // origin clears the chest on every chassis by construction).
+  private const float AimOriginClearance = 1.0f;
+  // Fallback chest ray (harness poses only; live play aims
+  // from the camera): its reach, and how near a rider/prop
+  // hit must be to count as the aim point.
+  private const float ChestRayRange = 200f;
+  private const float ChestHitAcceptRange = 140f;
+  private void UpdateReticle()
+  {
+    // Center crosshair (round 27): the reticle is the viewport
+    // center, always - the camera axis is the aim, so there is
+    // no world point left to project. (_reticlePoint still
+    // tracks the convergence point for the weapon code.)
+    var vp = this.GetViewport().GetVisibleRect().Size;
+    this._cross.ReticlePos = vp * 0.5f;
+  }
 
 }

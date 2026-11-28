@@ -12,155 +12,201 @@ namespace Titans;
 // per planet, comma-separated).
 public static class StoryProgress
 {
-    private const int MissionMaskBits = 31; // completed-mission bitmask width (mission indices 0..30)
-    private const string SavePath = "user://story_progress.cfg";
-    private const string DonePath = "user://story_completed.cfg";
-    private static int[] _counts; // per planet; null = not loaded
-    private static int[] _done;   // per planet: bitmask of completed missions
+  private const int MissionMaskBits = 31; // completed-mission bitmask width (mission indices 0..30)
+  private const string SavePath = "user://story_progress.cfg";
+  private const string DonePath = "user://story_completed.cfg";
+  private static int[] _counts; // per planet; null = not loaded
+  private static int[] _done;   // per planet: bitmask of completed missions
 
-    private static int[] DoneMasks
+  private static int[] DoneMasks
+  {
+    get
     {
-        get
+      if (_done != null)
+      {
+        return _done;
+      }
+
+      _done = new int[PlanetCount];
+      var f = FileAccess.Open(DonePath, FileAccess.ModeFlags.Read);
+      if (f != null)
+      {
+        var parts = f.GetAsText().Trim().Split(',');
+        f.Close();
+        if (parts.Length == PlanetCount)
         {
-            if (_done != null) return _done;
-            _done = new int[PlanetCount];
-            var f = FileAccess.Open(DonePath, FileAccess.ModeFlags.Read);
-            if (f != null)
+          for (int p = 0; p < PlanetCount; p++)
+          {
+            int.TryParse(parts[p], out _done[p]);
+          }
+        }
+      }
+      return _done;
+    }
+  }
+
+  private static void SaveDone()
+  {
+    var f = FileAccess.Open(DonePath, FileAccess.ModeFlags.Write);
+    if (f != null)
+    {
+      f.StoreString(string.Join(",", DoneMasks));
+      f.Close();
+    }
+  }
+
+  // A completed contract is done for good (owner,
+  // 2026-11-16): it stays visible in the offers but can no
+  // longer be signed again.
+  public static bool IsCompleted(int planet, int mission)
+      => planet >= 0 && planet < PlanetCount && mission >= 0 && mission < MissionMaskBits
+         && (DoneMasks[planet] & (1 << mission)) != 0;
+
+  private static int PlanetCount => MissionCatalog.Planets.Count;
+
+  private static int[] Counts
+  {
+    get
+    {
+      if (_counts != null)
+      {
+        return _counts;
+      }
+
+      _counts = new int[PlanetCount];
+      for (int p = 0; p < PlanetCount; p++)
+      {
+        _counts[p] = 1;
+      }
+
+      var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
+      if (f != null)
+      {
+        string text = f.GetAsText().Trim();
+        f.Close();
+        var parts = text.Split(',');
+        if (parts.Length == PlanetCount)
+        {
+          for (int p = 0; p < PlanetCount; p++)
+          {
+            if (int.TryParse(parts[p], out int v))
             {
-                var parts = f.GetAsText().Trim().Split(',');
-                f.Close();
-                if (parts.Length == PlanetCount)
-                    for (int p = 0; p < PlanetCount; p++)
-                        int.TryParse(parts[p], out _done[p]);
+              _counts[p] = Mathf.Clamp(v, 1, MissionCatalog.Planets[p].Missions.Count);
             }
-            return _done;
+          }
         }
-    }
-
-    private static void SaveDone()
-    {
-        var f = FileAccess.Open(DonePath, FileAccess.ModeFlags.Write);
-        if (f != null)
+        else if (int.TryParse(text, out int legacy))
         {
-            f.StoreString(string.Join(",", DoneMasks));
-            f.Close();
+          // Migration from the first build's single
+          // linear-chain count: unfold it back into
+          // per-planet counts so no progress is lost.
+          int left = legacy;
+          for (int p = 0; p < PlanetCount && left > 0; p++)
+          {
+            int take = Mathf.Min(left, MissionCatalog.Planets[p].Missions.Count);
+            _counts[p] = Mathf.Max(1, take);
+            left -= take;
+          }
         }
+      }
+      return _counts;
     }
+  }
 
-    // A completed contract is done for good (owner,
-    // 2026-11-16): it stays visible in the offers but can no
-    // longer be signed again.
-    public static bool IsCompleted(int planet, int mission)
-        => planet >= 0 && planet < PlanetCount && mission >= 0 && mission < MissionMaskBits
-           && (DoneMasks[planet] & (1 << mission)) != 0;
-
-    private static int PlanetCount => MissionCatalog.Planets.Count;
-
-    private static int[] Counts
+  private static void Save()
+  {
+    var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
+    if (f != null)
     {
-        get
-        {
-            if (_counts != null) return _counts;
-            _counts = new int[PlanetCount];
-            for (int p = 0; p < PlanetCount; p++) _counts[p] = 1;
-            var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
-            if (f != null)
-            {
-                string text = f.GetAsText().Trim();
-                f.Close();
-                var parts = text.Split(',');
-                if (parts.Length == PlanetCount)
-                {
-                    for (int p = 0; p < PlanetCount; p++)
-                        if (int.TryParse(parts[p], out int v))
-                            _counts[p] = Mathf.Clamp(v, 1, MissionCatalog.Planets[p].Missions.Count);
-                }
-                else if (int.TryParse(text, out int legacy))
-                {
-                    // Migration from the first build's single
-                    // linear-chain count: unfold it back into
-                    // per-planet counts so no progress is lost.
-                    int left = legacy;
-                    for (int p = 0; p < PlanetCount && left > 0; p++)
-                    {
-                        int take = Mathf.Min(left, MissionCatalog.Planets[p].Missions.Count);
-                        _counts[p] = Mathf.Max(1, take);
-                        left -= take;
-                    }
-                }
-            }
-            return _counts;
-        }
+      f.StoreString(string.Join(",", Counts));
+      f.Close();
     }
+  }
 
-    private static void Save()
+  public static int UnlockedIn(int planet)
+  {
+    if (planet < 0 || planet >= PlanetCount)
     {
-        var f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
-        if (f != null)
-        {
-            f.StoreString(string.Join(",", Counts));
-            f.Close();
-        }
+      return 0;
     }
 
-    public static int UnlockedIn(int planet)
+    return Counts[planet];
+  }
+
+  public static bool IsUnlocked(int planet, int mission)
+      => planet >= 0 && planet < PlanetCount
+         && mission >= 0
+         && (mission < Counts[planet]
+             || (mission < MissionCatalog.Planets[planet].Missions.Count
+                 && MissionCatalog.Planets[planet].Missions[mission].AlwaysAvailable));
+
+  // The unlocked mission indices of a planet, in catalog
+  // order (the front-end's selectors, offer lists and bar
+  // patrons all cycle exactly this set).
+  public static System.Collections.Generic.List<int> UnlockedList(int planet)
+  {
+    var list = new System.Collections.Generic.List<int>();
+    if (planet < 0 || planet >= PlanetCount)
     {
-        if (planet < 0 || planet >= PlanetCount) return 0;
-        return Counts[planet];
+      return list;
     }
 
-    public static bool IsUnlocked(int planet, int mission)
-        => planet >= 0 && planet < PlanetCount
-           && mission >= 0
-           && (mission < Counts[planet]
-               || (mission < MissionCatalog.Planets[planet].Missions.Count
-                   && MissionCatalog.Planets[planet].Missions[mission].AlwaysAvailable));
-
-    // The unlocked mission indices of a planet, in catalog
-    // order (the front-end's selectors, offer lists and bar
-    // patrons all cycle exactly this set).
-    public static System.Collections.Generic.List<int> UnlockedList(int planet)
+    for (int m = 0; m < MissionCatalog.Planets[planet].Missions.Count; m++)
     {
-        var list = new System.Collections.Generic.List<int>();
-        if (planet < 0 || planet >= PlanetCount) return list;
-        for (int m = 0; m < MissionCatalog.Planets[planet].Missions.Count; m++)
-            if (IsUnlocked(planet, m)) list.Add(m);
-        return list;
+      if (IsUnlocked(planet, m))
+      {
+        list.Add(m);
+      }
     }
 
-    public static int FirstUnlocked(int planet)
+    return list;
+  }
+
+  public static int FirstUnlocked(int planet)
+  {
+    var u = UnlockedList(planet);
+    return u.Count > 0 ? u[0] : 0;
+  }
+
+  // Mark a mission complete: unlocks the NEXT mission on
+  // the same planet. Replays never shrink the unlocked set,
+  // and other planets are untouched.
+  public static void Complete(int planet, int mission)
+  {
+    if (planet < 0 || planet >= PlanetCount)
     {
-        var u = UnlockedList(planet);
-        return u.Count > 0 ? u[0] : 0;
+      return;
     }
 
-    // Mark a mission complete: unlocks the NEXT mission on
-    // the same planet. Replays never shrink the unlocked set,
-    // and other planets are untouched.
-    public static void Complete(int planet, int mission)
+    if (mission >= 0 && mission < MissionMaskBits && !IsCompleted(planet, mission))
     {
-        if (planet < 0 || planet >= PlanetCount) return;
-        if (mission >= 0 && mission < MissionMaskBits && !IsCompleted(planet, mission))
-        {
-            DoneMasks[planet] |= 1 << mission;
-            SaveDone();
-        }
-        int cap = MissionCatalog.Planets[planet].Missions.Count;
-        int want = Mathf.Min(mission + 2, cap);
-        if (want > Counts[planet])
-        {
-            Counts[planet] = want;
-            Save();
-            Dbg.Print($"STORY progress: completed planet {planet} mission {mission}; that planet now has {want}/{cap} unlocked");
-        }
+      DoneMasks[planet] |= 1 << mission;
+      SaveDone();
+    }
+    int cap = MissionCatalog.Planets[planet].Missions.Count;
+    int want = Mathf.Min(mission + 2, cap);
+    if (want > Counts[planet])
+    {
+      Counts[planet] = want;
+      Save();
+      Dbg.Print($"STORY progress: completed planet {planet} mission {mission}; that planet now has {want}/{cap} unlocked");
+    }
+  }
+
+  public static void Reset()
+  {
+    for (int p = 0; p < PlanetCount; p++)
+    {
+      Counts[p] = 1;
     }
 
-    public static void Reset()
+    Save();
+    for (int p = 0; p < PlanetCount; p++)
     {
-        for (int p = 0; p < PlanetCount; p++) Counts[p] = 1;
-        Save();
-        for (int p = 0; p < PlanetCount; p++) DoneMasks[p] = 0;
-        SaveDone();
-        Dbg.Print("STORY progress reset: every planet back to its first mission");
+      DoneMasks[p] = 0;
     }
+
+    SaveDone();
+    Dbg.Print("STORY progress reset: every planet back to its first mission");
+  }
 }

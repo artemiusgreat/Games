@@ -12,12 +12,15 @@ namespace Titans;
 // prints, in production too.
 public static class Dbg
 {
-    public static bool On;
+  public static bool On;
 
-    public static void Print(object message)
+  public static void Print(object message)
+  {
+    if (On)
     {
-        if (On) GD.Print(message);
+      GD.Print(message);
     }
+  }
 
-    public static void Err(object message) => GD.PrintErr(message);
+  public static void Err(object message) => GD.PrintErr(message);
 }

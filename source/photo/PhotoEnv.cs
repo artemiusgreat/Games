@@ -14,110 +14,126 @@ namespace Titans;
 // decimate_models.py there; Poly Haven content is CC0).
 public static class PhotoEnv
 {
-    private const string Root = "res://photo/";
-    private static readonly Dictionary<string, Texture2D> _tex = new();
-    private static readonly Dictionary<string, PackedScene> _scenes = new();
+  private const string Root = "res://photo/";
+  private static readonly Dictionary<string, Texture2D> _tex = new();
+  private static readonly Dictionary<string, PackedScene> _scenes = new();
 
-    // The ground apron plane sits this far below the origin,
-    // under every heightfield, so its edge never z-fights the
-    // terrain it extends.
-    private const float ApronDrop = 3f;
+  // The ground apron plane sits this far below the origin,
+  // under every heightfield, so its edge never z-fights the
+  // terrain it extends.
+  private const float ApronDrop = 3f;
 
-    // Biome tint palette (C# side only - the terrain
-    // shader's own literals are NOT touched by this pass:
-    // a silent shader compile failure once hid for weeks).
-    private static readonly Color DesertGrassTint = new(1.30f, 1.10f, 0.62f);
-    private static readonly Color DesertDirtTint = new(1.22f, 1.02f, 0.66f);
-    private static readonly Color DesertRockTint = new(1.05f, 0.98f, 0.90f);
-    private static readonly Color DesertAsphTint = new(1.05f, 0.98f, 0.85f);
-    private static readonly Color CityGrassTint = new(0.55f, 0.58f, 0.55f);
-    private static readonly Color CityDirtTint = new(0.80f, 0.78f, 0.75f);
-    private static readonly Color CityRockTint = new(1.0f, 1.0f, 1.0f);
-    private static readonly Color CityAsphTint = new(0.78f, 0.78f, 0.82f);
-    private static readonly Color SnowGroundTint = new(1.35f, 1.45f, 1.75f); // grass/dirt lift under snow; also the apron's snow colour
-    private static readonly Color SnowRockTint = new(0.88f, 0.89f, 0.94f);
-    private static readonly Color SnowAsphTint = new(1.05f, 1.12f, 1.30f);
-    private static readonly Color ApronFieldTint = new(0.52f, 0.55f, 0.5f);
-    private static readonly Color DesertFogColor = new(0.80f, 0.70f, 0.53f);
-    private static readonly Color CityFogColor = new(0.42f, 0.52f, 0.60f);
-    private static readonly Color ForestFogColor = new(0.55f, 0.65f, 0.78f);
-    // Renderer tuning for Tune() - exact current values.
-    private const float SdfgiCellSize = 0.35f;
-    private const float GlowIntensityValue = 0.15f, GlowStrengthValue = 0.7f;
-    private const float TonemapExposureValue = 0.94f, AmbientEnergyValue = 0.50f, SdfgiEnergyValue = 0.85f;
-    private const float AdjustmentContrastValue = 1.08f, AdjustmentSaturationValue = 1.05f;
-    private const float SunShadowOpacity = 0.55f;
-    private const float MissionShadowDistance = 900f, ArenaShadowDistance = 520f;
-    private const float WallTileSize = 3.5f, RoofTileSize = 3f;   // UV tiling divisors for the wall/roof sets
-    private const float WallNormalScale = 0.9f, RoofNormalScale = 0.7f;
-    private const float PineStandInHeight = 7.6f, IslandTreeHeight = 5.9f;
-    private const int BackdropTreeCount = 44;
-    private const int HeroClumpCap = 320;
-    // Grass scatter: spot acceptance rules and placement.
-    private const int GrassSpotTarget = 6000;
-    private const int GrassScatterMaxAttempts = 120000;
-    private const float GrassScatterBound = 84f;   // spots sample within +/- this
-    private const float GrassRoadClearance = 2.9f;
-    private const float GrassMaxHeight = 10f, GrassMinHeight = 0.3f;
-    private const float GrassSlopeSampleStep = 0.4f, GrassMaxSlope = 0.45f;
-    private const float GrassPropClearanceMargin = 0.5f; // added to a prop's own radius
-    private const float GrassSpotSink = 0.04f;       // spots sit this far into the ground
-    private const float GrassSpotScaleMin = 0.75f, GrassSpotScaleMax = 1.5f;
-    private const int HeroSpotStride = 37;         // hero clumps pick spots at this stride through the list
-    private const float HeroClumpScaleMin = 1.1f, HeroClumpScaleMax = 1.9f;
-    // Backdrop: apron and ring placement.
-    private const float BackdropArenaReference = 260f; // backdrop scale is relative to the arena's size
-    private const float ApronUvScale = 220f;
-    private const float BackdropPlaneSize = 1700f;
-    private const float RingMissionInnerMargin = 18f, RingMissionOuterMargin = 95f; // past the terrain half-size
-    private const float RingArenaDistMin = 124f, RingArenaDistMax = 175f;
-    private const float RingClampInset = 4f, RingArenaClamp = 84f; // height-sample clamp bounds
-    private const float RingTreeSink = 0.3f;
-    private const float BackdropTreeScaleMin = 1.15f, BackdropTreeScaleMax = 1.6f;
+  // Biome tint palette (C# side only - the terrain
+  // shader's own literals are NOT touched by this pass:
+  // a silent shader compile failure once hid for weeks).
+  private static readonly Color DesertGrassTint = new(1.30f, 1.10f, 0.62f);
+  private static readonly Color DesertDirtTint = new(1.22f, 1.02f, 0.66f);
+  private static readonly Color DesertRockTint = new(1.05f, 0.98f, 0.90f);
+  private static readonly Color DesertAsphTint = new(1.05f, 0.98f, 0.85f);
+  private static readonly Color CityGrassTint = new(0.55f, 0.58f, 0.55f);
+  private static readonly Color CityDirtTint = new(0.80f, 0.78f, 0.75f);
+  private static readonly Color CityRockTint = new(1.0f, 1.0f, 1.0f);
+  private static readonly Color CityAsphTint = new(0.78f, 0.78f, 0.82f);
+  private static readonly Color SnowGroundTint = new(1.35f, 1.45f, 1.75f); // grass/dirt lift under snow; also the apron's snow colour
+  private static readonly Color SnowRockTint = new(0.88f, 0.89f, 0.94f);
+  private static readonly Color SnowAsphTint = new(1.05f, 1.12f, 1.30f);
+  private static readonly Color ApronFieldTint = new(0.52f, 0.55f, 0.5f);
+  private static readonly Color DesertFogColor = new(0.80f, 0.70f, 0.53f);
+  private static readonly Color CityFogColor = new(0.42f, 0.52f, 0.60f);
+  private static readonly Color ForestFogColor = new(0.55f, 0.65f, 0.78f);
+  // Renderer tuning for Tune() - exact current values.
+  private const float SdfgiCellSize = 0.35f;
+  private const float GlowIntensityValue = 0.15f, GlowStrengthValue = 0.7f;
+  private const float TonemapExposureValue = 0.94f, AmbientEnergyValue = 0.50f, SdfgiEnergyValue = 0.85f;
+  private const float AdjustmentContrastValue = 1.08f, AdjustmentSaturationValue = 1.05f;
+  private const float SunShadowOpacity = 0.55f;
+  private const float MissionShadowDistance = 900f, ArenaShadowDistance = 520f;
+  private const float WallTileSize = 3.5f, RoofTileSize = 3f;   // UV tiling divisors for the wall/roof sets
+  private const float WallNormalScale = 0.9f, RoofNormalScale = 0.7f;
+  private const float PineStandInHeight = 7.6f, IslandTreeHeight = 5.9f;
+  private const int BackdropTreeCount = 44;
+  private const int HeroClumpCap = 320;
+  // Grass scatter: spot acceptance rules and placement.
+  private const int GrassSpotTarget = 6000;
+  private const int GrassScatterMaxAttempts = 120000;
+  private const float GrassScatterBound = 84f;   // spots sample within +/- this
+  private const float GrassRoadClearance = 2.9f;
+  private const float GrassMaxHeight = 10f, GrassMinHeight = 0.3f;
+  private const float GrassSlopeSampleStep = 0.4f, GrassMaxSlope = 0.45f;
+  private const float GrassPropClearanceMargin = 0.5f; // added to a prop's own radius
+  private const float GrassSpotSink = 0.04f;       // spots sit this far into the ground
+  private const float GrassSpotScaleMin = 0.75f, GrassSpotScaleMax = 1.5f;
+  private const int HeroSpotStride = 37;         // hero clumps pick spots at this stride through the list
+  private const float HeroClumpScaleMin = 1.1f, HeroClumpScaleMax = 1.9f;
+  // Backdrop: apron and ring placement.
+  private const float BackdropArenaReference = 260f; // backdrop scale is relative to the arena's size
+  private const float ApronUvScale = 220f;
+  private const float BackdropPlaneSize = 1700f;
+  private const float RingMissionInnerMargin = 18f, RingMissionOuterMargin = 95f; // past the terrain half-size
+  private const float RingArenaDistMin = 124f, RingArenaDistMax = 175f;
+  private const float RingClampInset = 4f, RingArenaClamp = 84f; // height-sample clamp bounds
+  private const float RingTreeSink = 0.3f;
+  private const float BackdropTreeScaleMin = 1.15f, BackdropTreeScaleMax = 1.6f;
 
-    private static Texture2D Tex(string set, string kind)
+  private static Texture2D Tex(string set, string kind)
+  {
+    string key = set + "/" + kind;
+    if (_tex.TryGetValue(key, out var t))
     {
-        string key = set + "/" + kind;
-        if (_tex.TryGetValue(key, out var t)) return t;
-        t = ResourceLoader.Load<Texture2D>($"{Root}textures/{set}/{set}_{kind}_2k.jpg");
-        _tex[key] = t;
-        return t;
+      return t;
     }
 
-    private static PackedScene Scene(string id)
+    t = ResourceLoader.Load<Texture2D>($"{Root}textures/{set}/{set}_{kind}_2k.jpg");
+    _tex[key] = t;
+    return t;
+  }
+
+  private static PackedScene Scene(string id)
+  {
+    if (_scenes.TryGetValue(id, out var s))
     {
-        if (_scenes.TryGetValue(id, out var s)) return s;
-        s = ResourceLoader.Load<PackedScene>($"{Root}models/{id}/{id}.gltf");
-        _scenes[id] = s;
-        return s;
+      return s;
     }
 
-    // Merged world-space AABB of every mesh under a node, measured in
-    // the node's own local space (before its own transform is set).
-    private static Aabb LocalAabb(Node3D root)
+    s = ResourceLoader.Load<PackedScene>($"{Root}models/{id}/{id}.gltf");
+    _scenes[id] = s;
+    return s;
+  }
+
+  // Merged world-space AABB of every mesh under a node, measured in
+  // the node's own local space (before its own transform is set).
+  private static Aabb LocalAabb(Node3D root)
+  {
+    var box = new Aabb();
+    bool first = true;
+    var stack = new Stack<(Node Node, Transform3D Xf)>();
+    stack.Push((root, Transform3D.Identity));
+    while (stack.Count > 0)
     {
-        var box = new Aabb();
-        bool first = true;
-        var stack = new Stack<(Node Node, Transform3D Xf)>();
-        stack.Push((root, Transform3D.Identity));
-        while (stack.Count > 0)
+      var (node, xf) = stack.Pop();
+      if (node is MeshInstance3D mi && mi.Mesh != null)
+      {
+        var b = xf * mi.GetAabb();
+        if (first) { box = b; first = false; }
+        else
         {
-            var (node, xf) = stack.Pop();
-            if (node is MeshInstance3D mi && mi.Mesh != null)
-            {
-                var b = xf * mi.GetAabb();
-                if (first) { box = b; first = false; } else box = box.Merge(b);
-            }
-            foreach (var child in node.GetChildren())
-                if (child is Node3D n3)
-                    stack.Push((n3, xf * n3.Transform));
+          box = box.Merge(b);
         }
-        return box;
+      }
+      foreach (var child in node.GetChildren())
+      {
+        if (child is Node3D n3)
+        {
+          stack.Push((n3, xf * n3.Transform));
+        }
+      }
     }
+    return box;
+  }
 
-    // ---- Terrain: splat shader over the shared heightfield ----
+  // ---- Terrain: splat shader over the shared heightfield ----
 
-    private const string TerrainShader = @"
+  private const string TerrainShader = @"
 shader_type spatial;
 uniform sampler2D splat : filter_linear_mipmap, repeat_disable;
 uniform sampler2D grass_diff : source_color, repeat_enable;
@@ -300,409 +316,441 @@ void fragment() {
 ";
 
 
-    // Splat weights (R rock, G grass, B dirt, A asphalt) from the same
-    // heightfield the game logic reads: rock takes steep faces and
-    // high ground, dirt breaks the grass in noise patches, asphalt
-    // follows the active map's RoadDistance exactly like the flat coloring did.
-    private static ImageTexture BuildSplat()
+  // Splat weights (R rock, G grass, B dirt, A asphalt) from the same
+  // heightfield the game logic reads: rock takes steep faces and
+  // high ground, dirt breaks the grass in noise patches, asphalt
+  // follows the active map's RoadDistance exactly like the flat coloring did.
+  private static ImageTexture BuildSplat()
+  {
+    const int N = 1024;
+    var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
+    for (int j = 0; j < N; j++)
     {
-        const int N = 1024;
-        var img = Image.CreateEmpty(N, N, false, Image.Format.Rgba8);
-        for (int j = 0; j < N; j++)
+      for (int i = 0; i < N; i++)
+      {
+        float x = (i / (float)(N - 1) - 0.5f) * Main.TerrainSize;
+        float z = (j / (float)(N - 1) - 0.5f) * Main.TerrainSize;
+        float h = Main.HeightAt(x, z);
+        float e = 0.35f;
+        float slope = Mathf.Max(
+            Mathf.Abs(Main.HeightAt(x + e, z) - h),
+            Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e; // rise per unit
+                                                         // Blurry-cloud variation (owner, 2026-11-12):
+                                                         // the ground must carry NO obvious shapes - no
+                                                         // blotches, no stripes, no rims. Every weight
+                                                         // below therefore crosses a WIDE smoothstep at
+                                                         // reduced strength, so the recipe drifts like
+                                                         // cloud shadows instead of swapping at an edge.
+                                                         // (The old patch field's fine 0.23 octave and
+                                                         // the narrow dirt/street/road bands drew the
+                                                         // shapes in his screenshot.)
+        float patch = TerrainMath.SinValueNoise(x * 0.032f, z * 0.032f) * 0.85f
+                    + TerrainMath.SinValueNoise(x * 0.09f, z * 0.09f) * 0.15f;
+        // Rock is a SLOPE material only (owner,
+        // 2026-11-11 round 7: 'ground should not
+        // look the same as mountains - the grass/
+        // stone mix should end where the mountain
+        // goes into the ground'). The old height
+        // term (+0.7 above h=13) dragged stone onto
+        // every elevated flat - the pass floors wore
+        // the mountain's face. Steep faces keep it.
+        float rock = Mathf.SmoothStep(0.30f, 0.62f, slope);
+        float dirt = Mathf.SmoothStep(0.30f, 0.85f, patch) * 0.6f * (1f - rock);
+        float grass = Mathf.Max(0f, 1f - rock - dirt);
+        // No full-strength core on the road either
+        // (splat audit, 2026-11-12: the +-1.4u plateau
+        // still drew a bright stripe down its middle) -
+        // a pure gradient from a 0.65 peak, gone by
+        // 7.5u. The district streets drop to a faint
+        // wash: at full strength their grid lattice IS
+        // the checkerboard the owner keeps reporting.
+        float road = (1f - Mathf.SmoothStep(0f, 7.5f, Maps.Active.RoadDistance(x, z))) * 0.65f;
+        float street = (1f - Mathf.SmoothStep(2f, 16f, Maps.Active.StreetDistance(x, z))) * 0.3f;
+        // Plaza carve (splat audit round 2): the open
+        // ground around a pad - the patrol plaza where
+        // fights happen - carries no street wash at
+        // all; the lattice there was the last crisp
+        // pattern left in the weights. Streets fade
+        // back in between 58u and 92u from a pad.
+        float padD = float.MaxValue;
+        foreach (var pad in Main.SpawnPads)
         {
-            for (int i = 0; i < N; i++)
-            {
-                float x = (i / (float)(N - 1) - 0.5f) * Main.TerrainSize;
-                float z = (j / (float)(N - 1) - 0.5f) * Main.TerrainSize;
-                float h = Main.HeightAt(x, z);
-                float e = 0.35f;
-                float slope = Mathf.Max(
-                    Mathf.Abs(Main.HeightAt(x + e, z) - h),
-                    Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e; // rise per unit
-                // Blurry-cloud variation (owner, 2026-11-12):
-                // the ground must carry NO obvious shapes - no
-                // blotches, no stripes, no rims. Every weight
-                // below therefore crosses a WIDE smoothstep at
-                // reduced strength, so the recipe drifts like
-                // cloud shadows instead of swapping at an edge.
-                // (The old patch field's fine 0.23 octave and
-                // the narrow dirt/street/road bands drew the
-                // shapes in his screenshot.)
-                float patch = TerrainMath.SinValueNoise(x * 0.032f, z * 0.032f) * 0.85f
-                            + TerrainMath.SinValueNoise(x * 0.09f, z * 0.09f) * 0.15f;
-                // Rock is a SLOPE material only (owner,
-                // 2026-11-11 round 7: 'ground should not
-                // look the same as mountains - the grass/
-                // stone mix should end where the mountain
-                // goes into the ground'). The old height
-                // term (+0.7 above h=13) dragged stone onto
-                // every elevated flat - the pass floors wore
-                // the mountain's face. Steep faces keep it.
-                float rock = Mathf.SmoothStep(0.30f, 0.62f, slope);
-                float dirt = Mathf.SmoothStep(0.30f, 0.85f, patch) * 0.6f * (1f - rock);
-                float grass = Mathf.Max(0f, 1f - rock - dirt);
-                // No full-strength core on the road either
-                // (splat audit, 2026-11-12: the +-1.4u plateau
-                // still drew a bright stripe down its middle) -
-                // a pure gradient from a 0.65 peak, gone by
-                // 7.5u. The district streets drop to a faint
-                // wash: at full strength their grid lattice IS
-                // the checkerboard the owner keeps reporting.
-                float road = (1f - Mathf.SmoothStep(0f, 7.5f, Maps.Active.RoadDistance(x, z))) * 0.65f;
-                float street = (1f - Mathf.SmoothStep(2f, 16f, Maps.Active.StreetDistance(x, z))) * 0.3f;
-                // Plaza carve (splat audit round 2): the open
-                // ground around a pad - the patrol plaza where
-                // fights happen - carries no street wash at
-                // all; the lattice there was the last crisp
-                // pattern left in the weights. Streets fade
-                // back in between 58u and 92u from a pad.
-                float padD = float.MaxValue;
-                foreach (var pad in Main.SpawnPads)
-                {
-                    float pdx = x - pad.X, pdz = z - pad.Y;
-                    padD = Mathf.Min(padD, Mathf.Sqrt(pdx * pdx + pdz * pdz));
-                }
-                street *= Mathf.SmoothStep(58f, 92f, padD);
-                road = Mathf.Max(road, street);
-                // Biome weights (owner's map types): the desert
-                // runs sand (dirt channel, tinted) with only a
-                // scrub of grass; the city paves its blocks -
-                // asphalt spreads by coarse blocks over flat
-                // ground, grass all but vanishes.
-                if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
-                {
-                    dirt = Mathf.SmoothStep(0.15f, 0.80f, patch) * (1f - rock);
-                    grass = Mathf.Max(0f, 1f - rock - dirt) * 0.35f;
-                }
-                else if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
-                {
-                    float blocks = TerrainMath.SinValueNoise(x * 0.021f + 9f, z * 0.021f + 3f);
-                    float paved = Mathf.SmoothStep(0.05f, 0.95f, blocks) * (1f - Mathf.SmoothStep(0.5f, 0.8f, slope));
-                    road = Mathf.Max(road, paved * 0.45f);
-                    grass *= 0.12f;
-                    dirt *= 0.5f;
-                }
-                // City district ground stays UNIFORM (owner,
-                // 2026-11-11 round 5: the checkerboard comes
-                // out everywhere): the old plot/lane split -
-                // dirt plots against asphalt lanes on the 32u
-                // grid - read as a crisp checkerboard wherever
-                // no buildings covered it, worst across the
-                // emptied home valley. No district term: the
-                // ground flows on the smooth patch field like
-                // everywhere else; the buildings themselves
-                // define the lanes.
-                img.SetPixel(i, j, new Color(
-                    Mathf.Clamp(rock, 0f, 1f), grass,
-                    Mathf.Clamp(dirt, 0f, 1f), road));
-            }
+          float pdx = x - pad.X, pdz = z - pad.Y;
+          padD = Mathf.Min(padD, Mathf.Sqrt(pdx * pdx + pdz * pdz));
         }
-        // Mipmaps (owner, 2026-11-13): without them the splat and
-        // the detail textures minify by picking single texels, so
-        // distant slopes render as per-pixel dither. The four
-        // scanned sets' .import files generate mipmaps too now.
-        img.GenerateMipmaps();
-        return ImageTexture.CreateFromImage(img);
-    }
-
-    // Harness hook (phase 18): the baked splat weights as
-    // an image, so ground-material complaints can be
-    // diagnosed channel by channel instead of by eye.
-    internal static Image SplatImage() => BuildSplat().GetImage();
-
-    public static Material TerrainMaterial()
-    {
-        var sh = new Shader { Code = TerrainShader.Replace("WORLD_SIZE",
-            Main.TerrainSize.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)) };
-        var m = new ShaderMaterial { Shader = sh };
-        m.SetShaderParameter("splat", BuildSplat());
-        // Biome tints over the scanned sets: sand over the dirt
-        // and grass channels in the desert; moss-dimmed grass and
-        // lighter concrete in the city; Forest stays neutral.
-        var (gt, dt, rt, at) = WorldConfig.Biome switch
-        {
-            WorldConfig.BiomeKind.Desert => (DesertGrassTint, DesertDirtTint, DesertRockTint, DesertAsphTint),
-            WorldConfig.BiomeKind.City => (CityGrassTint, CityDirtTint, CityRockTint, CityAsphTint),
-            _ => (Colors.White, Colors.White, Colors.White, Colors.White)
-        };
-        string grassSet = "leafy_grass", dirtSet = "forest_floor";
-        if (WorldConfig.SnowGround)
-        {
-            // Snow cover (owner, corrected 2026-11-23): snow
-            // replaces the GREEN only - grass and dirt lift to
-            // blue-white snow - while the mountains stay grey
-            // stone: the rock channel keeps a neutral stone
-            // tint. (The first pass lifted every channel to
-            // snow white and the whole range washed out.)
-            gt = SnowGroundTint; dt = gt;
-            rt = SnowRockTint;
-            at = SnowAsphTint;
-            // No green under snow (owner, 2026-11-22): the
-            // grass and dirt channels sample the rock set
-            // itself, so no green can show through; under the
-            // snow tint it reads as snow-covered ground.
-            grassSet = "aerial_rocks_02"; dirtSet = "aerial_rocks_02";
-        }
-        // Uniform ground zones (owner round 6, corrected
-        // round 7): on mission city maps the valley floors
-        // (and the Gate City disc) freeze their splat
-        // recipe to the pad centre's mix in the shader -
-        // same ground as everywhere else, minus the patch
-        // blotches. (Round 6 first rendered them as one
-        // flat colour: a blue plastic sheet. Replaced.)
-        var zones = new Vector4[4];
-        if (WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.City)
-        {
-            float padR = 120f;
-            for (int i = 0; i < 3 && i < Main.SpawnPads.Length; i++)
-                zones[i] = new Vector4(Main.SpawnPads[i].X, Main.SpawnPads[i].Y, padR, 1f);
-            zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
-        }
-        m.SetShaderParameter("solid_zones", zones);
-        m.SetShaderParameter("snow_mode", WorldConfig.SnowGround ? 1f : 0f);
-        m.SetShaderParameter("grass_tint", gt);
-        m.SetShaderParameter("dirt_tint", dt);
-        m.SetShaderParameter("rock_tint", rt);
-        m.SetShaderParameter("asph_tint", at);
-        m.SetShaderParameter("grass_diff", Tex(grassSet, "diff"));
-        m.SetShaderParameter("grass_nor", Tex(grassSet, "nor_gl"));
-        m.SetShaderParameter("grass_arm", Tex(grassSet, "arm"));
-        m.SetShaderParameter("dirt_diff", Tex(dirtSet, "diff"));
-        m.SetShaderParameter("dirt_nor", Tex(dirtSet, "nor_gl"));
-        m.SetShaderParameter("dirt_arm", Tex(dirtSet, "arm"));
-        m.SetShaderParameter("rock_diff", Tex("aerial_rocks_02", "diff"));
-        m.SetShaderParameter("rock_nor", Tex("aerial_rocks_02", "nor_gl"));
-        m.SetShaderParameter("rock_arm", Tex("aerial_rocks_02", "arm"));
-        m.SetShaderParameter("asph_diff", Tex("aerial_asphalt_01", "diff"));
-        m.SetShaderParameter("asph_nor", Tex("aerial_asphalt_01", "nor_gl"));
-        m.SetShaderParameter("asph_arm", Tex("aerial_asphalt_01", "arm"));
-        Dbg.Print("PHOTO terrain material ready (splat 1024, 4 scanned sets)");
-        return m;
-    }
-
-    // ---- Scanned props at the duel's own positions ----
-
-    public static void AddTreeModel(Node3D tree, int variety, RandomNumberGenerator rng)
-    {
-        // No scanned pine exists at usable size (Poly Haven's are
-        // 0.5-0.9 GB photogrammetry), so the third island tree
-        // stands in for the pine variety in this probe.
-        string id = variety == 1 ? "island_tree_03"
-            : (rng.RandiRange(0, 1) == 0 ? "island_tree_01" : "island_tree_02");
-        float targetH = variety == 1 ? PineStandInHeight : IslandTreeHeight;
-        var inst = Scene(id).Instantiate<Node3D>();
-        var box = LocalAabb(inst);
-        float s = targetH / Mathf.Max(box.Size.Y, 0.01f);
-        inst.Scale = Vector3.One * s;
-        inst.Position = new Vector3(
-            -box.GetCenter().X * s, -box.Position.Y * s, -box.GetCenter().Z * s);
-        inst.Rotation = new Vector3(0f, rng.RandfRange(0f, Mathf.Tau), 0f);
-        tree.AddChild(inst);
-    }
-
-    public static Node3D MakeRock(Vector3 scl)
-    {
-        var inst = Scene("coast_rocks_01").Instantiate<Node3D>();
-        var box = LocalAabb(inst);
-        var holder = new Node3D();
-        inst.Scale = new Vector3(
-            2f * scl.X / Mathf.Max(box.Size.X, 0.01f),
-            2f * scl.Y / Mathf.Max(box.Size.Y, 0.01f),
-            2f * scl.Z / Mathf.Max(box.Size.Z, 0.01f));
-        inst.Position = new Vector3(
-            -box.GetCenter().X * inst.Scale.X,
-            -box.Position.Y * inst.Scale.Y,
-            -box.GetCenter().Z * inst.Scale.Z);
-        holder.AddChild(inst);
-        return holder;
-    }
-
-    // Photographic wall sets (Poly Haven, CC0): one per
-    public static void AddGrassField(Node3D parent,
-        List<(Vector2 P, float R)> props)
-    {
-        // Scanned hero clumps ONLY (the full grass patch, 24.7k
-        // tris, used sparingly - 320 instances ≈ 8M tris). The
-        // blade-card layer (60k crossed-quad tufts) was REMOVED
-        // at the owner's word (2026-10-31): the crossed quads
-        // read as intersecting flat planes, worst of all where
-        // they stood in the water. The naive all-scanned version
-        // (42k patches) was 1.04 BILLION triangles/frame: that is
-        // the single most important budget fact this probe
-        // produced.
-        var spots = new List<(Vector3 Pos, float Yaw, float S)>();
-        var rng = new RandomNumberGenerator { Seed = 424242 };
-        int attempts = 0;
-        while (spots.Count < GrassSpotTarget && attempts++ < GrassScatterMaxAttempts)
-        {
-            float x = rng.RandfRange(-GrassScatterBound, GrassScatterBound), z = rng.RandfRange(-GrassScatterBound, GrassScatterBound);
-            if (Maps.Active.RoadDistance(x, z) < GrassRoadClearance) continue;
-            float h = Main.HeightAt(x, z);
-            if (h > GrassMaxHeight) continue;
-            if (h < GrassMinHeight) continue; // dry land only: scatter stood in the sea/lake shallows (owner)
-            float e = GrassSlopeSampleStep;
-            float slope = Mathf.Max(
-                Mathf.Abs(Main.HeightAt(x + e, z) - h),
-                Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e;
-            if (slope > GrassMaxSlope) continue;
-            bool bad = false;
-            foreach (var (cp, cr) in props)
-                if (new Vector2(x, z).DistanceTo(cp) < cr + GrassPropClearanceMargin) { bad = true; break; }
-            if (bad) continue;
-            spots.Add((new Vector3(x, h - GrassSpotSink, z),
-                rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(GrassSpotScaleMin, GrassSpotScaleMax)));
-        }
-
-        // Hero clumps from the scanned patch.
-        var probe = Scene("grass_medium_01").Instantiate<Node3D>();
-        Mesh heroMesh = null;
-        var stack = new Stack<Node>();
-        stack.Push(probe);
-        while (stack.Count > 0)
-        {
-            var n = stack.Pop();
-            if (n is MeshInstance3D mi && mi.Mesh != null) { heroMesh = mi.Mesh; break; }
-            foreach (var c in n.GetChildren()) stack.Push(c);
-        }
-        probe.QueueFree();
-        if (heroMesh != null)
-        {
-            int heroes = Mathf.Min(HeroClumpCap, spots.Count);
-            var hmm = new MultiMesh
-            {
-                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-                Mesh = heroMesh,
-                InstanceCount = heroes
-            };
-            for (int i = 0; i < heroes; i++)
-            {
-                var (pos, yaw, _) = spots[i * HeroSpotStride % spots.Count];
-                float sc = rng.RandfRange(HeroClumpScaleMin, HeroClumpScaleMax);
-                hmm.SetInstanceTransform(i, new Transform3D(
-                    new Basis(Vector3.Up, yaw).Scaled(new Vector3(sc, sc, sc)), pos));
-            }
-            parent.AddChild(new MultiMeshInstance3D
-            {
-                Multimesh = hmm,
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-            });
-            Dbg.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed - owner)");
-        }
-    }
-
-    // ---- Backdrop: ground apron + biome rim rings (forest trees,
-    // desert rocks). The procedural peak ring was removed entirely
-    // (owner, 2026-11-19: the cone mountains read fake on every map).
-
-    public static void AddBackdrop(Node3D parent)
-    {
-        bool mission = WorldConfig.IsMission;
-        float bs = Main.TerrainSize / BackdropArenaReference; // backdrop scale vs the arena
-        // Apron closing the horizon under the rim.
-        var apronMat = new StandardMaterial3D
-        {
-            AlbedoTexture = Tex("leafy_grass", "diff"),
-            AlbedoColor = WorldConfig.SnowGround ? SnowGroundTint : ApronFieldTint,
-            Roughness = 1f,
-            Uv1Scale = new Vector3(ApronUvScale, ApronUvScale, 1f)
-        };
-        var apron = new MeshInstance3D
-        {
-            Mesh = new PlaneMesh { Size = new Vector2(BackdropPlaneSize * bs, BackdropPlaneSize * bs) },
-            MaterialOverride = apronMat,
-            Position = new Vector3(0f, -ApronDrop, 0f),
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        };
-        parent.AddChild(apron);
-
-        var rng = new RandomNumberGenerator { Seed = 90210 };
-
-        // Backdrop ring by biome: forest keeps its tree ring
-        // (visual only; on the Mission front it rings the rim).
-        // The arena ring starts past the movement bound (115u)
-        // plus a margin (owner, 2026-11-15): at 98u the inner
-        // ring trees and rocks stood INSIDE the reachable
-        // ground as ghosts - riders walked straight through
-        // them while the planted trees stomp and burn.
-        // the desert gets bare rock outcrops; the city gets no
-        // ring (owner: no procedural buildings outside the map -
-        // every city building is a gameplay building inside it).
-        if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
-        {
-            Dbg.Print("PHOTO backdrop: apron only (city - no ring)");
-            return;
-        }
+        street *= Mathf.SmoothStep(58f, 92f, padD);
+        road = Mathf.Max(road, street);
+        // Biome weights (owner's map types): the desert
+        // runs sand (dirt channel, tinted) with only a
+        // scrub of grass; the city paves its blocks -
+        // asphalt spreads by coarse blocks over flat
+        // ground, grass all but vanishes.
         if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
         {
-            // The desert rock ring is gone with the rest of
-            // the rocks (owner, 2026-11-20: removed
-            // completely) - the apron stands bare.
-            Dbg.Print("PHOTO backdrop: apron only (desert - rock ring removed)");
-            return;
+          dirt = Mathf.SmoothStep(0.15f, 0.80f, patch) * (1f - rock);
+          grass = Mathf.Max(0f, 1f - rock - dirt) * 0.35f;
         }
-        for (int i = 0; i < BackdropTreeCount; i++)
+        else if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
         {
-            float a = rng.RandfRange(0f, Mathf.Tau);
-            float half = Main.TerrainSize / 2f;
-            float dist = mission ? rng.RandfRange(half + RingMissionInnerMargin, half + RingMissionOuterMargin) : rng.RandfRange(RingArenaDistMin, RingArenaDistMax);
-            var pos = new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist);
-            float cl = mission ? half - RingClampInset : RingArenaClamp;
-            pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -cl, cl), Mathf.Clamp(pos.Z, -cl, cl)) - RingTreeSink;
-            var holder = new Node3D { Position = pos };
-            AddTreeModel(holder, rng.RandiRange(0, 2), rng);
-            holder.Scale = Vector3.One * rng.RandfRange(BackdropTreeScaleMin, BackdropTreeScaleMax);
-            parent.AddChild(holder);
+          float blocks = TerrainMath.SinValueNoise(x * 0.021f + 9f, z * 0.021f + 3f);
+          float paved = Mathf.SmoothStep(0.05f, 0.95f, blocks) * (1f - Mathf.SmoothStep(0.5f, 0.8f, slope));
+          road = Mathf.Max(road, paved * 0.45f);
+          grass *= 0.12f;
+          dirt *= 0.5f;
         }
-        Dbg.Print($"PHOTO backdrop: apron + {BackdropTreeCount} ring trees");
+        // City district ground stays UNIFORM (owner,
+        // 2026-11-11 round 5: the checkerboard comes
+        // out everywhere): the old plot/lane split -
+        // dirt plots against asphalt lanes on the 32u
+        // grid - read as a crisp checkerboard wherever
+        // no buildings covered it, worst across the
+        // emptied home valley. No district term: the
+        // ground flows on the smooth patch field like
+        // everywhere else; the buildings themselves
+        // define the lanes.
+        img.SetPixel(i, j, new Color(
+            Mathf.Clamp(rock, 0f, 1f), grass,
+            Mathf.Clamp(dirt, 0f, 1f), road));
+      }
     }
+    // Mipmaps (owner, 2026-11-13): without them the splat and
+    // the detail textures minify by picking single texels, so
+    // distant slopes render as per-pixel dither. The four
+    // scanned sets' .import files generate mipmaps too now.
+    img.GenerateMipmaps();
+    return ImageTexture.CreateFromImage(img);
+  }
 
-    // ---- Renderer / atmosphere tuning for the probe ----
+  // Harness hook (phase 18): the baked splat weights as
+  // an image, so ground-material complaints can be
+  // diagnosed channel by channel instead of by eye.
+  internal static Image SplatImage() => BuildSplat().GetImage();
 
-    public static void Tune(Environment env, DirectionalLight3D sun)
+  public static Material TerrainMaterial()
+  {
+    var sh = new Shader
     {
-        env.SdfgiEnabled = true;
-        // Optimization #2 (owner): fewer, cheaper cascades + probe
-        // occlusion; convergence cost is spread thinner, which
-        // flattens frame times. Quality at arena scale is unchanged
-        // in practice - 4 cascades cover 170u comfortably.
-        env.SdfgiCascades = WorldConfig.IsMission ? 6 : 4;
-        env.SdfgiUseOcclusion = true;
-        env.SdfgiMinCellSize = SdfgiCellSize;
-        env.SsaoEnabled = true;
-        env.VolumetricFogEnabled = true;
-        // Fog by biome: warm haze in the desert, a duskier
-        // teal-grey in the city (lit windows and signs carry),
-        // the standing blue-grey in the forest.
-        var (fogC, fogD, volD, sunE) = WorldConfig.Biome switch
-        {
-            WorldConfig.BiomeKind.Desert => (DesertFogColor, WorldConfig.IsMission ? 0.00050f : 0.0019f, WorldConfig.IsMission ? 0.0009f : 0.0026f, 1.55f),
-            WorldConfig.BiomeKind.City => (CityFogColor, WorldConfig.IsMission ? 0.00055f : 0.0021f, WorldConfig.IsMission ? 0.0010f : 0.0028f, 1.15f),
-            _ => (ForestFogColor, WorldConfig.IsMission ? 0.00042f : 0.0016f, WorldConfig.IsMission ? 0.00075f : 0.0022f, 1.45f)
-        };
-        env.VolumetricFogDensity = volD;
-        env.FogDensity = fogD; // distance haze; the Mission front hazes out near ~1200u
-        env.GlowEnabled = true;
-        env.GlowIntensity = GlowIntensityValue;
-        env.GlowStrength = GlowStrengthValue;
-        // Look pass (owner: fog + bright light overilluminated the
-        // scene). The wash came from stacked ambient terms - sky
-        // ambient 0.42 + full-strength SDFGI bounce + bright fog -
-        // so the fix is to let the SUN carry the image and deepen
-        // everything else: lower exposure, weaker ambient and
-        // bounce, darker fog, and a gentle filmic contrast/
-        // saturation adjustment on top. The haze itself stays.
-        env.TonemapExposure = TonemapExposureValue;
-        env.AmbientLightEnergy = AmbientEnergyValue; // raised 0.30 -> 0.50 (owner, 2026-11-11: shadows must stay readable)
-        env.SdfgiEnergy = SdfgiEnergyValue;
-        env.FogLightColor = fogC;
-        env.VolumetricFogAlbedo = fogC;
-        env.AdjustmentEnabled = true;
-        env.AdjustmentBrightness = 1.0f;
-        env.AdjustmentContrast = AdjustmentContrastValue;
-        env.AdjustmentSaturation = AdjustmentSaturationValue;
-        sun.LightEnergy = sunE;
-        sun.ShadowOpacity = SunShadowOpacity; // real shade depth (owner round 6: rider's shadow was too bright)
-        sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? MissionShadowDistance : ArenaShadowDistance;
-        Dbg.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
+      Code = TerrainShader.Replace("WORLD_SIZE",
+        Main.TerrainSize.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))
+    };
+    var m = new ShaderMaterial { Shader = sh };
+    m.SetShaderParameter("splat", BuildSplat());
+    // Biome tints over the scanned sets: sand over the dirt
+    // and grass channels in the desert; moss-dimmed grass and
+    // lighter concrete in the city; Forest stays neutral.
+    var (gt, dt, rt, at) = WorldConfig.Biome switch
+    {
+      WorldConfig.BiomeKind.Desert => (DesertGrassTint, DesertDirtTint, DesertRockTint, DesertAsphTint),
+      WorldConfig.BiomeKind.City => (CityGrassTint, CityDirtTint, CityRockTint, CityAsphTint),
+      _ => (Colors.White, Colors.White, Colors.White, Colors.White)
+    };
+    string grassSet = "leafy_grass", dirtSet = "forest_floor";
+    if (WorldConfig.SnowGround)
+    {
+      // Snow cover (owner, corrected 2026-11-23): snow
+      // replaces the GREEN only - grass and dirt lift to
+      // blue-white snow - while the mountains stay grey
+      // stone: the rock channel keeps a neutral stone
+      // tint. (The first pass lifted every channel to
+      // snow white and the whole range washed out.)
+      gt = SnowGroundTint; dt = gt;
+      rt = SnowRockTint;
+      at = SnowAsphTint;
+      // No green under snow (owner, 2026-11-22): the
+      // grass and dirt channels sample the rock set
+      // itself, so no green can show through; under the
+      // snow tint it reads as snow-covered ground.
+      grassSet = "aerial_rocks_02"; dirtSet = "aerial_rocks_02";
     }
+    // Uniform ground zones (owner round 6, corrected
+    // round 7): on mission city maps the valley floors
+    // (and the Gate City disc) freeze their splat
+    // recipe to the pad centre's mix in the shader -
+    // same ground as everywhere else, minus the patch
+    // blotches. (Round 6 first rendered them as one
+    // flat colour: a blue plastic sheet. Replaced.)
+    var zones = new Vector4[4];
+    if (WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.City)
+    {
+      float padR = 120f;
+      for (int i = 0; i < 3 && i < Main.SpawnPads.Length; i++)
+      {
+        zones[i] = new Vector4(Main.SpawnPads[i].X, Main.SpawnPads[i].Y, padR, 1f);
+      }
+
+      zones[3] = new Vector4(0f, 0f, CityGrid.Radius, 1f);
+    }
+    m.SetShaderParameter("solid_zones", zones);
+    m.SetShaderParameter("snow_mode", WorldConfig.SnowGround ? 1f : 0f);
+    m.SetShaderParameter("grass_tint", gt);
+    m.SetShaderParameter("dirt_tint", dt);
+    m.SetShaderParameter("rock_tint", rt);
+    m.SetShaderParameter("asph_tint", at);
+    m.SetShaderParameter("grass_diff", Tex(grassSet, "diff"));
+    m.SetShaderParameter("grass_nor", Tex(grassSet, "nor_gl"));
+    m.SetShaderParameter("grass_arm", Tex(grassSet, "arm"));
+    m.SetShaderParameter("dirt_diff", Tex(dirtSet, "diff"));
+    m.SetShaderParameter("dirt_nor", Tex(dirtSet, "nor_gl"));
+    m.SetShaderParameter("dirt_arm", Tex(dirtSet, "arm"));
+    m.SetShaderParameter("rock_diff", Tex("aerial_rocks_02", "diff"));
+    m.SetShaderParameter("rock_nor", Tex("aerial_rocks_02", "nor_gl"));
+    m.SetShaderParameter("rock_arm", Tex("aerial_rocks_02", "arm"));
+    m.SetShaderParameter("asph_diff", Tex("aerial_asphalt_01", "diff"));
+    m.SetShaderParameter("asph_nor", Tex("aerial_asphalt_01", "nor_gl"));
+    m.SetShaderParameter("asph_arm", Tex("aerial_asphalt_01", "arm"));
+    Dbg.Print("PHOTO terrain material ready (splat 1024, 4 scanned sets)");
+    return m;
+  }
+
+  // ---- Scanned props at the duel's own positions ----
+
+  public static void AddTreeModel(Node3D tree, int variety, RandomNumberGenerator rng)
+  {
+    // No scanned pine exists at usable size (Poly Haven's are
+    // 0.5-0.9 GB photogrammetry), so the third island tree
+    // stands in for the pine variety in this probe.
+    string id = variety == 1 ? "island_tree_03"
+        : (rng.RandiRange(0, 1) == 0 ? "island_tree_01" : "island_tree_02");
+    float targetH = variety == 1 ? PineStandInHeight : IslandTreeHeight;
+    var inst = Scene(id).Instantiate<Node3D>();
+    var box = LocalAabb(inst);
+    float s = targetH / Mathf.Max(box.Size.Y, 0.01f);
+    inst.Scale = Vector3.One * s;
+    inst.Position = new Vector3(
+        -box.GetCenter().X * s, -box.Position.Y * s, -box.GetCenter().Z * s);
+    inst.Rotation = new Vector3(0f, rng.RandfRange(0f, Mathf.Tau), 0f);
+    tree.AddChild(inst);
+  }
+
+  public static Node3D MakeRock(Vector3 scl)
+  {
+    var inst = Scene("coast_rocks_01").Instantiate<Node3D>();
+    var box = LocalAabb(inst);
+    var holder = new Node3D();
+    inst.Scale = new Vector3(
+        2f * scl.X / Mathf.Max(box.Size.X, 0.01f),
+        2f * scl.Y / Mathf.Max(box.Size.Y, 0.01f),
+        2f * scl.Z / Mathf.Max(box.Size.Z, 0.01f));
+    inst.Position = new Vector3(
+        -box.GetCenter().X * inst.Scale.X,
+        -box.Position.Y * inst.Scale.Y,
+        -box.GetCenter().Z * inst.Scale.Z);
+    holder.AddChild(inst);
+    return holder;
+  }
+
+  // Photographic wall sets (Poly Haven, CC0): one per
+  public static void AddGrassField(Node3D parent,
+      List<(Vector2 P, float R)> props)
+  {
+    // Scanned hero clumps ONLY (the full grass patch, 24.7k
+    // tris, used sparingly - 320 instances ≈ 8M tris). The
+    // blade-card layer (60k crossed-quad tufts) was REMOVED
+    // at the owner's word (2026-10-31): the crossed quads
+    // read as intersecting flat planes, worst of all where
+    // they stood in the water. The naive all-scanned version
+    // (42k patches) was 1.04 BILLION triangles/frame: that is
+    // the single most important budget fact this probe
+    // produced.
+    var spots = new List<(Vector3 Pos, float Yaw, float S)>();
+    var rng = new RandomNumberGenerator { Seed = 424242 };
+    int attempts = 0;
+    while (spots.Count < GrassSpotTarget && attempts++ < GrassScatterMaxAttempts)
+    {
+      float x = rng.RandfRange(-GrassScatterBound, GrassScatterBound), z = rng.RandfRange(-GrassScatterBound, GrassScatterBound);
+      if (Maps.Active.RoadDistance(x, z) < GrassRoadClearance)
+      {
+        continue;
+      }
+
+      float h = Main.HeightAt(x, z);
+      if (h > GrassMaxHeight)
+      {
+        continue;
+      }
+
+      if (h < GrassMinHeight)
+      {
+        continue; // dry land only: scatter stood in the sea/lake shallows (owner)
+      }
+
+      float e = GrassSlopeSampleStep;
+      float slope = Mathf.Max(
+          Mathf.Abs(Main.HeightAt(x + e, z) - h),
+          Mathf.Abs(Main.HeightAt(x, z + e) - h)) / e;
+      if (slope > GrassMaxSlope)
+      {
+        continue;
+      }
+
+      bool bad = false;
+      foreach (var (cp, cr) in props)
+      {
+        if (new Vector2(x, z).DistanceTo(cp) < cr + GrassPropClearanceMargin) { bad = true; break; }
+      }
+
+      if (bad)
+      {
+        continue;
+      }
+
+      spots.Add((new Vector3(x, h - GrassSpotSink, z),
+                rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(GrassSpotScaleMin, GrassSpotScaleMax)));
+    }
+
+    // Hero clumps from the scanned patch.
+    var probe = Scene("grass_medium_01").Instantiate<Node3D>();
+    Mesh heroMesh = null;
+    var stack = new Stack<Node>();
+    stack.Push(probe);
+    while (stack.Count > 0)
+    {
+      var n = stack.Pop();
+      if (n is MeshInstance3D mi && mi.Mesh != null) { heroMesh = mi.Mesh; break; }
+      foreach (var c in n.GetChildren())
+      {
+        stack.Push(c);
+      }
+    }
+    probe.QueueFree();
+    if (heroMesh != null)
+    {
+      int heroes = Mathf.Min(HeroClumpCap, spots.Count);
+      var hmm = new MultiMesh
+      {
+        TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+        Mesh = heroMesh,
+        InstanceCount = heroes
+      };
+      for (int i = 0; i < heroes; i++)
+      {
+        var (pos, yaw, _) = spots[i * HeroSpotStride % spots.Count];
+        float sc = rng.RandfRange(HeroClumpScaleMin, HeroClumpScaleMax);
+        hmm.SetInstanceTransform(i, new Transform3D(
+            new Basis(Vector3.Up, yaw).Scaled(new Vector3(sc, sc, sc)), pos));
+      }
+      parent.AddChild(new MultiMeshInstance3D
+      {
+        Multimesh = hmm,
+        CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+      });
+      Dbg.Print($"PHOTO grass: {heroes} scanned hero clumps over {spots.Count} dry-land spots (blade cards removed - owner)");
+    }
+  }
+
+  // ---- Backdrop: ground apron + biome rim rings (forest trees,
+  // desert rocks). The procedural peak ring was removed entirely
+  // (owner, 2026-11-19: the cone mountains read fake on every map).
+
+  public static void AddBackdrop(Node3D parent)
+  {
+    bool mission = WorldConfig.IsMission;
+    float bs = Main.TerrainSize / BackdropArenaReference; // backdrop scale vs the arena
+                                                          // Apron closing the horizon under the rim.
+    var apronMat = new StandardMaterial3D
+    {
+      AlbedoTexture = Tex("leafy_grass", "diff"),
+      AlbedoColor = WorldConfig.SnowGround ? SnowGroundTint : ApronFieldTint,
+      Roughness = 1f,
+      Uv1Scale = new Vector3(ApronUvScale, ApronUvScale, 1f)
+    };
+    var apron = new MeshInstance3D
+    {
+      Mesh = new PlaneMesh { Size = new Vector2(BackdropPlaneSize * bs, BackdropPlaneSize * bs) },
+      MaterialOverride = apronMat,
+      Position = new Vector3(0f, -ApronDrop, 0f),
+      CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+    };
+    parent.AddChild(apron);
+
+    var rng = new RandomNumberGenerator { Seed = 90210 };
+
+    // Backdrop ring by biome: forest keeps its tree ring
+    // (visual only; on the Mission front it rings the rim).
+    // The arena ring starts past the movement bound (115u)
+    // plus a margin (owner, 2026-11-15): at 98u the inner
+    // ring trees and rocks stood INSIDE the reachable
+    // ground as ghosts - riders walked straight through
+    // them while the planted trees stomp and burn.
+    // the desert gets bare rock outcrops; the city gets no
+    // ring (owner: no procedural buildings outside the map -
+    // every city building is a gameplay building inside it).
+    if (WorldConfig.Biome == WorldConfig.BiomeKind.City)
+    {
+      Dbg.Print("PHOTO backdrop: apron only (city - no ring)");
+      return;
+    }
+    if (WorldConfig.Biome == WorldConfig.BiomeKind.Desert)
+    {
+      // The desert rock ring is gone with the rest of
+      // the rocks (owner, 2026-11-20: removed
+      // completely) - the apron stands bare.
+      Dbg.Print("PHOTO backdrop: apron only (desert - rock ring removed)");
+      return;
+    }
+    for (int i = 0; i < BackdropTreeCount; i++)
+    {
+      float a = rng.RandfRange(0f, Mathf.Tau);
+      float half = Main.TerrainSize / 2f;
+      float dist = mission ? rng.RandfRange(half + RingMissionInnerMargin, half + RingMissionOuterMargin) : rng.RandfRange(RingArenaDistMin, RingArenaDistMax);
+      var pos = new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist);
+      float cl = mission ? half - RingClampInset : RingArenaClamp;
+      pos.Y = Main.HeightAt(Mathf.Clamp(pos.X, -cl, cl), Mathf.Clamp(pos.Z, -cl, cl)) - RingTreeSink;
+      var holder = new Node3D { Position = pos };
+      AddTreeModel(holder, rng.RandiRange(0, 2), rng);
+      holder.Scale = Vector3.One * rng.RandfRange(BackdropTreeScaleMin, BackdropTreeScaleMax);
+      parent.AddChild(holder);
+    }
+    Dbg.Print($"PHOTO backdrop: apron + {BackdropTreeCount} ring trees");
+  }
+
+  // ---- Renderer / atmosphere tuning for the probe ----
+
+  public static void Tune(Environment env, DirectionalLight3D sun)
+  {
+    env.SdfgiEnabled = true;
+    // Optimization #2 (owner): fewer, cheaper cascades + probe
+    // occlusion; convergence cost is spread thinner, which
+    // flattens frame times. Quality at arena scale is unchanged
+    // in practice - 4 cascades cover 170u comfortably.
+    env.SdfgiCascades = WorldConfig.IsMission ? 6 : 4;
+    env.SdfgiUseOcclusion = true;
+    env.SdfgiMinCellSize = SdfgiCellSize;
+    env.SsaoEnabled = true;
+    env.VolumetricFogEnabled = true;
+    // Fog by biome: warm haze in the desert, a duskier
+    // teal-grey in the city (lit windows and signs carry),
+    // the standing blue-grey in the forest.
+    var (fogC, fogD, volD, sunE) = WorldConfig.Biome switch
+    {
+      WorldConfig.BiomeKind.Desert => (DesertFogColor, WorldConfig.IsMission ? 0.00050f : 0.0019f, WorldConfig.IsMission ? 0.0009f : 0.0026f, 1.55f),
+      WorldConfig.BiomeKind.City => (CityFogColor, WorldConfig.IsMission ? 0.00055f : 0.0021f, WorldConfig.IsMission ? 0.0010f : 0.0028f, 1.15f),
+      _ => (ForestFogColor, WorldConfig.IsMission ? 0.00042f : 0.0016f, WorldConfig.IsMission ? 0.00075f : 0.0022f, 1.45f)
+    };
+    env.VolumetricFogDensity = volD;
+    env.FogDensity = fogD; // distance haze; the Mission front hazes out near ~1200u
+    env.GlowEnabled = true;
+    env.GlowIntensity = GlowIntensityValue;
+    env.GlowStrength = GlowStrengthValue;
+    // Look pass (owner: fog + bright light overilluminated the
+    // scene). The wash came from stacked ambient terms - sky
+    // ambient 0.42 + full-strength SDFGI bounce + bright fog -
+    // so the fix is to let the SUN carry the image and deepen
+    // everything else: lower exposure, weaker ambient and
+    // bounce, darker fog, and a gentle filmic contrast/
+    // saturation adjustment on top. The haze itself stays.
+    env.TonemapExposure = TonemapExposureValue;
+    env.AmbientLightEnergy = AmbientEnergyValue; // raised 0.30 -> 0.50 (owner, 2026-11-11: shadows must stay readable)
+    env.SdfgiEnergy = SdfgiEnergyValue;
+    env.FogLightColor = fogC;
+    env.VolumetricFogAlbedo = fogC;
+    env.AdjustmentEnabled = true;
+    env.AdjustmentBrightness = 1.0f;
+    env.AdjustmentContrast = AdjustmentContrastValue;
+    env.AdjustmentSaturation = AdjustmentSaturationValue;
+    sun.LightEnergy = sunE;
+    sun.ShadowOpacity = SunShadowOpacity; // real shade depth (owner round 6: rider's shadow was too bright)
+    sun.DirectionalShadowMaxDistance = WorldConfig.IsMission ? MissionShadowDistance : ArenaShadowDistance;
+    Dbg.Print("PHOTO env tuned: SDFGI(4 cascades) + SSAO + volumetric fog + glow; darker contrast look");
+  }
 }

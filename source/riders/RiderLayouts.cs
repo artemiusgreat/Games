@@ -10,7 +10,7 @@ namespace Titans;
 // the rider being built.
 public static class RiderLayouts
 {
-    private static readonly Dictionary<RiderId, System.Action<RiderParts, Dictionary<string, MeshInstance3D>>> All = new()
+  private static readonly Dictionary<RiderId, System.Action<RiderParts, Dictionary<string, MeshInstance3D>>> All = new()
     {
         { RiderId.Enyo, EnyoParts.Build },
         { RiderId.Hector, HectorParts.Build },
@@ -25,10 +25,14 @@ public static class RiderLayouts
         { RiderId.Amadeus, AmadeusParts.Build },
     };
 
-    public static bool TryBuild(RiderId id, RiderParts parts, Dictionary<string, MeshInstance3D> byName)
+  public static bool TryBuild(RiderId id, RiderParts parts, Dictionary<string, MeshInstance3D> byName)
+  {
+    if (!All.TryGetValue(id, out var build))
     {
-        if (!All.TryGetValue(id, out var build)) return false;
-        build(parts, byName);
-        return true;
+      return false;
     }
+
+    build(parts, byName);
+    return true;
+  }
 }

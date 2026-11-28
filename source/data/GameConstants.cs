@@ -13,18 +13,18 @@ namespace Titans;
 /// </summary>
 public static class Roles
 {
-    public const string Player = "PLAYER";
-    public const string Enemy = "ENEMY";
-    public const string Foe = "FOE";
-    // Story team (owner, teams stage): an NPC teammate's role
-    // is the prefix + its roster slot ("ALLY1", "ALLY2", ...).
-    // Roles attach to the NPC seat, not the rider - when the
-    // player takes command of a teammate, that walker becomes
-    // Roles.Player and the old leader takes the freed seat's
-    // role.
-    public const string AllyPrefix = "ALLY";
-    public const string Prop = "PROP";
-    public const string Terrain = "TERRAIN";
+  public const string Player = "PLAYER";
+  public const string Enemy = "ENEMY";
+  public const string Foe = "FOE";
+  // Story team (owner, teams stage): an NPC teammate's role
+  // is the prefix + its roster slot ("ALLY1", "ALLY2", ...).
+  // Roles attach to the NPC seat, not the rider - when the
+  // player takes command of a teammate, that walker becomes
+  // Roles.Player and the old leader takes the freed seat's
+  // role.
+  public const string AllyPrefix = "ALLY";
+  public const string Prop = "PROP";
+  public const string Terrain = "TERRAIN";
 }
 
 /// <summary>
@@ -37,8 +37,8 @@ public static class Roles
 /// </summary>
 public static class Aim
 {
-    public const float ConvergenceRange = 220f;
-    public const float FarRange = 1500f;
+  public const float ConvergenceRange = 220f;
+  public const float FarRange = 1500f;
 }
 
 /// <summary>Camera modes (owner, 2026-11-27: an enum, not
@@ -46,7 +46,7 @@ public static class Aim
 /// past Chase is a staged capture framing).</summary>
 public enum CamMode
 {
-    Chase, MissionBase, MissionVista, SlopeVista, Stone, SlopeClose, CanyonVista, BlockedCam, Homecam, Passcam, Gatesky, EnemyFront, EnemySide, Wide, Twist, Prop, WpnSide, WpnRockets, WpnBlocked, WpnDead, WpnHud, RiderSide, BrkPlayer, BrkTarget, BrkDebris, DetailBuilding, DetailTree, Vista, PhotoOver, PhotoTuft, GrassClose, GrassTop, GrassField, PhotoGround, SlopeSide, GroundDuel
+  Chase, MissionBase, MissionVista, SlopeVista, Stone, SlopeClose, CanyonVista, BlockedCam, Homecam, Passcam, Gatesky, EnemyFront, EnemySide, Wide, Twist, Prop, WpnSide, WpnRockets, WpnBlocked, WpnDead, WpnHud, RiderSide, BrkPlayer, BrkTarget, BrkDebris, DetailBuilding, DetailTree, Vista, PhotoOver, PhotoTuft, GrassClose, GrassTop, GrassField, PhotoGround, SlopeSide, GroundDuel
 }
 
 /// <summary>
@@ -69,7 +69,7 @@ public enum CamMode
 /// </summary>
 public static class PartRules
 {
-    public const float ArmBreakPoolFraction = 0.20f;
+  public const float ArmBreakPoolFraction = 0.20f;
 }
 
 /// <summary>
@@ -83,7 +83,7 @@ public static class PartRules
 /// </summary>
 public static class RiderBody
 {
-    public const float Gap = 3f;
+  public const float Gap = 3f;
 }
 
 // The fire path a fitted gun dispatches through when its
@@ -115,37 +115,37 @@ public enum RiderId { Enyo, Hector, Prometheus, Medea, Demeter, Theseus, Hermes,
 /// </summary>
 public static class Bones
 {
-    public const string Torso = "torso";
-    public const string ElbowL = "elbow_L";
-    public const string ElbowR = "elbow_R";
-    public const string HipL = "hip_L";
-    public const string KneeL = "knee_L";
-    public const string AnkleL = "ankle_L";
-    public const string HipR = "hip_R";
-    public const string KneeR = "knee_R";
-    public const string AnkleR = "ankle_R";
-    // Classification hints for RiderParts' bone-to-part
-    // mapping only (never a BoneWorldPos reference, so the
-    // census above does not require them).
-    public const string Head = "head";
-    public const string Pelvis = "pelvis";
-    // Arm-chain roots, full names (owner, 2026-11-27: no
-    // prefix matching - a name either is one of these or is
-    // not in the chain). The clavicle is the collarbone bone
-    // a Mixamo-style rig hangs the shoulder from; kit rigs
-    // start the chain at the shoulder instead. Classification
-    // only, like Head/Pelvis above.
-    public const string ClavicleL = "clavicle_L";
-    public const string ClavicleR = "clavicle_R";
-    public const string ShoulderL = "shoulder_L";
-    public const string ShoulderR = "shoulder_R";
+  public const string Torso = "torso";
+  public const string ElbowL = "elbow_L";
+  public const string ElbowR = "elbow_R";
+  public const string HipL = "hip_L";
+  public const string KneeL = "knee_L";
+  public const string AnkleL = "ankle_L";
+  public const string HipR = "hip_R";
+  public const string KneeR = "knee_R";
+  public const string AnkleR = "ankle_R";
+  // Classification hints for RiderParts' bone-to-part
+  // mapping only (never a BoneWorldPos reference, so the
+  // census above does not require them).
+  public const string Head = "head";
+  public const string Pelvis = "pelvis";
+  // Arm-chain roots, full names (owner, 2026-11-27: no
+  // prefix matching - a name either is one of these or is
+  // not in the chain). The clavicle is the collarbone bone
+  // a Mixamo-style rig hangs the shoulder from; kit rigs
+  // start the chain at the shoulder instead. Classification
+  // only, like Head/Pelvis above.
+  public const string ClavicleL = "clavicle_L";
+  public const string ClavicleR = "clavicle_R";
+  public const string ShoulderL = "shoulder_L";
+  public const string ShoulderR = "shoulder_R";
 
-    // The roots of both arm chains: a bone belongs to an arm
-    // chain when it or any ancestor is one of these.
-    public static readonly System.Collections.Generic.HashSet<string> ArmChainRoots =
-        new() { ClavicleL, ClavicleR, ShoulderL, ShoulderR, ElbowL, ElbowR };
+  // The roots of both arm chains: a bone belongs to an arm
+  // chain when it or any ancestor is one of these.
+  public static readonly System.Collections.Generic.HashSet<string> ArmChainRoots =
+      new() { ClavicleL, ClavicleR, ShoulderL, ShoulderR, ElbowL, ElbowR };
 
-    public static readonly string[] All = { Torso, ElbowL, ElbowR, HipL, KneeL, AnkleL, HipR, KneeR, AnkleR };
+  public static readonly string[] All = { Torso, ElbowL, ElbowR, HipL, KneeL, AnkleL, HipR, KneeR, AnkleR };
 }
 
 /// <summary>Weapon definition ids (owner, 2026-11-25: an enum,
@@ -171,10 +171,10 @@ public enum HitZone { None, Legs, Torso, Head, Splash }
 /// </summary>
 public static class HitKinds
 {
-    public const string Laser = "laser";
-    public const string Rocket = "rocket";
-    public const string Cannon = "cannon";
-    public const string Mg = "mg";
+  public const string Laser = "laser";
+  public const string Rocket = "rocket";
+  public const string Cannon = "cannon";
+  public const string Mg = "mg";
 }
 
 // The city district built at the center of a kit contract's
@@ -191,18 +191,18 @@ public static class HitKinds
 /// </summary>
 public static class Units
 {
-    public const float KmPerUnit = 0.001f;
-    public static float KmVal(float units) => units * KmPerUnit;
-    // "1.5 km", "10 km", "0.35 km": up to two decimals,
-    // trailing zeros trimmed.
-    public static string Km(float units) => $"{KmVal(units):0.##} km";
-    // "130 kmh": whole numbers.
-    public static string Kmh(float unitsPerSec) => $"{unitsPerSec * KmPerUnit * 3600f:0} kmh";
+  public const float KmPerUnit = 0.001f;
+  public static float KmVal(float units) => units * KmPerUnit;
+  // "1.5 km", "10 km", "0.35 km": up to two decimals,
+  // trailing zeros trimmed.
+  public static string Km(float units) => $"{KmVal(units):0.##} km";
+  // "130 kmh": whole numbers.
+  public static string Kmh(float unitsPerSec) => $"{unitsPerSec * KmPerUnit * 3600f:0} kmh";
 }
 
 public static class CityGrid
 {
-    public const float Pitch = 32f;      // plot pitch; streets run between plots
-    public const float Radius = 280f;    // plot centers fill a disc of this radius
-    public const float PlateauR = 320f;  // plateau blend-out radius
+  public const float Pitch = 32f;      // plot pitch; streets run between plots
+  public const float Radius = 280f;    // plot centers fill a disc of this radius
+  public const float PlateauR = 320f;  // plateau blend-out radius
 }
