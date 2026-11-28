@@ -90,18 +90,6 @@ dotnet_diagnostic.CA1062.severity = none     # Validate arguments of public meth
 dotnet_diagnostic.CA1711.severity = none     # Identifiers should not have incorrect suffix (EventHandler)
 dotnet_diagnostic.CA1003.severity = none     # Use generic event handler instances ([Signal] delegates)
 
-# Deferred 2026-11-28 (owner D1): mechanical conventions (this., namespaces,
-# braces) are enforced; the rules below are off until triaged rule-by-rule
-# under further instructions. Do not "fix" code to satisfy them yet.
-dotnet_diagnostic.CA2211.severity = none     # Non-constant static fields (WorldConfig shared state is deliberate)
-dotnet_diagnostic.CA1310.severity = none     # String comparisons should use StringComparison (deferred)
-dotnet_diagnostic.CA1305.severity = none     # Specify IFormatProvider (deferred)
-dotnet_diagnostic.CA1304.severity = none     # Specify CultureInfo (deferred)
-dotnet_diagnostic.CA1859.severity = none     # Change return type for performance (deferred)
-dotnet_diagnostic.CA1805.severity = none     # Do not initialize unnecessarily (deferred)
-dotnet_diagnostic.CA1806.severity = none     # Do not ignore method results (deferred)
-dotnet_diagnostic.CA1725.severity = none     # Parameter names should match base declaration (Godot overrides)
-dotnet_diagnostic.CA1720.severity = none     # Identifiers should not contain type names (deferred)
-dotnet_diagnostic.CS0618.severity = none     # Obsolete API use (deferred triage)
-dotnet_diagnostic.CS0169.severity = none     # Field is never used (deferred triage)
-dotnet_diagnostic.CS0108.severity = none     # Member hides inherited member (deferred triage)
+# 2026-11-28 (owner point 3): csproj-enforced diagnostics are FIXED IN CODE,
+# never silenced here. CA2211, CA1310, CA1305, CA1304, CA1859, CA1805, CA1806,
+# CA1725, CA1720, CS0618, CS0169, CS0108 all resolved in source.
