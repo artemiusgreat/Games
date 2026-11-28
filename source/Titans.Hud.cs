@@ -1565,7 +1565,7 @@ public partial class Titans
             _radar.Foes.Clear();
             foreach (var a in _allies)
             {
-                if (WorldConfig.IsMission || a.Team == 0) _radar.Allies.Add((a.Walker, a.Dead));
+                if (a.Team == 0) _radar.Allies.Add((a.Walker, a.Dead));
                 else _radar.Foes.Add((a.Walker, a.Dead));
             }
             _radar.QueueRedraw();
