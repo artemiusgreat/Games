@@ -222,9 +222,15 @@ public partial class Titans
     private const float WildGroveRadius = 700f;
     private const int WildGroveTrees = 26;
 
+    // One seed for every nature scatter (mission and arena
+    // alike): the layouts are deterministic, and both passes
+    // draw from the same stream start, so a seed edit moves
+    // both instead of silently drifting apart.
+    private const int ScatterSeed = 0x5EED;
+
     private void ScatterNatureMission()
     {
-        var rng = new System.Random(0x5EED);
+        var rng = new System.Random(ScatterSeed);
         var zones = new System.Collections.Generic.List<(Vector2 C, float R, int Trees)>();
         foreach (var pad in Main.SpawnPads) zones.Add((pad, PadGroveRadius, PadGroveTrees));
         zones.Add((Vector2.Zero, WildGroveRadius, WildGroveTrees)); // wild, centered
@@ -541,11 +547,16 @@ public partial class Titans
         return false;
     }
 
+    // Central-difference half-step for the slope estimate
+    // below: HeightAt is sampled this far either side of the
+    // point. Wide enough to average out the heightfield's
+    // grid steps, narrow enough to follow a real grade.
+    private const float GradeStep = 0.7f;
+
     private static float TerrainGrade(float x, float z)
     {
-        const float e = 0.7f;
-        float gx = (Main.HeightAt(x + e, z) - Main.HeightAt(x - e, z)) / (2f * e);
-        float gz = (Main.HeightAt(x, z + e) - Main.HeightAt(x, z - e)) / (2f * e);
+        float gx = (Main.HeightAt(x + GradeStep, z) - Main.HeightAt(x - GradeStep, z)) / (2f * GradeStep);
+        float gz = (Main.HeightAt(x, z + GradeStep) - Main.HeightAt(x, z - GradeStep)) / (2f * GradeStep);
         return Mathf.Sqrt(gx * gx + gz * gz);
     }
 
@@ -557,7 +568,7 @@ public partial class Titans
     private void ScatterNature()
     {
         if (WorldConfig.IsMission) { ScatterNatureMission(); return; }
-        var rng = new System.Random(0x5EED);
+        var rng = new System.Random(ScatterSeed);
         var treeMul = WorldConfig.Biome switch
         {
             WorldConfig.BiomeKind.Desert => DesertTreeMul,
@@ -595,32 +606,45 @@ public partial class Titans
     private const float PropHitReach = 0.35f;          // hit attribution slack around a prop cylinder
     private const float PropHitBandMargin = 0.6f;      // hit attribution slack above/below a prop cylinder
     private const float HitSmokeSeconds = 1.0f;        // shot trees smoke out over this
+    // Two centres this close count as coincident: the
+    // separation direction between them is undefined, so the
+    // guards in ResolvePair / RiderBlocks substitute a fixed
+    // one instead of dividing by ~0. The value is NOT a
+    // precision epsilon: a float near 100u of world scale
+    // resolves only ~1e-5, so a tighter guard (1e-8) could
+    // never be trusted to trigger - 1e-4 sits safely above
+    // that noise and far below anything visible (0.1mm).
+    private const float CoincidentDist = 1e-4f;
+
+    // Every rider on the field, whatever roster it came
+    // from (owner, 2026-11-27: one term for all of them in
+    // the collision code - the foe/ally split lives in the
+    // rosters that own those riders, not in the physics).
+    // Rebuilt by the collision pass and the steering brake,
+    // the two consumers; walkers only, in roster order.
+    private readonly System.Collections.Generic.List<RiderWalker> _fieldRiders = new();
+
+    private void CollectFieldRiders()
+    {
+        _fieldRiders.Clear();
+        _fieldRiders.Add(_player);
+        _fieldRiders.Add(_enemy);
+        if (_foe != null) _fieldRiders.Add(_foe.Walker);
+        foreach (var a in _allies) if (a.Walker != null) _fieldRiders.Add(a.Walker);
+    }
+
     private void ResolveCollisions()
     {
-        ResolveOne(_player);
-        ResolveOne(_enemy);
-        if (_foe != null) ResolveOne(_foe.Walker);
-        foreach (var a in _allies) if (a.Walker != null) ResolveOne(a.Walker);
-        ResolvePair(_player, _enemy);
-        if (_foe != null)
-        {
-            ResolvePair(_player, _foe.Walker);
-            ResolvePair(_enemy, _foe.Walker);
-        }
+        CollectFieldRiders();
         // Teammates are bodies too (owner, 2026-11-15: the
         // allies were never resolved at all, so a follower
-        // walked straight through the leader): they resolve
-        // against every rider on the field, under the same
-        // universal separation as every other pairing.
-        foreach (var a in _allies)
-        {
-            if (a.Walker == null) continue;
-            ResolvePair(a.Walker, _player);
-            ResolvePair(a.Walker, _enemy);
-            if (_foe != null) ResolvePair(a.Walker, _foe.Walker);
-            foreach (var b in _allies)
-                if (b != a && b.Walker != null) ResolvePair(a.Walker, b.Walker);
-        }
+        // walked straight through the leader): every rider
+        // resolves against the world, then every pair against
+        // each other, under the same universal separation.
+        foreach (var w in _fieldRiders) ResolveOne(w);
+        for (int i = 0; i < _fieldRiders.Count; i++)
+            for (int j = i + 1; j < _fieldRiders.Count; j++)
+                ResolvePair(_fieldRiders[i], _fieldRiders[j]);
     }
 
     // rider vs rider: hold the universal separation (the
@@ -640,7 +664,7 @@ public partial class Titans
         // Flyover (owner): a jumping rider passes OVER the other -
         // no separation push while either is high above the ground.
         if (dist >= min || wa.JumpHeight >= FlyoverHeight || wb.JumpHeight >= FlyoverHeight) return;
-        if (dist < 1e-4f) d = new Vector2(0f, 1f);
+        if (dist < CoincidentDist) d = new Vector2(0f, 1f);
         else d /= dist;
         float push = min - dist;
         if (wa == _player) { b += d * push; wb.ApplyRootXZ(b); }
@@ -665,10 +689,8 @@ public partial class Titans
     {
         var step = new Vector2(-Mathf.Sin(yaw), -Mathf.Cos(yaw));
         var p = new Vector2(w.RootPos.X, w.RootPos.Z);
-        if (RiderBlocks(w, _player, p, step)) return true;
-        if (RiderBlocks(w, _enemy, p, step)) return true;
-        if (_foe != null && RiderBlocks(w, _foe.Walker, p, step)) return true;
-        foreach (var a in _allies) if (RiderBlocks(w, a.Walker, p, step)) return true;
+        CollectFieldRiders();
+        foreach (var o in _fieldRiders) if (RiderBlocks(w, o, p, step)) return true;
         return false;
     }
 
@@ -679,7 +701,7 @@ public partial class Titans
         float len = to.Length();
         float min = w.CollisionRadius + o.CollisionRadius + RiderBody.Gap + SteeringBrakeMargin;
         if (len >= min) return false;
-        if (len < 1e-4f) return true;
+        if (len < CoincidentDist) return true;
         return to.Normalized().Dot(step) > SteeringBrakeDot;
     }
 
@@ -691,17 +713,14 @@ public partial class Titans
     // trigger is the body's reach (collision radius + trunk radius)
     // plus a margin, so the tree drops into the fast evaporation
     // path (0.8s shrink with dust), its shot-blocking cylinder is
-    // removed at once, and the rider walks on unimpeded. Buildings
-    // are never stompable.
+    // removed at once, and the rider walks on unimpeded.
     private void StompCheck()
     {
-        var walkers = new System.Collections.Generic.List<RiderWalker> { _player, _enemy };
-        if (_foe != null) walkers.Add(_foe.Walker);
         // Team riders stomp too (owner's report, 2026-11-14:
         // trees survived being walked on - the NPC walkers of
         // story and bracket fights were never in this list).
-        foreach (var a in _allies) walkers.Add(a.Walker);
-        foreach (var w in walkers)
+        CollectFieldRiders();
+        foreach (var w in _fieldRiders)
         {
             if (IsDead(w)) continue;
             if (w.JumpHeight > StompMaxJumpHeight) continue; // flying over the canopy is not a stomp
