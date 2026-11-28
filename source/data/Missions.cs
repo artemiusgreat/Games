@@ -57,9 +57,10 @@ public sealed class MissionDef
     public bool SnowGround;
     // Three terrace levels with ramps and lifts, plus an
     // island district on a bridge (owner: Harbor rebuild).
-    // The Ascent campaign map (owner, 2026-11-20): the
-    // valley-to-summit world with village guard groups (maps/Babylon.cs).
-    public bool Ascent;
+    // The map this contract is fought on (owner, 2026-11-27:
+    // data for the MapFactory - Babylon is the valley-to-summit
+    // world with village guard groups, maps/Babylon.cs).
+    public MapKind Map = MapKind.Standard;
     // Always on the offers list, regardless of story
     // progression (owner, 2026-11-20: Anabasis, so he can
     // test the new map without playing through to it).
@@ -86,7 +87,7 @@ public static class MissionCatalog
         string type, string employer, long pay, int threat, string briefing,
         string patron, string pitch, WorldConfig.BiomeKind biome, int cityKit = -1,
         bool flat = false, string sky = "", bool snow = false,
-        bool stars = false, bool ascent = false, bool alwaysAvailable = false,
+        bool stars = false, MapKind map = MapKind.Standard, bool alwaysAvailable = false,
         bool photoreal = false, bool hills = false, string tile = "")
     {
         var m = new MissionDef
@@ -95,7 +96,7 @@ public static class MissionCatalog
             Employer = employer, Payment = pay, Threat = threat, Briefing = briefing,
             Patron = patron, Pitch = pitch, Biome = biome, CityKit = cityKit,
             FlatTerrain = flat, SkyTex = sky, SkyTile = tile, SnowGround = snow, Planet = p,
-            ProceduralStars = stars, Ascent = ascent, AlwaysAvailable = alwaysAvailable,
+            ProceduralStars = stars, Map = map, AlwaysAvailable = alwaysAvailable,
             Photoreal = photoreal, Hills = hills
         };
         p.Missions.Add(m);
@@ -161,7 +162,7 @@ public static class MissionCatalog
             "and ten defenders waiting on top. Take the villages one by one, slip past them, or " +
             "drive straight up the road: the contract pays when the summit falls and your team " +
             "still stands.",
-            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: Paths.SkyGalaxy, snow: true, stars: true, photoreal: true, ascent: true, hills: true, tile: Paths.SkyTileStars);
+            "Portmaster Selene Kallis", "The whole valley, rider, from the storm water to the summit camp. Bring me the top.", WorldConfig.BiomeKind.City, 4, flat: false, sky: Paths.SkyGalaxy, snow: true, stars: true, photoreal: true, map: MapKind.Babylon, hills: true, tile: Paths.SkyTileStars);
         M(thalassa, "Boston", "Middlesex", -0.30f, -0.34f,
             "Convoy Escort", "Meridian Combine", 275000, 3,
             "The Boston light is the only thing the fuel barges steer by on the night run, and raiders " +

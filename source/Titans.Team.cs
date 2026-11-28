@@ -341,9 +341,11 @@ public partial class Titans
     // every site fields a different mix. The mission is won
     // only when the seats AND every guard are down
     // (CheckMissionEnd counts them).
-    private void BuildGuards()
+    // The Babylon map's muster (called through
+    // BabylonMap.MusterGuards; the harness gate sits at the
+    // call site in Titans.cs).
+    internal void MusterBabylonGuards()
     {
-        if (!WorldConfig.IsMission || !WorldConfig.Ascent || (AnyHarness && !_guardProbe)) return; // the guard probe musters them on purpose
         int n = 0;
         void Muster(Vector2 centre, int count, int seed)
         {

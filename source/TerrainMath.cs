@@ -136,4 +136,15 @@ public static class TerrainMath
         float t = Mathf.Clamp((v - a) / (b - a), 0f, 1f);
         return t * t * (3f - 2f * t);
     }
+
+    // Distance from a point to a segment (the map recipes'
+    // ridge/valley lines and road centrelines all read it).
+    public static float DistToSegment(float px, float pz, float ax, float az, float bx, float bz)
+    {
+        float dx = bx - ax, dz = bz - az;
+        float len2 = dx * dx + dz * dz;
+        float t = len2 > 1e-6f ? Mathf.Clamp(((px - ax) * dx + (pz - az) * dz) / len2, 0f, 1f) : 0f;
+        float ex = ax + dx * t - px, ez = az + dz * t - pz;
+        return Mathf.Sqrt(ex * ex + ez * ez);
+    }
 }

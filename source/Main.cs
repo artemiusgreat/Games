@@ -10,8 +10,9 @@ public partial class Main : Node3D
 	// The three spawn pads / Mission bases, 120 degrees apart.
 	// Tournament: r=80 (pairwise ~139u - far beyond first-sight
 	// range). Mission: the base triangle at r=620 (~1075u apart).
-	// RawHeight flattens the ground at each. Index 0 is the player's.
-	public static Vector2[] SpawnPads => WorldConfig.Pads;
+	// The active map's recipe flattens the ground at each.
+	// Index 0 is the player's.
+	public static Vector2[] SpawnPads => Maps.Active.Pads;
 
 	// ---- Heightfield terrain (roadmap step 4) ----
 	// The world is ONE heightfield grid, generated once from a seeded
@@ -34,149 +35,6 @@ public partial class Main : Node3D
 	private static float[] _grid;
 	private static float[] Grid => _grid ??= BuildGrid();
 
-	private static float DistToSegment(float px, float pz, float ax, float az, float bx, float bz)
-	{
-		float dx = bx - ax, dz = bz - az;
-		float len2 = dx * dx + dz * dz;
-		float t = len2 > 1e-6f ? Mathf.Clamp(((px - ax) * dx + (pz - az) * dz) / len2, 0f, 1f) : 0f;
-		float ex = ax + dx * t - px, ez = az + dz * t - pz;
-		return Mathf.Sqrt(ex * ex + ez * ez);
-	}
-
-	// The center dome (owner, 2026-10-31): a broad hill in the
-	// middle of the map, ~34u over the arena floor, so the three
-	// spawn pads have no sightline to each other. Measured
-	// geometry: every pad pair's sightline passes r=40 from the
-	// center, where the dome still stands ~23u - above the
-	// highest pad eye line (pads flatten to at most 3u, +~11.5
-	// eye height). Added AFTER the arena modulation so the
-	// center damping cannot flatten it away. The top is a mesa
-	// (flat inside r=14): the old pure Gaussian put the center
-	// test marks on a 2.3u relative slope, which moved shot
-	// attribution from torso to thigh - a fighting plateau is
-	// also simply better ground to duel on.
-	private const float DomeFlatRadius = 14f;  // the mesa top: flat inside this radius
-	private const float DomePeakHeight = 34f;  // the dome's height over the arena floor
-	private const float DomeFalloff = 30f;     // Gaussian sigma of the skirt beyond the flat top
-	private static float DomeHeight(float x, float z)
-	{
-		float r = Mathf.Sqrt(x * x + z * z);
-		float rr = Mathf.Max(0f, r - DomeFlatRadius);
-		return DomePeakHeight * Mathf.Exp(-(rr * rr) / (2f * DomeFalloff * DomeFalloff));
-	}
-
-	private const float PadFlatInnerFraction = 0.44f; // a pad is fully at its centre height inside this fraction of the flatten radius
-	private const float ArenaPadMaxHeight = 3f;       // arena pads sit low (see the DomeHeight note)
-	private const float CityPlateauInnerFraction = 0.62f; // the district plateau is fully level inside this fraction of its radius
-	private static float RawHeight(float x, float z)
-	{
-		// The Ascent contract (owner, 2026-11-20) gets its own
-		// valley-to-summit heightfield (maps/Babylon.cs holds the math).
-		if (WorldConfig.Ascent) return Babylon.Height(x, z);
-		// Flat maps use no height map at all - every street,
-		// road and base on one level plane.
-		if (WorldConfig.FlatWorld) return 0f;
-		float h = BaseHeight(x, z);
-		// Flatten each spawn pad toward its own center height, so
-		// a rider starts on level ground in its hollow.
-		float flatR = WorldConfig.PadFlattenRadius;
-		foreach (var pad in SpawnPads)
-		{
-			float d = new Vector2(x, z).DistanceTo(pad);
-			if (d < flatR)
-			{
-				// Arena pads sit LOW (at most 3u) whatever the local
-				// relief says - the hollows the dome math assumes.
-				// Mission bases flatten to their own plateau height.
-				float padH = WorldConfig.IsMission
-					? BaseHeight(pad.X, pad.Y)
-					: Mathf.Min(BaseHeight(pad.X, pad.Y), ArenaPadMaxHeight);
-				h = Mathf.Lerp(h, padH, TerrainMath.Smooth(flatR, flatR * PadFlatInnerFraction, d));
-			}
-		}
-		// City district plateau (owner: Harbor Stacks should
-		// read as actual streets and blocks): on a kit contract
-		// the map center levels into a building platform - the
-		// dome and the relief blend out across the district, so
-		// the street grid sits flat.
-		if (WorldConfig.IsMission && WorldConfig.CityKit >= 0)
-		{
-			float r = Mathf.Sqrt(x * x + z * z);
-			if (r < CityGrid.PlateauR)
-			{
-				float h0 = BaseHeight(0f, 0f) - DomeHeight(0f, 0f);
-				h = Mathf.Lerp(h, h0, TerrainMath.Smooth(CityGrid.PlateauR, CityGrid.PlateauR * CityPlateauInnerFraction, r));
-			}
-		}
-		return h;
-	}
-
-	// The shared relief recipe (the arena and the plain
-	// mission fronts): rolling hills everywhere, a craggy
-	// ridge through the NW, a shallow valley through the SE,
-	// a mountain ring at the rim, and the centre dome on top.
-	// Field scales are the noise features' size in world
-	// units; the +offset in each sample is a decorrelation
-	// shift so two fields never align.
-	private const float HillsFieldScale = 58f, HillsAmplitude = 6.5f;
-	private const int HillsOctaves = 5;
-	private const float MacroFieldScale = 420f, MacroAmplitude = 26f; // mission-only broad swells
-	private const int MacroOctaves = 4;
-	private const float MacroFadeStart = 120f, MacroFadeEnd = 300f;   // macro swells fade in over this radius
-	private static readonly Vector2 RidgeStart = new(-88f, -28f), RidgeEnd = new(-24f, -88f); // the NW ridge line
-	private const float RidgeWidth = 15f, RidgeBaseHeight = 5f, RidgeCragHeight = 7f;
-	private const float CragFieldScale = 21f;
-	private const int CragOctaves = 3;
-	private static readonly Vector2 ValleyStart = new(88f, 34f), ValleyEnd = new(28f, -88f); // the SE valley line
-	private const float ValleyDepth = 3.6f, ValleyWidth = 13f;
-	private const float RingInsetFar = 42f, RingInsetNear = 2f; // the mountain ring rises over the last 40u to the rim
-	private const float MountainBaseHeight = 9f, MountainVarHeight = 7f;
-	private const float MountainFieldScale = 37f;
-	private const int MountainOctaves = 4;
-	private const float ForestHillsFactor = 0.45f, ForestRidgeFactor = 0.35f, ForestMountainFactor = 0.5f; // forest arenas run gentle (see below)
-	private const float CenterAmplitudeFloor = 0.22f; // arena relief at the centre, as a fraction of full
-	private const float FullAmplitudeStart = 54f, FullAmplitudeEnd = 94f; // ... reaching full over this radius
-
-	private static float BaseHeight(float x, float z)
-	{
-		float r = Mathf.Sqrt(x * x + z * z);
-		// Rolling hills, the base relief everywhere.
-		float hills = TerrainMath.Fbm(x / HillsFieldScale, z / HillsFieldScale, HillsOctaves, NoiseSeed) * HillsAmplitude;
-		// Mission fronts get broad macro swells under the detail
-		// noise, so a 1900u crossing has real country in it. Damped
-		// near the center so the mesa keeps its clean plateau.
-		if (WorldConfig.IsMission)
-			hills += TerrainMath.Fbm(x / MacroFieldScale + 7f, z / MacroFieldScale - 3f, MacroOctaves, NoiseSeed) * MacroAmplitude * TerrainMath.Smooth(MacroFadeStart, MacroFadeEnd, r);
-		// Craggy ridge line through the NW quadrant.
-		float dRidge = DistToSegment(x, z, RidgeStart.X, RidgeStart.Y, RidgeEnd.X, RidgeEnd.Y);
-		float crag = 1f - Mathf.Abs(TerrainMath.Fbm(x / CragFieldScale + 40f, z / CragFieldScale - 17f, CragOctaves, NoiseSeed));
-		float ridge = Mathf.Exp(-(dRidge * dRidge) / (2f * RidgeWidth * RidgeWidth)) * (RidgeBaseHeight + RidgeCragHeight * crag);
-		// Shallow valley through the SE quadrant.
-		float dVal = DistToSegment(x, z, ValleyStart.X, ValleyStart.Y, ValleyEnd.X, ValleyEnd.Y);
-		float valley = -ValleyDepth * Mathf.Exp(-(dVal * dVal) / (2f * ValleyWidth * ValleyWidth));
-		// Mountain ring bounding the map (square falloff follows the rim).
-		float sq = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-		float half = TerrainSize / 2f;
-		float m = TerrainMath.Smooth(half - RingInsetFar, half - RingInsetNear, sq);
-		float mtn = m * (MountainBaseHeight + MountainVarHeight * (TerrainMath.Fbm(x / MountainFieldScale - 9f, z / MountainFieldScale + 23f, MountainOctaves, NoiseSeed) * 0.5f + 0.5f));
-		// Forest arenas read as woodland, not a mountain range
-		// (owner, 2026-11-14: Hyle "looks more like mountains"):
-		// the relief set runs at half strength there, so slopes
-		// stay gentle and the splat's rock gives way to grass.
-		// The mesa dome below is untouched - it is the arena's
-		// landmark. Missions and the other arenas keep theirs.
-		if (!WorldConfig.IsMission && WorldConfig.Biome == WorldConfig.BiomeKind.Forest)
-		{
-			hills *= ForestHillsFactor; ridge *= ForestRidgeFactor; mtn *= ForestMountainFactor;
-		}
-		float full = hills + ridge + valley + mtn;
-		// Arena modulation: the centre keeps only the floor
-		// fraction of the relief, full by the outer radius.
-		// The Mission front keeps full amplitude everywhere.
-		float t = WorldConfig.IsMission ? 1f : TerrainMath.Smooth(FullAmplitudeStart, FullAmplitudeEnd, r);
-		return full * (CenterAmplitudeFloor + (1f - CenterAmplitudeFloor) * t) + DomeHeight(x, z);
-	}
-
 	private static float[] BuildGrid()
 	{
 		var g = new float[GridN * GridN];
@@ -184,7 +42,7 @@ public partial class Main : Node3D
 		float step = (float)TerrainSize / TerrainSegs;
 		for (int j = 0; j < GridN; j++)
 			for (int i = 0; i < GridN; i++)
-				g[j * GridN + i] = RawHeight(-half + i * step, -half + j * step);
+				g[j * GridN + i] = Maps.Active.RawHeight(-half + i * step, -half + j * step);
 		return g;
 	}
 
@@ -214,50 +72,6 @@ public partial class Main : Node3D
 		float dhdx = (Grid[j * GridN + ir] - Grid[j * GridN + il]) / ((ir - il) * step);
 		float dhdz = (Grid[ju * GridN + i] - Grid[jd * GridN + i]) / ((ju - jd) * step);
 		return new Vector3(-dhdx, 1f, -dhdz).Normalized();
-	}
-
-	// Roads: pure coloring - HeightAt is untouched, so gait, hit
-	// tests and collisions never notice them. Distance is to the
-	// nearer centerline. The arena has two strips crossing at
-	// (-14, 6); the Mission front gets dirt roads along the three
-	// base-to-base legs, so the march between bases has a line to
-	// follow.
-	// The arena's road cross (owner, 2026-11-27: these were
-	// bare numbers in RoadDistance): two strips, one along
-	// each axis, crossing at this point - shared by all three
-	// arenas, so the cross lives here as named constants, not
-	// in any one arena's data.
-	private const float ArenaRoadCrossX = -14f;
-	private const float ArenaRoadCrossZ = 6f;
-	public static float RoadDistance(float x, float z)
-	{
-		if (WorldConfig.IsMission)
-		{
-			var p = WorldConfig.Pads;
-			float d = DistToSegment(x, z, p[0].X, p[0].Y, p[1].X, p[1].Y);
-			d = Mathf.Min(d, DistToSegment(x, z, p[1].X, p[1].Y, p[2].X, p[2].Y));
-			d = Mathf.Min(d, DistToSegment(x, z, p[2].X, p[2].Y, p[0].X, p[0].Y));
-			return d;
-		}
-		return Mathf.Min(Mathf.Abs(z - ArenaRoadCrossZ), Mathf.Abs(x - ArenaRoadCrossX));
-	}
-
-	private const float NoStreetDistance = 1e6f; // DistrictStreetDistance's "no street here" sentinel
-
-	// Street grid of the city district (kit contracts): lanes
-	// run between the building plots. Distance to the nearest
-	// lane centerline; a large number outside the district or
-	// off a kit contract.
-	public static float DistrictStreetDistance(float x, float z)
-	{
-		if (!WorldConfig.IsMission || WorldConfig.CityKit < 0) return NoStreetDistance;
-		float p = CityGrid.Pitch;
-		float ext = CityGrid.Radius + p;
-		if (x * x + z * z > ext * ext) return NoStreetDistance;
-		float yx = x / p - 0.5f, yz = z / p - 0.5f;
-		float dx = Mathf.Abs(yx - Mathf.Round(yx)) * p;
-		float dz = Mathf.Abs(yz - Mathf.Round(yz)) * p;
-		return Mathf.Min(dx, dz);
 	}
 
 	// The terrain palette (owner: look-and-feel values live in
@@ -347,7 +161,7 @@ public partial class Main : Node3D
 		float peakW = TerrainMath.Smooth(PeakHeightStart, PeakHeightEnd, h + (grain - 0.5f) * PeakGrainWobble);
 		col = col.Lerp(desert ? DesertPeakColor : PeakColor, peakW * PeakBlend);
 		// Asphalt on the roads, blended over a soft shoulder.
-		float roadD = RoadDistance(x, z);
+		float roadD = Maps.Active.RoadDistance(x, z);
 		if (roadD < RoadPaintDistance)
 		{
 			float rw = 1f - TerrainMath.Smooth(RoadShoulderStart, RoadPaintDistance, roadD);
@@ -376,9 +190,10 @@ public partial class Main : Node3D
 
 	// One window of the heightfield as its own mesh (same
 	// grid data, world-space vertices, vertex colours) -
-	// the Ascent world builds the ground in chunks so far
-	// chunks can be unloaded from the renderer (owner,
-	// 2026-11-20: dynamic loading on the big map).
+	// a chunked map (MapDef.TerrainChunks) builds the ground
+	// in windows so far chunks can be unloaded from the
+	// renderer (owner, 2026-11-20: dynamic loading on the
+	// big map).
 	public static Mesh CreateTerrainMeshRange(int i0, int i1, int j0, int j1)
 	{
 		int n = GridN;
@@ -448,7 +263,7 @@ public partial class Main : Node3D
 	// scanned rock set the photo scene already ships
 	// (aerial_rocks_02: normal + ARM), sampled world-
 	// triplanar so the detail is continuous across the
-	// Ascent terrain chunks. Vertex colours stay the albedo;
+	// terrain chunks. Vertex colours stay the albedo;
 	// the maps only carry the light response.
 	private static Texture2D _rockNor, _rockArm;
 

@@ -65,9 +65,13 @@ public static class WorldConfig
     // copies the contract's flag here; AOT_SNOW=1 forces it.
     public static bool SnowGround = InitSnow();
 
-    // The Ascent campaign map (owner, 2026-11-20): EnterLab
-    // copies the contract's flag; AOT_ASCENT=1 forces it.
-    public static bool Ascent = InitAscent();
+    // Which map the mission is fought on (owner, 2026-11-27:
+    // a data value the MapFactory reads - it replaced the
+    // Ascent bool, which was a map's NAME worn as a flag).
+    // EnterLab copies the contract's kind here; the
+    // AOT_ASCENT env var (its historical wire name) forces
+    // Babylon for harness boots.
+    public static MapKind Map = InitMap();
 
     // Hills terrain (owner's Maps-Hills OBJ, 2026-11-22): the
     // Ascent heightfield's base is sampled from a grid baked
@@ -83,8 +87,8 @@ public static class WorldConfig
     private static bool InitPhotoreal() =>
         EnvVars.Flag(EnvVars.Photoreal);
 
-    private static bool InitAscent() =>
-        EnvVars.Flag(EnvVars.Ascent);
+    private static MapKind InitMap() =>
+        EnvVars.Flag(EnvVars.Ascent) ? MapKind.Babylon : MapKind.Standard;
 
     private static bool InitHills() =>
         EnvVars.Flag(EnvVars.Hills);
@@ -142,7 +146,7 @@ public static class WorldConfig
         SkyStars = InitStars();
         SnowGround = InitSnow();
         FlatWorld = InitFlat();
-        Ascent = InitAscent();
+        Map = InitMap();
         Hills = InitHills();
         Photoreal = InitPhotoreal();
     }
@@ -163,19 +167,7 @@ public static class WorldConfig
     public static float WorldBound => IsMission ? MissionWorldBound : TournamentWorldBound;
     public static float PadFlattenRadius => IsMission ? MissionPadFlattenRadius : TournamentPadFlattenRadius;
 
-    public static Vector2[] Pads => IsMission && Ascent ? global::Babylon.Pads
-        : IsMission ? MissionPads : TournamentPads;
 
-    private static readonly Vector2[] TournamentPads =
-    {
-        new(0f, 80f), new(-69.3f, -40f), new(69.3f, -40f)
-    };
-
-    // The arena pad triangle scaled x7.75: r=620, 120 degrees apart.
-    private static readonly Vector2[] MissionPads =
-    {
-        new(0f, 620f), new(-537f, -310f), new(537f, -310f)
-    };
 }
 
 // Tournament arenas: fixed maps, each with its own predefined

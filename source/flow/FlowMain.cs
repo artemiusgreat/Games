@@ -350,8 +350,8 @@ public partial class FlowMain : Node3D
             WorldConfig.SnowGround = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.SnowGround;
         if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Ascent)))
-            WorldConfig.Ascent = WorldConfig.IsMission
-                && WorldConfig.SelectedMission.Ascent;
+            WorldConfig.Map = WorldConfig.IsMission
+                ? WorldConfig.SelectedMission.Map : MapKind.Standard;
         if (string.IsNullOrEmpty(EnvVars.Value(EnvVars.Photoreal)))
             WorldConfig.Photoreal = WorldConfig.IsMission
                 && WorldConfig.SelectedMission.Photoreal;

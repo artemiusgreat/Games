@@ -2,10 +2,11 @@ using Godot;
 
 // Babylon (New York, Suffolk): the valley campaign map -
 // one long valley climbing from the lowland mouth in the
-// south to a layered citadel city on the summit plateau in
-// the north. Six villages sit along the climb, each with its
-// own guard group; two rivers cross the valley floor, each
-// bridged where the road crosses. The scenario is
+// south to the summit camp on the plateau in the north.
+// Six villages sit along the climb, each with its own
+// guard group; two rivers cross the valley floor, each
+// forded where the road crosses (the deck bridges were
+// removed with every other construction, 2026-11-27). The scenario is
 // non-linear by construction: every village guards only its
 // own ground (the standard guard gate), so the player can
 // clear the valley village by village, slip past them all,
@@ -21,8 +22,8 @@ using Godot;
 // spawner) all read THIS table, so the ground, the dressing
 // and the defenders can never disagree about where a
 // village is. (The map was built as "the Ascent" in
-// 2026-11-20; the WorldConfig.Ascent contract flag still
-// carries that name.)
+// 2026-11-20; the contract row's MapKind.Babylon is what
+// selects it now - the old WorldConfig.Ascent flag is gone.)
 public static class Babylon
 {
     // One village: centre, flatten radius, guard count.
@@ -245,10 +246,10 @@ public static class Babylon
 
     public static float SummitH => SiteH[Sites.Length + 1];
 
-    // The heightfield entry (Main.RawHeight dispatches here
-    // on a Babylon contract): RawBase with every site, the
-    // home muster and the summit flattened toward its centre
-    // height - villages and the citadel stand on level ground.
+    // The heightfield entry (BabylonMap.RawHeight routes
+    // here): RawBase with every site, the home muster and
+    // the summit flattened toward its centre height -
+    // villages and the citadel stand on level ground.
     private const float HomeFlatRadius = 100f; // the muster field flattens over this radius, fully level inside half of it
     private const float SummitFlatInner = 140f; // inside this radius the summit is fully at its centre height
     public static float Height(float x, float z)
@@ -266,4 +267,19 @@ public static class Babylon
         if (ds < SummitR) h = Mathf.Lerp(h, SiteH[Sites.Length + 1], TerrainMath.Smooth(SummitR, SummitFlatInner, ds));
         return h;
     }
+}
+
+// Babylon as a map (owner, 2026-11-27): the definition
+// above, presented through the MapDef contract - its own
+// height recipe, its own pads, chunked terrain for the
+// streaming pass, the river dressing, the village guard
+// muster, and streamed statics.
+public sealed class BabylonMap : MapDef
+{
+    public override Vector2[] Pads => Babylon.Pads;
+    public override float RawHeight(float x, float z) => Babylon.Height(x, z);
+    public override int TerrainChunks => 4;
+    public override bool StreamsStatics => true;
+    public override void BuildDressing(Titans world) => world.BuildBabylonWorld();
+    public override void MusterGuards(Titans world) => world.MusterBabylonGuards();
 }

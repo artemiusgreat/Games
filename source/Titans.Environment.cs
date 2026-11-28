@@ -161,15 +161,16 @@ public partial class Titans
 
     private MeshInstance3D BuildTerrainMesh()
     {
-        if (WorldConfig.Ascent)
+        int chunks = Maps.Active.TerrainChunks;
+        if (chunks > 1)
         {
-            // The Ascent ground is built in 4x4 chunks over
+            // A chunked map's ground is built in windows over
             // the same grid, so the streaming pass can unload
-            // the far end of the valley (owner, 2026-11-20).
+            // the far end of the world (owner, 2026-11-20).
             MeshInstance3D first = null;
-            int chunk = Main.TerrainSegs / 4;
-            for (int cj = 0; cj < 4; cj++)
-            for (int ci = 0; ci < 4; ci++)
+            int chunk = Main.TerrainSegs / chunks;
+            for (int cj = 0; cj < chunks; cj++)
+            for (int ci = 0; ci < chunks; ci++)
             {
                 var cmi = new MeshInstance3D
                 {
@@ -178,8 +179,8 @@ public partial class Titans
                 };
                 AddChild(cmi);
                 _terrainChunks.Add(cmi);
-                float cx = -Main.TerrainSize / 2f + (ci + 0.5f) * (Main.TerrainSize / 4f);
-                float cz = -Main.TerrainSize / 2f + (cj + 0.5f) * (Main.TerrainSize / 4f);
+                float cx = -Main.TerrainSize / 2f + (ci + 0.5f) * (Main.TerrainSize / chunks);
+                float cz = -Main.TerrainSize / 2f + (cj + 0.5f) * (Main.TerrainSize / chunks);
                 _streamed.Add((cmi, new Vector2(cx, cz), TerrainChunkStreamRadius));
                 if (first == null) first = cmi;
             }

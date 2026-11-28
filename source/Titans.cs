@@ -667,7 +667,7 @@ public partial class Titans : Node3D
         }
         if (WorldConfig.IsMission)
         {
-            if (WorldConfig.Ascent) BuildBabylonWorld();
+            Maps.Active.BuildDressing(this);
         }
         await BuildFrame(); // staged build: built ground in, nature next
         ScatterNature();
@@ -715,7 +715,7 @@ public partial class Titans : Node3D
         }
         await BuildFrame(); // staged build: seats done, teammates and the HUD next
         BuildAllies();
-        BuildGuards();
+        if (!AnyHarness || _guardProbe) Maps.Active.MusterGuards(this); // the guard probe musters them on purpose
         BuildBracketNPCs();
         RefreshHitCaps();
         _targetIdx = -1; // the HUD may have latched a pick during the staged build, before the guards mustered and the riders were placed - the first live frame re-picks the nearest (2026-11-23)
@@ -764,7 +764,7 @@ public partial class Titans : Node3D
         }
 
         _lastPlayerPos = _player.RootPos;
-        if (WorldConfig.Ascent) RegisterStreaming();
+        if (Maps.Active.StreamsStatics) RegisterStreaming();
         InitSfx();
         _built = true;
         _buildCover.QueueFree();

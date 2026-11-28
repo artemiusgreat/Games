@@ -301,7 +301,7 @@ void fragment() {
     // Splat weights (R rock, G grass, B dirt, A asphalt) from the same
     // heightfield the game logic reads: rock takes steep faces and
     // high ground, dirt breaks the grass in noise patches, asphalt
-    // follows Main.RoadDistance exactly like the flat coloring did.
+    // follows the active map's RoadDistance exactly like the flat coloring did.
     private static ImageTexture BuildSplat()
     {
         const int N = 1024;
@@ -346,8 +346,8 @@ void fragment() {
                 // 7.5u. The district streets drop to a faint
                 // wash: at full strength their grid lattice IS
                 // the checkerboard the owner keeps reporting.
-                float road = (1f - Mathf.SmoothStep(0f, 7.5f, Main.RoadDistance(x, z))) * 0.65f;
-                float street = (1f - Mathf.SmoothStep(2f, 16f, Main.DistrictStreetDistance(x, z))) * 0.3f;
+                float road = (1f - Mathf.SmoothStep(0f, 7.5f, Maps.Active.RoadDistance(x, z))) * 0.65f;
+                float street = (1f - Mathf.SmoothStep(2f, 16f, Maps.Active.StreetDistance(x, z))) * 0.3f;
                 // Plaza carve (splat audit round 2): the open
                 // ground around a pad - the patrol plaza where
                 // fights happen - carries no street wash at
@@ -534,7 +534,7 @@ void fragment() {
         while (spots.Count < GrassSpotTarget && attempts++ < GrassScatterMaxAttempts)
         {
             float x = rng.RandfRange(-GrassScatterBound, GrassScatterBound), z = rng.RandfRange(-GrassScatterBound, GrassScatterBound);
-            if (Main.RoadDistance(x, z) < GrassRoadClearance) continue;
+            if (Maps.Active.RoadDistance(x, z) < GrassRoadClearance) continue;
             float h = Main.HeightAt(x, z);
             if (h > GrassMaxHeight) continue;
             if (h < GrassMinHeight) continue; // dry land only: scatter stood in the sea/lake shallows (owner)
