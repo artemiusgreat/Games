@@ -112,7 +112,7 @@ public partial class RiderWalker : Node3D
     private const float FallTipAngle = 1.32f;          // rad (~76 deg): the fall's full tip
     private const float FallUpEaseRate = 10f, UpEaseRate = 3.5f;
     private const float MinFootSpan = 0.5f;            // lateral foot-span floor for the roll estimate
-    private const float MaxRootTilt = 0.23f;           // rad: the root's terrain tilt is capped here
+    private const float MaxRootTilt = 0.25f;           // rad: the root's terrain tilt is capped here (0.23 -> 0.25 at the owner's word, 2026-11-27)
     private const float TiltGradientProbe = 1.5f;      // u: fore/aft probe distance for the pitch gradient
     private const float MinJoltEnvelope = 0.002f;      // jolt envelope below which the rock is dropped
     private const float JoltDecayRate = 2.4f;          // jolt envelope decay per second
