@@ -152,7 +152,7 @@ public partial class Titans : Node3D
     // test choreography
     private DuelPhase _phase;
     private double _phaseT;
-    private int _strideShots;
+    private StrideShot _strideShot;
     private float _minTreeSep, _minRiderSep;
     private PlayerLimpStep _pLimpStep;
     private AimStep _aimStep;
