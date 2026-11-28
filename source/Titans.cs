@@ -481,10 +481,11 @@ public partial class Titans : Node3D
             if (arg.StartsWith("--team-slot="))
                 TeamRoster.StorySlot = int.Parse(arg.Substring("--team-slot=".Length));
         }
+
         // Diagnostics gate (owner, 2026-11-22): gameplay Dbg
         // lines print only in a test/shot mode or with
         // AOT_VERBOSE set - normal play stays quiet.
-        Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest
+        Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest || _lagCheck
             || _labShot || _photo || _photoTest || _ffaTest || _teamTest || _bracketTest
             || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe || _guardProbe || _ffProbe || _sfxProbe || _targetProbe || _feedProbe || _ambientProbe || _beamShot || _controlsShot || _bindingsProbe || _stoneShot || _boneProbe
             || OS.HasEnvironment("AOT_VERBOSE");
