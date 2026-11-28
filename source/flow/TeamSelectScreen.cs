@@ -1,6 +1,8 @@
 using Godot;
 using System;
 
+namespace Titans;
+
 // Wizard step 3 (Tournament, owner - teams stage): form the
 // teams. Left: the teams, a scrollable list - at least two
 // teams always stand; every row carries its own '−' (the

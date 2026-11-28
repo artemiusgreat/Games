@@ -1,6 +1,8 @@
 using Godot;
 using System;
 
+namespace Titans;
+
 // Wizard step 3 (Story, owner, 2026-11-15): form the team
 // for the signed mission. Until now the team was formed on
 // a selector strip inside the Rider Lab; the owner moved

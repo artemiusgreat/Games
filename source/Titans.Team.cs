@@ -2,6 +2,8 @@ using Godot;
 using System.Collections.Generic;
 using System.Linq;
 
+namespace Titans;
+
 // Titans module: the Story team in the duel (owner, teams
 // stage, step 4-5). The roster formed in the lab (TeamRoster.
 // Story) takes the field in missions: the leader is the rider

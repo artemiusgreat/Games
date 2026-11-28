@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // RiderParts: per-rider breakable-part registry for the duel. Owns the part
 // model (which meshes belong to which part, per-part HP), per-mesh hit
 // volumes anchored to skeleton bones, and hit attribution.

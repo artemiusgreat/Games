@@ -1,6 +1,8 @@
 using Godot;
 using System;
 
+namespace Titans;
+
 // Weapon core: projectiles stepped with swept segment tests against the
 // shared HitModel, plus cheap one-node FX factories (beams, flashes,
 // tracers, rockets, trail puffs). Titans owns the instances and their

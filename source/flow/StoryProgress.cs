@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Story campaign progression (owner, 2026-11-13, revised
 // the same day to NON-LINEAR): all three planets are visible
 // from the start, but each planet shows only its first

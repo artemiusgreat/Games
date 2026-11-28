@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Dynamic loading for the Ascent campaign map (owner,
 // 2026-11-20): the map is far too big to simulate and draw
 // whole. Two mechanisms, both scoped to the ascent world

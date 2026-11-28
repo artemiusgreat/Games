@@ -1,3 +1,5 @@
+namespace Titans;
+
 // Pure game data - no engine references, so the catalog, the loadout
 // rules and the knockdown math can move to another engine as-is.
 // Weapon weights drive two things: the RiderLab slot capacities and the

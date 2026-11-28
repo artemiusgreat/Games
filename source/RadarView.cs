@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Cockpit radar (owner): a SQUARE, semi-transparent panel in
 // the top-right corner carrying a CIRCULAR scope - the
 // square stays (it matches the dashboard), the plot inside

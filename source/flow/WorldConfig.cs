@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Which world the duel scene builds, chosen in the front-end flow
 // (map type -> planet -> bar -> lab) before the duel scene loads. The
 // harness can force it with the AOT_MODE environment variable or

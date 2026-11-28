@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // The map contract (owner, 2026-11-27): everything specific
 // to one map lives in that map's own class under maps/ -
 // its height recipe, its pads, its roads, its dressing, its

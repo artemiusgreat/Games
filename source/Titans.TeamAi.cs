@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Titans module: the NPC teammates' brain and the leader's
 // orders (owner, teams stage step 5). Allies run the SAME
 // range game and cannon gunnery as the AI foes - no second AI

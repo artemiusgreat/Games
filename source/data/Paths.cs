@@ -1,3 +1,5 @@
+namespace Titans;
+
 // Resource paths (owner, 2026-11-27): every res:// reference
 // the code loads is a named constant here, so a moved asset is
 // one edit and every load site is searchable. Data tables keep

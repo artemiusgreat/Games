@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Photoreal probe environment (owner ask, 2026-10-29): the duel's
 // world rebuilt from CC0 photogrammetry - Poly Haven texture sets
 // splat-blended over the SAME heightfield, scanned tree/rock models

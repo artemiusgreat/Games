@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Wizard step 2 (Story, owner - teams stage): pick the mission.
 // Left: the mission selector (slider) with the briefing monitor
 // and the offer rows - every available mission with its own

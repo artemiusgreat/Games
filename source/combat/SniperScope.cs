@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Sniper scope overlay (owner, 2026-11-23, from his scope
 // reference frame): while the sniper view is engaged, a
 // semi-transparent backdrop dims the screen OUTSIDE a round

@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Hermes: breakable-part layout - which meshes form which
 // part, the torso carve regions and the per-part HP. One file
 // per rider (owner, 2026-11-27), structured like the maps;

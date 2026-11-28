@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Front-end step 1: choose the game mode. Layout after the
 // owner's menu concept (2026-11-13), restyled the same day at
 // his word as a command-deck CONTROL PANEL: engraved serif

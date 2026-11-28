@@ -5,6 +5,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 public partial class Titans
 {
     // ---- Footprints ----

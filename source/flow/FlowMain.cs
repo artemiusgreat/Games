@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // The game's front door (project main scene). A quiet orbital
 // backdrop - star panorama and a slowly turning planet - behind a
 // stack of full-screen UI steps. Both modes are step wizards

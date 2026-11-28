@@ -1,3 +1,5 @@
+namespace Titans;
+
 // One home for the values that repeat across the engine's
 // files (owner: no magic strings or numbers scattered through
 // the code). Pure data - no engine references, like the rest

@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Titans module: player input: throttle/turn, torso bearing, thruster key.
 // Split from the single-file build (round 22 cleanup); the class
 // stays one partial class - see Titans.cs for the field block.

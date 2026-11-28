@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Contract data for the Mission path (front-end flow). Planets are
 // picked on the orbital screen, contracts are signed in the bar.
 // Pure data - the duel reads WorldConfig.SelectedMission.

@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Wizard step 1 (both modes, owner - teams stage): pick the
 // planet. The existing planet selector stays on the left; on
 // the right, instead of the planet disc, a clickable Freelancer-

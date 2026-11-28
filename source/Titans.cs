@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Titans: two-rider duel - a PLAYER rider vs an ENEMY rider, each
 // fielding a chassis chosen in the RiderLab (Enyo / Hector
 // are the two chassis in Data/RiderSpec.cs; code names the ROLES,

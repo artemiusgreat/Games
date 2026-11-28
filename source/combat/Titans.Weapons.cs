@@ -2,6 +2,8 @@ using Godot;
 using System.Collections.Generic;
 using System.Linq;
 
+namespace Titans;
+
 // Titans module: firing, projectiles, damage and part consequences.
 // (Aiming - the aim ray and reticle - lives in Combat/Titans.Aiming.cs;
 // this file is part of the Combat folder: everything that aims or shoots.)

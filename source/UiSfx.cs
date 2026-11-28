@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // UI tick sounds (owner, 2026-11-24; the tick was
 // muffled at his word, 2026-11-25, after a one-day
 // whoosh detour): every selector, button and stepper

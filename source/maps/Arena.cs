@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // The tournament arena's own definition data (owner,
 // 2026-11-27: map-specific data lives with the map, like
 // Babylon.cs - the shared environment

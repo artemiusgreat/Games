@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Babylon (New York, Suffolk): the valley campaign map -
 // one long valley climbing from the lowland mouth in the
 // south to the summit camp on the plateau in the north.

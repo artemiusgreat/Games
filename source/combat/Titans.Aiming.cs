@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Titans module: AIMING - the torso aim ray, the camera-ray
 // convergence that defines the aim point every weapon uses,
 // and the reticle that rides that point on screen. Part of

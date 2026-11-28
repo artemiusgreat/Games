@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 public partial class Main : Node3D
 {
 	// World size comes from the front-end flow (WorldConfig): the

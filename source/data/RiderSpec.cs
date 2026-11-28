@@ -1,3 +1,5 @@
+namespace Titans;
+
 // Pure game data - no engine references. A rider spec is its tonnage
 // plus the weapon slots the RiderLab can fill. Slot weight capacity is
 // the rule that keeps a light rider from carrying a heavy rider's gun.

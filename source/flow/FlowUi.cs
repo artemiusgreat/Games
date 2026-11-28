@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Shared look + procedural art for the front-end flow screens.
 // Palette: deep navy panels, steel borders, champagne-gold headers -
 // the storefront of the game, matching the RiderLab console.

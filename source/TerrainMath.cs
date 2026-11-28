@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Shared procedural-terrain math - THE one home for the
 // noise stack (owner, 2026-11-27: several files each carried
 // their own ValueNoise; they are all here now). No map data

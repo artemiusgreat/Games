@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Titans module: RiderLab glue: construction from specs, selection, loadout application.
 // Split from the single-file build (round 22 cleanup); the class
 // stays one partial class - see Titans.cs for the field block.

@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Center-screen crosshair for the duel scene (drawn, no textures),
 // with a hitmarker X that the weapon code flashes on a registered hit.
 // The reticle never wanders: there is no sway offset (the head-loss

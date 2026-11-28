@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Titans module: the Babylon campaign world's dressing
 // (owner, 2026-11-20) - the river water for the Babylon
 // contract. All positions come from maps/Babylon.cs, the

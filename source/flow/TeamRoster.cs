@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Team state for the wizard flow (owner, teams stage). Static,
 // like FlowMain's flow state, so it survives the trips between
 // the flow scene and the duel scene (the lab's Back button

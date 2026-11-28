@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // RiderWalker: reusable procedural gait + two-bone IK for a rigged rider FBX,
 // extracted from the original walker test scene and
 // generalized: any heading (not just -Z), signed speed (reverse stepping),

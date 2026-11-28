@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // The one logging helper for the whole codebase (owner,
 // 2026-11-22 gate; unified 2026-11-27: every class logs through
 // here, no direct GD.Print/GD.PrintErr anywhere else).

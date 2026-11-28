@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // The plain mission front (owner, 2026-11-27: map-specific
 // code lives in the map's own file): the shared relief
 // recipe at full amplitude with mission macro swells, the

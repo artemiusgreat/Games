@@ -1,3 +1,5 @@
+namespace Titans;
+
 // The AOT_* environment variables: harness seeds that force a
 // selection the flow or the contract would otherwise make
 // (planet, biome, sky, feature flags). The NAMES are constants

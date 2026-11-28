@@ -1,6 +1,8 @@
 using Godot;
 using System;
 
+namespace Titans;
+
 // Pre-game RiderLab (owner's ask, after the MW4/MW5 labs in his
 // screenshots): drag weapons from the catalog onto the rider's
 // hardpoints. Slot type and slot weight capacity rule what fits - a

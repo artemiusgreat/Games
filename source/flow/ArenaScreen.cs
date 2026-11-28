@@ -1,5 +1,7 @@
 using Godot;
 
+namespace Titans;
+
 // Wizard step 2 (Tournament, owner - teams stage): pick the
 // arena. Left: the info slider (the arena selector with its
 // briefing on a monitor); right: the arena visualized top-down.

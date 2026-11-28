@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // The universe map (owner, teams stage): a Freelancer-style star
 // chart for the planet step - the owner's universe photograph
 // fills the whole screen behind it (PlanetScreen draws it), a

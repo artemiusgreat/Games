@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Shared hit model for every weapon in the duel (hitscan and projectiles
 // alike), so a laser, an autocannon shell and a rocket all agree on what
 // they hit:

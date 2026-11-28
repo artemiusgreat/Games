@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Factory for the per-rider breakable-part layouts (owner,
 // 2026-11-27: the layouts live one per file in this folder,
 // structured like the maps in source/maps/). RiderParts owns

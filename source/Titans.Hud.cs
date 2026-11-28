@@ -1,6 +1,8 @@
 using Godot;
 using System.Collections.Generic;
 
+namespace Titans;
+
 // Titans module: cockpit panel, radar readouts, cooldown rows, droop.
 // Split from the single-file build (round 22 cleanup); the class
 // stays one partial class - see Titans.cs for the field block.
