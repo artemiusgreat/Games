@@ -69,8 +69,8 @@ public partial class Titans
     private static readonly Vector3 RiderSideLookOffset = new(0f, 6f, 0f);
     private static readonly Vector3 BrkPlayerCamOffset = new(-15f, 5.5f, 5f);
     private static readonly Vector3 BrkPlayerLookOffset = new(0f, 6.5f, 0f);
-    private static readonly Vector3 BrkHectorCamOffset = new(14.5f, 6.5f, -5f);
-    private static readonly Vector3 BrkHectorLookOffset = new(0f, 6.5f, 0f);
+    private static readonly Vector3 BrkTargetCamOffset = new(14.5f, 6.5f, -5f);
+    private static readonly Vector3 BrkTargetLookOffset = new(0f, 6.5f, 0f);
     private static readonly Vector3 BrkDebrisCamOffset = new(-8.5f, 3.4f, 6.5f);
     private const float BrkDebrisLookHeight = 0.4f;
     private static readonly Vector3 DetailBuildingCamOffset = new(-10.5f, 4.6f, 10.5f);
@@ -98,9 +98,62 @@ public partial class Titans
     private const float PhotoTuftCamX = -18.6f, PhotoTuftCamZ = 2.2f, PhotoTuftLookX = -21.5f, PhotoTuftLookZ = -1.5f;
     private const float PhotoGroundX = -21f, PhotoGroundZ = -1f, PhotoGroundSampleZ = 0f; // the eye stands at Z, its ground is sampled at SampleZ
 
-    // The tag of the closing chase capture (a capture name,
-    // not a camera mode - the two only shared a spelling).
-    private const string ChaseCaptureTag = "chase";
+    // Capture tags (owner, 2026-11-27: the tag is a state
+    // key - DoCapture compares it to decide when a suite
+    // ends - so the literals live once, here, as constants,
+    // never inline at a call site).
+    private static class CaptureTags
+    {
+        public const string Chase = "chase";
+        public const string SlopeVista = "slopeVista";
+        public const string SlopeClose = "slopeClose";
+        public const string Stride = "stride";
+        public const string Main = "main";
+        public const string Twist = "twist";
+        public const string Prop = "prop";
+        public const string Rider = "rider";
+        public const string Aim = "aim";
+        public const string Stone = "stone";
+        public const string Debris = "debris";
+        public const string Boom = "boom";
+        public const string FlipMid = "flipmid";
+        public const string FlipLate = "fliplate";
+        public const string VBefore = "vbefore";
+        public const string VAfter = "vafter";
+        public const string TeamFight = "teamfight";
+        public const string TeamScreen = "teamscreen";
+        public const string WpnHit = "wpnHit";
+        public const string WLaser = "wlaser";
+        public const string WRockets = "wrockets";
+        public const string WBlocked = "wblocked";
+        public const string WHud = "whud";
+        public const string WDead = "wdead";
+        public const string EnvTreeDown = "envTreeDown";
+        public const string BPodFall = "bpodfall";
+        public const string BDebris = "bdebris";
+        public const string BNoGun = "bnogun";
+        public const string BHud = "bhud";
+        public const string BLimp = "blimp";
+        public const string BDisabled = "bdisabled";
+        public const string BHead = "bhead";
+        public const string BrkKnock = "brkKnock";
+        public const string Gait = "gait";
+        public const string GaitF = "gaitf";
+        public const string GClose = "gclose";
+        public const string GField = "gfield";
+        public const string GSky = "gsky";
+        public const string GTop = "gtop";
+        public const string MBase = "mbase";
+        public const string MVista = "mvista";
+        public const string PGround = "pground";
+        public const string POver = "pover";
+        public const string PTuft = "ptuft";
+        public const string TDetB = "tdetB";
+        public const string TDetT = "tdetT";
+        public const string TDuel = "tduel";
+        public const string TStride = "tstride";
+        public const string TVista = "tvista";
+    }
 
     private void QueueCapture(string path, string tag, CamMode camMode, System.Action after = null)
     {
@@ -134,14 +187,14 @@ public partial class Titans
         var after = _afterCapture;
         _afterCapture = null;
         after?.Invoke();
-        if (_phase == DuelPhase.Captures && tag == "rider")
+        if (_phase == DuelPhase.Captures && tag == CaptureTags.Rider)
         {
-            Dbg.Print($"DUEL DONE playerSteps={_player.Steps} hectorSteps={_enemy.Steps} hectorMaxSlide={_enemy.MaxSlide:F4} twMaxSlide={_player.MaxSlide:F4}");
+            Dbg.Print($"DUEL DONE playerSteps={_player.Steps} enemySteps={_enemy.Steps} enemyMaxSlide={_enemy.MaxSlide:F4} playerMaxSlide={_player.MaxSlide:F4}");
             // One frame from the interactive chase camera (the player's
             // actual view) before quitting - framing proof for cam changes.
-            QueueCapture(DuelChaseCapture, ChaseCaptureTag, CamMode.Chase);
+            QueueCapture(DuelChaseCapture, CaptureTags.Chase, CamMode.Chase);
         }
-        else if (tag == ChaseCaptureTag)
+        else if (tag == CaptureTags.Chase)
         {
             GetTree().Quit();
         }
@@ -321,11 +374,11 @@ public partial class Titans
             _cam.GlobalPosition = p + BrkPlayerCamOffset;
             _cam.LookAt(p + BrkPlayerLookOffset, Vector3.Up);
         }
-        else if (_camMode == CamMode.BrkHector)
+        else if (_camMode == CamMode.BrkTarget)
         {
             var p = _enemy.RootPos;
-            _cam.GlobalPosition = p + BrkHectorCamOffset;
-            _cam.LookAt(p + BrkHectorLookOffset, Vector3.Up);
+            _cam.GlobalPosition = p + BrkTargetCamOffset;
+            _cam.LookAt(p + BrkTargetLookOffset, Vector3.Up);
         }
         else if (_camMode == CamMode.BrkDebris)
         {

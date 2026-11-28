@@ -29,7 +29,7 @@ public partial class Titans
     {
         _player.Teleport(new Vector3(0f, Main.HeightAt(0f, FlatsTrioPlayerZ), FlatsTrioPlayerZ), 0f);
         _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ParkedEnemyZ), ParkedEnemyZ), 0f);
-        _foe.Walker.Teleport(new Vector3(60f, Main.HeightAt(60f, -100f), -100f), 0f);
+        _foe.Walker.Teleport(new Vector3(FlatsFoeX, Main.HeightAt(FlatsFoeX, ParkedEnemyZ), ParkedEnemyZ), 0f);
     }
 
     // ---------- stand separation test (--stand-test) ----------
@@ -77,8 +77,8 @@ public partial class Titans
         // 40-frame gate outlives any sane timeout.
         if (_slopeShotFrames < SlopeShotMinFrames || Time.GetTicksMsec() < SlopeShotWallMs) return;
         _slopeShotFrames = SlopeShotFiredFrames; // fire once
-        QueueCapture(ProofDir + "slope_vista.png", "slopeVista", CamMode.SlopeVista, () =>
-            QueueCapture(ProofDir + "slope_close.png", ChaseCaptureTag, CamMode.SlopeClose));
+        QueueCapture(ProofDir + "slope_vista.png", CaptureTags.SlopeVista, CamMode.SlopeVista, () =>
+            QueueCapture(ProofDir + "slope_close.png", CaptureTags.SlopeClose, CamMode.SlopeClose));
     }
 
     private void UpdateStandTest()
@@ -116,7 +116,11 @@ public partial class Titans
         }
     }
 
-    private enum DuelPhase { Settle, HectorWalk, Twist, Stomp, HeadOn, PlayerLimp, Aim, Captures }
+    private enum DuelPhase { Settle, EnemyWalk, Twist, Stomp, HeadOn, PlayerLimp, Aim, Captures }
+    // Which stride capture the enemy-walk phase has taken
+    // (owner, 2026-11-27: a counted state is an enum, not
+    // a bare integer compared against literals).
+    private enum StrideShot { None, Contact, Main }
     private enum SelectionStage { Idle, HoldingSwap, Restored }
     private enum PlayerLimpStep { Wreck, Forward, Reverse, Turn, Done }
     private enum AimStep { InitialChecks, RenderedPitchUp, RenderedPitchDown, RocketLob, TorsoIndependence, ProofFrame, Failed = 99 }
@@ -130,6 +134,26 @@ public partial class Titans
     private const double TwistLogSeconds = 1.4;
     private const float UnmeasuredSeparation = 1e9f; // min-separation sentinel before any sample
     private const float DuelStartLineZ = 26f; // the +Z start line the twist and limp fixtures share
+    // Duel-suite staging values (owner, 2026-11-27: a value
+    // that drives a rider in a fixture is a constant, not a
+    // literal at the call site).
+    private const float DuelWalkSpeed = 1.8f;      // the suite's standard observation walk (enemy approach, twist walk, head-on enemy)
+    private const float StompChargeSpeed = 2.6f;   // the stomp phase's charge at the tree
+    private const float HeadOnPlayerSpeed = 2.2f;  // the head-on phase's player drive
+    private const float TwistStagedAngle = 1.15f; // the twist phase's staged torso angle (+66 deg)
+    private const float AimPitchUp = 0.40f;        // aim phase: pitch staged up
+    private const float AimPitchDown = -0.30f;     // aim phase: pitch staged down
+    private const float AimTwistAngle = 1.2f;      // aim phase: staged torso twist
+    private const float AimWideStagedPitch = -1.05f; // the wide-aim step's driven pitch (convergence check)
+    private const float AimSkyPitch = 1.0f;        // aim clearly above the enemy: sky, not the crest behind him
+    private const float TwistExtremeAngle = 3.4f;  // 195 deg: past backwards - the unclamped-twist proof
+    private const float RenderedPitchUp = 0.35f;   // rendered-pitch check, up step
+    private const float RenderedPitchDown = -0.25f; // rendered-pitch check, down step
+    private const float RocketLobPitch = 0.30f;    // the rocket-lob check's staged pitch
+    private const float CaptureOrbitRate = 0.85f;  // rad/s the captures phase orbits the legs at
+    private const float CaptureProofPitch = 0.18f; // the closing proof frame's torso pitch
+    private const float FlatsFoeX = 60f;           // the flats trio's third rider, parked off the lane
+    private const float LabExpectedEnyoWeaponWeight = 72f; // the Enyo default loadout's total weapon tonnage
     private const float StompTreeX = 6f;
     private const float StompTreeZ = 16f;
     private const float StompPlayerStartZ = 27f;
@@ -218,7 +242,7 @@ public partial class Titans
                     if (lab.TryAssign(spec, PartId.ArmR, WeaponCatalog.LargeLaser) != null
                         || lab.TryAssign(spec, PartId.PodL, WeaponCatalog.Lrm) != null)
                     { Dbg.Err("DUEL FAIL: lab legal fits refused"); GetTree().Quit(1); return; }
-                    if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - 72f) > LabTonnageTolerance)
+                    if (Mathf.Abs(LoadoutState.DefaultFor(RiderSpecs.Enyo).TotalWeaponWeight - LabExpectedEnyoWeaponWeight) > LabTonnageTolerance)
                     { Dbg.Err("DUEL FAIL: default fit tonnage != 72t"); GetTree().Quit(1); return; }
                     Dbg.Print("LABTEST PASS slot type + 13t chest cap enforced (HC refused on weight, AC refused on the mirrored energy arm), legal fits accepted, default fit = 72t (every slot filled)");
                     // Capacity rule (owner, MW4 model): every chassis'
@@ -256,7 +280,7 @@ public partial class Titans
                     // and equipped defs all follow the spec.
                     SetRiderSelection(RiderId.Hector, RiderId.Enyo);
                     if (_playerSpec.Id != RiderId.Hector || _enemySpec.Id != RiderId.Enyo
-                        || _hpPlayer != 340f || _hpEnemy != 260f
+                        || _hpPlayer != RiderSpecs.Hector.MaxHp || _hpEnemy != RiderSpecs.Enyo.MaxHp
                         || _defBallistic?.Id != WeaponId.HeavyCannon
                         || !_partsEnemy.Alive(PartId.PodL))
                     { Dbg.Err($"DUEL FAIL: rider selection swap wrong (hp {_hpPlayer}/{_hpEnemy}, def {_defBallistic?.Id})"); GetTree().Quit(1); return; }
@@ -278,40 +302,41 @@ public partial class Titans
                     {
                         SetRiderSelection(RiderId.Enyo, RiderId.Hector);
                         if (_playerSpec.Id != RiderId.Enyo || _enemySpec.Id != RiderId.Hector
-                            || _hpPlayer != 260f || _hpEnemy != 340f || _defEnergy?.Id != WeaponId.LargeLaser)
+                            || _hpPlayer != RiderSpecs.Enyo.MaxHp || _hpEnemy != RiderSpecs.Hector.MaxHp || _defEnergy?.Id != WeaponId.LargeLaser)
                         { Dbg.Err("DUEL FAIL: rider selection restore wrong"); GetTree().Quit(1); return; }
                         _selStage = SelectionStage.Restored;
                         Dbg.Print("LABTEST SELECTION PASS chassis swap rebuilds walkers, parts, pools and defs; Hector player survived 1.2s of live HUD frames; defaults restored");
                     }
                 }
-                if (_phaseT > SettlePhaseSeconds && _selStage != SelectionStage.HoldingSwap) SetPhase(DuelPhase.HectorWalk);
+                if (_phaseT > SettlePhaseSeconds && _selStage != SelectionStage.HoldingSwap) SetPhase(DuelPhase.EnemyWalk);
                 break;
-            case DuelPhase.HectorWalk: // Hector walks at the player; grab stride + wide frames
+            case DuelPhase.EnemyWalk: // the enemy walks at the player; grab stride + wide frames
                 _player.SetDrive(0f, 0f);
-                _enemy.SetDrive(Mathf.Pi, 1.8f);
+                _enemy.SetDrive(Mathf.Pi, DuelWalkSpeed);
                 if (_enemy.ConsumeStepMidCross() && _phaseT > StrideGateSeconds)
                 {
-                    _strideShots++;
-                    if (_strideShots == 1)
+                    if (_strideShot == StrideShot.None)
                     {
-                        Dbg.Print($"DUEL HECTOR CONTACT analytic {_enemy.FootReport(false)}");
-                        Dbg.Print($"DUEL HECTOR CONTACT engine   {_enemy.FootReport(true)}");
-                        QueueCapture(ProofDir + "duel_hector_stride.png", "stride", CamMode.EnemySide);
+                        _strideShot = StrideShot.Contact;
+                        Dbg.Print($"DUEL {_enemySpec.Name} CONTACT analytic {_enemy.FootReport(false)}");
+                        Dbg.Print($"DUEL {_enemySpec.Name} CONTACT engine   {_enemy.FootReport(true)}");
+                        QueueCapture(ProofDir + "duel_hector_stride.png", CaptureTags.Stride, CamMode.EnemySide);
                     }
-                    else if (_strideShots == 2)
+                    else if (_strideShot == StrideShot.Contact)
                     {
-                        QueueCapture(ProofDir + "duel_main.png", "main", CamMode.Wide, () =>
+                        _strideShot = StrideShot.Main;
+                        QueueCapture(ProofDir + "duel_main.png", CaptureTags.Main, CamMode.Wide, () =>
                         {
                             SetPhase(DuelPhase.Twist);
                             _player.Teleport(new Vector3(0f, Main.HeightAt(0f, DuelStartLineZ), DuelStartLineZ), 0f);
-                            _player.TorsoTwist = 1.15f;
+                            _player.TorsoTwist = TwistStagedAngle;
                         });
                     }
                 }
-                if (_phaseT > StrideTimeoutSeconds) { Dbg.Err("DUEL FAIL: hector stride shots missing"); GetTree().Quit(1); }
+                if (_phaseT > StrideTimeoutSeconds) { Dbg.Err("DUEL FAIL: enemy stride shots missing"); GetTree().Quit(1); }
                 break;
             case DuelPhase.Twist: // torso twist: legs walk -Z, torso twisted +66 deg
-                _player.SetDrive(0f, 1.8f);
+                _player.SetDrive(0f, DuelWalkSpeed);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_phaseT > TwistLogSeconds && !_twistLogged)
                 {
@@ -331,7 +356,7 @@ public partial class Titans
                 }
                 break;
             case DuelPhase.Stomp: // STOMP: drive straight at the tree at (6,16) - it must NOT stop the rider; the rider crushes it and walks through
-                _player.SetDrive(0f, 2.6f);
+                _player.SetDrive(0f, StompChargeSpeed);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 {
                     float sep = new Vector2(_player.RootPos.X - StompTreeX, _player.RootPos.Z - StompTreeZ).Length();
@@ -357,8 +382,8 @@ public partial class Titans
                 }
                 break;
             case DuelPhase.HeadOn: // riders driven at each other
-                _player.SetDrive(0f, 2.2f);
-                _enemy.SetDrive(Mathf.Pi, 1.8f);
+                _player.SetDrive(0f, HeadOnPlayerSpeed);
+                _enemy.SetDrive(Mathf.Pi, DuelWalkSpeed);
                 {
                     float dist = new Vector2(_player.RootPos.X - _enemy.RootPos.X,
                                              _player.RootPos.Z - _enemy.RootPos.Z).Length();
@@ -371,7 +396,7 @@ public partial class Titans
                         if (_stallTimer > HeadOnStallSeconds)
                         {
                             Dbg.Print($"DUEL RIDER minSep={_minRiderSep:F3} finalSep={dist:F3} sumRadii={_player.CollisionRadius + _enemy.CollisionRadius:F2}");
-                            QueueCapture(ProofDir + "duel_collision_rider.png", "rider", CamMode.RiderSide);
+                            QueueCapture(ProofDir + "duel_collision_rider.png", CaptureTags.Rider, CamMode.RiderSide);
                             SetPhase(DuelPhase.PlayerLimp);
                         }
                     }
@@ -468,15 +493,15 @@ public partial class Titans
                     // measurements use last phase's camera pose.
                     UpdateCamera(0f);
                     _player.TorsoTwist = 0f;
-                    _player.TorsoPitch = 0.40f;
+                    _player.TorsoPitch = AimPitchUp;
                     var aimUp = TorsoAimPoint();
-                    _player.TorsoPitch = -0.30f;
+                    _player.TorsoPitch = AimPitchDown;
                     var aimDown = TorsoAimPoint();
                     if (aimUp.Y < aimDown.Y + AimPitchHeightGap)
                     { Dbg.Err($"DUEL FAIL: torso pitch does not steer the aim (up Y={aimUp.Y:F1} down Y={aimDown.Y:F1})"); GetTree().Quit(1); break; }
                     _player.TorsoPitch = 0f;
                     var aimC = TorsoAimPoint();
-                    _player.TorsoTwist = 1.2f;
+                    _player.TorsoTwist = AimTwistAngle;
                     var aimT = TorsoAimPoint();
                     float dxz = new Vector2(aimT.X - aimC.X, aimT.Z - aimC.Z).Length();
                     if (dxz < AimTwistSteerMin)
@@ -491,7 +516,7 @@ public partial class Titans
                     // own pitch stays clamped at -0.32.
                     _player.TorsoTwist = 0f;
                     _player.TorsoPitch = 0f;
-                    _player.AimPitchWide = -1.05f;
+                    _player.AimPitchWide = AimWideStagedPitch;
                     UpdateCamera(0f); // a real frame runs the camera before the aim is read
                     var aimWide = TorsoAimPoint();
                     var scrW = _cam.UnprojectPosition(aimWide);
@@ -560,7 +585,7 @@ public partial class Titans
                     // The phase's contract is "cursor clearly above
                     // him => a miss", so the fixture aims clearly
                     // above: sky, not crest.
-                    _player.TorsoPitch = 1.0f;
+                    _player.TorsoPitch = AimSkyPitch;
                     _aimPoint = TorsoAimPoint();
                     FireLaser(_aimPoint);
                     if (_enemyDmgEvents > evAfterHit)
@@ -580,10 +605,10 @@ public partial class Titans
                     // Torso twist is UNCLAMPED (owner, 2026-10-29):
                     // a 195° command must stick - the torso rotates
                     // the full 360°, fully backward included.
-                    _player.TorsoTwist = 3.4f;
+                    _player.TorsoTwist = TwistExtremeAngle;
                     if (_player.TorsoTwist < TwistUnclampedThreshold)
                     { Dbg.Err($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg was clamped (full 360 required)"); _aimStep = AimStep.Failed; GetTree().Quit(1); break; }
-                    _player.TorsoTwist = -3.4f;
+                    _player.TorsoTwist = -TwistExtremeAngle;
                     if (_player.TorsoTwist > -TwistUnclampedThreshold)
                     { Dbg.Err($"DUEL FAIL: torso twist {Mathf.RadToDeg(_player.TorsoTwist):F0}deg was clamped (full 360 required)"); _aimStep = AimStep.Failed; GetTree().Quit(1); break; }
                     _player.TorsoTwist = 0f;
@@ -592,7 +617,7 @@ public partial class Titans
                     // math above is property-based; these read the
                     // skeleton's actual facing after a StepWalker ran.
                     _player.TorsoTwist = 0f;
-                    _player.TorsoPitch = 0.35f;
+                    _player.TorsoPitch = RenderedPitchUp;
                     _aimT0 = _phaseT;
                     _aimStep = AimStep.RenderedPitchUp;
                 }
@@ -602,7 +627,7 @@ public partial class Titans
                     if (fUp.Y < AimFrameUpMinY)
                     { Dbg.Err($"DUEL FAIL: rendered torso does not pitch UP with +pitch (facingY={fUp.Y:F3})"); GetTree().Quit(1); break; }
                     _aimUpY = fUp.Y;
-                    _player.TorsoPitch = -0.25f;
+                    _player.TorsoPitch = RenderedPitchDown;
                     _aimT0 = _phaseT;
                     _aimStep = AimStep.RenderedPitchDown;
                 }
@@ -617,7 +642,7 @@ public partial class Titans
                     // rocket's launch elevation must track the
                     // pointer (bounded lob), not mortar vertically.
                     _player.TorsoTwist = 0f;
-                    _player.TorsoPitch = 0.30f;
+                    _player.TorsoPitch = RocketLobPitch;
                     _cdLrm = 0f;
                     _aimProj0 = _shots.Count;
                     FireLrmSalvo(TorsoAimPoint());
@@ -653,7 +678,7 @@ public partial class Titans
                     // mouse bearing stays put: MaintainTorsoWorldYaw
                     // (the live path's own method) must hold the
                     // torso's world yaw steady throughout.
-                    _playerYaw += 0.85f * delta;
+                    _playerYaw += CaptureOrbitRate * delta;
                     _player.SetDrive(_playerYaw, 0f);
                     MaintainTorsoWorldYaw();
                     if (_phaseT - _aimT0 > AimTorsoCheckSeconds)
@@ -672,13 +697,13 @@ public partial class Titans
                         // Proof frame: torso pitched up - the reticle
                         // sits on the true aim point above the Hector.
                         _player.TorsoTwist = 0f;
-                        _player.TorsoPitch = 0.18f;
+                        _player.TorsoPitch = CaptureProofPitch;
                         _aimPoint = TorsoAimPoint();
                         UpdateReticle();
                         _aimStep = AimStep.ProofFrame;
-                        QueueCapture(ProofDir + "duel_aim.png", "aim", CamMode.Chase, () =>
+                        QueueCapture(ProofDir + "duel_aim.png", CaptureTags.Aim, CamMode.Chase, () =>
                         {
-                            QueueCapture(ProofDir + "duel_collision_rider.png", "rider", CamMode.RiderSide);
+                            QueueCapture(ProofDir + "duel_collision_rider.png", CaptureTags.Rider, CamMode.RiderSide);
                             SetPhase(DuelPhase.Captures);
                         });
                     }
@@ -751,8 +776,13 @@ public partial class Titans
     // 2.4u off the (77,11) root). Muzzle offset ~2.4u + the
     // largest crown radius ~2.6u, rounded up.
     private const float WFarClearRadius = 5.5f;
-    private const int WFarSearchSteps = 72;               // the bearing search walks the full circle, 5 degrees at a time
-    private const float WFarSearchStep = Mathf.Pi / 36f;
+    private const int BearingSweepSteps = 72;               // the bearing search walks the full circle, 5 degrees at a time
+    // One bearing-sweep step, shared by every bearing
+    // search in this file (owner, 2026-11-27: the same
+    // value with the same meaning is one constant): five
+    // degrees - at 15 the LRM survey's best clear cast
+    // fell short of the true diameter.
+    private const float BearingSweepStep = Mathf.Pi / 36f;
     private const float WFarSearchBound = 100f;           // search candidates stay inside this (arena bound is 115)
     private static readonly Vector2[] WFarSpotNudges =
         { Vector2.Zero, new(5, 0), new(-5, 0), new(0, 5), new(0, -5),
@@ -785,6 +815,14 @@ public partial class Titans
     private const float WFarHillPitchStep = 0.02f;
     private const float WFarHillMinDistance = 60f;
     private const float WFarMinDamage = 11.9f;
+    // FAR HILL staging: the enemy parks at (60, 60) while the
+    // player tries the candidate pads around the origin and
+    // a 16-step ring around each, looking for a firing spot.
+    private const float WFarHillParkX = 60f;
+    private const float WFarHillParkZ = 60f;
+    private const int WFarHillRingSteps = 16;
+    private static readonly Vector2[] WFarHillPads =
+        { new(0f, 0f), new(30f, 30f), new(-30f, 30f), new(30f, -30f), new(-30f, -30f) };
 
     private void SetWPhase(WeaponsPhase p)
     {
@@ -914,7 +952,7 @@ public partial class Titans
                     // cast measured 218.4u - the exact diameter
                     // is mesa-blocked, and the line that clears
                     // the shoulder past the 220u cap is narrow.
-                    float ang = step * (Mathf.Pi / 36f);
+                    float ang = step * BearingSweepStep;
                     var ePos = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * LrmSurveyRingRadius;
                     ePos.Y = Main.HeightAt(ePos.X, ePos.Z);
                     _enemy.Teleport(ePos, 0f);
@@ -1260,6 +1298,10 @@ public partial class Titans
     // is Stop, SHIFT+5 is Protect-my-companion. The sniper
     // phases (added 2026-11-25) put the T -> RMB move on
     // trial the same way: RMB toggles, T must not.
+    // Bindings-probe staging: the two companions stand this
+    // far east of the player's home, in slot order.
+    private const float BpMate1OffsetX = 15f;
+    private const float BpMate2OffsetX = 30f;
     private enum BindingsPhase { Stage, CycleOne, CycleTwo, ClosestEnemy, OrderStop, OrderProtect, SniperOn, SniperTKey, SniperOff }
     private const float BpStageSeconds = 1.2f;
     private const float BpStepSeconds = 0.4f;
@@ -1295,8 +1337,8 @@ public partial class Titans
         {
             var home = PadWorld(0); home.Y = Main.HeightAt(home.X, home.Z);
             _player.Teleport(home, 0f);
-            var s1 = home + new Vector3(15f, 0f, 0f); s1.Y = Main.HeightAt(s1.X, s1.Z);
-            var s2 = home + new Vector3(30f, 0f, 0f); s2.Y = Main.HeightAt(s2.X, s2.Z);
+            var s1 = home + new Vector3(BpMate1OffsetX, 0f, 0f); s1.Y = Main.HeightAt(s1.X, s1.Z);
+            var s2 = home + new Vector3(BpMate2OffsetX, 0f, 0f); s2.Y = Main.HeightAt(s2.X, s2.Z);
             _bpMate1 = MakeAlly(TeamRoster.Make(RiderSpecs.ById(RiderId.Hector)), Roles.AllyPrefix + "BP1", 60, 0, s1, 0f, "BPMate1");
             _bpMate2 = MakeAlly(TeamRoster.Make(RiderSpecs.ById(RiderId.Enyo)), Roles.AllyPrefix + "BP2", 61, 0, s2, 0f, "BPMate2");
             _allies.Add(_bpMate1); _allies.Add(_bpMate2);
@@ -1416,8 +1458,8 @@ public partial class Titans
             // the winner is steep everywhere around it.
             float SlopeAt(float x, float z)
             {
-                float gx = (Main.HeightAt(x + StoneSlopeProbeOffset, z) - Main.HeightAt(x - StoneSlopeProbeOffset, z)) / 12f;
-                float gz = (Main.HeightAt(x, z + StoneSlopeProbeOffset) - Main.HeightAt(x, z - StoneSlopeProbeOffset)) / 12f;
+                float gx = (Main.HeightAt(x + StoneSlopeProbeOffset, z) - Main.HeightAt(x - StoneSlopeProbeOffset, z)) / (2f * StoneSlopeProbeOffset);
+                float gz = (Main.HeightAt(x, z + StoneSlopeProbeOffset) - Main.HeightAt(x, z - StoneSlopeProbeOffset)) / (2f * StoneSlopeProbeOffset);
                 return Mathf.Sqrt(gx * gx + gz * gz);
             }
             Vector3 best = Vector3.Zero, bgrad = Vector3.Zero;
@@ -1436,8 +1478,8 @@ public partial class Titans
                 {
                     bs = score;
                     best = new Vector3(x, h, z); bh = h;
-                    float gx = (Main.HeightAt(x + StoneSlopeProbeOffset, z) - Main.HeightAt(x - StoneSlopeProbeOffset, z)) / 12f;
-                    float gz = (Main.HeightAt(x, z + StoneSlopeProbeOffset) - Main.HeightAt(x, z - StoneSlopeProbeOffset)) / 12f;
+                    float gx = (Main.HeightAt(x + StoneSlopeProbeOffset, z) - Main.HeightAt(x - StoneSlopeProbeOffset, z)) / (2f * StoneSlopeProbeOffset);
+                    float gz = (Main.HeightAt(x, z + StoneSlopeProbeOffset) - Main.HeightAt(x, z - StoneSlopeProbeOffset)) / (2f * StoneSlopeProbeOffset);
                     bgrad = new Vector3(gx, 0f, gz);
                 }
             }
@@ -1496,7 +1538,11 @@ public partial class Titans
     private const float GpPlayerSpotOffsetX = 30f;
     private const float GpMateSpotOffsetX = -12f;
     private const float GpChestHeight = 8f;
+    private const float GpAlertZoneFrac = 0.6f; // where in the torso zone the fabricated alert hit lands
     private const int GpSpotRingSteps = 16;
+    // Ring radii (world units) the hidden-spot search tries
+    // around the second guard's home, nearest first.
+    private static readonly float[] GpSpotRadii = { 70f, 100f, 130f, 160f };
     private const float GpLosStepSize = 6f;
     private const float GpLosClearance = 0.75f;
     private const float GpAlertDamage = 5f;
@@ -1555,7 +1601,7 @@ public partial class Titans
             var home2 = _gpGuard2.GuardHome;
             var gChest = _gpGuard2.Walker.RootPos + Vector3.Up * GpChestHeight;
             Vector3 spot = Vector3.Zero; bool found = false;
-            foreach (float r in new[] { 70f, 100f, 130f, 160f })
+            foreach (float r in GpSpotRadii)
             {
                 for (int k = 0; k < GpSpotRingSteps && !found; k++)
                 {
@@ -1583,7 +1629,7 @@ public partial class Titans
         else if (_gpPhase == GuardPhase.BlockedStage && _gpT > GpBlockedSeconds)
         {
             Dbg.Print($"GUARDPROBE los-blocked engaged={_gpGuard2.Engaged} target={(_gpGuard2.TargetW != null ? TagOf(_gpGuard2.TargetW) : "none")} (expect False/none)");
-            var hit = new HitModel.Result { Hit = true, T = 1f, Point = _gpGuard2.Walker.RootPos + Vector3.Up * GpChestHeight, Target = _gpGuard2.Role, Zone = HitZone.Torso, ZoneFrac = 0.6f, Part = PartId.None };
+            var hit = new HitModel.Result { Hit = true, T = 1f, Point = _gpGuard2.Walker.RootPos + Vector3.Up * GpChestHeight, Target = _gpGuard2.Role, Zone = HitZone.Torso, ZoneFrac = GpAlertZoneFrac, Part = PartId.None };
             ApplyDamage(_gpGuard2.Walker, GpAlertDamage, hit, Roles.Player, GpAlertHitDistance, "cannon");
             Dbg.Print($"GUARDPROBE alert-applied alerted={_gpGuard2.Alerted} (expect True)");
             _gpPhase = GuardPhase.AlertCheck; _gpT = 0f;
@@ -1604,6 +1650,10 @@ public partial class Titans
     // for five seconds, then dump every debris piece's rest
     // state against the terrain under its own box and take
     // the chase frame.
+    // Debris dump labels: the state at the break, then
+    // after the walk-away (the t0/t5 tags the dump prints).
+    private const string DumpTagAtBreak = "t0";
+    private const string DumpTagAfterWalk = "t5";
     private enum DebrisPhase { FindSlope, BreakParts, WalkAway, Finish }
     private const float DbStageSeconds = 1.2f;
     private const float DbBreakSeconds = 0.5f;
@@ -1645,7 +1695,7 @@ public partial class Titans
             _partsPlayer.DamagePart(PartId.ArmL, DbBreakDamage);
             if (_partsPlayer.Has(PartId.Gun)) _partsPlayer.DamagePart(PartId.Gun, DbBreakDamage);
             _partsPlayer.DamagePart(PartId.LegL, DbBreakDamage);
-            _partsPlayer.DumpDebris("t0");
+            _partsPlayer.DumpDebris(DumpTagAtBreak);
             _dbPhase = DebrisPhase.WalkAway; _dbT = 0f;
         }
         else if (_dbPhase == DebrisPhase.WalkAway)
@@ -1654,8 +1704,8 @@ public partial class Titans
             if (_dbT > DbWalkSeconds)
             {
                 _player.SetDrive(0f, 0f);
-                _partsPlayer.DumpDebris("t5");
-                QueueCapture(ProofDir + "debris_probe.png", "debris", CamMode.Chase);
+                _partsPlayer.DumpDebris(DumpTagAfterWalk);
+                QueueCapture(ProofDir + "debris_probe.png", CaptureTags.Debris, CamMode.Chase);
                 _dbPhase = DebrisPhase.Finish; _dbT = 0f;
             }
         }
@@ -1761,6 +1811,8 @@ public partial class Titans
     private float _viewT;
     private enum ViewStage { NotStarted = -1, Stage, BeforeCapture, Sweep, HoldBest, CaptureAfter }
     private const float ViewStageSeconds = 0.6f;
+    private const float ViewPlayerZ = 58f; // the player stands at the mesa foot
+    private const float ViewEnemyZ = 10f;  // the foe on the top
     private const float ViewPitchStart = -1.35f;
     private const float ViewPitchStep = 0.03f;
     private const float ViewPitchEnd = 1.35f;
@@ -1915,7 +1967,7 @@ public partial class Titans
             if (_boomStage == BoomStage.Flats)
             {
                 string cap = Mathf.Abs(_boomPitch + BoomShotCapPitch) < BoomShotCapTolerance ? "down" : Mathf.Abs(_boomPitch) < BoomShotCapTolerance ? "level" : Mathf.Abs(_boomPitch - BoomShotCapPitch) < BoomShotCapTolerance ? "up" : null;
-                if (cap != null) QueueCapture($"{ProofDir}boom_{cap}.png", $"boom{cap}", CamMode.Chase);
+                if (cap != null) QueueCapture($"{ProofDir}boom_{cap}.png", $"{CaptureTags.Boom}{cap}", CamMode.Chase);
             }
             _boomPitch += BoomShotPitchStep;
             if (_boomPitch > BoomShotPitchEnd)
@@ -1939,6 +1991,19 @@ public partial class Titans
     // (t=0.30s) and late (t=0.75s, orange/red + smoke), then quit.
     private enum FlipStage { NotStarted = -1, StageFireballs, MidCapture, LateCapture }
     private const float FlipMidSeconds = 0.30f;
+    // The two staged fireballs (header comment): a
+    // rocket-sized one and a death-sized one, placed ahead
+    // of the chase camera on the flats line.
+    private const float FlipRocketX = -4f;
+    private const float FlipRocketHeight = 4f;
+    private const float FlipRocketZ = 67f;
+    private const float FlipRocketRadius = 3.4f;
+    private const float FlipRocketLife = 0.9f;
+    private const float FlipDeathX = 5f;
+    private const float FlipDeathHeight = 5f;
+    private const float FlipDeathZ = 62f;
+    private const float FlipDeathRadius = 10f;
+    private const float FlipDeathLife = 1.2f;
     private const float FlipLateSeconds = 0.75f;
     private FlipStage _flipStage = FlipStage.NotStarted;
     private float _flipT;
@@ -1956,9 +2021,9 @@ public partial class Titans
             _player.AimPitchWide = 0f;
             _player.TorsoPitch = 0f;
             _hpPlayer = InvulnerableHp;
-            float gy = Main.HeightAt(0f, 67f);
-            SpawnFlipbookFireball(new Vector3(-4f, gy + 4f, 67f), 3.4f, 0.9f);
-            SpawnFlipbookFireball(new Vector3(5f, gy + 5f, 62f), 10f, 1.2f);
+            float gy = Main.HeightAt(0f, FlipRocketZ);
+            SpawnFlipbookFireball(new Vector3(FlipRocketX, gy + FlipRocketHeight, FlipRocketZ), FlipRocketRadius, FlipRocketLife);
+            SpawnFlipbookFireball(new Vector3(FlipDeathX, gy + FlipDeathHeight, FlipDeathZ), FlipDeathRadius, FlipDeathLife);
             Dbg.Print("FLIPBOOK staged: rocket + death fireballs ahead of the player");
             return;
         }
@@ -1967,13 +2032,13 @@ public partial class Titans
         {
             _flipStage = FlipStage.MidCapture;
             UpdateCamera(0f);
-            QueueCapture(ProofDir + "flipbook_mid.png", "flipmid", CamMode.Chase);
+            QueueCapture(ProofDir + "flipbook_mid.png", CaptureTags.FlipMid, CamMode.Chase);
         }
         else if (_flipStage == FlipStage.MidCapture && _flipT >= FlipLateSeconds)
         {
             _flipStage = FlipStage.LateCapture;
             UpdateCamera(0f);
-            QueueCapture(ProofDir + "flipbook_late.png", "fliplate", CamMode.Chase, () => GetTree().Quit());
+            QueueCapture(ProofDir + "flipbook_late.png", CaptureTags.FlipLate, CamMode.Chase, () => GetTree().Quit());
         }
     }
 
@@ -1991,6 +2056,11 @@ public partial class Titans
     // rider staged just outside the old stomp trigger but inside
     // body reach: does the tree die before contact?
     private enum LagStage { NotStarted = -1, Setup, TreeRun, TreeVerdict }
+    // The frame delta the lag check simulates with: one
+    // 60 fps frame (owner, 2026-11-27: the expected frame
+    // rate is a constant, not a literal at each use).
+    private const float SimulatedFrameDelta = 1f / 60f;
+    private const float LagOldTriggerMargin = 0.35f; // the retired stomp trigger's margin past the body radius, printed for comparison
     private const float LagFlickYaw = 1.2f;
     private const float LagFlickPitch = 0.8f;
     private const int LagSettleFrameCap = 240;
@@ -2021,7 +2091,7 @@ public partial class Titans
             MaintainTorsoWorldYaw();
             _player.AimPitchWide = LagFlickPitch;
             _player.TorsoPitch = LagFlickPitch;
-            UpdateCamera(1f / 60f); // ONE frame after the flick
+            UpdateCamera(SimulatedFrameDelta); // ONE frame after the flick
             var posA = _cam.GlobalPosition;
             UpdateCamera(0f);       // the exact target, by construction
             var posB = _cam.GlobalPosition;
@@ -2030,7 +2100,7 @@ public partial class Titans
             int settle = 0;
             while (settle < LagSettleFrameCap && _cam.GlobalPosition.DistanceTo(posB) > LagSettleTolerance)
             {
-                UpdateCamera(1f / 60f);
+                UpdateCamera(SimulatedFrameDelta);
                 settle++;
             }
             Dbg.Print($"LAGCHECK cameraLag={lag0:F2}u one frame after a 1.2rad yaw + 0.8rad pitch flick; settleFrames={settle} to within 0.05u (0 = camera exact every frame)");
@@ -2050,7 +2120,7 @@ public partial class Titans
                 sp.Y = Main.HeightAt(sp.X, sp.Z);
                 _player.Teleport(sp, 0f);
                 _player.SetDrive(0f, 0f);
-                Dbg.Print($"LAGCHECK tree at ({_lagTree.Center.X:F0},{_lagTree.Center.Z:F0}) trunkR={_lagTree.Radius:F2} stagedDist={off:F2} oldTrigger={_player.CollisionRadius + 0.35f:F2} bodyReach={_player.CollisionRadius + _lagTree.Radius:F2}");
+                Dbg.Print($"LAGCHECK tree at ({_lagTree.Center.X:F0},{_lagTree.Center.Z:F0}) trunkR={_lagTree.Radius:F2} stagedDist={off:F2} oldTrigger={_player.CollisionRadius + LagOldTriggerMargin:F2} bodyReach={_player.CollisionRadius + _lagTree.Radius:F2}");
             }
             else Dbg.Print("LAGCHECK no tree candidate found");
             return;
@@ -2074,8 +2144,8 @@ public partial class Titans
         {
             _viewStage = ViewStage.Stage;
             _viewT = 0f;
-            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, 58f), 58f), 0f);
-            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, 10f), 10f), 0f);
+            _player.Teleport(new Vector3(0f, Main.HeightAt(0f, ViewPlayerZ), ViewPlayerZ), 0f);
+            _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ViewEnemyZ), ViewEnemyZ), 0f);
             _player.SetDrive(0f, 0f);
             _player.TorsoTwist = 0f;
             _player.TorsoPitch = 0f;
@@ -2093,7 +2163,7 @@ public partial class Titans
             _viewStage = ViewStage.BeforeCapture;
             var scr = _cam.UnprojectPosition(chest);
             Dbg.Print($"VIEWSHOT BEFORE foe chest screen=({scr.X:F0},{scr.Y:F0}) center=({ctr.X:F0},{ctr.Y:F0})");
-            QueueCapture(ProofDir + "view_hilltop_before.png", "vbefore", CamMode.Chase, () =>
+            QueueCapture(ProofDir + "view_hilltop_before.png", CaptureTags.VBefore, CamMode.Chase, () =>
             {
                 _viewPitch = ViewPitchStart;
                 _viewBest = ViewBestUnmeasured;
@@ -2131,17 +2201,21 @@ public partial class Titans
         else if (_viewStage == ViewStage.HoldBest && _viewT > ViewAfterSeconds)
         {
             _viewStage = ViewStage.CaptureAfter;
-            QueueCapture(ProofDir + "view_hilltop.png", "vafter", CamMode.Chase, () => GetTree().Quit());
+            QueueCapture(ProofDir + "view_hilltop.png", CaptureTags.VAfter, CamMode.Chase, () => GetTree().Quit());
         }
     }
 
     // --brake-test: the owner's no-inertia rule (2026-10-31) -
     // from a full RUN (12.6 u/s) with the throttle released, EVERY
-    // chassis must be at a standstill within one second. Measured
-    // on the Enyo, then the player is swapped to the Hector (the
-    // heavy one, whose spec Accel used to glide 5+ seconds) and
-    // measured again.
-    private enum BrakeStage { NotStarted = -1, EnyoAccelerate, EnyoStopping, HectorAccelerate, HectorStopping }
+    // chassis must be at a standstill within one second. The
+    // subjects are DATA (owner, 2026-11-27: no rider names in
+    // the stage machinery): each subject in turn is swapped
+    // into the player seat and measured.
+    private enum BrakeStage { NotStarted = -1, Accelerate, Stopping }
+    // Brake subjects in order: a light chassis, then the heavy
+    // one whose spec Accel used to glide 5+ seconds.
+    private static readonly RiderId[] BrakeSubjects = { RiderId.Enyo, RiderId.Hector };
+    private int _brakeSubject;
     private const float ParkedEnemyZ = -100f; // where idle fixtures park the enemy, off every lane
     private const float BrakeRunSpeed = 12.6f;
     private const float BrakeReleaseSpeed = 12.5f;
@@ -2154,16 +2228,16 @@ public partial class Titans
     private float _brakeT;
     private void UpdateBrakeTest(float dt)
     {
-        if (_brakeStage < BrakeStage.EnyoAccelerate)
+        if (_brakeStage < BrakeStage.Accelerate)
         {
-            _brakeStage = BrakeStage.EnyoAccelerate;
+            _brakeStage = BrakeStage.Accelerate;
             _enemy.Teleport(new Vector3(0f, Main.HeightAt(0f, ParkedEnemyZ), ParkedEnemyZ), 0f);
             _player.Teleport(new Vector3(BrakeStageX, Main.HeightAt(BrakeStageX, BrakeStageZ), BrakeStageZ), Mathf.Pi);
             _player.SetDrive(Mathf.Pi, BrakeRunSpeed);
-            Dbg.Print("BRAKE staged: Enyo accelerating to run speed");
+            Dbg.Print($"BRAKE staged: {_playerSpec.Name} accelerating to run speed");
             return;
         }
-        if (_brakeStage == BrakeStage.EnyoAccelerate || _brakeStage == BrakeStage.HectorAccelerate)
+        if (_brakeStage == BrakeStage.Accelerate)
         {
             if (_player.Speed >= BrakeReleaseSpeed)
             {
@@ -2177,18 +2251,20 @@ public partial class Titans
         _brakeT += dt;
         if (_player.Speed <= BrakeStoppedSpeed || _brakeT > BrakeTimeoutSeconds)
         {
-            string who = _brakeStage == BrakeStage.EnyoStopping ? "ENYO" : "HECTOR";
+            string who = _playerSpec.Name;
             bool pass = _player.Speed <= BrakeStoppedSpeed && _brakeT <= BrakePassSeconds;
-            Dbg.Print($"BRAKE {who} stopTime={_brakeT:F2}s fromSpeed=12.6 finalSpeed={_player.Speed:F2}");
+            Dbg.Print($"BRAKE {who} stopTime={_brakeT:F2}s fromSpeed={BrakeRunSpeed} finalSpeed={_player.Speed:F2}");
             Dbg.Print(pass ? $"BRAKE {who} PASS stopped within one second" : $"BRAKE {who} FAIL stop took too long");
-            if (_brakeStage == BrakeStage.EnyoStopping)
+            int next = _brakeSubject + 1;
+            if (next < BrakeSubjects.Length)
             {
-                SetRiderSelection(RiderId.Hector, RiderId.Enyo);
+                SetRiderSelection(BrakeSubjects[next], _playerSpec.Id);
                 ApplyLoadout();
                 _player.Teleport(new Vector3(BrakeStageX, Main.HeightAt(BrakeStageX, BrakeStageZ), BrakeStageZ), Mathf.Pi);
                 _player.SetDrive(Mathf.Pi, BrakeRunSpeed);
-                _brakeStage = BrakeStage.HectorAccelerate;
-                Dbg.Print("BRAKE staged: Hector accelerating to run speed");
+                _brakeSubject = next;
+                _brakeStage = BrakeStage.Accelerate;
+                Dbg.Print($"BRAKE staged: {_playerSpec.Name} accelerating to run speed");
             }
             else GetTree().Quit();
         }
@@ -2272,9 +2348,17 @@ public partial class Titans
     private static float FlatDist(Vector3 a, Vector3 b) =>
         new Vector2(a.X - b.X, a.Z - b.Z).Length();
 
+    // A fabricated torso hit for kill staging: the bracket
+    // and team suites put riders down through the REAL
+    // damage path (ApplyDamage, with its death handling,
+    // debris and HUD fallout) without firing a weapon, so
+    // they need a HitModel.Result from nowhere. The point
+    // sits at the chest anchor - the same fraction of the
+    // walker's height the LRM lock tracks.
     private static HitModel.Result DummyHit(RiderWalker w, string role) => new()
     {
-        Hit = true, Target = role, Zone = HitZone.Torso, Point = w.RootPos + Vector3.Up * 8f
+        Hit = true, Target = role, Zone = HitZone.Torso,
+        Point = w.RootPos + Vector3.Up * (w.Height * LockTrackHeightFraction)
     };
 
     private void TeamFail(string why)
@@ -2539,7 +2623,7 @@ public partial class Titans
             if (_allyShots <= 0) { TeamFail("allies never fired"); return; }
             if (!_foe0Engaged) { TeamFail("defender never engaged the team"); return; }
             Dbg.Print("TEAMTEST FIGHT PASS allies closed and fired; the defender engaged the team");
-            QueueCapture("/tmp/team_fight.png", "teamfight", CamMode.Chase);
+            QueueCapture("/tmp/team_fight.png", CaptureTags.TeamFight, CamMode.Chase);
             SetTeamOrder(TeamOrder.Hold);
             _teamHoldPos = _allies[0].Walker.RootPos + _allies[1].Walker.RootPos;
             _teamHoldShots = _allyShots;
@@ -2573,7 +2657,7 @@ public partial class Titans
             if (_playerDead) { TeamFail("the new leader is still flagged dead"); return; }
             Dbg.Print($"TEAMTEST PASS PASS command passed to slot {_leaderSlot} ({_playerSpec.Id})");
             _teamDialog?.Open(TeamRows());
-            QueueCapture("/tmp/team_screen.png", "teamscreen", CamMode.Chase);
+            QueueCapture("/tmp/team_screen.png", CaptureTags.TeamScreen, CamMode.Chase);
             _teamPhase = TeamPhase.End;
         }
         else if (_teamPhase == TeamPhase.End && _teamT > TeamEndSeconds)
@@ -2603,7 +2687,7 @@ public partial class Titans
     // every number without testing anything more. The weapons and
     // break suites therefore start from this range fit; the duel
     // suite and the live game use the real defaults.
-    // Weapons-range mannequin (2026-11-12): the firing
+    // Weapons-range fixture (2026-11-12): the firing
     // suites (weapons + breakable) calibrate weapon
     // BEHAVIOUR - damage, routing, reactions, salvo counts -
     // on single fits: one energy arm, one ballistic arm, two
@@ -2616,9 +2700,9 @@ public partial class Titans
     // reaches the game; loadout legality on the shipped
     // riders is asserted by LABTEST and the duel suite on
     // the real specs and real defaults.
-    private static readonly RiderSpec RangeMannequin = new()
+    private static readonly RiderSpec RangeFixtureSpec = new()
     {
-        Id = RiderId.Enyo, Name = "ENYO (RANGE)", Tonnage = 75f, JumpCapable = true,
+        Id = RiderId.Enyo, Name = "RANGE FIXTURE", Tonnage = 75f, JumpCapable = true,
         ModelPath = Paths.EnyoModel, MaxHp = 260f,
         Height = 13f, Radius = 2.0f, StepTime = 0.46f, StepThreshold = 1.7f, StepLift = 0.9f, Accel = 4.2f, BaseSpeed = 4.8f,
         FlipKneePole = false,
@@ -2633,7 +2717,7 @@ public partial class Titans
 
     private void ApplyRangeFit()
     {
-        _playerSpec = RangeMannequin;
+        _playerSpec = RangeFixtureSpec;
         _loadout = new LoadoutState { JumpJets = true };
         _loadout.TryAssign(_playerSpec, PartId.ArmL, WeaponCatalog.LargeLaser);
         _loadout.TryAssign(_playerSpec, PartId.ArmR, WeaponCatalog.Autocannon);
@@ -2673,7 +2757,7 @@ public partial class Titans
             // Capture a rocket impact at burst peak (round 9: effects
             // are proven by the frame, not only by counters).
             _wHitCaptured = true;
-            QueueCapture(ProofDir + "wpn_rocket_hit.png", "wpnHit", CamMode.Chase);
+            QueueCapture(ProofDir + "wpn_rocket_hit.png", CaptureTags.WpnHit, CamMode.Chase);
         }
         switch (_wPhase)
         {
@@ -2688,7 +2772,7 @@ public partial class Titans
                 {
                     FireLaser(EnemyAim());
                     _wShotsFired++;
-                    QueueCapture(ProofDir + "weapons_laser.png", "wlaser", CamMode.WpnSide);
+                    QueueCapture(ProofDir + "weapons_laser.png", CaptureTags.WLaser, CamMode.WpnSide);
                 }
                 else if (_wShotsFired == 1 && _wPhaseT > WLaserSecondShotSeconds) { FireLaser(EnemyAim()); _wShotsFired++; }
                 else if (_wShotsFired == 2 && _wPhaseT > WLaserThirdShotSeconds) { FireLaser(EnemyAim()); _wShotsFired++; }
@@ -2735,7 +2819,7 @@ public partial class Titans
                 if (!_wCaptured && _wPhaseT > WLrmCaptureSeconds)
                 {
                     _wCaptured = true;
-                    QueueCapture(ProofDir + "weapons_rockets.png", "wrockets", CamMode.WpnRockets);
+                    QueueCapture(ProofDir + "weapons_rockets.png", CaptureTags.WRockets, CamMode.WpnRockets);
                 }
                 if (_wPhaseT > WLrmVerdictSeconds)
                 {
@@ -2762,7 +2846,7 @@ public partial class Titans
                 {
                     FireLaser(_enemy.RootPos + Vector3.Up * WBlockedAimHeight);
                     _wShotsFired++;
-                    QueueCapture(ProofDir + "weapons_blocked.png", "wblocked", CamMode.WpnBlocked);
+                    QueueCapture(ProofDir + "weapons_blocked.png", CaptureTags.WBlocked, CamMode.WpnBlocked);
                 }
                 if (_wShotsFired == 1 && _wPhaseT > WBlockedVerdictSeconds)
                 {
@@ -2839,7 +2923,7 @@ public partial class Titans
                 if (!_wCaptured && _wPhaseT > WKillCaptureSeconds)
                 {
                     _wCaptured = true;
-                    QueueCapture(ProofDir + "weapons_hud.png", "whud", CamMode.WpnHud);
+                    QueueCapture(ProofDir + "weapons_hud.png", CaptureTags.WHud, CamMode.WpnHud);
                 }
                 if (_enemyDead && !_wDeathLogged)
                 {
@@ -2866,7 +2950,7 @@ public partial class Titans
                     { WFail($"target readout does not carry the kill: '{_lblRange.Text}'"); return; }
                     Dbg.Print($"WPNTEST KILL PASS death certified (hp={_hpEnemy:F0}), walker halted, no banner, readout '{_lblRange.Text}'");
                     _wDeadShotQueued = true;
-                    QueueCapture(ProofDir + "weapons_hector_dead.png", "wdead", CamMode.WpnDead, () => SetWPhase(WeaponsPhase.PlayerDeath));
+                    QueueCapture(ProofDir + "weapons_hector_dead.png", CaptureTags.WDead, CamMode.WpnDead, () => SetWPhase(WeaponsPhase.PlayerDeath));
                 }
                 if (_wPhaseT > WKillTimeoutSeconds) WFail("kill sequence timeout");
                 break;
@@ -2969,7 +3053,7 @@ public partial class Titans
                 }
                 else if (_wEnvStep == WeaponsEnvStep.TreeSmoke)
                 {
-                    if (!_wCaptured) { _wCaptured = true; QueueCapture(ProofDir + "env_tree_destroyed.png", "envTreeDown", CamMode.Chase); }
+                    if (!_wCaptured) { _wCaptured = true; QueueCapture(ProofDir + "env_tree_destroyed.png", CaptureTags.EnvTreeDown, CamMode.Chase); }
                     if (_wPhaseT > WEnvSmokeTimeoutSeconds) { WFail("destroyed tree never finished smoking out"); return; }
                     if (_wEnvT.State == DestrState.Gone)
                     {
@@ -3028,9 +3112,9 @@ public partial class Titans
                     // around the Hector and keeps the first clear
                     // bearing - the same searched staging the FAR
                     // HILL step below runs for its hillside.
-                    for (int k = 0; k < WFarSearchSteps && !onFar; k++)
+                    for (int k = 0; k < BearingSweepSteps && !onFar; k++)
                     {
-                        float ang = farBaseAng + k * WFarSearchStep;
+                        float ang = farBaseAng + k * BearingSweepStep;
                         var cand = new Vector2(farE.X + farR * Mathf.Cos(ang), farE.Z + farR * Mathf.Sin(ang));
                         if (Mathf.Abs(cand.X) > WFarSearchBound || Mathf.Abs(cand.Y) > WFarSearchBound) continue;
                         var farP = WFarClearSpot(cand.X, cand.Y);
@@ -3062,8 +3146,8 @@ public partial class Titans
                     if (!onFar) { WFail("no bearing on the 85u circle gives the cursor and a gun a clear line to the far Hector"); return; }
                     _cdLaser = 0f;
                     FireLaser(convF);
-                    if (340f - _hpEnemy < WFarMinDamage) { WFail($"far cursor shot did not damage the Hector (hp={_hpEnemy:F0})"); return; }
-                    Dbg.Print($"ENVTEST FAR-TARGET PASS cursor convergence at 85u: laser hit the Hector for {340f - _hpEnemy:F0}");
+                    if (_enemySpec.MaxHp - _hpEnemy < WFarMinDamage) { WFail($"far cursor shot did not damage the Hector (hp={_hpEnemy:F0})"); return; }
+                    Dbg.Print($"ENVTEST FAR-TARGET PASS cursor convergence at 85u: laser hit the enemy for {_enemySpec.MaxHp - _hpEnemy:F0}");
                     // FAR HILL (owner, round 13): the cursor on a
                     // distant hillside with a clear line must
                     // converge on the hill itself, not the sky. The
@@ -3077,9 +3161,9 @@ public partial class Titans
                     // free-reticle ray descended by parallax inside
                     // the old band, while the center axis is level
                     // at pitch 0, so far slopes are met lower.
-                    _enemy.Teleport(new Vector3(60f, Main.HeightAt(60f, 60f), 60f), Mathf.Pi);
+                    _enemy.Teleport(new Vector3(WFarHillParkX, Main.HeightAt(WFarHillParkX, WFarHillParkZ), WFarHillParkZ), Mathf.Pi);
                     Vector3 convH = Vector3.Zero; bool onHill = false;
-                    var hillPads = new[] { new Vector2(0f, 0f), new Vector2(30f, 30f), new Vector2(-30f, 30f), new Vector2(30f, -30f), new Vector2(-30f, -30f) };
+                    var hillPads = WFarHillPads;
                     foreach (var pad in hillPads)
                     {
                         if (onHill) break;
@@ -3087,7 +3171,7 @@ public partial class Titans
                         _playerVel = Vector3.Zero; _prevPlayerRoot = _player.RootPos;
                         for (int k = 0; k < 16 && !onHill; k++)
                         {
-                            float a = k * Mathf.Tau / 16f;
+                            float a = k * Mathf.Tau / WFarHillRingSteps;
                             // Teleport applies the yaw NOW; SetDrive
                             // would only take effect on the next
                             // walker step - the first search swept one
@@ -3127,6 +3211,23 @@ public partial class Titans
     private const float BPodHpAfterHit = 19f;
     private const float BArmGateHp = 1f;
     private const float BPodFullHp = 45f;
+    private const float BHeadFullHp = 50f;
+    // Break-suite staging values (owner, 2026-11-27).
+    private const float BrkWalkDriveSpeed = 2.4f;   // the player's drive during the pod-fall walk step
+    private const float BrkDebrisRestTolerance = 0.15f; // DebrisRestOk slack for the pod debris check
+    private const float BGunPlayerZ = 20f;          // gun phase staging line
+    private const float BGunEnemyZ = -10f;
+    private const float BGunEnemyDriveSpeed = 1.6f; // the gun phase's enemy approach
+    private const float BLegPlayerX = -38f;         // leg phase staging
+    private const float BLegPlayerZ = 38f;
+    private const float BLegEnemyZ = 24f;
+    private const float BLegDriveSpeed = 2.2f;      // ONE drive for the baseline and the limp run - the ratio compares them
+    private const float BrkPoolStageMargin = 0.01f; // the arm-gate staging sits this far under the game's arm-break pool fraction
+    private const float BCrossSetMinX = -100f;      // a recorded crosshair centre is a real screen coord; the unset sentinel sits far below
+    private const float CraftRayHeadUp = 5f;        // the head craft-ray starts this far above the aim point
+    private const float CraftRayHeadForward = 7f;   // ... and this far ahead of it (angled onto the canopy face)
+    private const float CraftRayDropHeight = 15f;   // non-head craft-rays drop from this height
+    private const float CraftRayLength = 40f;
     private const float BLegFullHp = 90f;
     private const float BHeadPoolAfterHits = 290f;
     private const float BLimpBaselineMinSpeed = 0.1f;
@@ -3247,10 +3348,10 @@ public partial class Titans
         if (partId == PartId.Head)
         {
             var fwd = RiderWalker.HeadingVec(target.TorsoYawWorld);
-            from = aim + Vector3.Up * 5f + fwd * 7f;
+            from = aim + Vector3.Up * CraftRayHeadUp + fwd * CraftRayHeadForward;
         }
-        else from = aim + Vector3.Up * 15f;
-        var res = _hit.Ray(from, (aim - from).Normalized(), 40f, target == _player ? Roles.Enemy : Roles.Player);
+        else from = aim + Vector3.Up * CraftRayDropHeight;
+        var res = _hit.Ray(from, (aim - from).Normalized(), CraftRayLength, target == _player ? Roles.Enemy : Roles.Player);
         Dbg.Print($"BRK CRAFTRAY {partId} hit={res.Hit} target={res.Target} part={res.Part} point={res.Point}");
         if (!res.Hit || res.Part != partId)
         {
@@ -3275,7 +3376,7 @@ public partial class Titans
 
             case BreakPhase.Pod: // POD: part HP depletes per hit, breaks at <= 0, debris
                     // settles, then stays behind while the rider walks away
-                _player.SetDrive(0f, _bStep >= BreakStep.Fourth ? 2.4f : 0f);
+                _player.SetDrive(0f, _bStep >= BreakStep.Fourth ? BrkWalkDriveSpeed : 0f);
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_bStep == BreakStep.First && _bPhaseT > BPodFirstHitSeconds)
                 {
@@ -3301,12 +3402,12 @@ public partial class Titans
                     if (!_bFlag1 && BStepT > BPodDebrisSeconds)
                     {
                         _bFlag1 = true;
-                        QueueCapture(ProofDir + "break_pod_fall.png", "bpodfall", CamMode.BrkPlayer);
+                        QueueCapture(ProofDir + "break_pod_fall.png", CaptureTags.BPodFall, CamMode.BrkPlayer);
                     }
                     var d = _partsPlayer.DebrisOf(PartId.PodL);
                     if (d != null && d.Settled)
                     {
-                        if (!_partsPlayer.DebrisRestOk(PartId.PodL, 0.15f, out float minY, out float gY))
+                        if (!_partsPlayer.DebrisRestOk(PartId.PodL, BrkDebrisRestTolerance, out float minY, out float gY))
                             BFail($"pod debris rest off: lowestCornerY={minY:F3} terrainThere={gY:F3}");
                         Dbg.Print($"BRKTEST DEBRISREST PASS pod_L lowest corner on terrain (y={minY:F3} vs {gY:F3})");
                         _bVec1 = d.Node.GlobalPosition;
@@ -3325,7 +3426,7 @@ public partial class Titans
                     if (drift > BDebrisDriftMax) BFail($"debris moved with the rider: drift={drift:F3}");
                     if (away < BDebrisWalkAwayMin) BFail($"rider did not walk away from debris: delta={away:F2}");
                     Dbg.Print($"BRKTEST DETACH PASS debris static (drift={drift:F3}) while rider walked {away:F1}u away");
-                    QueueCapture(ProofDir + "break_debris_rest.png", "bdebris", CamMode.BrkDebris);
+                    QueueCapture(ProofDir + "break_debris_rest.png", CaptureTags.BDebris, CamMode.BrkDebris);
                     SetBPhase(BreakPhase.Salvo);
                 }
                 break;
@@ -3358,7 +3459,7 @@ public partial class Titans
                     if (_rocketsLaunched != _bCount1) BFail("denied LRM still launched rockets");
                     Dbg.Print("BRKTEST SALVODENIED PASS both pods gone -> LRM denied, 0 rockets");
                     ResetDuel();
-                    BSetup(new Vector3(0f, Main.HeightAt(0f, 20f), 20f), new Vector3(0f, Main.HeightAt(0f, -10f), -10f));
+                    BSetup(new Vector3(0f, Main.HeightAt(0f, BGunPlayerZ), BGunPlayerZ), new Vector3(0f, Main.HeightAt(0f, BGunEnemyZ), BGunEnemyZ));
                     SetBPhase(BreakPhase.Gun);
                 }
                 break;
@@ -3386,11 +3487,11 @@ public partial class Titans
                 }
                 else if (_bStep == BreakStep.Third)
                 {
-                    _enemy.SetDrive(Mathf.Pi, 1.6f);
+                    _enemy.SetDrive(Mathf.Pi, BGunEnemyDriveSpeed);
                     if (BStepT > BGunSilenceStageSeconds && !_bFlag1)
                     {
                         _bFlag1 = true;
-                        QueueCapture(ProofDir + "break_hector_nogun.png", "bnogun", CamMode.BrkHector);
+                        QueueCapture(ProofDir + "break_hector_nogun.png", CaptureTags.BNoGun, CamMode.BrkTarget);
                     }
                     if (BStepT > BGunSilenceSeconds)
                     {
@@ -3425,7 +3526,7 @@ public partial class Titans
                 {
                     // Pool critical (19%): the gate lifts and
                     // one more hit takes the arm off.
-                    _hpPlayer = _playerSpec.MaxHp * 0.19f;
+                    _hpPlayer = _playerSpec.MaxHp * (PartRules.ArmBreakPoolFraction - BrkPoolStageMargin);
                     CraftHit(_player, PartId.ArmL, BPodHitDamage);
                     if (_partsPlayer.Alive(PartId.ArmL)) BFail("arm_L survived at 19% pool - gate did not lift");
                     if (_partsPlayer.DebrisOf(PartId.ArmL) == null) BFail("arm_L debris missing after gated break");
@@ -3436,13 +3537,13 @@ public partial class Titans
                     if (_lastDenied != DenyKind.Laser) BFail("laser not denied after arm_L loss");
                     if (_beamsSpawned != _bCount1) BFail("denied laser still spawned a beam");
                     Dbg.Print("BRKTEST LASERDENIED PASS arm_L lost -> laser denied, 0 beams");
-                    QueueCapture(ProofDir + "break_hud_destroyed.png", "bhud", CamMode.WpnHud);
+                    QueueCapture(ProofDir + "break_hud_destroyed.png", CaptureTags.BHud, CamMode.WpnHud);
                     BStep(BreakStep.Third);
                 }
                 else if (_bStep == BreakStep.Third && BStepT > BDenyCheckSeconds)
                 {
                     ResetDuel();
-                    BSetup(new Vector3(-38f, Main.HeightAt(-38f, 38f), 38f), new Vector3(0f, Main.HeightAt(0f, 24f), 24f));
+                    BSetup(new Vector3(BLegPlayerX, Main.HeightAt(BLegPlayerX, BLegPlayerZ), BLegPlayerZ), new Vector3(0f, Main.HeightAt(0f, BLegEnemyZ), BLegEnemyZ));
                     _bDragMax = 0f;
                     SetBPhase(BreakPhase.Leg);
                 }
@@ -3459,7 +3560,7 @@ public partial class Titans
                 }
                 else if (_bStep == BreakStep.Second)
                 {
-                    _enemy.SetDrive(Mathf.Pi, 2.2f);
+                    _enemy.SetDrive(Mathf.Pi, BLegDriveSpeed);
                     if (!_bFlag1 && BStepT > BSpeedCaptureSeconds)
                     {
                         _bFlag1 = true;
@@ -3501,7 +3602,7 @@ public partial class Titans
                     // Full drive on the wrecked leg: the rider must MOVE
                     // (it limps, it is not immobile) at roughly the 0.55
                     // limp factor of its measured baseline speed.
-                    _enemy.SetDrive(Mathf.Pi, 2.2f);
+                    _enemy.SetDrive(Mathf.Pi, BLegDriveSpeed);
                     if (!_enemy.LegPlanted(true)) _bSawWreckSwing = true;
                     if (_bCount1 == 0 && BStepT > BLimpCount1Seconds)
                     {
@@ -3511,7 +3612,7 @@ public partial class Titans
                     }
                     else if (_bCount1 == 1 && BStepT > BLimpCount2Seconds)
                     {
-                        QueueCapture(ProofDir + "break_immobile.png", "blimp", CamMode.BrkHector);
+                        QueueCapture(ProofDir + "break_immobile.png", CaptureTags.BLimp, CamMode.BrkTarget);
                         _bCount1 = 2;
                     }
                     else if (_bCount1 == 2 && BStepT > BLimpCount3Seconds)
@@ -3552,7 +3653,7 @@ public partial class Titans
                 }
                 else if (_bStep == BreakStep.Second && BStepT > BDisabledCaptureSeconds)
                 {
-                    QueueCapture(ProofDir + "break_hector_disabled.png", "bdisabled", CamMode.BrkHector);
+                    QueueCapture(ProofDir + "break_hector_disabled.png", CaptureTags.BDisabled, CamMode.BrkTarget);
                     BStep(BreakStep.Third);
                 }
                 else if (_bStep == BreakStep.Third && _pendingPath == null && !_capturing)
@@ -3584,7 +3685,7 @@ public partial class Titans
                     // neck, charred and lolled in place (owner,
                     // 2026-11-15: pieces sank/floated when the wreck
                     // deformation pivoted on the model origin).
-                    QueueCapture(ProofDir + "break_hector_head.png", "bhead", CamMode.BrkHector);
+                    QueueCapture(ProofDir + "break_hector_head.png", CaptureTags.BHead, CamMode.BrkTarget);
                     // Move the player to the Hector's flank: desired twist ~1 rad.
                     _player.Teleport(new Vector3(BHeadFlankX, Main.HeightAt(BHeadFlankX, BHeadFlankZ), BHeadFlankZ), 0f);
                     BStep(BreakStep.Second);
@@ -3627,7 +3728,7 @@ public partial class Titans
                     // Owner (2026-11-15): no crosshair sway - with
                     // the player's head gone the reticle must stay
                     // exactly on screen centre.
-                    if (_cross.LastCentre.X > -100f)
+                    if (_cross.LastCentre.X > BCrossSetMinX)
                     {
                         float dev = (_cross.LastCentre - _cross.GetViewportRect().Size * 0.5f).Length();
                         if (dev > _bDragMax) _bDragMax = dev;
@@ -3656,7 +3757,7 @@ public partial class Titans
                         BFail("debris remains after reset");
                     if (Mathf.Abs(_partsPlayer.HpOf(PartId.PodL) - BPodFullHp) > BTolerance ||
                         Mathf.Abs(_partsEnemy.HpOf(PartId.LegL) - BLegFullHp) > BTolerance ||
-                        Mathf.Abs(_partsEnemy.HpOf(PartId.Head) - 50f) > BTolerance)
+                        Mathf.Abs(_partsEnemy.HpOf(PartId.Head) - BHeadFullHp) > BTolerance)
                         BFail("part HP not refilled after reset");
                     if (_enemy.LegDisabled(true) || _player.LegDisabled(false) ||
                         Mathf.Abs(_enemy.SpeedFactor - BFullSpeedFactor) > BTolerance)
@@ -3707,7 +3808,7 @@ public partial class Titans
                     if (Mathf.Abs(_enemy.SpeedFactor - LimpFactorExpected) > LimpFactorTolerance)
                     { BFail($"speed factor {_enemy.SpeedFactor:F2} != 0.55 after leg wreck"); return; }
                     Dbg.Print("LEGRULE PASS leg wrecked: attached + darkened, rider upright, limping at 0.55x");
-                    QueueCapture(ProofDir + "break_knockdown.png", "brkKnock", CamMode.BrkHector);
+                    QueueCapture(ProofDir + "break_knockdown.png", CaptureTags.BrkKnock, CamMode.BrkTarget);
                     ResetDuel();
                     if (_partsEnemy.GetPart(PartId.LegR).Wrecked || !_partsEnemy.Alive(PartId.LegR))
                     { BFail("reset did not un-wreck leg_R"); return; }
@@ -3730,6 +3831,8 @@ public partial class Titans
     }
 
     private const float HeightScanInit = 1e9f; // min/max scan seed, far outside any terrain height
+    private const float TtArenaScanExtent = 36f; // the arena grade scan covers the playable core out to this radius
+    private const float TtArenaScanStep = 1.5f;  // ... on this grid pitch
 
     private void TerrainSelfCheck()
     {
@@ -3748,10 +3851,10 @@ public partial class Titans
         Dbg.Print($"TERRAIN SELFCHECK nodes={(Main.TerrainSegs + 1) * (Main.TerrainSegs + 1)} maxNodeDiff={maxDiff:F5}");
         // Arena grade scan (the duel-playable core).
         float maxG = 0f; Vector2 atG = Vector2.Zero;
-        for (float x = -36f; x <= 36f; x += 1.5f)
-        for (float z = -36f; z <= 36f; z += 1.5f)
+        for (float x = -TtArenaScanExtent; x <= TtArenaScanExtent; x += TtArenaScanStep)
+        for (float z = -TtArenaScanExtent; z <= TtArenaScanExtent; z += TtArenaScanStep)
         {
-            if (new Vector2(x, z).Length() > 36f) continue;
+            if (new Vector2(x, z).Length() > TtArenaScanExtent) continue;
             float g = TerrainGrade(x, z);
             if (g > maxG) { maxG = g; atG = new Vector2(x, z); }
         }
@@ -3771,23 +3874,28 @@ public partial class Titans
     private const float SlopeMinGrade = 0.045f;
     private const float SlopeMaxGrade = 0.35f;
     private const float SlopeClearance = 6.5f;
+    // The slope hunt walks rings inward from the outer
+    // radius, this many bearings per ring.
+    private const float SlopeRingOuter = 34f;
+    private const float SlopeRingInner = 14f;
+    private const float SlopeRingStep = 2f;
+    private const int SlopeRingSteps = 48;
 
     private bool FindSlopeSpot(out Vector3 spot, out float uphillYaw)
     {
         spot = Vector3.Zero; uphillYaw = 0f;
         float bestG = SlopeMinGrade;
         bool found = false;
-        for (float rad = 34f; rad >= 14f; rad -= 2f)
-        for (int a = 0; a < 48; a++)
+        for (float rad = SlopeRingOuter; rad >= SlopeRingInner; rad -= SlopeRingStep)
+        for (int a = 0; a < SlopeRingSteps; a++)
         {
-            float ang = a * Mathf.Tau / 48f;
+            float ang = a * Mathf.Tau / SlopeRingSteps;
             var p = new Vector2(Mathf.Cos(ang) * rad, Mathf.Sin(ang) * rad);
             float g = TerrainGrade(p.X, p.Y);
             if (g <= bestG || g > SlopeMaxGrade) continue;
             if (!ScatterFree(p, SlopeClearance)) continue;
-            const float e = 0.7f;
-            float gx = (Main.HeightAt(p.X + e, p.Y) - Main.HeightAt(p.X - e, p.Y)) / (2f * e);
-            float gz = (Main.HeightAt(p.X, p.Y + e) - Main.HeightAt(p.X, p.Y - e)) / (2f * e);
+            float gx = (Main.HeightAt(p.X + GradeStep, p.Y) - Main.HeightAt(p.X - GradeStep, p.Y)) / (2f * GradeStep);
+            float gz = (Main.HeightAt(p.X, p.Y + GradeStep) - Main.HeightAt(p.X, p.Y - GradeStep)) / (2f * GradeStep);
             uphillYaw = RiderWalker.YawOf(new Vector3(gx, 0f, gz).Normalized());
             spot = new Vector3(p.X, Main.HeightAt(p.X, p.Y), p.Y);
             bestG = g;
@@ -3800,6 +3908,7 @@ public partial class Titans
     private const float MAuditSeconds = 1.2f;
     private const float MBaseFlatTolerance = 0.05f;
     private const float MBaseRingRadius = 20f;
+    private const int MBaseRingSteps = 16; // flatness samples around each pad
     private const float MPatrolMinDisplacement = 10f;
     private const float MBaseLeashRadius = 130f;
     private const float MAggroTeleportDistance = 190f;
@@ -3926,6 +4035,14 @@ public partial class Titans
     // from the settled camera (3 passes), so the ray is exact.
     private enum RangePhase { FarLaser, CheckFar, StageNear, CheckNear, MissileCheck, TrackShell }
     private const float RgFarSeconds = 1.2f;
+    private const float RgChestAimHeight = 7.6f;  // the suite aims at the enemy's chest, this high over his root
+    private const float RgHpEpsilon = 0.01f;      // an hp change smaller than this counts as no change in the range verdicts
+    private const float RgFarSpotDistance = 600f; // the far staging: the enemy re-spots this far along the home line
+    private const float RgNearSpotDistance = 180f; // the near staging distance from the player
+    private const float RgNearAngleStepDeg = 15f; // the near search rotates the spot by this per try
+    private const float RgLosRayLength = 600f;    // the camera LOS verdict ray
+    private const float RgMissilePitch = 0.16f;   // the missile check's staged pitch (clears the laser lane; only the range cap may end the flight)
+    private const float RgShellMinSpeed = 200f;   // a shell is the tracked one once it moves faster than this
     private const float RgCheckFarSeconds = 0.6f;
     private const float RgStageNearSeconds = 0.3f;
     private const float RgCheckNearSeconds = 0.6f;
@@ -3963,7 +4080,7 @@ public partial class Titans
     {
         _rgT += dt;
         _player.SetDrive(_playerYaw, 0f);
-        var chest = _enemy.RootPos + Vector3.Up * 7.6f;
+        var chest = _enemy.RootPos + Vector3.Up * RgChestAimHeight;
         if (_rgPhase == RangePhase.FarLaser && _rgT > RgFarSeconds)
         {
             _camMode = CamMode.Chase;
@@ -3976,11 +4093,11 @@ public partial class Titans
         }
         else if (_rgPhase == RangePhase.CheckFar && _rgT > RgCheckFarSeconds)
         {
-            if (_hpEnemy < _rgHp0 - 0.01f) { Dbg.Err($"RANGE FAIL A: laser damaged the enemy past its range ({_rgHp0:F0} -> {_hpEnemy:F0})"); GetTree().Quit(1); return; }
+            if (_hpEnemy < _rgHp0 - RgHpEpsilon) { Dbg.Err($"RANGE FAIL A: laser damaged the enemy past its range ({_rgHp0:F0} -> {_hpEnemy:F0})"); GetTree().Quit(1); return; }
             Dbg.Print("RANGE A PASS: no damage beyond range");
             var home = PadWorld(0);
             var dirIn = (home - _enemy.RootPos); dirIn.Y = 0f; dirIn = dirIn.Normalized();
-            var spot = _enemy.RootPos + dirIn * 600f;
+            var spot = _enemy.RootPos + dirIn * RgFarSpotDistance;
             spot.Y = Main.HeightAt(spot.X, spot.Z);
             _player.Teleport(spot, RiderWalker.YawOf(-dirIn));
             _rgPhase = RangePhase.StageNear; _rgT = 0f;
@@ -3992,13 +4109,13 @@ public partial class Titans
             // the enemy around a fan of spots 180u out until the
             // game's own cast (at the weapon's own 600 reach)
             // confirms a clear line to it, then fire.
-            float ang = _rgTry * Mathf.DegToRad(15f);
+            float ang = _rgTry * Mathf.DegToRad(RgNearAngleStepDeg);
             var dirE = (_enemy.RootPos - _player.RootPos); dirE.Y = 0f; dirE = dirE.Normalized();
-            var spot = _player.RootPos + dirE.Rotated(Vector3.Up, ang) * 180f;
+            var spot = _player.RootPos + dirE.Rotated(Vector3.Up, ang) * RgNearSpotDistance;
             spot.Y = Main.HeightAt(spot.X, spot.Z);
             _enemy.Teleport(spot, RiderWalker.YawOf(-dirE.Rotated(Vector3.Up, ang)));
-            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
-            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), 600f, Roles.Player);
+            AimAxisAt(_enemy.RootPos + Vector3.Up * RgChestAimHeight);
+            var los = _hit.Ray(_cam.GlobalPosition, AimDirWorld(), RgLosRayLength, Roles.Player);
             if (!los.Hit || los.Target != Roles.Enemy)
             {
                 if (++_rgTry > 10) { Dbg.Err("RANGE FAIL B: no clear lane found for staging"); GetTree().Quit(1); }
@@ -4012,7 +4129,7 @@ public partial class Titans
         }
         else if (_rgPhase == RangePhase.CheckNear && _rgT > RgCheckNearSeconds)
         {
-            if (_hpEnemy > _rgHp0 - 0.01f) { Dbg.Err("RANGE FAIL B: laser did no damage inside its range"); GetTree().Quit(1); return; }
+            if (_hpEnemy > _rgHp0 - RgHpEpsilon) { Dbg.Err("RANGE FAIL B: laser did no damage inside its range"); GetTree().Quit(1); return; }
             Dbg.Print($"RANGE B PASS: hp {_rgHp0:F0} -> {_hpEnemy:F0}");
             _rgHp0 = _hpEnemy;
             // Re-stage base-to-base (1074u) for the missile
@@ -4024,17 +4141,17 @@ public partial class Titans
             var dirC = (baseC - homeC); dirC.Y = 0f; dirC = dirC.Normalized();
             _player.Teleport(homeC, RiderWalker.YawOf(dirC));
             _enemy.Teleport(baseC, RiderWalker.YawOf(-dirC));
-            AimAxisAt(_enemy.RootPos + Vector3.Up * 7.6f);
+            AimAxisAt(_enemy.RootPos + Vector3.Up * RgChestAimHeight);
             FireLrmSalvo(TorsoAimPoint());
             Dbg.Print("RANGE C salvo fired base-to-base at 1074u (LRM range 1000 - must fall short)");
             _rgPhase = RangePhase.MissileCheck; _rgT = 0f;
         }
         else if (_rgPhase == RangePhase.MissileCheck && _rgT > RgMissileSeconds)
         {
-            if (_hpEnemy < _rgHp0 - 0.01f) { Dbg.Err("RANGE FAIL C: rockets reached past their range"); GetTree().Quit(1); return; }
+            if (_hpEnemy < _rgHp0 - RgHpEpsilon) { Dbg.Err("RANGE FAIL C: rockets reached past their range"); GetTree().Quit(1); return; }
             if (_rocketsLaunched == 0) { Dbg.Err("RANGE FAIL C: no rockets launched"); GetTree().Quit(1); return; }
             Dbg.Print($"RANGE C PASS: {_rocketsLaunched} rockets, enemy untouched");
-            _player.AimPitchWide = 0.16f; // climbs clear of the proven laser lane - only the range cap may end this flight
+            _player.AimPitchWide = RgMissilePitch; // climbs clear of the proven laser lane - only the range cap may end this flight
             UpdateCamera(0f);
             int before = _shots.Count;
             FireAutocannon(TorsoAimPoint());
@@ -4045,7 +4162,7 @@ public partial class Titans
             // Track the fast shell: the autocannon's.
             _rgShell = null;
             for (int i = before; i < _shots.Count; i++)
-                if (_shots[i].Vel.Length() > 200f) _rgShell = _shots[i];
+                if (_shots[i].Vel.Length() > RgShellMinSpeed) _rgShell = _shots[i];
             if (_rgShell == null) { Dbg.Err("RANGE FAIL D: no autocannon shell in the volley"); GetTree().Quit(1); return; }
             Dbg.Print($"RANGE D tracking the autocannon shell (speed {_rgShell.Vel.Length():F0})");
             _rgOrigin = _cam.GlobalPosition; _rgDir = _aimDir;
@@ -4141,9 +4258,9 @@ public partial class Titans
                 var pad = Main.SpawnPads[i];
                 float hc = Main.HeightAt(pad.X, pad.Y);
                 float dev = 0f;
-                for (int k = 0; k < 16; k++)
+                for (int k = 0; k < MBaseRingSteps; k++)
                 {
-                    float a = k / 16f * Mathf.Tau;
+                    float a = k / (float)MBaseRingSteps * Mathf.Tau;
                     dev = Mathf.Max(dev, Mathf.Abs(Main.HeightAt(pad.X + Mathf.Cos(a) * MBaseRingRadius, pad.Y + Mathf.Sin(a) * MBaseRingRadius) - hc));
                 }
                 Dbg.Print($"MISSION BASE {i} pad=({pad.X:F0},{pad.Y:F0}) h={hc:F2} maxDevR20={dev:F3}");
@@ -4153,9 +4270,9 @@ public partial class Titans
             _mDistF0 = _foe != null ? _foe.Walker.RootPos.DistanceTo(_player.RootPos) : 0f;
             _mEnemyStart = _enemy.RootPos; _mFoeStart = _foe?.Walker.RootPos ?? Vector3.Zero;
             Dbg.Print($"MISSION PATROL start: enemy distToPlayer={_mDistE0:F0} foe distToPlayer={_mDistF0:F0}");
-            QueueCapture(ProofDir + "mission_base.png", "mbase", CamMode.MissionBase, () =>
-            QueueCapture(ProofDir + "mission_vista.png", "mvista", CamMode.MissionVista, () =>
-            QueueCapture(ProofDir + "gate_sky.png", "gsky", CamMode.Gatesky, () =>
+            QueueCapture(ProofDir + "mission_base.png", CaptureTags.MBase, CamMode.MissionBase, () =>
+            QueueCapture(ProofDir + "mission_vista.png", CaptureTags.MVista, CamMode.MissionVista, () =>
+            QueueCapture(ProofDir + "gate_sky.png", CaptureTags.GSky, CamMode.Gatesky, () =>
             {
                 // AOT_SLOPE=1: two extra staged portraits of the
                 // center relief (the owner's streaked-mountains
@@ -4163,8 +4280,8 @@ public partial class Titans
                 // phases below are not part of a portrait run.
                 if (EnvVars.Flag(EnvVars.Slope))
                 {
-                    QueueCapture(ProofDir + "slope_vista.png", "slopeVista", CamMode.SlopeVista, () =>
-                    QueueCapture(ProofDir + "slope_close.png", "slopeClose", CamMode.SlopeClose, () =>
+                    QueueCapture(ProofDir + "slope_vista.png", CaptureTags.SlopeVista, CamMode.SlopeVista, () =>
+                    QueueCapture(ProofDir + "slope_close.png", CaptureTags.SlopeClose, CamMode.SlopeClose, () =>
                     { Dbg.Print("SLOPE SHOTS DONE"); GetTree().Quit(0); }));
                     return;
                 }
@@ -4251,6 +4368,7 @@ public partial class Titans
     }
 
     private enum TerrainPhase { Vista, SlopeClimb, DuelFrame, Run, Fly, CapturesPending = 99 }
+    private const float FlyInputStep = 0.016f; // the fixed input frame the fly test feeds ApplyPlayerInput
     private enum FlyStage { Settle, FullBurn, Descend, PartialRecharge, PartialBurn, FullRecharge }
 
     private const int TPhaseTimeoutSeconds = 45;
@@ -4304,9 +4422,9 @@ public partial class Titans
                 _enemy.SetDrive(Mathf.Pi, 0f);
                 if (_tPhaseT > TVistaCaptureSeconds)
                 {
-                    QueueCapture(ProofDir + "env_detail_building.png", "tdetB", CamMode.DetailBuilding, () =>
-                    QueueCapture(ProofDir + "env_detail_tree.png", "tdetT", CamMode.DetailTree, () =>
-                    QueueCapture(ProofDir + "terrain_vista.png", "tvista", CamMode.Vista, () =>
+                    QueueCapture(ProofDir + "env_detail_building.png", CaptureTags.TDetB, CamMode.DetailBuilding, () =>
+                    QueueCapture(ProofDir + "env_detail_tree.png", CaptureTags.TDetT, CamMode.DetailTree, () =>
+                    QueueCapture(ProofDir + "terrain_vista.png", CaptureTags.TVista, CamMode.Vista, () =>
                     {
                         if (!FindSlopeSpot(out var spot, out float yaw))
                         {
@@ -4330,7 +4448,7 @@ public partial class Titans
                     _tStrideLogged = true;
                     Dbg.Print($"TERRAIN STRIDE analytic {_player.FootReport(false)}");
                     Dbg.Print($"TERRAIN STRIDE engine   {_player.FootReport(true)}");
-                    QueueCapture(ProofDir + "terrain_stride.png", "tstride", CamMode.SlopeSide, () =>
+                    QueueCapture(ProofDir + "terrain_stride.png", CaptureTags.TStride, CamMode.SlopeSide, () =>
                     {
                         float md = _player.MaxPlantedDiff();
                         Dbg.Print($"TERRAIN STRIDE maxPlantedDiff={md:F3}");
@@ -4352,7 +4470,7 @@ public partial class Titans
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
                 if (_tPhaseT > TDuelSettleSeconds)
                 {
-                    QueueCapture(ProofDir + "terrain_duel.png", "tduel", CamMode.GroundDuel, () =>
+                    QueueCapture(ProofDir + "terrain_duel.png", CaptureTags.TDuel, CamMode.GroundDuel, () =>
                     {
                         var vp = GetViewport();
                         Dbg.Print($"TERRAIN RENDER drawCalls={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.DrawCallsInFrame)} prims={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.PrimitivesInFrame)} objects={vp.GetRenderInfo(Viewport.RenderInfoType.Visible, Viewport.RenderInfo.ObjectsInFrame)}");
@@ -4402,7 +4520,7 @@ public partial class Titans
                 }
                 break;
             case TerrainPhase.Fly: // FLY: hold-to-thrust - burn, flyover, descent, partial burn, recharge.
-                if (_tJumpStage == FlyStage.FullBurn) ApplyPlayerInput(0.016f, true, false, false, false, false); // W held: drive + jet push
+                if (_tJumpStage == FlyStage.FullBurn) ApplyPlayerInput(FlyInputStep, true, false, false, false, false); // W held: drive + jet push
                 else _player.SetDrive(0f, 0f);
                 _enemy.SetDrive(_enemy.LegsYaw, 0f);
                 if (_tJumpStage >= FlyStage.FullBurn && _tJumpStage <= FlyStage.Descend)
@@ -4534,9 +4652,9 @@ public partial class Titans
         var t5 = m.GetInstanceTransform(5);
         Dbg.Print($"GRASSSHOT inst0 pos={t0.Origin} scale={t0.Basis.Scale} inst5 pos={t5.Origin} scale={t5.Basis.Scale}");
         _grassPos = t5.Origin;
-        QueueCapture(ProofDir + "grass_close.png", "gclose", CamMode.GrassClose, () =>
-        QueueCapture(ProofDir + "grass_top.png", "gtop", CamMode.GrassTop, () =>
-        QueueCapture(ProofDir + "grass_field.png", "gfield", CamMode.GrassField, () =>
+        QueueCapture(ProofDir + "grass_close.png", CaptureTags.GClose, CamMode.GrassClose, () =>
+        QueueCapture(ProofDir + "grass_top.png", CaptureTags.GTop, CamMode.GrassTop, () =>
+        QueueCapture(ProofDir + "grass_field.png", CaptureTags.GField, CamMode.GrassField, () =>
         {
             Dbg.Print("GRASSSHOT DONE");
             GetTree().Quit(0);
@@ -4552,9 +4670,9 @@ public partial class Titans
         if (_photoPhase == PhotoPhase.Settle && _photoT > PhotoSettleSeconds)
         {
             _photoPhase = PhotoPhase.Capture;
-            QueueCapture(ProofDir + "photo_tuft.png", "ptuft", CamMode.PhotoTuft, () =>
-            QueueCapture(ProofDir + "photo_overview.png", "pover", CamMode.PhotoOver, () =>
-                QueueCapture(ProofDir + "photo_ground.png", "pground", CamMode.PhotoGround, () =>
+            QueueCapture(ProofDir + "photo_tuft.png", CaptureTags.PTuft, CamMode.PhotoTuft, () =>
+            QueueCapture(ProofDir + "photo_overview.png", CaptureTags.POver, CamMode.PhotoOver, () =>
+                QueueCapture(ProofDir + "photo_ground.png", CaptureTags.PGround, CamMode.PhotoGround, () =>
                 {
                     long draws = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame);
                     long prims = (long)RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame);
@@ -4602,8 +4720,8 @@ public partial class Titans
             }
         }
         if (_gaitT > GaitCaptureSeconds && _camMode != CamMode.EnemySide && _camMode != CamMode.EnemyFront)
-            QueueCapture(ProofDir + "gait_hector.png", "gait", CamMode.EnemySide, () =>
-                QueueCapture(ProofDir + "gait_hector_front.png", "gaitf", CamMode.EnemyFront, () => GetTree().Quit()));
+            QueueCapture(ProofDir + "gait_hector.png", CaptureTags.Gait, CamMode.EnemySide, () =>
+                QueueCapture(ProofDir + "gait_hector_front.png", CaptureTags.GaitF, CamMode.EnemyFront, () => GetTree().Quit()));
     }
 
     // ---------- SFX pool probe ----------

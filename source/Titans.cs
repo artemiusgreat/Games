@@ -152,7 +152,7 @@ public partial class Titans : Node3D
     // test choreography
     private DuelPhase _phase;
     private double _phaseT;
-    private int _strideShots;
+    private StrideShot _strideShot;
     private float _minTreeSep, _minRiderSep;
     private PlayerLimpStep _pLimpStep;
     private AimStep _aimStep;
@@ -488,6 +488,7 @@ public partial class Titans : Node3D
         Dbg.On = _test || _weaponsTest || _breakTest || _missionTest || _terrainTest || _lagCheck
             || _labShot || _photo || _photoTest || _ffaTest || _teamTest || _bracketTest
             || _deployTest || _pointTest || _longshotTest || _rangeTest || _standTest || _ppcProbe || _debrisProbe || _guardProbe || _ffProbe || _sfxProbe || _targetProbe || _feedProbe || _ambientProbe || _beamShot || _controlsShot || _bindingsProbe || _stoneShot || _boneProbe
+            || _brakeTest || _lrmProbe || _gaitShot || _viewShot || _flipbookTest || _grassShot || _boomShot || _leaveShot
             || OS.HasEnvironment("AOT_VERBOSE");
         if (_bracketTest) SeedBracketTest();
         // Story team (owner, teams stage): the player rider is
